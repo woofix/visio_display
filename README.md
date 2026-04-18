@@ -173,7 +173,6 @@ Une fois l'encodage initial effectué, la vidéo est ajoutée en file de compres
 
 ```
 Visio-Display/
-├── .github/workflows/ci.yml     # CI GitHub Actions (lint + tests)
 ├── docker-compose.yml           # Services : app, worker, redis
 ├── Dockerfile
 ├── .env.example
@@ -186,9 +185,8 @@ Visio-Display/
     ├── constants.py             # Constantes partagées
     ├── translations.py          # Traductions FR/EN
     ├── encode_now.py            # Encodage vidéo (exécuté par le worker RQ)
-    ├── pyproject.toml           # Config ruff + pytest
+    ├── pyproject.toml           # Config ruff
     ├── requirements.txt         # Dépendances de production
-    ├── requirements-dev.txt     # Dépendances de développement/test
     ├── blueprints/              # Blueprints Flask
     │   ├── admin.py             # Tableau de bord
     │   ├── api.py               # API JSON
@@ -209,22 +207,16 @@ Visio-Display/
     ├── static/
     │   ├── data/                # Médias + base SQLite ramses.db (non versionné)
     │   └── images/              # Logo et ressources statiques
-    ├── templates/               # Templates Jinja2
-    │   ├── index.html           # Diaporama plein écran
-    │   ├── login.html           # Page de connexion
-    │   ├── admin_layout.html    # Gabarit partagé (sidebar, topbar, thèmes)
-    │   ├── admin_dashboard.html # Vue d'ensemble + espace disque
-    │   ├── admin_media.html     # Médiathèque + réorganisation + écrans
-    │   ├── admin_upload.html    # Import de médias + suivi d'encodage
-    │   ├── admin_queue.html     # File d'encodage + progression
-    │   ├── admin_settings.html  # Logo, thème, langue, mot de passe, événements
-    │   └── admin_superadmin.html # Gestion des comptes, permissions et écrans
-    └── tests/                   # Tests pytest (57 tests)
-        ├── conftest.py
-        ├── test_config_svc.py
-        ├── test_queue_svc.py
-        ├── test_queue_rq.py
-        └── test_users_svc.py
+    └── templates/               # Templates Jinja2
+        ├── index.html           # Diaporama plein écran
+        ├── login.html           # Page de connexion
+        ├── admin_layout.html    # Gabarit partagé (sidebar, topbar, thèmes)
+        ├── admin_dashboard.html # Vue d'ensemble + espace disque
+        ├── admin_media.html     # Médiathèque + réorganisation + écrans
+        ├── admin_upload.html    # Import de médias + suivi d'encodage
+        ├── admin_queue.html     # File d'encodage + progression
+        ├── admin_settings.html  # Logo, thème, langue, mot de passe, événements
+        └── admin_superadmin.html # Gestion des comptes, permissions et écrans
 ```
 
 > `web/static/data/` est exclu du contrôle de version.
@@ -526,7 +518,6 @@ After initial encoding, the video is queued for overnight compression (10 PM–6
 
 ```
 Visio-Display/
-├── .github/workflows/ci.yml     # GitHub Actions CI (lint + tests)
 ├── docker-compose.yml           # Services: app, worker, redis
 ├── Dockerfile
 ├── .env.example
@@ -539,9 +530,8 @@ Visio-Display/
     ├── constants.py             # Shared constants
     ├── translations.py          # FR/EN translations
     ├── encode_now.py            # Video encoding (run by the RQ worker)
-    ├── pyproject.toml           # Ruff + pytest config
+    ├── pyproject.toml           # Ruff config
     ├── requirements.txt         # Production dependencies
-    ├── requirements-dev.txt     # Dev/test dependencies
     ├── blueprints/              # Flask blueprints
     │   ├── admin.py             # Dashboard
     │   ├── api.py               # JSON API
@@ -562,22 +552,16 @@ Visio-Display/
     ├── static/
     │   ├── data/                # Media files + SQLite DB ramses.db (not versioned)
     │   └── images/              # Logo and static assets
-    ├── templates/               # Jinja2 templates
-    │   ├── index.html           # Fullscreen slideshow
-    │   ├── login.html           # Login page
-    │   ├── admin_layout.html    # Shared layout (sidebar, topbar, themes)
-    │   ├── admin_dashboard.html # Overview + disk usage
-    │   ├── admin_media.html     # Media library + reordering + screens
-    │   ├── admin_upload.html    # Media import + encoding progress
-    │   ├── admin_queue.html     # Encoding queue + progress bars
-    │   ├── admin_settings.html  # Logo, theme, language, password, events
-    │   └── admin_superadmin.html # Account, permission and screen management
-    └── tests/                   # pytest test suite (57 tests)
-        ├── conftest.py
-        ├── test_config_svc.py
-        ├── test_queue_svc.py
-        ├── test_queue_rq.py
-        └── test_users_svc.py
+    └── templates/               # Jinja2 templates
+        ├── index.html           # Fullscreen slideshow
+        ├── login.html           # Login page
+        ├── admin_layout.html    # Shared layout (sidebar, topbar, themes)
+        ├── admin_dashboard.html # Overview + disk usage
+        ├── admin_media.html     # Media library + reordering + screens
+        ├── admin_upload.html    # Media import + encoding progress
+        ├── admin_queue.html     # Encoding queue + progress bars
+        ├── admin_settings.html  # Logo, theme, language, password, events
+        └── admin_superadmin.html # Account, permission and screen management
 ```
 
 > `web/static/data/` is excluded from version control.

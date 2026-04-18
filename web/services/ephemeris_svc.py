@@ -5,7 +5,7 @@ from datetime import date, datetime, timezone, timedelta
 import requests
 from PIL import Image, ImageDraw, ImageFont
 
-from constants import UPLOAD_FOLDER, LAT, LNG
+from constants import UPLOAD_FOLDER, LAT, LNG, DEFAULT_METEO_VILLE, DEFAULT_METEO_TZ
 from services.config_svc import load_config
 from services.i18n import _t, get_language
 from services.media_svc import strip_html
@@ -14,6 +14,19 @@ from translations import JOURS_BY_LANG, MOIS_BY_LANG, WMO_CODES_BY_LANG
 
 def get_utc_offset():
     return 2 if 4 <= datetime.now().month <= 10 else 1
+
+
+def _get_meteo_location(cfg):
+    lat   = cfg.get("meteo_lat",   LAT)
+    lng   = cfg.get("meteo_lng",   LNG)
+    tz    = cfg.get("meteo_tz",    DEFAULT_METEO_TZ)
+    ville = cfg.get("meteo_ville", DEFAULT_METEO_VILLE)
+    try:
+        lat = float(lat)
+        lng = float(lng)
+    except (TypeError, ValueError):
+        lat, lng = LAT, LNG
+    return lat, lng, tz, ville
 
 
 def get_ephemeride_slot():
@@ -38,11 +51,14 @@ def get_ephemeride_nominis():
         return _t('ephemeris_saint_default', lang), ""
 
 
-def get_sun_times():
+def get_sun_times(cfg=None):
+    if cfg is None:
+        cfg = load_config()
+    lat, lng, _tz, _ville = _get_meteo_location(cfg)
     try:
         r = requests.get(
             "https://api.sunrise-sunset.org/json",
-            params={"lat": LAT, "lng": LNG, "formatted": 0},
+            params={"lat": lat, "lng": lng, "formatted": 0},
             timeout=5
         )
         r.raise_for_status()
@@ -81,16 +97,19 @@ def get_weather_palette(code):
         return (94,  62,  139), (146, 115, 198), (0.00, 0.00, 0.50)
 
 
-def get_meteo():
+def get_meteo(cfg=None):
+    if cfg is None:
+        cfg = load_config()
+    lat, lng, tz_name, _ville = _get_meteo_location(cfg)
     lang = get_language()
     wmo  = WMO_CODES_BY_LANG.get(lang, WMO_CODES_BY_LANG['fr'])
     try:
         r = requests.get(
             "https://api.open-meteo.com/v1/forecast",
             params={
-                "latitude": LAT, "longitude": LNG,
+                "latitude": lat, "longitude": lng,
                 "current": "temperature_2m,apparent_temperature,weathercode,windspeed_10m,precipitation",
-                "wind_speed_unit": "kmh", "timezone": "Europe/Paris"
+                "wind_speed_unit": "kmh", "timezone": tz_name
             },
             timeout=5
         )
@@ -230,10 +249,10 @@ def generate_ephemeride_image(force=False):
     if os.path.exists(path) and not force:
         return
 
-    nom, description = get_ephemeride_nominis()
-    lever, coucher   = get_sun_times()
-    meteo            = get_meteo()
     cfg              = load_config()
+    nom, description = get_ephemeride_nominis()
+    lever, coucher   = get_sun_times(cfg)
+    meteo            = get_meteo(cfg)
     today            = date.today()
     date_str         = f"{JOURS[today.weekday()]} {today.day} {MOIS[today.month]} {today.year}"
 
@@ -307,8 +326,21 @@ def generate_ephemeride_image(force=False):
     wind_label = _t('ephemeris_wind_label', lang)
     rain_label = _t('ephemeris_rain_label', lang)
 
-    draw.text((640,  682), _t('ephemeris_meteo_label', lang),                                    fill=(200, 180, 255), font=font_mlab,  anchor="mm")
-    draw.text((640,  730), meteo["condition"],                                                     fill=(255, 255, 255), font=font_meteo, anchor="mm")
+    _lat, _lng, _tz, ville = _get_meteo_location(cfg)
+    meteo_label = f"{_t('ephemeris_meteo_prefix', lang)} - {ville.upper()}"
+    draw.text((640,  682), meteo_label,                                                           fill=(200, 180, 255), font=font_mlab,  anchor="mm")
+
+    condition_text = meteo["condition"]
+    _font_meteo = font_meteo
+    _meteo_font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+    _meteo_size = 48
+    while _meteo_size > 20 and draw.textlength(condition_text, font=_font_meteo) > 560:
+        _meteo_size -= 2
+        try:
+            _font_meteo = ImageFont.truetype(_meteo_font_path, _meteo_size)
+        except Exception:
+            break
+    draw.text((640,  730), condition_text,                                                         fill=(255, 255, 255), font=_font_meteo, anchor="mm")
     draw.text((640,  778), f"{temp_label} : {meteo['temp']}  ({feel_label} {meteo['ressenti']})", fill=(200, 230, 255), font=font_mlab,  anchor="mm")
     draw.text((640,  820), f"{wind_label} : {meteo['vent']}   {rain_label} : {meteo['precip']}",  fill=(200, 230, 255), font=font_mlab,  anchor="mm")
     draw.rectangle([930, 665, 934, 855], fill=(200, 180, 255))

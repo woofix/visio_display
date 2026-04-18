@@ -99,6 +99,43 @@
 </div>
 
 <div class="card">
+
+    <!-- ── BARRE DE NAVIGATION DES ONGLETS ── -->
+    <div class="tab-bar">
+        <a href="?tab=logo" class="tab-btn {% if active_tab == 'logo' %}active{% endif %}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+            {{ t('tab_logo') }}
+        </a>
+        <a href="?tab=theme" class="tab-btn {% if active_tab == 'theme' %}active{% endif %}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20"/></svg>
+            {{ t('tab_theme') }}
+        </a>
+        <a href="?tab=admins" class="tab-btn {% if active_tab == 'admins' %}active{% endif %}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+            {{ t('tab_admins') }}
+        </a>
+        {% if current_user_is_superadmin %}
+        <a href="?tab=application" class="tab-btn {% if active_tab == 'application' %}active{% endif %}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            {{ t('tab_application') }}
+        </a>
+        <a href="?tab=meteo" class="tab-btn {% if active_tab == 'meteo' %}active{% endif %}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/></svg>
+            {{ t('tab_meteo') }}
+        </a>
+        {% endif %}
+        {% if can_ephemeris %}
+        <a href="?tab=evenements" class="tab-btn {% if active_tab == 'evenements' %}active{% endif %}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            {{ t('tab_events') }}
+        </a>
+        {% endif %}
+        <a href="?tab=language" class="tab-btn {% if active_tab == 'language' %}active{% endif %}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            {{ t('tab_language') }}
+        </a>
+    </div>
+
     <!-- ── ONGLET LOGO ── -->
     <div id="tab-logo" class="tab-pane {% if active_tab == 'logo' %}active{% endif %}">
         <div class="logo-layout">
@@ -285,6 +322,70 @@
             </div>
         </form>
     </div>
+
+    <!-- ── ONGLET MÉTÉO (super-admin) ── -->
+    <div id="tab-meteo" class="tab-pane {% if active_tab == 'meteo' %}active{% endif %}">
+        <p style="font-size:.82rem;color:var(--text-3);margin-bottom:20px">{{ t('settings_meteo_subtitle') }}</p>
+
+        <!-- Config actuelle -->
+        <div style="background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 18px;margin-bottom:24px;display:flex;align-items:center;gap:16px;max-width:560px">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;flex-shrink:0;color:var(--primary)"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/></svg>
+            <div>
+                <div style="font-size:.72rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">{{ t('settings_meteo_current') }}</div>
+                <div style="font-size:.92rem;font-weight:700;color:var(--text)">{{ meteo_location.ville }}</div>
+                <div style="font-size:.74rem;color:var(--text-3);margin-top:2px">{{ meteo_location.lat }}, {{ meteo_location.lng }} — {{ meteo_location.tz }}</div>
+            </div>
+        </div>
+
+        <!-- Recherche de ville (JS / Open-Meteo geocoding) -->
+        <div style="max-width:560px;margin-bottom:24px">
+            <div class="logo-section-label" style="margin-bottom:10px">{{ t('settings_meteo_city_label') }}</div>
+            <p style="font-size:.76rem;color:var(--text-3);margin-bottom:10px">{{ t('settings_meteo_search_hint') }}</p>
+            <div style="display:flex;gap:8px;align-items:center">
+                <input type="text" id="meteo-search-input" placeholder="{{ t('settings_meteo_city_ph') }}"
+                       style="flex:1;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:.85rem;background:var(--surface);color:var(--text)">
+                <button type="button" id="meteo-search-btn" class="btn sm secondary" onclick="searchMeteoCity()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    {{ t('settings_meteo_search_btn') }}
+                </button>
+            </div>
+            <div id="meteo-search-results" style="display:none;margin-top:8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);overflow:hidden;max-width:100%"></div>
+        </div>
+
+        <!-- Formulaire de sauvegarde -->
+        <form action="/admin/settings/meteo" method="post" style="display:flex;flex-direction:column;gap:14px;max-width:560px" id="meteo-form">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div>
+                    <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('settings_meteo_city_label') }}</label>
+                    <input type="text" name="meteo_ville" id="meteo-ville" value="{{ meteo_location.ville }}" required maxlength="80"
+                           style="width:100%;padding:8px 11px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:.85rem;background:var(--surface);color:var(--text)">
+                </div>
+                <div>
+                    <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('settings_meteo_tz_label') }}</label>
+                    <input type="text" name="meteo_tz" id="meteo-tz" value="{{ meteo_location.tz }}" required maxlength="60"
+                           placeholder="{{ t('settings_meteo_tz_ph') }}"
+                           style="width:100%;padding:8px 11px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:.85rem;background:var(--surface);color:var(--text)">
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div>
+                    <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('settings_meteo_lat_label') }}</label>
+                    <input type="number" step="any" name="meteo_lat" id="meteo-lat" value="{{ meteo_location.lat }}" required
+                           min="-90" max="90"
+                           style="width:100%;padding:8px 11px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:.85rem;background:var(--surface);color:var(--text)">
+                </div>
+                <div>
+                    <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('settings_meteo_lng_label') }}</label>
+                    <input type="number" step="any" name="meteo_lng" id="meteo-lng" value="{{ meteo_location.lng }}" required
+                           min="-180" max="180"
+                           style="width:100%;padding:8px 11px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:.85rem;background:var(--surface);color:var(--text)">
+                </div>
+            </div>
+            <div>
+                <button type="submit" class="btn sm">{{ t('settings_meteo_apply_btn') }}</button>
+            </div>
+        </form>
+    </div>
     {% endif %}
 
     {% if can_ephemeris %}
@@ -363,6 +464,77 @@ document.querySelectorAll('.theme-card input[type=radio]').forEach(radio => {
         document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('selected'));
         radio.closest('.theme-card').classList.add('selected');
     });
+});
+
+/* ── Recherche de ville via Open-Meteo geocoding API ── */
+async function searchMeteoCity() {
+    const query   = document.getElementById('meteo-search-input').value.trim();
+    const results = document.getElementById('meteo-search-results');
+    if (!query) return;
+
+    const btn = document.getElementById('meteo-search-btn');
+    btn.disabled = true;
+    results.style.display = 'none';
+    results.innerHTML = '';
+
+    try {
+        const resp = await fetch(
+            `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=8&format=json`
+        );
+        const data = await resp.json();
+        const list = data.results || [];
+
+        if (!list.length) {
+            results.innerHTML = '<div style="padding:10px 14px;font-size:.82rem;color:var(--text-3)">Aucun résultat trouvé.</div>';
+            results.style.display = 'block';
+            return;
+        }
+
+        results.innerHTML = list.map((item, i) => {
+            const name    = item.name || '';
+            const country = item.country || '';
+            const admin   = item.admin1 ? `, ${item.admin1}` : '';
+            const tz      = item.timezone || 'UTC';
+            const lat     = item.latitude.toFixed(4);
+            const lng     = item.longitude.toFixed(4);
+            return `<div class="meteo-result-row" data-ville="${name}" data-lat="${lat}" data-lng="${lng}" data-tz="${tz}"
+                         style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);font-size:.84rem;display:flex;justify-content:space-between;align-items:center"
+                         onmouseenter="this.style.background='var(--surface-alt)'" onmouseleave="this.style.background=''">
+                        <span><strong>${name}</strong>${admin} — ${country}</span>
+                        <span style="color:var(--text-3);font-size:.74rem">${lat}, ${lng}</span>
+                    </div>`;
+        }).join('');
+
+        results.querySelectorAll('.meteo-result-row').forEach(row => {
+            row.addEventListener('click', () => {
+                document.getElementById('meteo-ville').value = row.dataset.ville;
+                document.getElementById('meteo-lat').value   = row.dataset.lat;
+                document.getElementById('meteo-lng').value   = row.dataset.lng;
+                document.getElementById('meteo-tz').value    = row.dataset.tz;
+                results.style.display = 'none';
+            });
+        });
+
+        results.style.display = 'block';
+    } catch (e) {
+        results.innerHTML = '<div style="padding:10px 14px;font-size:.82rem;color:var(--red)">Erreur de connexion à l\'API de géocodage.</div>';
+        results.style.display = 'block';
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+/* Recherche au Enter dans le champ */
+document.getElementById('meteo-search-input')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); searchMeteoCity(); }
+});
+
+/* Fermer les résultats si clic en dehors */
+document.addEventListener('click', e => {
+    const results = document.getElementById('meteo-search-results');
+    if (results && !results.contains(e.target) && e.target.id !== 'meteo-search-input' && e.target.id !== 'meteo-search-btn') {
+        results.style.display = 'none';
+    }
 });
 </script>
 {% endblock %}

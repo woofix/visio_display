@@ -3,7 +3,7 @@ from datetime import date
 
 from flask import Blueprint, request, redirect, url_for, session, render_template
 
-from constants import VALID_THEMES, LOGO_EXTS, IMAGES_FOLDER, DEFAULT_LOGO
+from constants import VALID_THEMES, LOGO_EXTS, IMAGES_FOLDER, DEFAULT_LOGO, LAT, LNG, DEFAULT_METEO_VILLE, DEFAULT_METEO_TZ
 from services.config_svc import load_config, save_config
 from services.users_svc import load_users, save_users, is_superadmin, has_permission
 from services.media_svc import get_logo_path
@@ -32,6 +32,12 @@ def admin_settings_page():
     username   = session.get('user')
     entry      = users.get(username, {})
     user_theme = entry.get('theme', 'violet') if isinstance(entry, dict) else 'violet'
+    meteo_location = {
+        "ville": cfg.get("meteo_ville", DEFAULT_METEO_VILLE),
+        "lat":   cfg.get("meteo_lat",   LAT),
+        "lng":   cfg.get("meteo_lng",   LNG),
+        "tz":    cfg.get("meteo_tz",    DEFAULT_METEO_TZ),
+    }
     return render_template('admin_settings.html',
         cfg=cfg, users=users, current_user=username,
         logo_path=get_logo_path(),
@@ -39,6 +45,7 @@ def admin_settings_page():
         current_user_is_superadmin=is_superadmin(),
         theme=user_theme,
         can_ephemeris=has_permission('ephemeris'),
+        meteo_location=meteo_location,
         tab=request.args.get('tab', 'logo'))
 
 
@@ -53,6 +60,40 @@ def set_appname():
         save_config(cfg)
         _flash('flash_appname_updated', 'success')
     return redirect(url_for('settings.admin_settings_page') + '?tab=application')
+
+
+@bp.route('/admin/settings/meteo', methods=['POST'])
+def set_meteo_location():
+    redir = superadmin_guard()
+    if redir: return redir
+    ville = request.form.get('meteo_ville', '').strip()
+    lat   = request.form.get('meteo_lat',   '').strip()
+    lng   = request.form.get('meteo_lng',   '').strip()
+    tz    = request.form.get('meteo_tz',    '').strip()
+    if not ville:
+        _flash('flash_meteo_invalid', 'error')
+        return redirect(url_for('settings.admin_settings_page') + '?tab=meteo')
+    try:
+        lat_f = float(lat)
+        lng_f = float(lng)
+        if not (-90 <= lat_f <= 90) or not (-180 <= lng_f <= 180):
+            raise ValueError("out of range")
+    except (ValueError, TypeError):
+        _flash('flash_meteo_invalid', 'error')
+        return redirect(url_for('settings.admin_settings_page') + '?tab=meteo')
+    if not tz:
+        tz = DEFAULT_METEO_TZ
+    cfg = load_config()
+    cfg['meteo_ville'] = ville
+    cfg['meteo_lat']   = lat_f
+    cfg['meteo_lng']   = lng_f
+    cfg['meteo_tz']    = tz
+    save_config(cfg)
+    # Régénérer l'éphéméride avec la nouvelle localisation
+    from services.ephemeris_svc import generate_ephemeride_image
+    generate_ephemeride_image(force=True)
+    _flash('flash_meteo_updated', 'success', ville=ville)
+    return redirect(url_for('settings.admin_settings_page') + '?tab=meteo')
 
 
 @bp.route('/admin/settings/theme', methods=['POST'])

@@ -16,8 +16,10 @@ IMAGE_EXTS = ('.jpg', '.jpeg', '.png')
 VIDEO_EXTS = ('.mp4', '.webm', '.mov', '.avi', '.mkv')
 MEDIA_EXTS = IMAGE_EXTS + VIDEO_EXTS
 
-LAT = 42.6977
-LNG = 2.8956
+LAT               = 42.6977
+LNG               = 2.8956
+DEFAULT_METEO_VILLE = "Perpignan"
+DEFAULT_METEO_TZ    = "Europe/Paris"
 
 ALL_PERMISSIONS = [
     ("upload",    "perm_upload"),

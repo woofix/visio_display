@@ -71,7 +71,7 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-L'application est disponible sur `http://<hôte>:801`.
+L'application est disponible sur `http://<hôte>:8081`.
 
 **Générer une SECRET_KEY sécurisée :**
 
@@ -100,17 +100,17 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 
 ### Utilisation
 
-**Diaporama (affichage) :** ouvrir `http://<hôte>:801` dans un navigateur plein écran.
+**Diaporama (affichage) :** ouvrir `http://<hôte>:8081` dans un navigateur plein écran.
 
-**Diaporama sur un écran nommé :** `http://<hôte>:801?screen=<nom>`
+**Diaporama sur un écran nommé :** `http://<hôte>:8081?screen=<nom>`
 
 **Mode kiosque sur Raspberry Pi :**
 
 ```bash
-chromium-browser --kiosk --noerrdialogs --disable-infobars http://localhost:801
+chromium-browser --kiosk --noerrdialogs --disable-infobars http://localhost:8081
 ```
 
-**Interface d'administration :** ouvrir `http://<hôte>:801/admin` et se connecter.
+**Interface d'administration :** ouvrir `http://<hôte>:8081/admin` et se connecter.
 
 ### Rôles et permissions
 
@@ -424,7 +424,7 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-The application will be available at `http://<host>:801`.
+The application will be available at `http://<host>:8081`.
 
 **Generate a secure SECRET_KEY:**
 
@@ -453,17 +453,17 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 
 ### Usage
 
-**Slideshow (display):** open `http://<host>:801` in a fullscreen browser.
+**Slideshow (display):** open `http://<host>:8081` in a fullscreen browser.
 
-**Slideshow on a named screen:** `http://<host>:801?screen=<name>`
+**Slideshow on a named screen:** `http://<host>:8081?screen=<name>`
 
 **Kiosk mode on Raspberry Pi:**
 
 ```bash
-chromium-browser --kiosk --noerrdialogs --disable-infobars http://localhost:801
+chromium-browser --kiosk --noerrdialogs --disable-infobars http://localhost:8081
 ```
 
-**Admin interface:** open `http://<host>:801/admin` and log in with your credentials.
+**Admin interface:** open `http://<host>:8081/admin` and log in with your credentials.
 
 ### Roles & Permissions
 

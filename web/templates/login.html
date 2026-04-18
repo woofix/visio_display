@@ -1,0 +1,70 @@
+<!-- MIT License - Copyright (c) 2026 Eric TOMAS and Jean-michel TOMAS -->
+<!DOCTYPE html>
+<html lang="{{ lang | default('fr') }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ t('login_title') }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; font-family: 'Roboto', sans-serif; color: #333; }
+        body {
+            display: flex; justify-content: center; align-items: center;
+            background: linear-gradient(135deg, #5e3e8b, #9273c6);
+            background-repeat: no-repeat; background-attachment: fixed;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px; border-radius: 10px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            width: 100%; max-width: 400px; text-align: center;
+        }
+        .logo {
+            background: #16112a; padding: 12px 16px; border-radius: 8px;
+            margin-bottom: 20px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            display: flex; justify-content: center; align-items: center;
+        }
+        .logo img { width: 100%; max-height: 130px; object-fit: contain; }
+        h1 { font-size: 2rem; color: #4a148c; margin-bottom: 20px; }
+        form { display: flex; flex-direction: column; align-items: stretch; }
+        label { margin-bottom: 5px; font-weight: bold; text-align: left; }
+        input {
+            margin-bottom: 15px; padding: 10px;
+            border: 2px solid #6200ea; border-radius: 5px; font-size: 1rem;
+        }
+        input:focus { border-color: #3700b3; outline: none; }
+        button {
+            background-color: #6200ea; color: white; padding: 10px;
+            border: none; border-radius: 5px; font-size: 1rem;
+            cursor: pointer; transition: background-color 0.3s ease;
+        }
+        button:hover { background-color: #808080; }
+        .flash-list { list-style: none; margin-bottom: 16px; }
+        .flash-list li { padding: 9px 14px; border-radius: 7px; margin-bottom: 6px; font-size: .87rem; }
+        .flash-list li.error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <img src="{{ logo_path }}" alt="Logo">
+        </div>
+        <h1>{{ t('login_title') }}</h1>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <ul class="flash-list">
+            {% for cat, msg in messages %}<li class="{{ cat }}">{{ msg }}</li>{% endfor %}
+        </ul>
+        {% endif %}
+        {% endwith %}
+        <form method="post">
+            <label for="username">{{ t('login_username') }}</label>
+            <input type="text" name="username" id="username" required>
+            <label for="password">{{ t('login_password') }}</label>
+            <input type="password" name="password" id="password" required>
+            <button type="submit">{{ t('login_submit') }}</button>
+        </form>
+    </div>
+</body>
+</html>

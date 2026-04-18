@@ -1,0 +1,248 @@
+{% extends 'admin_layout.html' %}
+
+{% block title %}{{ t('queue_title') }}{% endblock %}
+{% block topbar_icon %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>{% endblock %}
+{% block topbar_title %}{{ t('queue_title') }}{% endblock %}
+{% block topbar_sub %}{{ t('queue_topbar_sub') }}{% endblock %}
+
+{% block styles %}
+.queue-layout { display: grid; grid-template-columns: 1fr 320px; gap: 20px; align-items: start; }
+
+.window-banner {
+    border-radius: 12px; padding: 14px 18px;
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 18px; font-size: .85rem; font-weight: 600;
+    border: 1px solid;
+}
+.window-banner.on  { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+.window-banner.off { background: #fff7ed; color: #9a3412; border-color: #fed7aa; }
+.window-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.window-dot.on  { background: #22c55e; box-shadow: 0 0 0 3px #bbf7d0; animation: pulse 2s infinite; }
+.window-dot.off { background: var(--orange); box-shadow: 0 0 0 3px #fed7aa; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.55} }
+
+.queue-section { margin-bottom: 22px; }
+.queue-section-title { font-size: .78rem; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 10px; }
+
+.job-card {
+    background: var(--surface); border-radius: 12px; padding: 14px 16px;
+    border: 1px solid var(--border); box-shadow: var(--shadow-sm);
+    display: flex; align-items: center; gap: 14px; margin-bottom: 8px;
+}
+.job-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.1rem; }
+.job-progress-wrap { height: 5px; background: var(--border); border-radius: 4px; overflow: hidden; margin-top: 5px; }
+.job-progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--primary-light)); border-radius: 4px; transition: width .5s; }
+.job-icon.pending    { background: #fff7ed; }
+.job-icon.processing { background: #ede9fe; animation: spin-slow 3s linear infinite; }
+@keyframes spin-slow { to { transform: rotate(360deg); } }
+.job-info { flex: 1; min-width: 0; }
+.job-name   { font-size: .84rem; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.job-meta   { font-size: .73rem; color: var(--text-3); margin-top: 2px; }
+.job-status { font-size: .72rem; font-weight: 700; padding: 3px 9px; border-radius: 8px; white-space: nowrap; }
+.job-status.pending    { background: #fff7ed; color: #9a3412; }
+.job-status.processing { background: #ede9fe; color: var(--primary); }
+.job-status.done       { background: #f0fdf4; color: #15803d; }
+.job-status.error      { background: #fef2f2; color: #991b1b; }
+
+.job-result { font-size: .76rem; color: var(--green); font-weight: 600; }
+.job-result.error { color: var(--red); }
+
+.empty-queue { text-align: center; padding: 40px 20px; color: var(--text-3); }
+.empty-queue svg { width: 44px; height: 44px; color: #ddd6fe; display: block; margin: 0 auto 12px; }
+.empty-queue p { font-size: .85rem; }
+
+.info-card { background: var(--surface); border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow-sm); border: 1px solid var(--border); margin-bottom: 14px; }
+.info-card h3 { font-size: .82rem; font-weight: 700; color: var(--text); margin-bottom: 12px; display: flex; align-items: center; gap: 7px; }
+.info-card h3 svg { width: 15px; height: 15px; color: var(--primary); }
+.info-card p { font-size: .8rem; color: var(--text-3); line-height: 1.65; }
+.timeline { margin-top: 12px; }
+.tl-item { display: flex; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: .79rem; }
+.tl-item:last-child { border-bottom: none; }
+.tl-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+.tl-dot.on  { background: var(--green); }
+.tl-dot.off { background: var(--border); }
+.tl-label { color: var(--text-2); font-weight: 500; }
+.tl-note  { color: var(--text-3); margin-top: 1px; }
+
+@media(max-width:800px) { .queue-layout { grid-template-columns: 1fr; } }
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ t('queue_h1') }}</h1>
+    <p>{{ t('queue_sub') }}</p>
+    {% if current_user_is_superadmin %}
+    <form method="post" action="/admin/queue/force" style="margin-top:10px">
+        <button type="submit" class="btn primary sm" onclick="return confirm(QUEUE_FORCE_CONFIRM)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            {{ t('queue_force_btn') }}
+        </button>
+    </form>
+    {% endif %}
+</div>
+
+<div class="queue-layout">
+    <div>
+        <!-- Window status banner -->
+        <div id="window-banner" class="window-banner off">
+            <span class="window-dot off" id="window-dot"></span>
+            <span id="window-text">…</span>
+        </div>
+
+        <!-- Active jobs -->
+        <div class="queue-section">
+            <div class="queue-section-title">{{ t('queue_active_section') }}</div>
+            <div id="active-jobs">
+                <div class="empty-queue">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                    <p>{{ t('queue_empty_active') }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent jobs -->
+        <div class="queue-section">
+            <div class="queue-section-title">{{ t('queue_recent_section') }}</div>
+            <div id="recent-jobs">
+                <div class="empty-queue" style="padding:20px">
+                    <p>{{ t('queue_empty_recent') }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div>
+        <div class="info-card">
+            <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>{{ t('queue_window_title') }}</h3>
+            <p>{{ t('queue_window_desc') }}</p>
+            <div class="timeline">
+                <div class="tl-item"><span class="tl-dot off"></span><div><div class="tl-label">{{ t('queue_tl1_label') }}</div><div class="tl-note">{{ t('queue_tl1_note') }}</div></div></div>
+                <div class="tl-item"><span class="tl-dot off"></span><div><div class="tl-label">{{ t('queue_tl2_label') }}</div><div class="tl-note">{{ t('queue_tl2_note') }}</div></div></div>
+                <div class="tl-item"><span class="tl-dot on"></span><div><div class="tl-label">{{ t('queue_tl3_label') }}</div><div class="tl-note">{{ t('queue_tl3_note') }}</div></div></div>
+            </div>
+        </div>
+
+        <div class="info-card">
+            <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg>{{ t('queue_compress_title') }}</h3>
+            <p>{{ t('queue_compress_desc') | safe }}</p>
+        </div>
+
+        <div class="info-card">
+            <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>{{ t('queue_add_title') }}</h3>
+            <p>{{ t('queue_add_desc') | safe }}</p>
+            <a href="/admin/media" class="btn secondary sm" style="margin-top:12px;display:inline-flex;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                {{ t('queue_go_media') }}
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const JS_WINDOW_ACTIVE   = {{ t('js_queue_window_active') | tojson }};
+const JS_WINDOW_INACTIVE = {{ t('js_queue_window_inactive_prefix') | tojson }};
+const JS_TONIGHT         = {{ t('js_queue_tonight') | tojson }};
+const JS_TOMORROW        = {{ t('js_queue_tomorrow') | tojson }};
+const JS_PENDING         = {{ t('js_queue_status_pending') | tojson }};
+const JS_PROCESSING      = {{ t('js_queue_status_processing') | tojson }};
+const JS_DONE            = {{ t('js_queue_status_done') | tojson }};
+const JS_ERROR           = {{ t('js_queue_status_error') | tojson }};
+const JS_ADDED_ON        = {{ t('js_queue_added_on') | tojson }};
+const JS_CANCEL_BTN      = {{ t('js_queue_cancel_btn') | tojson }};
+const JS_EMPTY_ACTIVE    = {{ t('js_queue_empty_active') | tojson }};
+const JS_EMPTY_RECENT    = {{ t('js_queue_empty_recent') | tojson }};
+const JS_CONFIRM_CANCEL  = {{ t('js_queue_confirm_cancel') | tojson }};
+const QUEUE_FORCE_CONFIRM = {{ t('queue_force_confirm') | tojson }};
+
+async function refreshQueue() {
+    try {
+        const res  = await fetch('/api/queue');
+        const data = await res.json();
+
+        /* Window status banner */
+        const banner = document.getElementById('window-banner');
+        const dot    = document.getElementById('window-dot');
+        const text   = document.getElementById('window-text');
+        const h      = new Date().getHours();
+        const active = h >= 22 || h < 6;
+        banner.className = `window-banner ${active ? 'on' : 'off'}`;
+        dot.className    = `window-dot ${active ? 'on' : 'off'}`;
+        if (active) {
+            text.textContent = JS_WINDOW_ACTIVE;
+        } else {
+            const next = h < 22 ? JS_TONIGHT : JS_TOMORROW;
+            text.innerHTML = `${JS_WINDOW_INACTIVE} <strong>${next}</strong>`;
+        }
+
+        /* Active jobs */
+        const activeEl = document.getElementById('active-jobs');
+        if ((data.active || []).length) {
+            activeEl.innerHTML = data.active.map(j => {
+                const isPending = j.status === 'pending';
+                const pct = (j.progress !== undefined && j.progress >= 0) ? j.progress : null;
+                const progressBar = (!isPending && pct !== null)
+                    ? `<div class="job-progress-wrap"><div class="job-progress-fill" style="width:${pct}%"></div></div>`
+                    : '';
+                const metaPct = (!isPending && pct !== null) ? ` — ${pct}%` : '';
+                return `<div class="job-card">
+                    <div class="job-icon ${j.status}">${isPending ? '⏳' : '⚙️'}</div>
+                    <div class="job-info">
+                        <div class="job-name">${j.filename}</div>
+                        <div class="job-meta">${JS_ADDED_ON} ${j.added.slice(0,16).replace('T',' ')}${metaPct}</div>
+                        ${progressBar}
+                    </div>
+                    <span class="job-status ${j.status}">${isPending ? JS_PENDING : JS_PROCESSING}</span>
+                    ${isPending ? `<button class="btn sm danger" onclick="cancelJob('${j.id}')">${JS_CANCEL_BTN}</button>` : ''}
+                </div>`;
+            }).join('');
+        } else {
+            activeEl.innerHTML = `<div class="empty-queue">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                <p>${JS_EMPTY_ACTIVE}</p></div>`;
+        }
+
+        /* Recent jobs */
+        const recentEl = document.getElementById('recent-jobs');
+        if ((data.recent || []).length) {
+            recentEl.innerHTML = [...data.recent].reverse().map(j => {
+                const isDone = j.status === 'done';
+                const result = isDone
+                    ? `<span class="job-result">${j.before} Mo → ${j.after} Mo (÷${j.ratio})</span>`
+                    : `<span class="job-result error">${j.message || 'ffmpeg failed'}</span>`;
+                return `<div class="job-card">
+                    <div class="job-icon" style="font-size:1.2rem">${isDone ? '✅' : '❌'}</div>
+                    <div class="job-info">
+                        <div class="job-name">${j.filename}</div>
+                        <div class="job-meta">${result} — ${(j.finished||'').slice(0,16).replace('T',' ')}</div>
+                    </div>
+                    <span class="job-status ${j.status}">${isDone ? JS_DONE : JS_ERROR}</span>
+                    <button onclick="cancelJob('${j.id}')" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:1rem;padding:4px;" title="✕">✕</button>
+                </div>`;
+            }).join('');
+        } else {
+            recentEl.innerHTML = `<div class="empty-queue" style="padding:20px"><p>${JS_EMPTY_RECENT}</p></div>`;
+        }
+
+        /* Sidebar badge */
+        const badge = document.getElementById('nav-queue-badge');
+        if (badge) {
+            const n = (data.active||[]).length;
+            badge.style.display = n ? 'inline' : 'none';
+            badge.textContent = n;
+        }
+    } catch {}
+}
+
+async function cancelJob(id) {
+    if (!confirm(JS_CONFIRM_CANCEL)) return;
+    await fetch(`/queue/cancel/${id}`, { method: 'POST' });
+    refreshQueue();
+}
+
+refreshQueue();
+setInterval(refreshQueue, 15000);
+</script>
+{% endblock %}

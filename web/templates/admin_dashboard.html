@@ -1,0 +1,161 @@
+{% extends 'admin_layout.html' %}
+
+{% block title %}{{ t('dashboard_title') }}{% endblock %}
+
+{% block topbar_icon %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>{% endblock %}
+{% block topbar_title %}{{ t('dashboard_title') }}{% endblock %}
+{% block topbar_sub %}{{ t('dashboard_topbar_sub') }}{% endblock %}
+
+{% block styles %}
+.hero {
+    background: var(--hero-gradient);
+    border-radius: 18px; padding: 26px 28px 24px;
+    margin-bottom: 18px; position: relative; overflow: hidden;
+}
+.hero::before { content:''; position:absolute; top:-50px; right:-50px; width:220px; height:220px; background:rgba(255,255,255,.04); border-radius:50%; }
+.hero::after  { content:''; position:absolute; bottom:-60px; right:80px; width:150px; height:150px; background:rgba(255,255,255,.03); border-radius:50%; }
+.hero-title { font-size:1.05rem; font-weight:700; color:#fff; margin-bottom:3px; }
+.hero-sub   { font-size:.78rem; color:rgba(255,255,255,.45); margin-bottom:20px; }
+.hero-grid  { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+.hero-stat  {
+    background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.1);
+    border-radius:12px; padding:14px 16px; cursor:pointer;
+    transition: background .2s, transform .15s;
+    text-decoration: none; display: block;
+}
+.hero-stat:hover { background:rgba(255,255,255,.14); transform:translateY(-2px); }
+.hero-stat-icon { width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; margin-bottom:10px; }
+.hero-stat-icon svg { width:15px; height:15px; color:#fff; }
+.hero-stat-icon.purple { background:rgba(168,85,247,.3); }
+.hero-stat-icon.green  { background:rgba(34,197,94,.25); }
+.hero-stat-icon.blue   { background:rgba(59,130,246,.25); }
+.hero-stat-icon.orange { background:rgba(234,88,12,.25); }
+.hero-stat-val  { font-size:1.75rem; font-weight:800; color:#fff; line-height:1; letter-spacing:-.02em; }
+.hero-stat-val small { font-size:.95rem; font-weight:500; color:rgba(255,255,255,.5); }
+.hero-stat-lbl  { font-size:.7rem; color:rgba(255,255,255,.5); margin-top:4px; font-weight:500; }
+.hero-stat-link { font-size:.64rem; color:rgba(255,255,255,.3); margin-top:8px; display:flex; align-items:center; gap:3px; transition:color .15s; }
+.hero-stat:hover .hero-stat-link { color:rgba(255,255,255,.7); }
+.hero-stat-link svg { width:10px; height:10px; }
+
+.disk-card { background:var(--surface); border-radius:var(--radius); padding:16px 20px; box-shadow:var(--shadow-sm); border:1px solid var(--border); margin-bottom:24px; }
+.disk-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+.disk-label  { font-size:.79rem; color:var(--text-2); font-weight:600; display:flex; align-items:center; gap:6px; }
+.disk-label svg { width:14px; height:14px; color:var(--primary); }
+.disk-value  { font-size:.8rem; color:var(--text); font-weight:700; }
+.disk-bar    { height:8px; background:#ede9fe; border-radius:4px; overflow:hidden; }
+.disk-fill   { height:100%; background:linear-gradient(90deg,var(--primary),var(--primary-light)); border-radius:4px; }
+.disk-legend { display:flex; gap:18px; margin-top:8px; }
+.disk-legend span { font-size:.72rem; color:var(--text-3); display:flex; align-items:center; gap:5px; }
+.disk-legend span::before { content:''; display:inline-block; width:8px; height:8px; border-radius:2px; }
+.disk-legend .used::before { background:var(--primary); }
+.disk-legend .free::before { background:#ede9fe; border:1px solid var(--border); }
+
+.quick-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+.quick-card { background:var(--surface); border-radius:var(--radius); padding:18px 20px; box-shadow:var(--shadow-sm); border:1px solid var(--border); text-decoration:none; color:inherit; transition:box-shadow .2s, transform .15s; display:block; }
+.quick-card:hover { box-shadow:var(--shadow); transform:translateY(-2px); }
+.quick-card-icon { width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; margin-bottom:12px; }
+.quick-card-icon svg { width:18px; height:18px; }
+.quick-card-icon.purple { background:var(--primary-bg); color:var(--primary); }
+.quick-card-icon.green  { background:#dcfce7; color:var(--green); }
+.quick-card-icon.blue   { background:#dbeafe; color:var(--blue); }
+.quick-card h3  { font-size:.88rem; font-weight:700; color:var(--text); margin-bottom:4px; }
+.quick-card p   { font-size:.76rem; color:var(--text-3); line-height:1.5; }
+.quick-card-arrow { font-size:.75rem; color:var(--primary); font-weight:600; margin-top:10px; display:flex; align-items:center; gap:4px; }
+
+@media(max-width:800px) { .hero-grid { grid-template-columns:1fr 1fr; } .quick-grid { grid-template-columns:1fr; } }
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ t('dashboard_h1') }}</h1>
+    <p>{{ t('dashboard_overview', app_name=app_name) }}</p>
+</div>
+
+{% if disk.total and disk.total > 0 %}{% set disk_pct = (disk.used * 100 / disk.total) | round | int %}{% else %}{% set disk_pct = 0 %}{% endif %}
+{% set nb_disabled = cfg.disabled | length %}
+{% set nb_active   = files | length - nb_disabled %}
+
+<!-- Hero stats -->
+<div class="hero">
+    <div class="hero-title">{{ app_name }} — {{ t('digital_slideshow') }}</div>
+    <div class="hero-sub">{{ t('dashboard_updated') }}</div>
+    <div class="hero-grid">
+        <a class="hero-stat" href="/admin/media">
+            <div class="hero-stat-icon purple">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            </div>
+            <div class="hero-stat-val">{{ files|length }}</div>
+            <div class="hero-stat-lbl">{{ t('stat_media_online') }}</div>
+            <div class="hero-stat-link">{{ t('stat_see_media') }} <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </a>
+        <a class="hero-stat" href="/admin/media?filter=active">
+            <div class="hero-stat-icon green">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            </div>
+            <div class="hero-stat-val">{{ nb_active }}</div>
+            <div class="hero-stat-lbl">{{ t('stat_active_media') }}</div>
+            <div class="hero-stat-link">{{ t('stat_filter_active') }} <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </a>
+        <a class="hero-stat" href="/admin/media">
+            <div class="hero-stat-icon blue">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+            </div>
+            <div class="hero-stat-val">{{ disk.used }} <small>Go</small></div>
+            <div class="hero-stat-lbl">{{ t('stat_used_space') }}</div>
+            <div class="hero-stat-link">{{ t('stat_manage_files') }} <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </a>
+        <a class="hero-stat" href="/admin/queue">
+            <div class="hero-stat-icon orange">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            </div>
+            <div class="hero-stat-val">{{ disk.free }} <small>Go</small></div>
+            <div class="hero-stat-lbl">{{ t('stat_free_space') }}</div>
+            <div class="hero-stat-link">{{ t('stat_queue') }} <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </a>
+    </div>
+</div>
+
+<!-- Disk bar -->
+<div class="disk-card">
+    <div class="disk-header">
+        <span class="disk-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+            {{ t('disk_storage') }}
+        </span>
+        <span class="disk-value">{{ disk.used }} Go / {{ disk.total }} Go — {{ disk_pct }}%</span>
+    </div>
+    <div class="disk-bar"><div class="disk-fill" style="width:{{ disk_pct }}%"></div></div>
+    <div class="disk-legend">
+        <span class="used">{{ t('disk_used', used=disk.used) }}</span>
+        <span class="free">{{ t('disk_free', free=disk.free) }}</span>
+    </div>
+</div>
+
+<!-- Accès rapides -->
+<div class="quick-grid">
+    <a class="quick-card" href="/admin/upload">
+        <div class="quick-card-icon purple">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </div>
+        <h3>{{ t('quick_add_title') }}</h3>
+        <p>{{ t('quick_add_desc') }}</p>
+        <div class="quick-card-arrow">{{ t('quick_access') }} <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:12px;height:12px"><polyline points="9 18 15 12 9 6"/></svg></div>
+    </a>
+    <a class="quick-card" href="/admin/media">
+        <div class="quick-card-icon green">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        </div>
+        <h3>{{ t('quick_manage_title') }}</h3>
+        <p>{{ files|length }} {% if files|length > 1 %}{{ t('media_topbar_sub_p', n=files|length).split('—')[0].strip() }}{% else %}{{ t('media_topbar_sub_s', n=files|length).split('—')[0].strip() }}{% endif %}</p>
+        <div class="quick-card-arrow">{{ t('quick_access') }} <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:12px;height:12px"><polyline points="9 18 15 12 9 6"/></svg></div>
+    </a>
+    <a class="quick-card" href="/admin/queue">
+        <div class="quick-card-icon blue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        </div>
+        <h3>{{ t('quick_queue_title') }}</h3>
+        <p>{{ t('quick_queue_desc') }}</p>
+        <div class="quick-card-arrow">{{ t('quick_access') }} <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:12px;height:12px"><polyline points="9 18 15 12 9 6"/></svg></div>
+    </a>
+</div>
+{% endblock %}

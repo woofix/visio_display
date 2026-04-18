@@ -1,0 +1,16 @@
+[tool.ruff]
+line-length = 120
+exclude = [".venv", "__pycache__"]
+
+[tool.ruff.lint]
+# E701 : `if guard: return guard` est un pattern intentionnel dans ce projet
+ignore = ["E701"]
+select = ["E", "F", "W"]
+
+[tool.ruff.lint.per-file-ignores]
+# Chaînes de traduction et appels draw.text() alignés — longueur inévitable
+"translations.py" = ["E501"]
+"services/ephemeris_svc.py" = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

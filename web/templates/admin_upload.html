@@ -1,0 +1,461 @@
+{% extends 'admin_layout.html' %}
+
+{% block title %}{{ t('upload_title') }}{% endblock %}
+{% block topbar_icon %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>{% endblock %}
+{% block topbar_title %}{{ t('upload_title') }}{% endblock %}
+{% block topbar_sub %}{{ t('upload_topbar_sub') }}{% endblock %}
+
+{% block styles %}
+.upload-grid { display: grid; grid-template-columns: 1fr 380px; gap: 20px; align-items: start; }
+.upload-area {
+    border: 2px dashed var(--border); border-radius: 14px;
+    padding: 48px 24px; text-align: center;
+    cursor: pointer; transition: all .2s; background: var(--surface-alt);
+}
+.upload-area:hover, .upload-area.dragover {
+    background: var(--primary-bg); border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(124,58,237,.08);
+}
+.upload-icon { width: 56px; height: 56px; background: var(--primary-bg); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; color: var(--primary); }
+.upload-icon svg { width: 26px; height: 26px; }
+.upload-area h3 { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+.upload-area p  { color: var(--text-3); font-size: .8rem; line-height: 1.7; }
+.upload-area .formats { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 14px; }
+.upload-area .fmt-badge { background: var(--primary-bg); color: var(--primary); font-size: .66rem; font-weight: 700; padding: 3px 9px; border-radius: 8px; letter-spacing: .04em; }
+
+/* ── Upload animation ── */
+.upload-area { position: relative; }
+.upload-overlay {
+    display: none; position: absolute; inset: 0; border-radius: 12px;
+    background: var(--primary-bg); flex-direction: column;
+    align-items: center; justify-content: center; gap: 10px;
+    z-index: 2;
+}
+.upload-area.uploading .upload-overlay { display: flex; }
+.upload-area.uploading > *:not(.upload-overlay) { visibility: hidden; }
+.upload-spinner-ring {
+    width: 52px; height: 52px; position: relative; margin-bottom: 4px;
+}
+.upload-spinner-ring::before, .upload-spinner-ring::after {
+    content: ''; position: absolute; inset: 0; border-radius: 50%;
+    border: 3px solid transparent;
+}
+.upload-spinner-ring::before {
+    border-color: rgba(124,58,237,.15);
+}
+.upload-spinner-ring::after {
+    border-top-color: var(--primary);
+    animation: spin .75s linear infinite;
+}
+.upload-spinner-icon {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    color: var(--primary);
+}
+.upload-spinner-icon svg { width: 20px; height: 20px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.upload-overlay-title {
+    font-size: .9rem; font-weight: 700; color: var(--primary);
+}
+.upload-overlay-sub {
+    font-size: .75rem; color: var(--text-3);
+}
+.upload-overlay-pct {
+    font-size: 1.3rem; font-weight: 800; color: var(--text); letter-spacing: -.02em;
+}
+.upload-overlay-dots span {
+    display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--primary); margin: 0 2px; opacity: .3;
+    animation: dot-pulse 1.2s ease-in-out infinite;
+}
+.upload-overlay-dots span:nth-child(2) { animation-delay: .2s; }
+.upload-overlay-dots span:nth-child(3) { animation-delay: .4s; }
+@keyframes dot-pulse { 0%,80%,100%{opacity:.3} 40%{opacity:1} }
+
+/* ── Progress bar shimmer ── */
+.progress-fill.active {
+    background: linear-gradient(90deg, var(--primary) 0%, var(--primary-light,#a78bfa) 50%, var(--primary) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s linear infinite;
+}
+@keyframes shimmer { 0%{background-position:100% 0} 100%{background-position:-100% 0} }
+
+/* ── Rejected format banner ── */
+.rejected-banner {
+    background: rgba(239,68,68,.07); border: 1.5px solid var(--red,#ef4444);
+    border-radius: 10px; padding: 12px 14px; margin-top: 12px; display: none;
+}
+.rejected-banner-header {
+    display: flex; align-items: center; gap: 7px;
+    font-size: .81rem; font-weight: 700; color: var(--red,#ef4444); margin-bottom: 8px;
+}
+.rejected-banner-header svg { width: 15px; height: 15px; flex-shrink: 0; }
+.rejected-file-list { list-style: none; padding: 0; margin: 0 0 8px; }
+.rejected-file-list li {
+    font-size: .77rem; color: var(--text); padding: 2px 0;
+    display: flex; align-items: baseline; gap: 6px;
+}
+.rejected-file-list li::before { content: '✕'; color: var(--red,#ef4444); font-size: .7rem; flex-shrink: 0; }
+.rejected-file-ext { background: rgba(239,68,68,.12); color: var(--red,#ef4444); font-size: .65rem; font-weight: 700; padding: 1px 6px; border-radius: 5px; letter-spacing: .04em; flex-shrink: 0; }
+.rejected-accepted {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 5px;
+    font-size: .72rem; color: var(--text-3);
+    background: var(--surface-alt); border-radius: 7px; padding: 7px 10px;
+}
+.rejected-accepted .fmt-badge { font-size: .63rem; padding: 2px 7px; }
+
+#file-preview { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+#file-preview .prev-item { width: 80px; height: 80px; border-radius: 9px; overflow: hidden; background: var(--surface-alt); position: relative; border: 1px solid var(--border); }
+#file-preview .prev-item img, #file-preview .prev-item video { width: 100%; height: 100%; object-fit: cover; }
+#file-preview .prev-item span { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,.55); color: #fff; font-size: .57rem; padding: 2px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.progress-wrap { background: var(--primary-bg); border-radius: 6px; height: 7px; overflow: hidden; margin: 10px 0; display: none; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--primary-light)); width: 0; transition: width .3s; border-radius: 6px; }
+
+.encode-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-top: 16px; display: none; }
+.encode-panel h3 { font-size: .82rem; font-weight: 700; color: var(--text); margin-bottom: 14px; display: flex; align-items: center; gap: 7px; }
+.encode-panel h3 svg { width: 15px; height: 15px; color: var(--primary); }
+.encode-job { margin-bottom: 12px; }
+.encode-job:last-child { margin-bottom: 0; }
+.encode-job-name { font-size: .78rem; font-weight: 600; color: var(--text); margin-bottom: 5px; display: flex; justify-content: space-between; }
+.encode-job-name span { font-weight: 400; color: var(--text-3); }
+.encode-bar-wrap { background: var(--primary-bg); border-radius: 6px; height: 8px; overflow: hidden; }
+.encode-bar-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--primary-light)); width: 0; transition: width .4s; border-radius: 6px; }
+.encode-bar-fill.error { background: var(--red); }
+.encode-bar-fill.done  { background: var(--green, #16a34a); }
+
+.info-panel { display: flex; flex-direction: column; gap: 14px; }
+.info-card { background: var(--surface); border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow-sm); border: 1px solid var(--border); }
+.info-card h3 { font-size: .82rem; font-weight: 700; color: var(--text); margin-bottom: 12px; display: flex; align-items: center; gap: 7px; }
+.info-card h3 svg { width: 15px; height: 15px; color: var(--primary); }
+.info-row { display: flex; gap: 10px; align-items: flex-start; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: .81rem; }
+.info-row:last-child { border-bottom: none; }
+.info-row-icon { width: 24px; height: 24px; border-radius: 6px; background: var(--primary-bg); display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+.info-row-icon svg { width: 13px; height: 13px; color: var(--primary); }
+.info-row-text strong { display: block; color: var(--text); font-weight: 600; margin-bottom: 1px; }
+.info-row-text span { color: var(--text-3); font-size: .75rem; }
+
+@media(max-width: 860px) { .upload-grid { grid-template-columns: 1fr; } }
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ t('upload_h1') }}</h1>
+    <p>{{ t('upload_sub') }}</p>
+</div>
+
+<div class="upload-grid">
+    <div>
+        <div class="card" style="padding: 0; overflow: hidden;">
+            <form id="upload-form" action="/upload" method="post" enctype="multipart/form-data">
+                <div style="padding: 24px;">
+                    <div class="upload-area" id="upload-area">
+                        <!-- Animated overlay shown during upload -->
+                        <div class="upload-overlay" id="upload-overlay">
+                            <div class="upload-spinner-ring">
+                                <div class="upload-spinner-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                </div>
+                            </div>
+                            <div class="upload-overlay-pct" id="overlay-pct">0%</div>
+                            <div class="upload-overlay-title" id="overlay-title"></div>
+                            <div class="upload-overlay-sub" id="overlay-sub"></div>
+                            <div class="upload-overlay-dots"><span></span><span></span><span></span></div>
+                        </div>
+
+                        <div class="upload-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        </div>
+                        <h3>{{ t('upload_drag') }}</h3>
+                        <p>{{ t('upload_click') }}</p>
+                        <div class="formats">
+                            <span class="fmt-badge">JPG</span>
+                            <span class="fmt-badge">PNG</span>
+                            <span class="fmt-badge">PDF</span>
+                            <span class="fmt-badge">MP4</span>
+                            <span class="fmt-badge">MOV</span>
+                            <span class="fmt-badge">WebM</span>
+                            <span class="fmt-badge">AVI</span>
+                            <span class="fmt-badge">MKV</span>
+                        </div>
+                        <input type="file" name="file" id="file-input" multiple
+                               accept=".jpg,.jpeg,.png,.pdf,.mp4,.webm,.mov,.avi,.mkv"
+                               style="display:none">
+                    </div>
+
+                    <!-- Rejected format banner -->
+                    <div class="rejected-banner" id="rejected-banner">
+                        <div class="rejected-banner-header">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                            <span id="rejected-banner-title"></span>
+                        </div>
+                        <ul class="rejected-file-list" id="rejected-file-list"></ul>
+                        <div class="rejected-accepted" id="rejected-accepted"></div>
+                    </div>
+
+                    <div id="file-preview"></div>
+                    <div class="progress-wrap" id="progress-wrap">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                    <div class="encode-panel" id="encode-panel">
+                        <h3>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            <span id="encode-panel-title">{{ t('upload_encoding_title') }}</span>
+                        </h3>
+                        <div id="encode-jobs"></div>
+                        <a href="/admin/media" class="btn sm" id="btn-go-media" style="display:none;margin-top:12px">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                            {{ t('upload_go_media') }}
+                        </a>
+                    </div>
+                </div>
+
+                <div style="padding: 16px 24px; background: var(--surface-alt); border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                    <span style="font-size: .76rem; color: var(--text-3);">{{ t('upload_max_size') }}</span>
+                    <button type="submit" class="btn success">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        {{ t('upload_btn') }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="info-panel">
+        <div class="info-card">
+            <h3>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                {{ t('upload_how_title') }}
+            </h3>
+            <div class="info-row">
+                <div class="info-row-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>
+                <div class="info-row-text"><strong>{{ t('upload_images_title') }}</strong><span>{{ t('upload_images_desc') }}</span></div>
+            </div>
+            <div class="info-row">
+                <div class="info-row-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+                <div class="info-row-text"><strong>{{ t('upload_pdf_title') }}</strong><span>{{ t('upload_pdf_desc') }}</span></div>
+            </div>
+            <div class="info-row">
+                <div class="info-row-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>
+                <div class="info-row-text"><strong>{{ t('upload_video_title') }}</strong><span>{{ t('upload_video_desc') }}</span></div>
+            </div>
+        </div>
+
+        <div class="info-card">
+            <h3>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                {{ t('upload_queue_title') }}
+            </h3>
+            <p style="font-size:.8rem; color:var(--text-3); line-height:1.6;">{{ t('upload_queue_desc') }}</p>
+            <a href="/admin/queue" class="btn secondary sm" style="margin-top:12px; display:inline-flex;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                {{ t('upload_see_queue') }}
+            </a>
+        </div>
+
+        <div class="info-card">
+            <h3>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                {{ t('upload_after_title') }}
+            </h3>
+            <p style="font-size:.8rem; color:var(--text-3); line-height:1.6;">{{ t('upload_after_desc') }}</p>
+            <a href="/admin/media" class="btn secondary sm" style="margin-top:12px; display:inline-flex;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                {{ t('go_to_media') }}
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const MSG_TOO_LARGE        = {{ t('js_upload_too_large') | tojson }};
+const MSG_TOO_LARGE_SINGLE = {{ t('js_upload_too_large_single') | tojson }};
+const MSG_NETWORK_ERROR    = {{ t('js_upload_network_error') | tojson }};
+const MSG_ENCODING_TITLE   = {{ t('upload_encoding_title') | tojson }};
+const MSG_ENCODING_DONE    = {{ t('upload_encoding_done') | tojson }};
+const MSG_ENCODING_ERROR   = {{ t('upload_encoding_error') | tojson }};
+const MSG_INVALID_FORMAT   = {{ t('js_upload_invalid_format') | tojson }};
+const MSG_ACCEPTED_FORMATS = {{ t('js_upload_accepted_formats') | tojson }};
+const MSG_UPLOADING        = {{ t('js_upload_uploading') | tojson }};
+const MSG_UPLOADING_FILES  = {{ t('js_upload_uploading_files') | tojson }};
+
+const ACCEPTED_EXTS = new Set(['.jpg','.jpeg','.png','.pdf','.mp4','.webm','.mov','.avi','.mkv']);
+const ACCEPTED_LABELS = ['JPG','PNG','PDF','MP4','MOV','WebM','AVI','MKV'];
+
+const uploadArea    = document.getElementById('upload-area');
+const fileInput     = document.getElementById('file-input');
+const preview       = document.getElementById('file-preview');
+const progressWrap  = document.getElementById('progress-wrap');
+const progressFill  = document.getElementById('progress-fill');
+const encodePanel   = document.getElementById('encode-panel');
+const encodeJobs    = document.getElementById('encode-jobs');
+const rejectedBanner = document.getElementById('rejected-banner');
+const overlayPct    = document.getElementById('overlay-pct');
+const overlayTitle  = document.getElementById('overlay-title');
+const overlaySub    = document.getElementById('overlay-sub');
+let droppedFiles    = [];
+let _pollTimer      = null;
+
+function getExt(name) { return name.slice(name.lastIndexOf('.')).toLowerCase(); }
+
+function filterFiles(files) {
+    const valid = [], rejected = [];
+    [...files].forEach(f => (ACCEPTED_EXTS.has(getExt(f.name)) ? valid : rejected).push(f));
+    return { valid, rejected };
+}
+
+function showRejectedBanner(rejected) {
+    if (!rejected.length) { rejectedBanner.style.display = 'none'; return; }
+    document.getElementById('rejected-banner-title').textContent = MSG_INVALID_FORMAT;
+    const list = document.getElementById('rejected-file-list');
+    list.innerHTML = rejected.map(f => {
+        const ext = getExt(f.name);
+        return `<li><span>${f.name}</span><span class="rejected-file-ext">${ext.toUpperCase()}</span></li>`;
+    }).join('');
+    const acc = document.getElementById('rejected-accepted');
+    acc.innerHTML = MSG_ACCEPTED_FORMATS + ' ' + ACCEPTED_LABELS.map(l => `<span class="fmt-badge">${l}</span>`).join('');
+    rejectedBanner.style.display = 'block';
+}
+
+uploadArea.addEventListener('click', () => fileInput.click());
+uploadArea.addEventListener('dragover',  e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+uploadArea.addEventListener('drop', e => {
+    e.preventDefault(); e.stopPropagation();
+    uploadArea.classList.remove('dragover');
+    const { valid, rejected } = filterFiles(e.dataTransfer.files);
+    droppedFiles = [...droppedFiles, ...valid];
+    showRejectedBanner(rejected);
+    showPreviews(droppedFiles);
+});
+fileInput.addEventListener('change', () => {
+    const { valid, rejected } = filterFiles(fileInput.files);
+    droppedFiles = valid;
+    showRejectedBanner(rejected);
+    showPreviews(droppedFiles);
+});
+
+function showPreviews(files) {
+    preview.innerHTML = '';
+    [...files].forEach(file => {
+        const item = document.createElement('div'); item.className = 'prev-item';
+        if (file.type.startsWith('image/')) {
+            const img = document.createElement('img'); img.src = URL.createObjectURL(file); item.appendChild(img);
+        } else if (file.type.startsWith('video/')) {
+            const vid = document.createElement('video'); vid.src = URL.createObjectURL(file); vid.muted = true; item.appendChild(vid);
+        }
+        const name = document.createElement('span'); name.textContent = file.name; item.appendChild(name);
+        preview.appendChild(item);
+    });
+}
+
+function setUploadingState(active, pct, n) {
+    if (active) {
+        uploadArea.classList.add('uploading');
+        overlayTitle.textContent = MSG_UPLOADING;
+        overlaySub.textContent = MSG_UPLOADING_FILES.replace('{n}', n);
+        overlayPct.textContent = (pct || 0) + '%';
+        progressFill.classList.add('active');
+    } else {
+        uploadArea.classList.remove('uploading');
+        progressFill.classList.remove('active');
+    }
+}
+
+const MAX = 16 * 1024 * 1024;
+function checkSizes(files) {
+    const big = [...files].filter(f => f.size > MAX);
+    if (big.length) { showFlash(MSG_TOO_LARGE.replace('{names}', big.map(f => f.name).join(', ')), 'error'); return false; }
+    return true;
+}
+
+/* ── Suivi de l'encodage ── */
+function startProgressPolling(jobs) {
+    encodePanel.style.display = 'block';
+    encodeJobs.innerHTML = '';
+    const jobMap = {};
+    jobs.forEach(j => {
+        const wrap  = document.createElement('div'); wrap.className = 'encode-job';
+        const label = document.createElement('div'); label.className = 'encode-job-name';
+        label.innerHTML = `${j.filename} <span id="pct-${j.id}">0%</span>`;
+        const barWrap = document.createElement('div'); barWrap.className = 'encode-bar-wrap';
+        const bar     = document.createElement('div'); bar.className = 'encode-bar-fill'; bar.id = `bar-${j.id}`;
+        barWrap.appendChild(bar); wrap.appendChild(label); wrap.appendChild(barWrap);
+        encodeJobs.appendChild(wrap);
+        jobMap[j.id] = j.filename;
+    });
+
+    function poll() {
+        fetch('/api/queue').then(r => r.json()).then(data => {
+            let allDone = true;
+            jobs.forEach(j => {
+                const uj  = (data.upload_jobs || []).find(x => x.filename === j.filename);
+                const bar = document.getElementById(`bar-${j.id}`);
+                const pct = document.getElementById(`pct-${j.id}`);
+                if (!uj || uj.status === 'processing') {
+                    allDone = false;
+                    const p = Math.max(0, uj ? (uj.progress || 0) : 0);
+                    if (bar) bar.style.width = p + '%';
+                    if (pct) pct.textContent = p + '%';
+                } else if (uj.status === 'done') {
+                    if (bar) { bar.style.width = '100%'; bar.classList.add('done'); }
+                    if (pct) pct.textContent = '100%';
+                } else if (uj.status === 'error') {
+                    if (bar) bar.classList.add('error');
+                    if (pct) pct.textContent = MSG_ENCODING_ERROR;
+                }
+            });
+            if (!allDone) {
+                _pollTimer = setTimeout(poll, 1500);
+            } else {
+                document.getElementById('encode-panel-title').textContent = MSG_ENCODING_DONE;
+                document.getElementById('btn-go-media').style.display = 'inline-flex';
+            }
+        }).catch(() => { _pollTimer = setTimeout(poll, 3000); });
+    }
+    poll();
+}
+
+document.getElementById('upload-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const files = droppedFiles.length ? droppedFiles : [...fileInput.files];
+    if (!files.length) return;
+    if (!checkSizes(files)) return;
+    const fd = new FormData();
+    files.forEach(f => fd.append('file', f));
+    const xhr = new XMLHttpRequest();
+    progressWrap.style.display = 'block'; progressFill.style.width = '0';
+    setUploadingState(true, 0, files.length);
+    xhr.upload.addEventListener('progress', ev => {
+        if (ev.lengthComputable) {
+            const pct = Math.round(ev.loaded / ev.total * 100);
+            progressFill.style.width = pct + '%';
+            overlayPct.textContent = pct + '%';
+        }
+    });
+    xhr.addEventListener('load', () => {
+        setUploadingState(false);
+        progressWrap.style.display = 'none';
+        if (xhr.status === 413) { showFlash(MSG_TOO_LARGE_SINGLE, 'error'); return; }
+        try {
+            const data = JSON.parse(xhr.responseText);
+            if (data.jobs && data.jobs.length > 0) {
+                startProgressPolling(data.jobs);
+            } else {
+                window.location.href = data.redirect || '/admin/media';
+            }
+        } catch { window.location.href = '/admin/media'; }
+    });
+    xhr.addEventListener('error', () => { setUploadingState(false); progressWrap.style.display = 'none'; showFlash(MSG_NETWORK_ERROR, 'error'); });
+    xhr.open('POST', '/upload'); xhr.send(fd);
+});
+
+function showFlash(msg, type) {
+    let list = document.querySelector('.flash-list');
+    if (!list) { list = document.createElement('ul'); list.className = 'flash-list'; document.querySelector('.content').prepend(list); }
+    const li = document.createElement('li'); li.className = type; li.textContent = msg;
+    list.appendChild(li); li.scrollIntoView({ behavior:'smooth', block:'center' });
+}
+</script>
+{% endblock %}

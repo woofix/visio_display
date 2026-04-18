@@ -1,0 +1,537 @@
+<!-- MIT License - Copyright (c) 2026 Eric TOMAS and Jean-michel TOMAS -->
+<!DOCTYPE html>
+<html lang="fr" data-theme="{{ theme|default('violet') }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Administration{% endblock %} — {{ app_name }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary:          #7c3aed;
+            --primary-light:    #a855f7;
+            --primary-dark:     #5b21b6;
+            --primary-bg:       #ede9fe;
+            --sidebar-bg:       #0d0920;
+            --sidebar-border:   rgba(255,255,255,.06);
+            --surface:          #ffffff;
+            --surface-alt:      #f3f0fa;
+            --bg:               #f2eef9;
+            --border:           #e8e1f5;
+            --text:             #1a1033;
+            --text-2:           #4b4467;
+            --text-3:           #9088a8;
+            --green:            #16a34a;
+            --blue:             #2563eb;
+            --orange:           #ea580c;
+            --red:              #dc2626;
+            --radius:           14px;
+            --radius-sm:        8px;
+            --shadow-sm:        0 1px 4px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+            --shadow:           0 4px 16px rgba(0,0,0,.09), 0 1px 4px rgba(0,0,0,.05);
+            --shadow-lg:        0 8px 32px rgba(0,0,0,.14), 0 2px 8px rgba(0,0,0,.06);
+            /* Sidebar */
+            --sidebar-text:     #7065a0;
+            --sidebar-label:    #3d2d5e;
+            --sidebar-sub:      #5a4a80;
+            --nav-hover-bg:     rgba(124,58,237,.12);
+            --nav-hover-color:  #c4b5fd;
+            --nav-active-bg:    rgba(124,58,237,.2);
+            --nav-active-color: #e0d7ff;
+            --nav-badge-bg:     rgba(124,58,237,.3);
+            --nav-badge-color:  #c4b5fd;
+            --nav-user-name:    #c4b5fd;
+            --topbar-bg:        rgba(255,255,255,.95);
+            --hero-gradient:    linear-gradient(135deg, #1e0a4e 0%, #3b1a8a 45%, #6b21c8 100%);
+        }
+
+        [data-theme="bleu"] {
+            --primary:          #2563eb;
+            --primary-light:    #3b82f6;
+            --primary-dark:     #1d4ed8;
+            --primary-bg:       #dbeafe;
+            --sidebar-bg:       #0f2744;
+            --sidebar-border:   rgba(255,255,255,.08);
+            --surface:          #ffffff;
+            --surface-alt:      #e8f0fe;
+            --bg:               #f0f7ff;
+            --border:           #bfdbfe;
+            --text:             #0f172a;
+            --text-2:           #374151;
+            --text-3:           #6b7280;
+            --sidebar-text:     #7cb3f4;
+            --sidebar-label:    #1e3a5f;
+            --sidebar-sub:      #2d5a8e;
+            --nav-hover-bg:     rgba(37,99,235,.15);
+            --nav-hover-color:  #93c5fd;
+            --nav-active-bg:    rgba(37,99,235,.25);
+            --nav-active-color: #bfdbfe;
+            --nav-badge-bg:     rgba(37,99,235,.25);
+            --nav-badge-color:  #93c5fd;
+            --nav-user-name:    #93c5fd;
+            --topbar-bg:        rgba(255,255,255,.95);
+            --hero-gradient:    linear-gradient(135deg, #0f2744 0%, #1d4ed8 45%, #2563eb 100%);
+        }
+
+        [data-theme="sombre"] {
+            --primary:          #06b6d4;
+            --primary-light:    #22d3ee;
+            --primary-dark:     #0891b2;
+            --primary-bg:       #0c2a33;
+            --sidebar-bg:       #070d14;
+            --sidebar-border:   rgba(255,255,255,.07);
+            --surface:          #111827;
+            --surface-alt:      #1f2937;
+            --bg:               #0f172a;
+            --border:           #1f2937;
+            --text:             #f1f5f9;
+            --text-2:           #94a3b8;
+            --text-3:           #475569;
+            --green:            #34d399;
+            --blue:             #38bdf8;
+            --orange:           #fb923c;
+            --red:              #f87171;
+            --shadow-sm:        0 1px 4px rgba(0,0,0,.35), 0 1px 2px rgba(0,0,0,.25);
+            --shadow:           0 4px 16px rgba(0,0,0,.45), 0 1px 4px rgba(0,0,0,.3);
+            --shadow-lg:        0 8px 32px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.35);
+            --sidebar-text:     #4fc3d4;
+            --sidebar-label:    #1a3a45;
+            --sidebar-sub:      #2a5a6a;
+            --nav-hover-bg:     rgba(6,182,212,.12);
+            --nav-hover-color:  #67e8f9;
+            --nav-active-bg:    rgba(6,182,212,.2);
+            --nav-active-color: #a5f3fc;
+            --nav-badge-bg:     rgba(6,182,212,.25);
+            --nav-badge-color:  #67e8f9;
+            --nav-user-name:    #67e8f9;
+            --topbar-bg:        rgba(17,24,39,.97);
+            --hero-gradient:    linear-gradient(135deg, #070d14 0%, #0c2a33 50%, #0e4d5e 100%);
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { font-size: 15px; scroll-behavior: smooth; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
+
+        /* ── SIDEBAR ── */
+        .sidebar {
+            width: 240px; background: var(--sidebar-bg);
+            display: flex; flex-direction: column;
+            position: fixed; top: 0; left: 0; height: 100vh;
+            z-index: 200; border-right: 1px solid var(--sidebar-border);
+        }
+        .sidebar-brand { padding: 18px 16px 14px; border-bottom: 1px solid var(--sidebar-border); flex-shrink: 0; }
+        .brand-logo { display: flex; align-items: center; gap: 10px; }
+        .brand-icon {
+            width: 34px; height: 34px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            border-radius: 9px; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 12px rgba(124,58,237,.4); flex-shrink: 0;
+        }
+        .brand-icon svg { width: 17px; height: 17px; color: #fff; }
+        .brand-name { font-size: 1rem; font-weight: 800; color: #fff; }
+        .brand-sub  { font-size: .6rem; color: var(--sidebar-sub); margin-top: 1px; text-transform: uppercase; letter-spacing: .1em; font-weight: 600; }
+
+        .sidebar-nav { flex: 1; padding: 10px 8px; overflow-y: auto; }
+        .nav-label { font-size: .6rem; color: var(--sidebar-label); text-transform: uppercase; letter-spacing: .12em; font-weight: 700; padding: 12px 10px 4px; }
+
+        .nav-item {
+            display: flex; align-items: center; gap: 9px;
+            padding: 8px 10px; border-radius: 9px;
+            color: var(--sidebar-text); text-decoration: none; font-size: .82rem; font-weight: 500;
+            transition: all .15s; cursor: pointer; border: none; background: none;
+            width: 100%; text-align: left; margin-bottom: 1px; position: relative;
+        }
+        .nav-item:hover { background: var(--nav-hover-bg); color: var(--nav-hover-color); }
+        .nav-item.active { background: var(--nav-active-bg); color: var(--nav-active-color); box-shadow: inset 3px 0 0 var(--primary); }
+        .nav-item svg { width: 15px; height: 15px; flex-shrink: 0; }
+        .nav-badge { margin-left: auto; background: var(--nav-badge-bg); color: var(--nav-badge-color); font-size: .62rem; padding: 1px 7px; border-radius: 10px; font-weight: 700; }
+
+        /* Subnav */
+        .nav-subnav { overflow: hidden; max-height: 0; transition: max-height .25s ease; }
+        .nav-subnav.open { max-height: 200px; }
+        .nav-subitem { padding-left: 34px !important; font-size: .78rem !important; color: var(--sidebar-sub) !important; }
+        .nav-subitem.active, .nav-subitem:hover { color: var(--nav-hover-color) !important; }
+        .nav-item-parent .chevron { margin-left: auto; width: 12px; height: 12px; transition: transform .22s; flex-shrink: 0; }
+        .nav-item-parent.open .chevron { transform: rotate(90deg); }
+
+        .sidebar-status { padding: 8px 16px 10px; border-top: 1px solid var(--sidebar-border); flex-shrink: 0; }
+        .status-row { display: flex; align-items: center; gap: 7px; font-size: .72rem; color: var(--sidebar-sub); font-weight: 500; }
+        .status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: #22c55e; box-shadow: 0 0 0 2px rgba(34,197,94,.25); }
+
+        .sidebar-footer { padding: 10px 8px; border-top: 1px solid var(--sidebar-border); flex-shrink: 0; }
+        .user-chip { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 9px; background: rgba(255,255,255,.05); margin-bottom: 7px; }
+        .user-avatar { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--primary-light)); display: flex; align-items: center; justify-content: center; font-size: .72rem; font-weight: 700; color: #fff; flex-shrink: 0; }
+        .user-name { font-size: .8rem; font-weight: 600; color: var(--nav-user-name); }
+        .user-role { font-size: .66rem; color: var(--sidebar-sub); font-weight: 500; }
+
+        /* ── MAIN ── */
+        .main { margin-left: 240px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+
+        /* ── TOPBAR ── */
+        .topbar {
+            position: sticky; top: 0; z-index: 100;
+            background: var(--topbar-bg); backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            padding: 0 26px; height: 58px;
+            display: flex; align-items: center; justify-content: space-between;
+            box-shadow: var(--shadow-sm);
+        }
+        .topbar-left { display: flex; align-items: center; gap: 10px; }
+        .topbar-icon { width: 30px; height: 30px; background: var(--primary-bg); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--primary); }
+        .topbar-icon svg { width: 14px; height: 14px; }
+        .topbar-title { font-size: .92rem; font-weight: 700; color: var(--text); }
+        .topbar-sub   { font-size: .7rem; color: var(--text-3); font-weight: 400; }
+        .topbar-right { display: flex; align-items: center; gap: 8px; }
+
+        /* ── BUTTONS ── */
+        .btn { background: var(--primary); color: #fff; border: none; padding: 8px 16px; border-radius: var(--radius-sm); font-size: .83rem; font-weight: 600; cursor: pointer; transition: all .15s; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; font-family: inherit; }
+        .btn:hover { background: var(--primary-dark); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(124,58,237,.3); }
+        .btn:active { transform: none; box-shadow: none; }
+        .btn.danger  { background: var(--red); }
+        .btn.danger:hover  { background: #b91c1c; box-shadow: 0 4px 12px rgba(220,38,38,.28); }
+        .btn.success { background: var(--green); }
+        .btn.success:hover { background: #15803d; box-shadow: 0 4px 12px rgba(22,163,74,.28); }
+        .btn.warning { background: var(--orange); }
+        .btn.warning:hover { background: #c2410c; }
+        .btn.secondary { background: var(--surface-alt); color: var(--text-2); border: 1px solid var(--border); box-shadow: none; }
+        .btn.secondary:hover { background: var(--primary-bg); color: var(--primary); transform: none; box-shadow: none; }
+        .btn.ghost { background: none; color: var(--text-3); box-shadow: none; border: 1px solid var(--border); }
+        .btn.ghost:hover { background: var(--bg); color: var(--text); transform: none; box-shadow: none; }
+        .btn.sm { padding: 5px 11px; font-size: .75rem; border-radius: 6px; }
+
+        /* ── CONTENT ── */
+        .content { padding: 24px 26px 60px; flex: 1; }
+
+        /* ── FLASH ── */
+        .flash-list { list-style: none; margin-bottom: 20px; }
+        .flash-list li { padding: 11px 16px; border-radius: 9px; margin-bottom: 8px; font-size: .87rem; font-weight: 500; }
+        .flash-list li.success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+        .flash-list li.error   { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+
+        /* ── PAGE HEADER ── */
+        .page-header { margin-bottom: 22px; }
+        .page-header h1 { font-size: 1.35rem; font-weight: 800; color: var(--text); letter-spacing: -.02em; }
+        .page-header p  { font-size: .82rem; color: var(--text-3); margin-top: 3px; }
+
+        /* ── CARD ── */
+        .card { background: var(--surface); border-radius: var(--radius); padding: 22px 24px; box-shadow: var(--shadow-sm); border: 1px solid var(--border); }
+
+        /* ── DROPDOWN ── */
+        .dropdown { position: relative; }
+        .dropdown-menu {
+            position: absolute; bottom: calc(100% + 6px); right: 0;
+            min-width: 185px; background: var(--surface);
+            border: 1px solid var(--border); border-radius: 10px;
+            box-shadow: var(--shadow-lg); z-index: 500;
+            display: none; overflow: hidden; padding: 4px;
+        }
+        .dropdown-menu.open { display: block; }
+        .dropdown-menu.drop-down { bottom: auto; top: calc(100% + 6px); }
+        .dropdown-item { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 12px; border: none; background: none; font-family: inherit; font-size: .81rem; font-weight: 500; color: var(--text-2); cursor: pointer; border-radius: 7px; text-align: left; transition: background .12s, color .12s; text-decoration: none; }
+        .dropdown-item:hover { background: var(--bg); color: var(--text); }
+        .dropdown-item.danger  { color: var(--red); }
+        .dropdown-item.danger:hover  { background: #fef2f2; }
+        .dropdown-item.success-item  { color: var(--green); }
+        .dropdown-item.success-item:hover { background: #f0fdf4; }
+        .dropdown-item.warning-item  { color: var(--orange); }
+        .dropdown-item.warning-item:hover { background: #fff7ed; }
+        .dropdown-item svg { width: 14px; height: 14px; flex-shrink: 0; }
+        .dropdown-separator { height: 1px; background: var(--border); margin: 4px 0; }
+        .dropdown-label { font-size: .66rem; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .09em; padding: 6px 12px 2px; }
+
+        /* User menu */
+        .user-menu-wrap { position: relative; }
+        .user-menu-btn { display: flex; align-items: center; gap: 8px; padding: 5px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; font-family: inherit; font-size: .81rem; font-weight: 600; color: var(--text-2); transition: all .15s; }
+        .user-menu-btn:hover { border-color: var(--primary); color: var(--primary); }
+        .user-menu-btn .avatar { width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--primary-light)); display: flex; align-items: center; justify-content: center; font-size: .68rem; font-weight: 700; color: #fff; }
+
+        /* ── FORM ELEMENTS ── */
+        .form-group { display: flex; flex-direction: column; gap: 8px; }
+        .form-group label { font-size: .72rem; font-weight: 700; color: var(--text-2); text-transform: uppercase; letter-spacing: .06em; }
+        .form-group input { padding: 9px 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: .84rem; font-family: inherit; color: var(--text); background: var(--surface); transition: border-color .15s, box-shadow .15s; }
+        .form-group input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(124,58,237,.09); }
+        .form-group input::placeholder { color: var(--text-3); }
+
+        /* ── DIVIDER ── */
+        .divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+        /* ── MODAL ── */
+        #modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.93); z-index: 999; justify-content: center; align-items: center; }
+        #modal.open { display: flex; }
+        #modal img, #modal video { max-width: 95vw; max-height: 95vh; object-fit: contain; border-radius: 10px; box-shadow: 0 0 60px rgba(124,58,237,.4); }
+        #modal-close { position: absolute; top: 16px; right: 20px; color: #fff; cursor: pointer; opacity: .75; transition: opacity .15s; background: rgba(255,255,255,.1); width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; }
+        #modal-close:hover { opacity: 1; background: rgba(255,255,255,.2); }
+
+        /* ── DARK MODE overrides ── */
+        [data-theme="bleu"] .dropdown-menu { background: var(--surface); }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 900px) { .sidebar { display: none; } .main { margin-left: 0; } .content { padding: 16px 16px 40px; } }
+
+        {% block styles %}{% endblock %}
+    </style>
+</head>
+<body>
+
+{% set path = request.path %}
+
+<!-- ═══ SIDEBAR ═══ -->
+<aside class="sidebar">
+    <div class="sidebar-brand">
+        <div class="brand-logo">
+            <div class="brand-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+            </div>
+            <div>
+                <div class="brand-name">{{ app_name }}</div>
+                <div class="brand-sub">{{ t('brand_sub') }}</div>
+            </div>
+        </div>
+    </div>
+
+    <nav class="sidebar-nav">
+
+        <div class="nav-label">{{ t('nav_label_dashboard') }}</div>
+        <a href="/admin" class="nav-item {% if path == '/admin' %}active{% endif %}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+            {{ t('nav_overview') }}
+        </a>
+
+        <div class="nav-label" style="margin-top:8px">{{ t('nav_label_contents') }}</div>
+        <a href="/admin/media" class="nav-item {% if path == '/admin/media' %}active{% endif %}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            {{ t('nav_media') }}
+            {% if files is defined %}<span class="nav-badge">{{ files|length }}</span>{% endif %}
+        </a>
+        <a href="/admin/upload" class="nav-item {% if path == '/admin/upload' %}active{% endif %}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            {{ t('nav_upload') }}
+        </a>
+        <a href="/admin/queue" class="nav-item {% if path == '/admin/queue' %}active{% endif %}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            {{ t('nav_queue') }}
+            <span class="nav-badge" id="nav-queue-badge" style="display:none">0</span>
+        </a>
+
+        {% if current_user_is_superadmin %}
+        <div class="nav-label" style="margin-top:8px">{{ t('nav_label_administration') }}</div>
+        <a href="/admin/superadmin" class="nav-item {% if path == '/admin/superadmin' %}active{% endif %}" style="color:#f59e0b">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            {{ t('nav_superadmin') }}
+        </a>
+        {% endif %}
+
+        <div class="nav-label" style="margin-top:8px">{{ t('nav_label_settings') }}</div>
+        <button class="nav-item nav-item-parent {% if path.startswith('/admin/settings') %}open{% endif %}" id="nav-settings-toggle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            {{ t('nav_settings') }}
+            <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        <div class="nav-subnav {% if path.startswith('/admin/settings') %}open{% endif %}" id="nav-settings-sub">
+            <a href="/admin/settings?tab=logo" class="nav-item nav-subitem {% if path == '/admin/settings' and (tab|default('logo')) == 'logo' %}active{% endif %}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+                {{ t('nav_logo') }}
+            </a>
+            <a href="/admin/settings?tab=admins" class="nav-item nav-subitem {% if path == '/admin/settings' and (tab|default('logo')) == 'admins' %}active{% endif %}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                {{ t('nav_admins') }}
+                {% if users is defined %}<span class="nav-badge">{{ users|length }}</span>{% endif %}
+            </a>
+            <a href="/admin/settings?tab=theme" class="nav-item nav-subitem {% if path == '/admin/settings' and request.args.get('tab') == 'theme' %}active{% endif %}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20"/><path d="M2 12h10"/></svg>
+                {{ t('nav_theme') }}
+            </a>
+            {% if current_user_is_superadmin %}
+            <a href="/admin/settings?tab=application" class="nav-item nav-subitem {% if path == '/admin/settings' and request.args.get('tab') == 'application' %}active{% endif %}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+                {{ t('nav_application') }}
+            </a>
+            {% endif %}
+            <a href="/admin/settings?tab=language" class="nav-item nav-subitem {% if path == '/admin/settings' and request.args.get('tab') == 'language' %}active{% endif %}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                {{ t('tab_language') }}
+            </a>
+        </div>
+
+    </nav>
+
+    <div class="sidebar-status">
+        <div class="status-row"><span class="status-dot"></span>{{ t('status_operational') }}</div>
+    </div>
+
+    <div class="sidebar-footer">
+        <div class="user-chip">
+            <div class="user-avatar">{{ current_user[0].upper() }}</div>
+            <div>
+                <div class="user-name">{{ current_user }}</div>
+                <div class="user-role">{% if current_user_is_superadmin %}<span style="color:#f59e0b;font-weight:700">{{ t('role_superadmin') }}</span>{% else %}{{ t('role_admin') }}{% endif %}</div>
+            </div>
+        </div>
+        <a href="/logout" class="btn secondary" style="width:100%;justify-content:center;font-size:.79rem">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            {{ t('btn_logout') }}
+        </a>
+    </div>
+</aside>
+
+<!-- ═══ MAIN ═══ -->
+<div class="main">
+    <header class="topbar">
+        <div class="topbar-left">
+            <div class="topbar-icon">{% block topbar_icon %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>{% endblock %}</div>
+            <div>
+                <div class="topbar-title">{% block topbar_title %}{{ t('topbar_default_title') }}{% endblock %}</div>
+                <div class="topbar-sub">{% block topbar_sub %}{{ app_name }} — {{ t('topbar_default_sub') }}{% endblock %}</div>
+            </div>
+        </div>
+        <div class="topbar-right">
+            {% block topbar_actions %}{% endblock %}
+
+            <button class="btn warning sm" id="btn-regen" title="{{ t('btn_ephemeris') }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                {{ t('btn_ephemeris') }}
+            </button>
+            <span id="regen-ok" style="font-size:.78rem;color:var(--green);display:none;font-weight:600">✓ Ok</span>
+
+            <div class="user-menu-wrap">
+                <button class="user-menu-btn" id="user-menu-btn">
+                    <div class="avatar">{{ current_user[0].upper() }}</div>
+                    {{ current_user }}
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:11px;height:11px;color:var(--text-3)"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div class="dropdown-menu drop-down" id="user-dropdown" style="right:0;min-width:195px">
+                    <div class="dropdown-label">{{ current_user }}</div>
+                    <a class="dropdown-item" href="/admin/settings?tab=admins">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        {{ t('user_menu_change_password') }}
+                    </a>
+                    <div class="dropdown-separator"></div>
+                    <a class="dropdown-item danger" href="/logout">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                        {{ t('btn_logout') }}
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <ul class="flash-list">
+            {% for cat, msg in messages %}<li class="{{ cat }}">{{ msg }}</li>{% endfor %}
+        </ul>
+        {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </div>
+</div>
+
+<!-- Modal visionneuse -->
+<div id="modal">
+    <span id="modal-close">&times;</span>
+    <img id="modal-img" src="" alt="" style="display:none">
+    <video id="modal-video" controls style="display:none"></video>
+</div>
+
+<script>
+/* ── Sidebar subnav ── */
+(function() {
+    const toggle = document.getElementById('nav-settings-toggle');
+    const sub    = document.getElementById('nav-settings-sub');
+    if (!toggle) return;
+    toggle.addEventListener('click', () => {
+        toggle.classList.toggle('open');
+        sub.classList.toggle('open');
+    });
+    if (window.location.pathname.startsWith('/admin/settings')) {
+        toggle.classList.add('open');
+        sub.classList.add('open');
+    }
+})();
+
+/* ── Dropdowns ── */
+(function() {
+    function closeAll() { document.querySelectorAll('.dropdown-menu.open').forEach(m => m.classList.remove('open')); }
+    document.querySelectorAll('.dropdown-toggle').forEach(btn => {
+        btn.addEventListener('click', e => {
+            e.stopPropagation();
+            const menu = btn.nextElementSibling;
+            const wasOpen = menu.classList.contains('open');
+            closeAll();
+            if (!wasOpen) {
+                menu.classList.remove('drop-down');
+                menu.classList.add('open');
+                const rect = menu.getBoundingClientRect();
+                if (rect.top < 0) menu.classList.add('drop-down');
+            }
+        });
+    });
+    const userBtn  = document.getElementById('user-menu-btn');
+    const userMenu = document.getElementById('user-dropdown');
+    if (userBtn) {
+        userBtn.addEventListener('click', e => {
+            e.stopPropagation();
+            const wasOpen = userMenu.classList.contains('open');
+            closeAll();
+            if (!wasOpen) userMenu.classList.add('open');
+        });
+    }
+    document.addEventListener('click', closeAll);
+    document.querySelectorAll('.dropdown-menu').forEach(m => m.addEventListener('click', e => e.stopPropagation()));
+})();
+
+/* ── Modal ── */
+document.querySelectorAll('.thumb, .thumb-video').forEach(el => {
+    el.addEventListener('click', () => {
+        const mImg = document.getElementById('modal-img');
+        const mVid = document.getElementById('modal-video');
+        if (el.dataset.type === 'video') {
+            mVid.src = el.dataset.src; mVid.style.display = 'block';
+            mImg.style.display = 'none'; mVid.play();
+        } else {
+            mImg.src = el.dataset.src; mImg.style.display = 'block';
+            mVid.style.display = 'none'; mVid.pause();
+        }
+        document.getElementById('modal').classList.add('open');
+    });
+});
+document.getElementById('modal-close').addEventListener('click', () => {
+    document.getElementById('modal-video').pause();
+    document.getElementById('modal').classList.remove('open');
+});
+document.getElementById('modal').addEventListener('click', e => {
+    if (e.target === e.currentTarget) { document.getElementById('modal-video').pause(); e.currentTarget.classList.remove('open'); }
+});
+
+/* ── Éphéméride ── */
+document.getElementById('btn-regen').addEventListener('click', async function() {
+    this.disabled = true; this.textContent = '…';
+    await fetch('/regen_ephemeride', { method: 'POST' });
+    this.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> {{ t('btn_ephemeris') }}`;
+    this.disabled = false;
+    const ok = document.getElementById('regen-ok');
+    ok.style.display = 'inline';
+    setTimeout(() => ok.style.display = 'none', 2500);
+});
+
+/* ── Queue badge (global) ── */
+async function updateQueueBadge() {
+    try {
+        const r = await fetch('/api/queue');
+        const d = await r.json();
+        const badge = document.getElementById('nav-queue-badge');
+        if (badge) {
+            const n = (d.active||[]).length;
+            badge.style.display = n ? 'inline' : 'none';
+            badge.textContent = n;
+        }
+    } catch {}
+}
+updateQueueBadge();
+setInterval(updateQueueBadge, 30000);
+</script>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>

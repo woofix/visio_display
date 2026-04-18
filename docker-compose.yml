@@ -1,0 +1,41 @@
+services:
+  redis:
+    image: redis:7-alpine
+    restart: always
+    volumes:
+      - redis_data:/data
+
+  app:
+    build: .
+    container_name: Visio
+    env_file: .env
+    environment:
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /srv/7To/Docker/visio/data:/app/static/data
+    ports:
+      - "801:8080"
+    restart: always
+    depends_on:
+      - redis
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  worker:
+    build: .
+    env_file: .env
+    environment:
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - /srv/7To/Docker/visio/data:/app/static/data
+    command: rq worker --url redis://redis:6379 ramses:upload ramses:compress
+    restart: always
+    depends_on:
+      - redis
+
+volumes:
+  redis_data:

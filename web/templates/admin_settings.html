@@ -1,0 +1,398 @@
+{% extends 'admin_layout.html' %}
+
+{% block title %}{{ t('settings_title') }}{% endblock %}
+{% block topbar_icon %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>{% endblock %}
+{% block topbar_title %}{{ t('settings_title') }}{% endblock %}
+{% block topbar_sub %}{{ t('settings_topbar_sub') }}{% endblock %}
+
+{% block styles %}
+/* Tab bar */
+.tab-bar { display:flex; gap:2px; border-bottom:2px solid var(--border); margin-bottom:24px; flex-wrap:wrap; }
+.tab-btn  { padding:9px 20px; border:none; background:none; cursor:pointer; font-family:inherit; font-size:.84rem; font-weight:600; color:var(--text-3); border-bottom:2px solid transparent; margin-bottom:-2px; transition:all .15s; display:inline-flex; align-items:center; gap:7px; text-decoration:none; }
+.tab-btn svg { width:14px; height:14px; }
+.tab-btn:hover  { color:var(--primary); }
+.tab-btn.active { color:var(--primary); border-bottom-color:var(--primary); }
+.tab-pane { display:none; }
+.tab-pane.active { display:block; }
+
+/* Logo tab */
+.logo-layout { display:grid; grid-template-columns:220px 1fr; gap:28px; align-items:start; }
+.logo-preview { background:#0d0920; border-radius:12px; padding:22px; display:flex; flex-direction:column; align-items:center; gap:10px; }
+.logo-preview img { width:180px; max-height:90px; object-fit:contain; }
+.logo-preview span { font-size:.7rem; color:#4a3a6a; font-weight:500; }
+.logo-actions { display:flex; flex-direction:column; gap:20px; }
+.logo-section-label { font-size:.72rem; font-weight:700; color:var(--text-2); text-transform:uppercase; letter-spacing:.07em; margin-bottom:10px; }
+.file-input-styled { padding:9px 12px; border:1.5px solid var(--border); border-radius:var(--radius-sm); font-size:.83rem; font-family:inherit; color:var(--text-2); width:100%; cursor:pointer; }
+.file-input-styled:focus { outline:none; border-color:var(--primary); }
+
+/* Admins tab */
+.admins-layout { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+.admin-block { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:20px 22px; box-shadow:var(--shadow-sm); }
+.admin-block h3 { font-size:.82rem; font-weight:700; color:var(--primary); text-transform:uppercase; letter-spacing:.07em; margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:7px; }
+.admin-block h3 svg { width:14px; height:14px; }
+
+.admin-list { list-style:none; }
+.admin-list li { display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--border); }
+.admin-list li:last-child { border-bottom:none; }
+.admin-user { display:flex; align-items:center; gap:9px; }
+.admin-avatar { width:30px; height:30px; border-radius:50%; background:linear-gradient(135deg,var(--primary),var(--primary-light)); display:flex; align-items:center; justify-content:center; font-size:.73rem; font-weight:700; color:#fff; }
+.admin-username { font-size:.85rem; font-weight:600; color:var(--text); }
+.admin-you { font-size:.66rem; background:var(--primary-bg); color:var(--primary); padding:2px 8px; border-radius:8px; font-weight:700; margin-left:4px; }
+
+.full-col { grid-column: 1 / -1; }
+@media(max-width:700px) { .admins-layout { grid-template-columns:1fr; } .logo-layout { grid-template-columns:1fr; } }
+
+/* Events tab */
+.event-list { list-style:none; margin-bottom:20px; }
+.event-list li { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--border); }
+.event-list li:last-child { border-bottom:none; }
+.event-countdown { font-size:1.1rem; font-weight:700; color:var(--primary); min-width:54px; text-align:right; }
+.event-countdown.today { color:#16a34a; }
+.event-label { flex:1; font-size:.88rem; font-weight:600; color:var(--text); }
+.event-date  { font-size:.74rem; color:var(--text-3); white-space:nowrap; }
+.event-add-form { display:grid; grid-template-columns:1fr auto auto; gap:10px; align-items:end; }
+@media(max-width:600px) { .event-add-form { grid-template-columns:1fr; } }
+.event-add-form input { padding:8px 11px; border:1.5px solid var(--border); border-radius:var(--radius-sm); font-family:inherit; font-size:.83rem; color:var(--text); background:var(--surface); transition:border-color .15s; }
+.event-add-form input:focus { outline:none; border-color:var(--primary); }
+.event-empty { font-size:.83rem; color:var(--text-3); padding:14px 0; }
+
+/* Theme tab */
+.theme-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+@media(max-width:600px) { .theme-grid { grid-template-columns:1fr; } }
+.theme-card { border:2px solid var(--border); border-radius:var(--radius); overflow:hidden; cursor:pointer; transition:border-color .15s, box-shadow .15s; position:relative; }
+.theme-card:hover { border-color:var(--primary); box-shadow:var(--shadow); }
+.theme-card.selected { border-color:var(--primary); box-shadow:0 0 0 3px rgba(124,58,237,.18); }
+.theme-card input[type=radio] { position:absolute; opacity:0; pointer-events:none; }
+.theme-preview { height:90px; display:flex; gap:0; }
+.theme-preview-sidebar { width:38%; display:flex; flex-direction:column; gap:5px; padding:10px 8px; }
+.theme-preview-dot { height:6px; border-radius:3px; opacity:.6; }
+.theme-preview-main { flex:1; padding:10px; display:flex; flex-direction:column; gap:6px; }
+.theme-preview-bar { height:5px; border-radius:3px; }
+.theme-preview-card { flex:1; border-radius:6px; border-width:1px; border-style:solid; }
+.theme-label { padding:10px 14px; display:flex; align-items:center; justify-content:space-between; }
+.theme-label span { font-size:.83rem; font-weight:600; color:var(--text); }
+.theme-check { width:18px; height:18px; border-radius:50%; border:2px solid var(--border); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.theme-card.selected .theme-check { background:var(--primary); border-color:var(--primary); }
+.theme-check svg { width:10px; height:10px; color:#fff; display:none; }
+.theme-card.selected .theme-check svg { display:block; }
+
+/* Language tab */
+.lang-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; max-width:480px; }
+.lang-card { border:2px solid var(--border); border-radius:var(--radius); padding:18px 20px; cursor:pointer; transition:border-color .15s, box-shadow .15s; position:relative; display:flex; align-items:center; gap:12px; }
+.lang-card:hover { border-color:var(--primary); box-shadow:var(--shadow); }
+.lang-card.selected { border-color:var(--primary); box-shadow:0 0 0 3px rgba(124,58,237,.18); }
+.lang-card input[type=radio] { position:absolute; opacity:0; pointer-events:none; }
+.lang-flag { font-size:1.6rem; }
+.lang-name { font-size:.9rem; font-weight:700; color:var(--text); }
+{% endblock %}
+
+{% set active_tab = request.args.get('tab', 'logo') %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ t('settings_h1') }}</h1>
+    <p>{{ t('settings_sub') }}</p>
+</div>
+
+<div class="card">
+    <!-- Tab bar -->
+    <div class="tab-bar">
+        <a class="tab-btn {% if active_tab == 'logo' %}active{% endif %}" href="/admin/settings?tab=logo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+            {{ t('tab_logo') }}
+        </a>
+        <a class="tab-btn {% if active_tab == 'admins' %}active{% endif %}" href="/admin/settings?tab=admins">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            {{ t('tab_admins') }}
+            <span style="background:var(--primary-bg);color:var(--primary);font-size:.63rem;padding:1px 7px;border-radius:8px;font-weight:700">{{ users|length }}</span>
+        </a>
+        <a class="tab-btn {% if active_tab == 'theme' %}active{% endif %}" href="/admin/settings?tab=theme">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20"/><path d="M2 12h10"/></svg>
+            {{ t('tab_theme') }}
+        </a>
+        {% if current_user_is_superadmin %}
+        <a class="tab-btn {% if active_tab == 'application' %}active{% endif %}" href="/admin/settings?tab=application">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+            {{ t('tab_application') }}
+        </a>
+        {% endif %}
+        {% if can_ephemeris %}
+        <a class="tab-btn {% if active_tab == 'evenements' %}active{% endif %}" href="/admin/settings?tab=evenements">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            {{ t('tab_events') }}
+            {% if events %}<span style="background:var(--primary-bg);color:var(--primary);font-size:.63rem;padding:1px 7px;border-radius:8px;font-weight:700">{{ events|length }}</span>{% endif %}
+        </a>
+        {% endif %}
+        <a class="tab-btn {% if active_tab == 'language' %}active{% endif %}" href="/admin/settings?tab=language">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            {{ t('tab_language') }}
+        </a>
+    </div>
+
+    <!-- ── ONGLET LOGO ── -->
+    <div id="tab-logo" class="tab-pane {% if active_tab == 'logo' %}active{% endif %}">
+        <div class="logo-layout">
+            <div class="logo-preview">
+                <img src="{{ logo_path }}" alt="{{ t('logo_preview_label') }}" id="logo-img">
+                <span>{{ t('logo_preview_label') }}</span>
+            </div>
+            <div class="logo-actions">
+                <div>
+                    <div class="logo-section-label">{{ t('logo_change_label') }}</div>
+                    <form action="/admin/logo/upload" method="post" enctype="multipart/form-data" style="display:flex;flex-direction:column;gap:10px">
+                        <input type="file" name="logo" accept=".svg,.png,.jpg,.jpeg" required class="file-input-styled">
+                        <p style="font-size:.73rem;color:var(--text-3)">{{ t('logo_formats') }}</p>
+                        <div><button type="submit" class="btn success sm">{{ t('logo_apply') }}</button></div>
+                    </form>
+                </div>
+                <div class="divider"></div>
+                <div>
+                    <div class="logo-section-label">{{ t('logo_default_label') }}</div>
+                    <p style="font-size:.79rem;color:var(--text-3);margin-bottom:10px">{{ t('logo_default_desc', app_name=app_name) }}</p>
+                    <form action="/admin/logo/reset" method="post">
+                        <button type="submit" class="btn secondary sm"
+                                onclick="return confirm('{{ t('logo_reset_confirm') }}')">
+                            {{ t('logo_reset') }}
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── ONGLET THÈME ── -->
+    <div id="tab-theme" class="tab-pane {% if active_tab == 'theme' %}active{% endif %}">
+        <p style="font-size:.82rem;color:var(--text-3);margin-bottom:20px">{{ t('theme_subtitle') }}</p>
+        <form action="/admin/settings/theme" method="post">
+            <div class="theme-grid">
+
+                <!-- Violet -->
+                {% set tval = 'violet' %}
+                <label class="theme-card {% if theme == tval or (theme is not defined and tval == 'violet') %}selected{% endif %}">
+                    <input type="radio" name="theme" value="{{ tval }}" {% if theme == tval %}checked{% endif %}>
+                    <div class="theme-preview" style="background:#f2eef9">
+                        <div class="theme-preview-sidebar" style="background:#0d0920">
+                            <div class="theme-preview-dot" style="background:#7c3aed;width:70%"></div>
+                            <div class="theme-preview-dot" style="background:#5a4a80;width:50%"></div>
+                            <div class="theme-preview-dot" style="background:#5a4a80;width:60%"></div>
+                        </div>
+                        <div class="theme-preview-main">
+                            <div class="theme-preview-bar" style="background:#7c3aed;width:55%"></div>
+                            <div class="theme-preview-card" style="background:#fff;border-color:#e8e1f5"></div>
+                        </div>
+                    </div>
+                    <div class="theme-label">
+                        <span>{{ t('theme_violet') }}</span>
+                        <div class="theme-check">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                    </div>
+                </label>
+
+                <!-- Bleu -->
+                {% set tval = 'bleu' %}
+                <label class="theme-card {% if theme == tval %}selected{% endif %}">
+                    <input type="radio" name="theme" value="{{ tval }}" {% if theme == tval %}checked{% endif %}>
+                    <div class="theme-preview" style="background:#f0f7ff">
+                        <div class="theme-preview-sidebar" style="background:#0f2744">
+                            <div class="theme-preview-dot" style="background:#2563eb;width:70%"></div>
+                            <div class="theme-preview-dot" style="background:#2d5a8e;width:50%"></div>
+                            <div class="theme-preview-dot" style="background:#2d5a8e;width:60%"></div>
+                        </div>
+                        <div class="theme-preview-main">
+                            <div class="theme-preview-bar" style="background:#2563eb;width:55%"></div>
+                            <div class="theme-preview-card" style="background:#fff;border-color:#bfdbfe"></div>
+                        </div>
+                    </div>
+                    <div class="theme-label">
+                        <span>{{ t('theme_bleu') }}</span>
+                        <div class="theme-check">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                    </div>
+                </label>
+
+                <!-- Sombre -->
+                {% set tval = 'sombre' %}
+                <label class="theme-card {% if theme == tval %}selected{% endif %}">
+                    <input type="radio" name="theme" value="{{ tval }}" {% if theme == tval %}checked{% endif %}>
+                    <div class="theme-preview" style="background:#0f172a">
+                        <div class="theme-preview-sidebar" style="background:#070d14">
+                            <div class="theme-preview-dot" style="background:#06b6d4;width:70%"></div>
+                            <div class="theme-preview-dot" style="background:#2a5a6a;width:50%"></div>
+                            <div class="theme-preview-dot" style="background:#2a5a6a;width:60%"></div>
+                        </div>
+                        <div class="theme-preview-main">
+                            <div class="theme-preview-bar" style="background:#06b6d4;width:55%"></div>
+                            <div class="theme-preview-card" style="background:#111827;border-color:#1f2937"></div>
+                        </div>
+                    </div>
+                    <div class="theme-label">
+                        <span>{{ t('theme_sombre') }}</span>
+                        <div class="theme-check">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                    </div>
+                </label>
+
+            </div>
+            <div style="margin-top:20px">
+                <button type="submit" class="btn sm">{{ t('theme_apply') }}</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- ── ONGLET ADMINISTRATEURS ── -->
+    <div id="tab-admins" class="tab-pane {% if active_tab == 'admins' %}active{% endif %}">
+        <div class="admins-layout">
+
+            {% if current_user_is_superadmin %}
+            <div class="admin-block full-col">
+                <h3>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                    {{ t('admins_active_accounts') }}
+                    <a href="/admin/superadmin" class="btn sm" style="margin-left:auto;font-size:.72rem">
+                        {{ t('admins_manage_perms') }}
+                    </a>
+                </h3>
+                <ul class="admin-list">
+                    {% for u, entry in users.items() %}
+                    <li>
+                        <div class="admin-user">
+                            <div class="admin-avatar">{{ u[0].upper() }}</div>
+                            <span class="admin-username">{{ u }}</span>
+                            {% if u == current_user %}<span class="admin-you">{{ t('admins_you') }}</span>{% endif %}
+                            {% if entry.superadmin %}<span class="admin-you" style="background:#fef3c7;color:#92400e">{{ t('admins_superadmin_badge') }}</span>{% endif %}
+                        </div>
+                        {% if not entry.superadmin %}
+                        <form action="/admin/users/delete/{{ u }}" method="post"
+                              onsubmit="return confirm('{{ t('admins_delete_confirm', u=u) }}')">
+                            <button class="btn sm danger">{{ t('admins_delete') }}</button>
+                        </form>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% else %}
+            <div class="admin-block full-col">
+                <h3>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                    {{ t('admins_accounts') }}
+                </h3>
+                <p style="font-size:.83rem;color:var(--text-3)">{{ t('admins_no_management') }}</p>
+            </div>
+            {% endif %}
+
+            <!-- Changer mot de passe — visible pour tous -->
+            <div class="admin-block {% if not current_user_is_superadmin %}full-col{% endif %}">
+                <h3>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    {{ t('admins_change_password') }}
+                </h3>
+                <form action="/admin/users/password" method="post" class="form-group">
+                    <input type="password" name="current_password" placeholder="{{ t('admins_current_password') }}" required>
+                    <input type="password" name="new_password"     placeholder="{{ t('admins_new_password') }}" required>
+                    <div><button type="submit" class="btn sm">{{ t('admins_update') }}</button></div>
+                </form>
+            </div>
+
+        </div>
+    </div>
+
+    {% if current_user_is_superadmin %}
+    <!-- ── ONGLET APPLICATION ── -->
+    <div id="tab-application" class="tab-pane {% if active_tab == 'application' %}active{% endif %}">
+        <p style="font-size:.82rem;color:var(--text-3);margin-bottom:20px">{{ t('app_subtitle') }}</p>
+        <form action="/admin/settings/appname" method="post" style="display:flex;flex-direction:column;gap:12px;max-width:360px">
+            <div>
+                <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:6px">{{ t('app_name_label') }}</label>
+                <input type="text" name="app_name" value="{{ app_name }}" required maxlength="40"
+                       style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;background:var(--surface);color:var(--text)">
+            </div>
+            <div>
+                <button type="submit" class="btn sm">{{ t('app_apply') }}</button>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+
+    {% if can_ephemeris %}
+    <!-- ── ONGLET COMPTES À REBOURS ── -->
+    <div id="tab-evenements" class="tab-pane {% if active_tab == 'evenements' %}active{% endif %}">
+        <p style="font-size:.82rem;color:var(--text-3);margin-bottom:20px">{{ t('events_subtitle') }}</p>
+
+        {% if events %}
+        <ul class="event-list">
+            {% for ev in events %}
+            <li>
+                <span class="event-countdown {% if ev.delta == 0 %}today{% endif %}">
+                    {% if ev.delta == 0 %}{{ t('events_today_short') }}{% elif ev.delta is not none and ev.delta > 0 %}J-{{ ev.delta }}{% else %}{{ t('events_past') }}{% endif %}
+                </span>
+                <span class="event-label">{{ ev.label }}</span>
+                <span class="event-date">{{ ev.date }}</span>
+                <form action="/admin/events/delete/{{ loop.index0 }}" method="post"
+                      onsubmit="return confirm('{{ t('events_delete_confirm', label=ev.label) }}')">
+                    <button class="btn sm danger">{{ t('events_delete') }}</button>
+                </form>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="event-empty">{{ t('events_empty') }}</p>
+        {% endif %}
+
+        <div class="divider"></div>
+        <div class="logo-section-label" style="margin-bottom:12px">{{ t('events_add_label') }}</div>
+        <form action="/admin/events/add" method="post" class="event-add-form">
+            <div>
+                <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:4px">{{ t('events_label_field') }}</label>
+                <input type="text" name="label" placeholder="{{ t('events_label_placeholder') }}" required maxlength="60">
+            </div>
+            <div>
+                <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:4px">{{ t('events_date_field') }}</label>
+                <input type="date" name="date" required>
+            </div>
+            <div style="padding-bottom:1px">
+                <button type="submit" class="btn sm">{{ t('events_add_btn') }}</button>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+
+    <!-- ── ONGLET LANGUE ── -->
+    <div id="tab-language" class="tab-pane {% if active_tab == 'language' %}active{% endif %}">
+        <p style="font-size:.82rem;color:var(--text-3);margin-bottom:20px">{{ t('language_subtitle') }}</p>
+        <form action="/admin/settings/language" method="post">
+            <div class="lang-grid" style="margin-bottom:20px">
+
+                <label class="lang-card {% if lang == 'fr' %}selected{% endif %}">
+                    <input type="radio" name="language" value="fr" {% if lang == 'fr' %}checked{% endif %} onchange="this.closest('form').querySelectorAll('.lang-card').forEach(c=>c.classList.remove('selected'));this.closest('.lang-card').classList.add('selected')">
+                    <span class="lang-flag">🇫🇷</span>
+                    <span class="lang-name">{{ t('language_fr') }}</span>
+                </label>
+
+                <label class="lang-card {% if lang == 'en' %}selected{% endif %}">
+                    <input type="radio" name="language" value="en" {% if lang == 'en' %}checked{% endif %} onchange="this.closest('form').querySelectorAll('.lang-card').forEach(c=>c.classList.remove('selected'));this.closest('.lang-card').classList.add('selected')">
+                    <span class="lang-flag">🇬🇧</span>
+                    <span class="lang-name">{{ t('language_en') }}</span>
+                </label>
+
+            </div>
+            <button type="submit" class="btn sm">{{ t('language_apply') }}</button>
+        </form>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.theme-card input[type=radio]').forEach(radio => {
+    radio.addEventListener('change', () => {
+        document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('selected'));
+        radio.closest('.theme-card').classList.add('selected');
+    });
+});
+</script>
+{% endblock %}

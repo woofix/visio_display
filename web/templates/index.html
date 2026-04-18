@@ -1,0 +1,183 @@
+<!-- MIT License - Copyright (c) 2026 Lycée Sainte Louise de Marillac -->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diaporama</title>
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+            cursor: none;
+        }
+
+        .slide {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 1.5s ease-in-out;
+        }
+        .slide.active  { opacity: 1; }
+        .slide.leaving { opacity: 0; }
+
+        .slide img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            box-shadow:
+                0 0 20px 10px rgba(138, 43, 226, 0.8),
+                0 0 40px 20px rgba(138, 43, 226, 0.5),
+                0 0 60px 30px rgba(138, 43, 226, 0.3);
+            border-radius: 6px;
+        }
+
+        .slide video {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            box-shadow:
+                0 0 20px 10px rgba(138, 43, 226, 0.8),
+                0 0 40px 20px rgba(138, 43, 226, 0.5),
+                0 0 60px 30px rgba(138, 43, 226, 0.3);
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body>
+<script>
+    const DEFAULT_DURATION = 15000;
+    const FADE_DURATION    = 1500;
+    const SCREEN           = new URLSearchParams(location.search).get('screen') || '';
+    const SCREEN_PARAM     = SCREEN ? `?screen=${encodeURIComponent(SCREEN)}` : '';
+
+    let media        = [];
+    let durations    = {};
+    let currentIndex = 0;
+    let currentSlide = null;
+    let timer        = null;
+
+    async function fetchMedia() {
+        try {
+            const res = await fetch('/api/images' + SCREEN_PARAM, { cache: 'no-store' });
+            if (!res.ok) return media.length ? media : [];
+            const fetched = await res.json();
+            return fetched.length ? fetched : [];
+        } catch (e) {
+            return media.length ? media : [];
+        }
+    }
+
+    async function fetchDurations() {
+        try {
+            const res = await fetch('/api/durations' + SCREEN_PARAM, { cache: 'no-store' });
+            if (!res.ok) return {};
+            return await res.json();
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function getDuration(item) {
+        const filename = item.path.split('/').pop().split('?')[0];
+        const d = durations[filename];
+        return d ? d * 1000 : DEFAULT_DURATION;
+    }
+
+    function showSlide(item) {
+        const slide = document.createElement('div');
+        slide.className = 'slide';
+
+        let el;
+        if (item.type === 'video') {
+            el = document.createElement('video');
+            el.src         = item.path + '?t=' + Date.now();
+            el.autoplay    = true;
+            el.muted       = true;
+            el.controls    = false;
+            el.playsInline = true;
+        } else {
+            el = document.createElement('img');
+            el.src = item.path + '?t=' + Date.now();
+            el.alt = '';
+        }
+
+        slide.appendChild(el);
+        document.body.appendChild(slide);
+
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                slide.classList.add('active');
+            });
+        });
+
+        if (currentSlide) {
+            const old = currentSlide;
+            const oldVid = old.querySelector('video');
+            if (oldVid) oldVid.pause();
+            old.classList.add('leaving');
+            old.classList.remove('active');
+            setTimeout(() => {
+                if (old.parentNode) old.parentNode.removeChild(old);
+            }, FADE_DURATION + 100);
+        }
+
+        currentSlide = slide;
+        return el;
+    }
+
+    async function next() {
+        if (timer) { clearTimeout(timer); timer = null; }
+
+        // Rafraîchit systématiquement la liste et les durées à chaque transition
+        const [freshMedia, freshDurations] = await Promise.all([fetchMedia(), fetchDurations()]);
+        durations = freshDurations;
+
+        if (freshMedia.length) {
+            media = freshMedia;
+            // Recentre l'index si hors bornes
+            if (currentIndex >= media.length) currentIndex = 0;
+        }
+
+        if (!media.length) {
+            timer = setTimeout(next, 5000);
+            return;
+        }
+
+        const item = media[currentIndex];
+        currentIndex = (currentIndex + 1) % media.length;
+
+        const el       = showSlide(item);
+        const duration = getDuration(item);
+
+        if (item.type === 'video') {
+            let done = false;
+            const advance = () => {
+                if (done) return;
+                done = true;
+                next();
+            };
+            el.addEventListener('ended', advance, { once: true });
+            timer = setTimeout(advance, duration);
+        } else {
+            timer = setTimeout(next, duration);
+        }
+    }
+
+    async function start() {
+        [media, durations] = await Promise.all([fetchMedia(), fetchDurations()]);
+        next();
+    }
+
+    start();
+</script>
+</body>
+</html>

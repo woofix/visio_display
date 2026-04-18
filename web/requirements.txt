@@ -1,0 +1,9 @@
+Flask
+Flask-SQLAlchemy
+gunicorn
+Pillow
+pdf2image
+unidecode
+requests
+rq
+redis

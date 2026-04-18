@@ -1,0 +1,16 @@
+services:
+  app:
+    build: .
+    container_name: Visio
+    env_file: .env
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /srv/7To/Docker/visio/data:/app/static/data
+    ports:
+      - "8081:8080"
+    restart: always
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

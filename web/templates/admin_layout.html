@@ -333,6 +333,10 @@
             {{ t('nav_queue') }}
             <span class="nav-badge" id="nav-queue-badge" style="display:none">0</span>
         </a>
+        <a href="/admin/activity" class="nav-item {% if path == '/admin/activity' %}active{% endif %}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            {{ t('nav_activity') }}
+        </a>
 
         {% if current_user_is_superadmin %}
         <div class="nav-label" style="margin-top:8px">{{ t('nav_label_administration') }}</div>
@@ -370,6 +374,10 @@
             <a href="/admin/settings?tab=application" class="nav-item nav-subitem {% if path == '/admin/settings' and request.args.get('tab') == 'application' %}active{% endif %}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
                 {{ t('nav_application') }}
+            </a>
+            <a href="/admin/settings?tab=meteo" class="nav-item nav-subitem {% if path == '/admin/settings' and request.args.get('tab') == 'meteo' %}active{% endif %}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/></svg>
+                {{ t('tab_meteo') }}
             </a>
             {% endif %}
             {% if can_ephemeris %}

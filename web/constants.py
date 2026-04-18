@@ -2,7 +2,7 @@ import os
 
 UPLOAD_FOLDER = 'static/data'
 IMAGES_FOLDER = 'static/images'
-DB_FILE       = 'static/data/ramses.db'
+DB_FILE       = 'static/data/visio-display.db'
 CONFIG_FILE   = 'static/data/config.json'
 QUEUE_FILE    = 'static/data/queue.json'
 USERS_FILE    = 'static/data/users.json'

@@ -248,7 +248,7 @@ Choisissez entre **Français (FR)** et **Anglais (EN)**.
 
 ### Localisation météo (super-admin)
 
-Depuis **Paramètres → Météo**, le super-admin peut modifier la localisation utilisée pour la carte éphéméride :
+Depuis **Paramètres → Météo** (entrée directe dans le menu gauche), le super-admin peut modifier la localisation utilisée pour la carte éphéméride :
 
 | Champ           | Exemple           | Description                                  |
 |-----------------|-------------------|----------------------------------------------|
@@ -258,13 +258,13 @@ Depuis **Paramètres → Météo**, le super-admin peut modifier la localisation
 | Fuseau horaire  | `Europe/Paris`    | Identifiant IANA                             |
 | Zone scolaire   | `A` / `B` / `C`  | Zone de l'Éducation nationale (détection automatique si non renseignée) |
 
-Cliquer sur **Enregistrer** applique la nouvelle localisation et régénère la carte immédiatement.
+Un champ de recherche par nom de ville (autocomplétion via Open-Meteo) remplit automatiquement les coordonnées et le fuseau horaire. Cliquer sur **Enregistrer** applique la nouvelle localisation et régénère la carte immédiatement.
 
 ### Changer son mot de passe
 
-1. Dans **Paramètres → Sécurité**, saisissez votre mot de passe actuel.
-2. Entrez le nouveau mot de passe (8 caractères minimum).
-3. Confirmez et cliquez sur **Enregistrer**.
+1. Dans **Paramètres → Admins**, descendez jusqu'à la section **Changer le mot de passe**.
+2. Saisissez votre mot de passe actuel, puis le nouveau (8 caractères minimum).
+3. Cliquez sur **Enregistrer**.
 
 ---
 

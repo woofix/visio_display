@@ -31,8 +31,8 @@ services:
     environment:
       - REDIS_URL=redis://redis:6379
     volumes:
-      - .data:/app/static/data
-    command: rq worker --url redis://redis:6379 ramses:upload ramses:compress
+      - /srv/7To/Docker/visio/data:/app/static/data
+    command: rq worker --url redis://redis:6379 visio-display:upload visio-display:compress
     restart: always
     depends_on:
       - redis

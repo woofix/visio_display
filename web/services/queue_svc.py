@@ -28,11 +28,11 @@ def get_redis() -> Redis:
 
 
 def _upload_q() -> Queue:
-    return Queue('ramses:upload', connection=get_redis())
+    return Queue('visio-display:upload', connection=get_redis())
 
 
 def _compress_q() -> Queue:
-    return Queue('ramses:compress', connection=get_redis())
+    return Queue('visio-display:compress', connection=get_redis())
 
 
 def _get_worker_app():
@@ -123,7 +123,7 @@ def _reencode_with_progress(src, dst, compress, job_id):
                         rq_job.meta['progress'] = pct
                         rq_job.save_meta()
                     # Also store in a Redis key so Flask can poll compress jobs
-                    get_redis().set(f'ramses:progress:{job_id}', pct, ex=3600)
+                    get_redis().set(f'visio-display:progress:{job_id}', pct, ex=3600)
                 except (ValueError, ZeroDivisionError):
                     pass
         proc.wait()
@@ -132,7 +132,7 @@ def _reencode_with_progress(src, dst, compress, job_id):
             rq_job.meta['progress'] = 100 if ok else -1
             rq_job.meta['status']   = 'done' if ok else 'error'
             rq_job.save_meta()
-        get_redis().delete(f'ramses:progress:{job_id}')
+        get_redis().delete(f'visio-display:progress:{job_id}')
         return ok
     except Exception as e:
         print(f"[FFMPEG ERROR] {e}")
@@ -267,7 +267,7 @@ def _scheduler_loop():
         if not is_encoding_window():
             continue
         # Redis NX lock prevents multiple gunicorn workers from scheduling simultaneously
-        if not get_redis().set('ramses:scheduler_lock', 1, nx=True, ex=90):
+        if not get_redis().set('visio-display:scheduler_lock', 1, nx=True, ex=90):
             continue
         try:
             with _flask_app.app_context():

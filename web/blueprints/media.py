@@ -12,6 +12,7 @@ from services.media_svc import (
 )
 from services.queue_svc import load_queue, save_queue, enqueue_upload_job
 from services.i18n import _flash
+from services.activity_svc import log_activity
 from blueprints.guards import admin_guard, perm_guard
 
 bp = Blueprint('media', __name__)
@@ -82,6 +83,7 @@ def delete_file(filename):
     path = os.path.join(UPLOAD_FOLDER, filename)
     if os.path.exists(path):
         os.remove(path)
+        log_activity(session.get('user'), 'delete', filename=filename)
         cfg = load_config()
         cfg["order"]    = [f for f in cfg.get("order", [])    if f != filename]
         cfg["disabled"] = [f for f in cfg.get("disabled", []) if f != filename]
@@ -131,20 +133,24 @@ def upload_file():
                 img_path = dest.replace('.pdf', f'_page_{i+1}.jpg')
                 img.save(img_path, 'JPEG', quality=95)
             os.remove(dest)
+            log_activity(session.get('user'), 'upload', filename=filename, details='pdf→jpg')
 
         elif ext in VIDEO_EXTS:
             tmp = dest + '.tmp' + ext
             file.save(tmp)
             if ext == '.mp4' and is_h264_mp4(tmp):
                 os.replace(tmp, dest)
+                log_activity(session.get('user'), 'upload', filename=filename)
             else:
                 final_name = os.path.basename(os.path.splitext(dest)[0] + '.mp4')
                 out        = os.path.join(UPLOAD_FOLDER, final_name)
                 job_id     = enqueue_upload_job(tmp, out, final_name)
                 upload_job_ids.append({"id": job_id, "filename": final_name})
+                log_activity(session.get('user'), 'upload', filename=final_name, details='encoding')
 
         else:
             file.save(dest)
+            log_activity(session.get('user'), 'upload', filename=filename)
 
     return jsonify({"ok": True, "jobs": upload_job_ids, "redirect": "/admin/media"})
 

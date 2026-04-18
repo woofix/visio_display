@@ -1,0 +1,179 @@
+{% extends 'admin_layout.html' %}
+
+{% block title %}{{ t('activity_title') }}{% endblock %}
+
+{% block topbar_icon %}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+    <polyline points="14 2 14 8 20 8"/>
+    <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+    <polyline points="10 9 9 9 8 9"/>
+</svg>
+{% endblock %}
+
+{% block topbar_breadcrumbs %}
+<div class="topbar-breadcrumbs">
+    <a href="/admin" class="bc-link">{{ app_name }}</a>
+    <svg class="bc-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    <span class="bc-current">{% block topbar_title %}{{ t('activity_title') }}{% endblock %}</span>
+</div>
+{% endblock %}
+
+{% block topbar_sub %}{{ t('activity_topbar_sub') }}{% endblock %}
+
+{% block styles %}
+.activity-toolbar {
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    margin-bottom: 18px;
+}
+.activity-toolbar input, .activity-toolbar select {
+    padding: 7px 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+    font-size: .82rem; font-family: inherit; color: var(--text); background: var(--surface);
+    transition: border-color .15s;
+}
+.activity-toolbar input:focus, .activity-toolbar select:focus {
+    outline: none; border-color: var(--primary);
+}
+.activity-toolbar input { flex: 1; min-width: 180px; }
+
+.log-table-wrap { overflow-x: auto; }
+.log-table {
+    width: 100%; border-collapse: collapse; font-size: .83rem;
+}
+.log-table th {
+    text-align: left; font-size: .68rem; font-weight: 700; color: var(--text-3);
+    text-transform: uppercase; letter-spacing: .08em;
+    padding: 10px 14px; border-bottom: 2px solid var(--border);
+    white-space: nowrap;
+}
+.log-table td {
+    padding: 10px 14px; border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+}
+.log-table tr:last-child td { border-bottom: none; }
+.log-table tr:hover td { background: var(--surface-alt); }
+
+.action-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: .72rem; font-weight: 700; padding: 3px 9px; border-radius: 8px;
+    white-space: nowrap;
+}
+.action-upload  { background: #dbeafe; color: #1d4ed8; }
+.action-delete  { background: #fee2e2; color: #b91c1c; }
+.action-login   { background: #dcfce7; color: #15803d; }
+.action-logout  { background: #fef9c3; color: #92400e; }
+.action-toggle  { background: #ede9fe; color: #6d28d9; }
+.action-default { background: var(--surface-alt); color: var(--text-3); }
+
+.log-filename { font-family: 'Inter', monospace; color: var(--text-2); font-size: .8rem; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.log-ts { color: var(--text-3); font-size: .78rem; white-space: nowrap; }
+.log-user { font-weight: 600; color: var(--text); }
+.log-details { color: var(--text-3); font-size: .78rem; }
+
+.empty-log { text-align: center; padding: 48px 20px; color: var(--text-3); }
+.empty-log svg { width: 44px; height: 44px; color: #ddd6fe; display: block; margin: 0 auto 12px; }
+
+#log-count { font-size: .78rem; color: var(--text-3); margin-left: auto; }
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{{ t('activity_h1') }}</h1>
+        <p>{{ t('activity_sub') }}</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="activity-toolbar">
+        <input type="text" id="filter-search" placeholder="{{ t('activity_search_placeholder') }}" oninput="applyFilters()">
+        <select id="filter-action" onchange="applyFilters()">
+            <option value="">{{ t('activity_filter_all_actions') }}</option>
+            <option value="upload">{{ t('activity_action_upload') }}</option>
+            <option value="delete">{{ t('activity_action_delete') }}</option>
+            <option value="login">{{ t('activity_action_login') }}</option>
+            <option value="logout">{{ t('activity_action_logout') }}</option>
+            <option value="toggle">{{ t('activity_action_toggle') }}</option>
+        </select>
+        <select id="filter-user" onchange="applyFilters()">
+            <option value="">{{ t('activity_filter_all_users') }}</option>
+            {% for u in users %}
+            <option value="{{ u }}">{{ u }}</option>
+            {% endfor %}
+        </select>
+        <span id="log-count"></span>
+    </div>
+
+    <div class="log-table-wrap">
+        <table class="log-table">
+            <thead>
+                <tr>
+                    <th>{{ t('activity_col_date') }}</th>
+                    <th>{{ t('activity_col_user') }}</th>
+                    <th>{{ t('activity_col_action') }}</th>
+                    <th>{{ t('activity_col_file') }}</th>
+                    <th>{{ t('activity_col_details') }}</th>
+                </tr>
+            </thead>
+            <tbody id="log-body">
+                {% for entry in logs %}
+                <tr
+                    data-action="{{ entry.action }}"
+                    data-user="{{ entry.username }}"
+                    data-search="{{ (entry.username ~ ' ' ~ (entry.filename or '') ~ ' ' ~ (entry.details or '')) | lower }}"
+                >
+                    <td class="log-ts">{{ entry.timestamp | replace('T', ' ') }}</td>
+                    <td class="log-user">{{ entry.username }}</td>
+                    <td>
+                        <span class="action-badge action-{{ entry.action if entry.action in ('upload','delete','login','logout','toggle') else 'default' }}">
+                            {% if entry.action == 'upload' %}
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:11px;height:11px"><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            {% elif entry.action == 'delete' %}
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:11px;height:11px"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+                            {% elif entry.action == 'login' %}
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:11px;height:11px"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                            {% elif entry.action == 'logout' %}
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:11px;height:11px"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                            {% elif entry.action == 'toggle' %}
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:11px;height:11px"><circle cx="12" cy="12" r="10"/></svg>
+                            {% endif %}
+                            {{ t('activity_action_' ~ entry.action) if ('activity_action_' ~ entry.action) in ['activity_action_upload','activity_action_delete','activity_action_login','activity_action_logout','activity_action_toggle'] else entry.action }}
+                        </span>
+                    </td>
+                    <td><div class="log-filename" title="{{ entry.filename or '' }}">{{ entry.filename or '—' }}</div></td>
+                    <td class="log-details">{{ entry.details or '' }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" class="empty-log">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    <p>{{ t('activity_empty') }}</p>
+                </td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function applyFilters() {
+    const search = document.getElementById('filter-search').value.toLowerCase();
+    const action = document.getElementById('filter-action').value;
+    const user   = document.getElementById('filter-user').value;
+    const rows   = document.querySelectorAll('#log-body tr[data-action]');
+    let visible  = 0;
+    rows.forEach(row => {
+        const matchSearch = !search || row.dataset.search.includes(search);
+        const matchAction = !action || row.dataset.action === action;
+        const matchUser   = !user   || row.dataset.user   === user;
+        const show = matchSearch && matchAction && matchUser;
+        row.style.display = show ? '' : 'none';
+        if (show) visible++;
+    });
+    const countEl = document.getElementById('log-count');
+    if (countEl) countEl.textContent = visible + ' / ' + rows.length;
+}
+applyFilters();
+</script>
+{% endblock %}

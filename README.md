@@ -232,7 +232,7 @@ Visio-Display/
     │   ├── queue_svc.py         # File d'encodage + tâches RQ
     │   └── users_svc.py         # CRUD utilisateurs + permissions
     ├── static/
-    │   ├── data/                # Médias + base SQLite ramses.db (non versionné)
+    │   ├── data/                # Médias + base SQLite visio-display.db (non versionné)
     │   └── images/              # Logo et ressources statiques
     └── templates/               # Templates Jinja2
         ├── index.html           # Diaporama plein écran
@@ -379,7 +379,7 @@ Chaque média peut appartenir à zéro, un ou plusieurs groupes. `disabled_group
 
 ### Stockage des données
 
-La configuration et les utilisateurs sont stockés dans une base SQLite (`web/static/data/ramses.db`), persistée via le volume Docker. La structure des utilisateurs est la suivante :
+La configuration et les utilisateurs sont stockés dans une base SQLite (`web/static/data/visio-display.db`), persistée via le volume Docker. La structure des utilisateurs est la suivante :
 
 ```json
 {
@@ -637,7 +637,7 @@ Visio-Display/
     │   ├── queue_svc.py         # Encoding queue + RQ tasks
     │   └── users_svc.py         # User CRUD + permissions
     ├── static/
-    │   ├── data/                # Media files + SQLite DB ramses.db (not versioned)
+    │   ├── data/                # Media files + SQLite DB visio-display.db (not versioned)
     │   └── images/              # Logo and static assets
     └── templates/               # Jinja2 templates
         ├── index.html           # Fullscreen slideshow
@@ -784,7 +784,7 @@ An empty or absent `message` means no banner is displayed.
 
 ### Data storage
 
-Configuration and users are stored in a SQLite database (`web/static/data/ramses.db`), persisted via the Docker volume. The user data structure is as follows:
+Configuration and users are stored in a SQLite database (`web/static/data/visio-display.db`), persisted via the Docker volume. The user data structure is as follows:
 
 ```json
 {

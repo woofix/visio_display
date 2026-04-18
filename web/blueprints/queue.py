@@ -138,7 +138,7 @@ def api_queue():
     r = get_redis()
     for j in active:
         if j['status'] == 'processing':
-            pct = r.get(f'ramses:progress:{j["id"]}')
+            pct = r.get(f'visio-display:progress:{j["id"]}')
             if pct is not None:
                 j['progress'] = int(pct)
 

@@ -47,6 +47,26 @@ class User(db.Model):
         )
 
 
+class ActivityLog(db.Model):
+    __tablename__ = 'activity_log'
+    id        = db.Column(db.Integer,    primary_key=True, autoincrement=True)
+    timestamp = db.Column(db.String(32), nullable=False, index=True)
+    username  = db.Column(db.String(64), nullable=False)
+    action    = db.Column(db.String(32), nullable=False)
+    filename  = db.Column(db.String(512), nullable=True)
+    details   = db.Column(db.Text,       nullable=True)
+
+    def to_dict(self):
+        return {
+            'id':        self.id,
+            'timestamp': self.timestamp,
+            'username':  self.username,
+            'action':    self.action,
+            'filename':  self.filename,
+            'details':   self.details,
+        }
+
+
 class EncodeJob(db.Model):
     __tablename__ = 'encode_jobs'
     id        = db.Column(db.String(8),   primary_key=True)

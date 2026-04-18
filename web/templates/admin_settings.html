@@ -100,41 +100,6 @@
 
 <div class="card">
 
-    <!-- ── BARRE DE NAVIGATION DES ONGLETS ── -->
-    <div class="tab-bar">
-        <a href="?tab=logo" class="tab-btn {% if active_tab == 'logo' %}active{% endif %}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
-            {{ t('tab_logo') }}
-        </a>
-        <a href="?tab=theme" class="tab-btn {% if active_tab == 'theme' %}active{% endif %}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20"/></svg>
-            {{ t('tab_theme') }}
-        </a>
-        <a href="?tab=admins" class="tab-btn {% if active_tab == 'admins' %}active{% endif %}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-            {{ t('tab_admins') }}
-        </a>
-        {% if current_user_is_superadmin %}
-        <a href="?tab=application" class="tab-btn {% if active_tab == 'application' %}active{% endif %}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-            {{ t('tab_application') }}
-        </a>
-        <a href="?tab=meteo" class="tab-btn {% if active_tab == 'meteo' %}active{% endif %}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/></svg>
-            {{ t('tab_meteo') }}
-        </a>
-        {% endif %}
-        {% if can_ephemeris %}
-        <a href="?tab=evenements" class="tab-btn {% if active_tab == 'evenements' %}active{% endif %}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            {{ t('tab_events') }}
-        </a>
-        {% endif %}
-        <a href="?tab=language" class="tab-btn {% if active_tab == 'language' %}active{% endif %}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-            {{ t('tab_language') }}
-        </a>
-    </div>
 
     <!-- ── ONGLET LOGO ── -->
     <div id="tab-logo" class="tab-pane {% if active_tab == 'logo' %}active{% endif %}">

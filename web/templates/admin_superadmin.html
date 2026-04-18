@@ -2,7 +2,13 @@
 
 {% block title %}{{ t('superadmin_title') }}{% endblock %}
 {% block topbar_icon %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>{% endblock %}
-{% block topbar_title %}{{ t('superadmin_title') }}{% endblock %}
+{% block topbar_breadcrumbs %}<div class="topbar-breadcrumbs">
+    <a href="/admin" class="bc-link">{{ app_name }}</a>
+    <svg class="bc-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    <a href="/admin/superadmin" class="bc-link">{{ t('nav_label_administration') }}</a>
+    <svg class="bc-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    <span class="bc-current">{% block topbar_title %}{{ t('superadmin_title') }}{% endblock %}</span>
+</div>{% endblock %}
 {% block topbar_sub %}{{ t('superadmin_topbar_sub') }}{% endblock %}
 
 {% block styles %}

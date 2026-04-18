@@ -2,7 +2,13 @@
 
 {% block title %}{{ t('media_title') }}{% endblock %}
 {% block topbar_icon %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>{% endblock %}
-{% block topbar_title %}{{ t('media_title') }}{% endblock %}
+{% block topbar_breadcrumbs %}<div class="topbar-breadcrumbs">
+    <a href="/admin" class="bc-link">{{ app_name }}</a>
+    <svg class="bc-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    <a href="/admin/media" class="bc-link">{{ t('nav_label_contents') }}</a>
+    <svg class="bc-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    <span class="bc-current">{% block topbar_title %}{{ t('media_title') }}{% endblock %}</span>
+</div>{% endblock %}
 {% block topbar_sub %}{% if current_screen %}{{ t('media_screen_label') }} « {{ current_screen }} » — {% endif %}{% if files|length > 1 %}{{ t('media_topbar_sub_p', n=files|length) }}{% else %}{{ t('media_topbar_sub_s', n=files|length) }}{% endif %}{% endblock %}
 
 {% block topbar_actions %}

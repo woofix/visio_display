@@ -38,7 +38,8 @@ def admin_settings_page():
         events=events,
         current_user_is_superadmin=is_superadmin(),
         theme=user_theme,
-        can_ephemeris=has_permission('ephemeris'))
+        can_ephemeris=has_permission('ephemeris'),
+        tab=request.args.get('tab', 'logo'))
 
 
 @bp.route('/admin/settings/appname', methods=['POST'])

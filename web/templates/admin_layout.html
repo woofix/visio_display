@@ -32,7 +32,7 @@
             --shadow-lg:        0 8px 32px rgba(0,0,0,.14), 0 2px 8px rgba(0,0,0,.06);
             /* Sidebar */
             --sidebar-text:     #7065a0;
-            --sidebar-label:    #3d2d5e;
+            --sidebar-label:    #6b5a98;
             --sidebar-sub:      #5a4a80;
             --nav-hover-bg:     rgba(124,58,237,.12);
             --nav-hover-color:  #c4b5fd;
@@ -60,7 +60,7 @@
             --text-2:           #374151;
             --text-3:           #6b7280;
             --sidebar-text:     #7cb3f4;
-            --sidebar-label:    #1e3a5f;
+            --sidebar-label:    #3d6a98;
             --sidebar-sub:      #2d5a8e;
             --nav-hover-bg:     rgba(37,99,235,.15);
             --nav-hover-color:  #93c5fd;
@@ -95,7 +95,7 @@
             --shadow:           0 4px 16px rgba(0,0,0,.45), 0 1px 4px rgba(0,0,0,.3);
             --shadow-lg:        0 8px 32px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.35);
             --sidebar-text:     #4fc3d4;
-            --sidebar-label:    #1a3a45;
+            --sidebar-label:    #2a7080;
             --sidebar-sub:      #2a5a6a;
             --nav-hover-bg:     rgba(6,182,212,.12);
             --nav-hover-color:  #67e8f9;
@@ -147,7 +147,7 @@
 
         /* Subnav */
         .nav-subnav { overflow: hidden; max-height: 0; transition: max-height .25s ease; }
-        .nav-subnav.open { max-height: 200px; }
+        .nav-subnav.open { max-height: 400px; }
         .nav-subitem { padding-left: 34px !important; font-size: .78rem !important; color: var(--sidebar-sub) !important; }
         .nav-subitem.active, .nav-subitem:hover { color: var(--nav-hover-color) !important; }
         .nav-item-parent .chevron { margin-left: auto; width: 12px; height: 12px; transition: transform .22s; flex-shrink: 0; }
@@ -203,7 +203,7 @@
 
         /* ── FLASH ── */
         .flash-list { list-style: none; margin-bottom: 20px; }
-        .flash-list li { padding: 11px 16px; border-radius: 9px; margin-bottom: 8px; font-size: .87rem; font-weight: 500; }
+        .flash-list li { padding: 11px 16px; border-radius: 9px; margin-bottom: 8px; font-size: .87rem; font-weight: 500; display:flex; align-items:center; gap:10px; }
         .flash-list li.success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
         .flash-list li.error   { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
 
@@ -267,6 +267,28 @@
         /* ── RESPONSIVE ── */
         @media (max-width: 900px) { .sidebar { display: none; } .main { margin-left: 0; } .content { padding: 16px 16px 40px; } }
 
+        /* ── BREADCRUMBS ── */
+        .topbar-breadcrumbs { display:flex; align-items:center; gap:5px; }
+        .bc-link { font-size:.78rem; color:var(--text-3); text-decoration:none; font-weight:500; transition:color .12s; white-space:nowrap; }
+        .bc-link:hover { color:var(--primary); }
+        .bc-sep { width:11px; height:11px; color:var(--text-3); flex-shrink:0; opacity:.45; }
+        .bc-current { font-size:.9rem; font-weight:700; color:var(--text); line-height:1.2; }
+
+        /* ── ICON BUTTON ── */
+        .btn-icon { width:32px; height:32px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text-3); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; transition:all .15s; flex-shrink:0; }
+        .btn-icon:hover { border-color:var(--primary); color:var(--primary); background:var(--primary-bg); }
+        .btn-icon svg { width:14px; height:14px; }
+        .btn-icon.btn-warn:hover { border-color:var(--orange); color:var(--orange); background:rgba(234,88,12,.07); }
+
+        /* ── TOPBAR VERTICAL SEPARATOR ── */
+        .topbar-vsep { width:1px; height:20px; background:var(--border); flex-shrink:0; }
+
+        /* ── PAGE HEADER (flex variant) ── */
+        .page-header { margin-bottom:22px; display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+        .page-header h1 { font-size:1.35rem; font-weight:800; color:var(--text); letter-spacing:-.02em; }
+        .page-header p  { font-size:.82rem; color:var(--text-3); margin-top:3px; }
+        .page-header-actions { display:flex; gap:8px; align-items:center; flex-shrink:0; padding-top:4px; }
+
         {% block styles %}{% endblock %}
     </style>
 </head>
@@ -320,6 +342,10 @@
         </a>
         {% endif %}
 
+        <a href="/admin/wiki" class="nav-item {% if path == '/admin/wiki' %}active{% endif %}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            {{ t('nav_wiki') }}
+        </a>
         <div class="nav-label" style="margin-top:8px">{{ t('nav_label_settings') }}</div>
         <button class="nav-item nav-item-parent {% if path.startswith('/admin/settings') %}open{% endif %}" id="nav-settings-toggle">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -344,6 +370,13 @@
             <a href="/admin/settings?tab=application" class="nav-item nav-subitem {% if path == '/admin/settings' and request.args.get('tab') == 'application' %}active{% endif %}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
                 {{ t('nav_application') }}
+            </a>
+            {% endif %}
+            {% if can_ephemeris %}
+            <a href="/admin/settings?tab=evenements" class="nav-item nav-subitem {% if path == '/admin/settings' and request.args.get('tab') == 'evenements' %}active{% endif %}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                {{ t('tab_events') }}
+                {% if users is defined and events is defined and events %}<span class="nav-badge">{{ events|length }}</span>{% endif %}
             </a>
             {% endif %}
             <a href="/admin/settings?tab=language" class="nav-item nav-subitem {% if path == '/admin/settings' and request.args.get('tab') == 'language' %}active{% endif %}">
@@ -379,18 +412,18 @@
         <div class="topbar-left">
             <div class="topbar-icon">{% block topbar_icon %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>{% endblock %}</div>
             <div>
-                <div class="topbar-title">{% block topbar_title %}{{ t('topbar_default_title') }}{% endblock %}</div>
-                <div class="topbar-sub">{% block topbar_sub %}{{ app_name }} — {{ t('topbar_default_sub') }}{% endblock %}</div>
+                {% block topbar_breadcrumbs %}<div class="topbar-breadcrumbs"><span class="bc-current">{% block topbar_title %}{{ t('topbar_default_title') }}{% endblock %}</span></div>{% endblock %}
+                <div class="topbar-sub" style="margin-top:2px">{% block topbar_sub %}{{ app_name }} — {{ t('topbar_default_sub') }}{% endblock %}</div>
             </div>
         </div>
         <div class="topbar-right">
             {% block topbar_actions %}{% endblock %}
 
-            <button class="btn warning sm" id="btn-regen" title="{{ t('btn_ephemeris') }}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-                {{ t('btn_ephemeris') }}
+            <button class="btn-icon btn-warn" id="btn-regen" title="{{ t('btn_ephemeris') }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
             </button>
-            <span id="regen-ok" style="font-size:.78rem;color:var(--green);display:none;font-weight:600">✓ Ok</span>
+            <span id="regen-ok" style="font-size:.78rem;color:var(--green);display:none;font-weight:600">✓</span>
+            <div class="topbar-vsep"></div>
 
             <div class="user-menu-wrap">
                 <button class="user-menu-btn" id="user-menu-btn">
@@ -418,7 +451,13 @@
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
         <ul class="flash-list">
-            {% for cat, msg in messages %}<li class="{{ cat }}">{{ msg }}</li>{% endfor %}
+            {% for cat, msg in messages %}
+            <li class="{{ cat }}">
+                {% if cat == 'success' %}<svg style="width:15px;height:15px;flex-shrink:0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                {% elif cat == 'error' %}<svg style="width:15px;height:15px;flex-shrink:0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                {% endif %}{{ msg }}
+            </li>
+            {% endfor %}
         </ul>
         {% endif %}
         {% endwith %}
@@ -508,7 +547,7 @@ document.getElementById('modal').addEventListener('click', e => {
 document.getElementById('btn-regen').addEventListener('click', async function() {
     this.disabled = true; this.textContent = '…';
     await fetch('/regen_ephemeride', { method: 'POST' });
-    this.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> {{ t('btn_ephemeris') }}`;
+    this.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>`;
     this.disabled = false;
     const ok = document.getElementById('regen-ok');
     ok.style.display = 'inline';

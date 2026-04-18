@@ -96,9 +96,10 @@ def create_app(start_scheduler=True, test_config=None):
     from blueprints.users     import bp as users_bp
     from blueprints.settings  import bp as settings_bp
     from blueprints.api       import bp as api_bp
+    from blueprints.wiki      import bp as wiki_bp
 
     for bp in (auth_bp, admin_bp, media_bp, screens_bp, queue_bp,
-               ephemeris_bp, users_bp, settings_bp, api_bp):
+               ephemeris_bp, users_bp, settings_bp, api_bp, wiki_bp):
         app.register_blueprint(bp)
 
     @app.route('/')

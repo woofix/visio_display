@@ -2,7 +2,11 @@
 
 {% block title %}{{ t('settings_title') }}{% endblock %}
 {% block topbar_icon %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>{% endblock %}
-{% block topbar_title %}{{ t('settings_title') }}{% endblock %}
+{% block topbar_breadcrumbs %}<div class="topbar-breadcrumbs">
+    <a href="/admin" class="bc-link">{{ app_name }}</a>
+    <svg class="bc-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    <span class="bc-current">{% block topbar_title %}{{ t('settings_title') }}{% endblock %}</span>
+</div>{% endblock %}
 {% block topbar_sub %}{{ t('settings_topbar_sub') }}{% endblock %}
 
 {% block styles %}
@@ -95,40 +99,6 @@
 </div>
 
 <div class="card">
-    <!-- Tab bar -->
-    <div class="tab-bar">
-        <a class="tab-btn {% if active_tab == 'logo' %}active{% endif %}" href="/admin/settings?tab=logo">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
-            {{ t('tab_logo') }}
-        </a>
-        <a class="tab-btn {% if active_tab == 'admins' %}active{% endif %}" href="/admin/settings?tab=admins">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            {{ t('tab_admins') }}
-            <span style="background:var(--primary-bg);color:var(--primary);font-size:.63rem;padding:1px 7px;border-radius:8px;font-weight:700">{{ users|length }}</span>
-        </a>
-        <a class="tab-btn {% if active_tab == 'theme' %}active{% endif %}" href="/admin/settings?tab=theme">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20"/><path d="M2 12h10"/></svg>
-            {{ t('tab_theme') }}
-        </a>
-        {% if current_user_is_superadmin %}
-        <a class="tab-btn {% if active_tab == 'application' %}active{% endif %}" href="/admin/settings?tab=application">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
-            {{ t('tab_application') }}
-        </a>
-        {% endif %}
-        {% if can_ephemeris %}
-        <a class="tab-btn {% if active_tab == 'evenements' %}active{% endif %}" href="/admin/settings?tab=evenements">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            {{ t('tab_events') }}
-            {% if events %}<span style="background:var(--primary-bg);color:var(--primary);font-size:.63rem;padding:1px 7px;border-radius:8px;font-weight:700">{{ events|length }}</span>{% endif %}
-        </a>
-        {% endif %}
-        <a class="tab-btn {% if active_tab == 'language' %}active{% endif %}" href="/admin/settings?tab=language">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-            {{ t('tab_language') }}
-        </a>
-    </div>
-
     <!-- ── ONGLET LOGO ── -->
     <div id="tab-logo" class="tab-pane {% if active_tab == 'logo' %}active{% endif %}">
         <div class="logo-layout">

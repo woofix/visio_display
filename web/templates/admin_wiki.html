@@ -1,0 +1,724 @@
+{% extends 'admin_layout.html' %}
+
+{% block title %}{{ t('nav_wiki') }}{% endblock %}
+
+{% block topbar_icon %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>{% endblock %}
+{% block topbar_breadcrumbs %}<div class="topbar-breadcrumbs">
+    <a href="/admin" class="bc-link">{{ app_name }}</a>
+    <svg class="bc-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    <span class="bc-current">{% block topbar_title %}{{ t('nav_wiki') }}{% endblock %}</span>
+</div>{% endblock %}
+{% block topbar_sub %}{{ t('wiki_topbar_sub') }}{% endblock %}
+
+{% block styles %}
+/* ── WIKI LAYOUT ── */
+.wiki-wrap {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 24px;
+    align-items: start;
+}
+@media (max-width: 900px) {
+    .wiki-wrap { grid-template-columns: 1fr; }
+    .wiki-toc  { display: none; }
+}
+
+/* ── TABLE DES MATIÈRES ── */
+.wiki-toc {
+    position: sticky;
+    top: 80px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    box-shadow: var(--shadow-sm);
+}
+.wiki-toc-title {
+    font-size: .68rem;
+    font-weight: 700;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+}
+.wiki-toc a {
+    display: block;
+    font-size: .78rem;
+    color: var(--text-2);
+    text-decoration: none;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: all .15s;
+    font-weight: 500;
+    line-height: 1.4;
+    cursor: pointer;
+}
+.wiki-toc a:hover {
+    background: var(--primary-bg);
+    color: var(--primary);
+}
+.wiki-toc a.active {
+    background: var(--primary-bg);
+    color: var(--primary);
+    font-weight: 600;
+}
+
+/* ── CONTENU WIKI ── */
+.wiki-body { min-width: 0; }
+
+.wiki-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px 28px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow-sm);
+    scroll-margin-top: 78px;
+}
+.wiki-section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+}
+.wiki-section-num {
+    width: 28px;
+    height: 28px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .72rem;
+    font-weight: 800;
+    color: #fff;
+    flex-shrink: 0;
+}
+.wiki-section h2 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -.01em;
+}
+
+.wiki-section p {
+    font-size: .85rem;
+    color: var(--text-2);
+    line-height: 1.65;
+    margin-bottom: 12px;
+}
+.wiki-section p:last-child { margin-bottom: 0; }
+
+.wiki-section ul, .wiki-section ol {
+    margin: 8px 0 12px 0;
+    padding-left: 20px;
+}
+.wiki-section li {
+    font-size: .85rem;
+    color: var(--text-2);
+    line-height: 1.65;
+    margin-bottom: 4px;
+}
+.wiki-section strong { color: var(--text); font-weight: 600; }
+
+/* Sous-titre */
+.wiki-section h3 {
+    font-size: .88rem;
+    font-weight: 700;
+    color: var(--text);
+    margin: 18px 0 8px;
+}
+
+/* Callout / info box */
+.wiki-callout {
+    background: var(--primary-bg);
+    border: 1px solid rgba(124,58,237,.2);
+    border-left: 3px solid var(--primary);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: .82rem;
+    color: var(--text-2);
+    line-height: 1.6;
+    margin: 10px 0;
+}
+.wiki-callout.warning {
+    background: #fff7ed;
+    border-color: rgba(234,88,12,.2);
+    border-left-color: var(--orange);
+}
+.wiki-callout strong { color: var(--text); }
+
+/* Badge permission */
+.perm-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--primary-bg);
+    color: var(--primary);
+    border: 1px solid rgba(124,58,237,.2);
+    border-radius: 5px;
+    padding: 1px 7px;
+    font-size: .74rem;
+    font-weight: 700;
+    font-family: 'Courier New', monospace;
+}
+
+/* Table */
+.wiki-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .82rem;
+    margin: 10px 0;
+}
+.wiki-table th {
+    background: var(--surface-alt);
+    color: var(--text-2);
+    font-size: .7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 2px solid var(--border);
+}
+.wiki-table td {
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-2);
+    vertical-align: top;
+}
+.wiki-table tr:last-child td { border-bottom: none; }
+.wiki-table tr:hover td { background: var(--surface-alt); }
+.wiki-table code {
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: .78rem;
+    color: var(--primary);
+    font-family: 'Courier New', monospace;
+}
+
+/* Steps */
+.wiki-steps { counter-reset: step; list-style: none; padding: 0; margin: 8px 0 12px; }
+.wiki-steps li {
+    counter-increment: step;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 8px;
+    font-size: .85rem;
+    color: var(--text-2);
+    line-height: 1.55;
+}
+.wiki-steps li::before {
+    content: counter(step);
+    width: 22px;
+    height: 22px;
+    background: var(--primary);
+    color: #fff;
+    border-radius: 50%;
+    font-size: .68rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+/* Section masquée */
+.wiki-section { display: none; }
+.wiki-section.active { display: block; }
+
+/* Navigation prev/next */
+.wiki-nav {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 16px;
+    gap: 10px;
+}
+.wiki-nav-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-2);
+    font-size: .82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .15s;
+    text-decoration: none;
+}
+.wiki-nav-btn:hover {
+    background: var(--primary-bg);
+    color: var(--primary);
+    border-color: rgba(124,58,237,.3);
+}
+.wiki-nav-btn:disabled, .wiki-nav-btn.hidden {
+    visibility: hidden;
+    pointer-events: none;
+}
+
+/* Hero intro */
+.wiki-hero {
+    background: var(--hero-gradient);
+    border-radius: var(--radius);
+    padding: 22px 26px;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+}
+.wiki-hero::before { content:''; position:absolute; top:-40px; right:-40px; width:180px; height:180px; background:rgba(255,255,255,.04); border-radius:50%; }
+.wiki-hero-title { font-size: 1.1rem; font-weight: 800; color: #fff; margin-bottom: 4px; }
+.wiki-hero-sub   { font-size: .82rem; color: rgba(255,255,255,.5); line-height: 1.6; }
+
+/* Chip permission row */
+.perm-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+
+/* Tag URL */
+.url-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 3px 10px;
+    font-size: .78rem;
+    font-family: 'Courier New', monospace;
+    color: var(--text-2);
+    margin: 2px 0;
+}
+.url-tag svg { width: 12px; height: 12px; color: var(--primary); flex-shrink:0; }
+
+/* Grid accès */
+.access-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0; }
+@media (max-width: 600px) { .access-grid { grid-template-columns: 1fr; } }
+.access-card {
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+}
+.access-card-label { font-size: .68rem; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
+.access-card-url   { font-family: 'Courier New', monospace; font-size: .77rem; color: var(--primary); word-break: break-all; }
+{% endblock %}
+
+{% block content %}
+
+<div class="wiki-hero">
+    <div class="wiki-hero-title">
+        <svg style="width:18px;height:18px;vertical-align:middle;margin-right:6px;color:#fff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        {{ t('wiki_hero_title') }}
+    </div>
+    <div class="wiki-hero-sub">{{ t('wiki_hero_sub') }}</div>
+</div>
+
+<div class="wiki-wrap">
+
+    <!-- TABLE DES MATIÈRES -->
+    <aside class="wiki-toc">
+        <div class="wiki-toc-title">{{ t('wiki_toc_title') }}</div>
+        <a data-section="s1" class="active">1. {{ t('wiki_s1_title') }}</a>
+        <a data-section="s2">2. {{ t('wiki_s2_title') }}</a>
+        <a data-section="s3">3. {{ t('wiki_s3_title') }}</a>
+        <a data-section="s4">4. {{ t('wiki_s4_title') }}</a>
+        <a data-section="s5">5. {{ t('wiki_s5_title') }}</a>
+        <a data-section="s6">6. {{ t('wiki_s6_title') }}</a>
+        <a data-section="s7">7. {{ t('wiki_s7_title') }}</a>
+        <a data-section="s8">8. {{ t('wiki_s8_title') }}</a>
+        <a data-section="s9">9. {{ t('wiki_s9_title') }}</a>
+        <a data-section="s10">10. {{ t('wiki_s10_title') }}</a>
+        <a data-section="s11">11. {{ t('wiki_s11_title') }}</a>
+        <a data-section="s12">12. {{ t('wiki_s12_title') }}</a>
+    </aside>
+
+    <!-- CONTENU -->
+    <div class="wiki-body">
+
+        <!-- §1 Accéder -->
+        <section class="wiki-section active" id="s1">
+            <div class="wiki-section-header">
+                <div class="wiki-section-num">1</div>
+                <h2>{{ t('wiki_s1_title') }}</h2>
+            </div>
+            <div class="access-grid">
+                <div class="access-card">
+                    <div class="access-card-label">{{ t('wiki_s1_public_label') }}</div>
+                    <div class="access-card-url">http://&lt;serveur&gt;:8081</div>
+                </div>
+                <div class="access-card">
+                    <div class="access-card-label">{{ t('wiki_s1_screen_label') }}</div>
+                    <div class="access-card-url">http://&lt;serveur&gt;:8081?screen=nom</div>
+                </div>
+                <div class="access-card">
+                    <div class="access-card-label">{{ t('wiki_s1_admin_label') }}</div>
+                    <div class="access-card-url">http://&lt;serveur&gt;:8081/admin</div>
+                </div>
+            </div>
+            <p>{{ t('wiki_s1_hint') }}</p>
+        </section>
+
+        <!-- §2 Affichage public -->
+        <section class="wiki-section" id="s2">
+            <div class="wiki-section-header">
+                <div class="wiki-section-num">2</div>
+                <h2>{{ t('wiki_s2_title') }}</h2>
+            </div>
+            <ul>
+                <li>{{ t('wiki_s2_slideshow') }}</li>
+                <li>{{ t('wiki_s2_video') }}</li>
+                <li>{{ t('wiki_s2_ephemeris') }}</li>
+                <li>{{ t('wiki_s2_realtime') }}</li>
+            </ul>
+            <div class="wiki-callout">
+                <strong>{{ t('wiki_tip') }}</strong> {{ t('wiki_s2_kiosk') }}
+            </div>
+        </section>
+
+        <!-- §3 Connexion -->
+        <section class="wiki-section" id="s3">
+            <div class="wiki-section-header">
+                <div class="wiki-section-num">3</div>
+                <h2>{{ t('wiki_s3_title') }}</h2>
+            </div>
+            <ol class="wiki-steps">
+                <li>{{ t('wiki_s3_step1') }}</li>
+                <li>{{ t('wiki_s3_step2') }}</li>
+                <li>{{ t('wiki_s3_step3') }}</li>
+            </ol>
+            <p>{{ t('wiki_s3_dashboard') }}</p>
+            <p>{{ t('wiki_s3_logout') }}</p>
+        </section>
+
+        <!-- §4 Ajouter des médias -->
+        <section class="wiki-section" id="s4">
+            <div class="wiki-section-header">
+                <div class="wiki-section-num">4</div>
+                <h2>{{ t('wiki_s4_title') }}</h2>
+            </div>
+            <div class="wiki-callout">
+                <strong>{{ t('wiki_perm_required') }}</strong> <span class="perm-badge">upload</span>
+            </div>
+            <ol class="wiki-steps">
+                <li>{{ t('wiki_s4_step1') }}</li>
+                <li>{{ t('wiki_s4_step2') }}</li>
+                <li>{{ t('wiki_s4_step3') }}</li>
+            </ol>
+
+            <h3>{{ t('wiki_s4_formats_title') }}</h3>
+            <table class="wiki-table">
+                <thead><tr><th>{{ t('wiki_col_type') }}</th><th>{{ t('wiki_col_ext') }}</th></tr></thead>
+                <tbody>
+                    <tr><td>{{ t('wiki_type_image') }}</td><td><code>.jpg</code> <code>.jpeg</code> <code>.png</code></td></tr>
+                    <tr><td>{{ t('wiki_type_video') }}</td><td><code>.mp4</code> <code>.mov</code> <code>.avi</code> <code>.mkv</code> <code>.webm</code></td></tr>
+                    <tr><td>{{ t('wiki_type_doc') }}</td><td><code>.pdf</code></td></tr>
+                </tbody>
+            </table>
+
+            <h3>{{ t('wiki_s4_encode_title') }}</h3>
+            <p>{{ t('wiki_s4_encode_desc') }}</p>
+        </section>
+
+        <!-- §5 Médiathèque -->
+        <section class="wiki-section" id="s5">
+            <div class="wiki-section-header">
+                <div class="wiki-section-num">5</div>
+                <h2>{{ t('wiki_s5_title') }}</h2>
+            </div>
+            <div class="wiki-callout">
+                <strong>{{ t('wiki_perm_required') }}</strong>
+                <span class="perm-badge">toggle</span>
+                <span class="perm-badge">reorder</span>
+                <span class="perm-badge">duration</span>
+                <span class="perm-badge">delete</span>
+            </div>
+            <p>{{ t('wiki_s5_overview') }}</p>
+            <h3>{{ t('wiki_s5_actions_title') }}</h3>
+            <table class="wiki-table">
+                <thead><tr><th>{{ t('wiki_col_action') }}</th><th>{{ t('wiki_col_desc') }}</th></tr></thead>
+                <tbody>
+                    <tr><td><strong>{{ t('wiki_action_toggle') }}</strong></td><td>{{ t('wiki_action_toggle_desc') }}</td></tr>
+                    <tr><td><strong>{{ t('wiki_action_duration') }}</strong></td><td>{{ t('wiki_action_duration_desc') }}</td></tr>
+                    <tr><td><strong>{{ t('wiki_action_schedule') }}</strong></td><td>{{ t('wiki_action_schedule_desc') }}</td></tr>
+                    <tr><td><strong>{{ t('wiki_action_preview') }}</strong></td><td>{{ t('wiki_action_preview_desc') }}</td></tr>
+                    <tr><td><strong>{{ t('wiki_action_delete') }}</strong></td><td>{{ t('wiki_action_delete_desc') }}</td></tr>
+                </tbody>
+            </table>
+            <h3>{{ t('wiki_s5_reorder_title') }}</h3>
+            <p>{{ t('wiki_s5_reorder_desc') }}</p>
+            <h3>{{ t('wiki_s5_assign_title') }}</h3>
+            <p>{{ t('wiki_s5_assign_desc') }}</p>
+        </section>
+
+        <!-- §6 Planification -->
+        <section class="wiki-section" id="s6">
+            <div class="wiki-section-header">
+                <div class="wiki-section-num">6</div>
+                <h2>{{ t('wiki_s6_title') }}</h2>
+            </div>
+            <div class="wiki-callout">
+                <strong>{{ t('wiki_perm_required') }}</strong> <span class="perm-badge">schedule</span>
+            </div>
+            <p>{{ t('wiki_s6_desc') }}</p>
+            <ol class="wiki-steps">
+                <li>{{ t('wiki_s6_step1') }}</li>
+                <li>{{ t('wiki_s6_step2') }}</li>
+                <li>{{ t('wiki_s6_step3') }}</li>
+            </ol>
+            <table class="wiki-table">
+                <thead><tr><th>{{ t('wiki_col_field') }}</th><th>{{ t('wiki_col_format') }}</th><th>{{ t('wiki_col_example') }}</th></tr></thead>
+                <tbody>
+                    <tr><td>{{ t('wiki_s6_start_time') }}</td><td>HH:MM</td><td><code>11:00</code></td></tr>
+                    <tr><td>{{ t('wiki_s6_end_time') }}</td><td>HH:MM</td><td><code>13:30</code></td></tr>
+                    <tr><td>{{ t('wiki_s6_start_date') }}</td><td>AAAA-MM-JJ</td><td><code>2026-06-02</code></td></tr>
+                    <tr><td>{{ t('wiki_s6_end_date') }}</td><td>AAAA-MM-JJ</td><td><code>2026-06-15</code></td></tr>
+                </tbody>
+            </table>
+            <div class="wiki-callout warning">
+                <strong>{{ t('wiki_example') }}</strong> {{ t('wiki_s6_example') }}
+            </div>
+            <p>{{ t('wiki_s6_remove') }}</p>
+        </section>
+
+        <!-- §7 Plusieurs écrans -->
+        <section class="wiki-section" id="s7">
+            <div class="wiki-section-header">
+                <div class="wiki-section-num">7</div>
+                <h2>{{ t('wiki_s7_title') }}</h2>
+            </div>
+            <p>{{ t('wiki_s7_desc') }}</p>
+            <h3>{{ t('wiki_s7_create_title') }}</h3>
+            <div class="wiki-callout">
+                <strong>{{ t('wiki_right_required') }}</strong> {{ t('wiki_superadmin') }}
+            </div>
+            <ol class="wiki-steps">
+                <li>{{ t('wiki_s7_step1') }}</li>
+                <li>{{ t('wiki_s7_step2') }}</li>
+                <li>{{ t('wiki_s7_step3') }}</li>
+            </ol>
+            <p>{{ t('wiki_s7_reserved') }}</p>
+            <h3>{{ t('wiki_s7_access_title') }}</h3>
+            <ul>
+                <li>{{ t('wiki_s7_access_public') }}</li>
+                <li>{{ t('wiki_s7_access_admin') }}</li>
+            </ul>
+            <h3>{{ t('wiki_s7_rules_title') }}</h3>
+            <ul>
+                <li>{{ t('wiki_s7_rule1') }}</li>
+                <li>{{ t('wiki_s7_rule2') }}</li>
+                <li>{{ t('wiki_s7_rule3') }}</li>
+            </ul>
+        </section>
+
+        <!-- §8 Éphéméride -->
+        <section class="wiki-section" id="s8">
+            <div class="wiki-section-header">
+                <div class="wiki-section-num">8</div>
+                <h2>{{ t('wiki_s8_title') }}</h2>
+            </div>
+            <p>{{ t('wiki_s8_desc') }}</p>
+            <h3>{{ t('wiki_s8_content_title') }}</h3>
+            <ul>
+                <li>{{ t('wiki_s8_c1') }}</li>
+                <li>{{ t('wiki_s8_c2') }}</li>
+                <li>{{ t('wiki_s8_c3') }}</li>
+                <li>{{ t('wiki_s8_c4') }}</li>
+            </ul>
+            <h3>{{ t('wiki_s8_update_title') }}</h3>
+            <ul>
+                <li>{{ t('wiki_s8_update1') }}</li>
+                <li>{{ t('wiki_s8_update2') }}</li>
+            </ul>
+            <h3>{{ t('wiki_s8_countdown_title') }}</h3>
+            <div class="wiki-callout">
+                <strong>{{ t('wiki_perm_required') }}</strong> <span class="perm-badge">ephemeris</span>
+            </div>
+            <ol class="wiki-steps">
+                <li>{{ t('wiki_s8_step1') }}</li>
+                <li>{{ t('wiki_s8_step2') }}</li>
+                <li>{{ t('wiki_s8_step3') }}</li>
+            </ol>
+            <p>{{ t('wiki_s8_delete') }}</p>
+        </section>
+
+        <!-- §9 Paramètres -->
+        <section class="wiki-section" id="s9">
+            <div class="wiki-section-header">
+                <div class="wiki-section-num">9</div>
+                <h2>{{ t('wiki_s9_title') }}</h2>
+            </div>
+            <h3>{{ t('wiki_s9_theme_title') }}</h3>
+            <p>{{ t('wiki_s9_theme_desc') }}</p>
+            <ul>
+                <li>{{ t('wiki_s9_theme1') }}</li>
+                <li>{{ t('wiki_s9_theme2') }}</li>
+                <li>{{ t('wiki_s9_theme3') }}</li>
+            </ul>
+            <p>{{ t('wiki_s9_theme_personal') }}</p>
+            <h3>{{ t('wiki_s9_lang_title') }}</h3>
+            <p>{{ t('wiki_s9_lang_desc') }}</p>
+            <h3>{{ t('wiki_s9_pwd_title') }}</h3>
+            <ol class="wiki-steps">
+                <li>{{ t('wiki_s9_pwd_step1') }}</li>
+                <li>{{ t('wiki_s9_pwd_step2') }}</li>
+                <li>{{ t('wiki_s9_pwd_step3') }}</li>
+            </ol>
+        </section>
+
+        <!-- §10 Gestion utilisateurs -->
+        <section class="wiki-section" id="s10">
+            <div class="wiki-section-header">
+                <div class="wiki-section-num">10</div>
+                <h2>{{ t('wiki_s10_title') }}</h2>
+            </div>
+            <h3>{{ t('wiki_s10_create_title') }}</h3>
+            <ol class="wiki-steps">
+                <li>{{ t('wiki_s10_step1') }}</li>
+                <li>{{ t('wiki_s10_step2') }}</li>
+                <li>{{ t('wiki_s10_step3') }}</li>
+            </ol>
+            <div class="wiki-callout warning">{{ t('wiki_s10_noperm') }}</div>
+            <h3>{{ t('wiki_s10_perm_title') }}</h3>
+            <p>{{ t('wiki_s10_perm_desc') }}</p>
+            <h3>{{ t('wiki_s10_screens_title') }}</h3>
+            <ul>
+                <li>{{ t('wiki_s10_screen1') }}</li>
+                <li>{{ t('wiki_s10_screen2') }}</li>
+            </ul>
+            <h3>{{ t('wiki_s10_reset_title') }}</h3>
+            <p>{{ t('wiki_s10_reset_desc') }}</p>
+            <h3>{{ t('wiki_s10_delete_title') }}</h3>
+            <p>{{ t('wiki_s10_delete_desc') }}</p>
+        </section>
+
+        <!-- §11 File encodage -->
+        <section class="wiki-section" id="s11">
+            <div class="wiki-section-header">
+                <div class="wiki-section-num">11</div>
+                <h2>{{ t('wiki_s11_title') }}</h2>
+            </div>
+            <h3>{{ t('wiki_s11_window_title') }}</h3>
+            <p>{{ t('wiki_s11_window_desc') }}</p>
+            <h3>{{ t('wiki_s11_jobs_title') }}</h3>
+            <ul>
+                <li>{{ t('wiki_s11_jobs1') }}</li>
+                <li>{{ t('wiki_s11_jobs2') }}</li>
+            </ul>
+            <h3>{{ t('wiki_s11_force_title') }}</h3>
+            <ul>
+                <li>{{ t('wiki_s11_force1') }}</li>
+                <li>{{ t('wiki_s11_force2') }}</li>
+            </ul>
+            <h3>{{ t('wiki_s11_cancel_title') }}</h3>
+            <p>{{ t('wiki_s11_cancel_desc') }}</p>
+        </section>
+
+        <!-- §12 Permissions -->
+        <section class="wiki-section" id="s12">
+            <div class="wiki-section-header">
+                <div class="wiki-section-num">12</div>
+                <h2>{{ t('wiki_s12_title') }}</h2>
+            </div>
+            <table class="wiki-table">
+                <thead><tr><th>{{ t('wiki_col_perm') }}</th><th>{{ t('wiki_col_actions') }}</th></tr></thead>
+                <tbody>
+                    <tr><td><span class="perm-badge">upload</span></td><td>{{ t('wiki_perm_upload') }}</td></tr>
+                    <tr><td><span class="perm-badge">delete</span></td><td>{{ t('wiki_perm_delete') }}</td></tr>
+                    <tr><td><span class="perm-badge">reorder</span></td><td>{{ t('wiki_perm_reorder') }}</td></tr>
+                    <tr><td><span class="perm-badge">toggle</span></td><td>{{ t('wiki_perm_toggle') }}</td></tr>
+                    <tr><td><span class="perm-badge">duration</span></td><td>{{ t('wiki_perm_duration') }}</td></tr>
+                    <tr><td><span class="perm-badge">compress</span></td><td>{{ t('wiki_perm_compress') }}</td></tr>
+                    <tr><td><span class="perm-badge">logo</span></td><td>{{ t('wiki_perm_logo') }}</td></tr>
+                    <tr><td><span class="perm-badge">ephemeris</span></td><td>{{ t('wiki_perm_ephemeris') }}</td></tr>
+                    <tr><td><span class="perm-badge">schedule</span></td><td>{{ t('wiki_perm_schedule') }}</td></tr>
+                </tbody>
+            </table>
+            <div class="wiki-callout">{{ t('wiki_s12_superadmin') }}</div>
+        </section>
+
+        <!-- Navigation prev/next -->
+        <div class="wiki-nav">
+            <button class="wiki-nav-btn hidden" id="wiki-prev">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+                <span id="wiki-prev-label"></span>
+            </button>
+            <button class="wiki-nav-btn hidden" id="wiki-next">
+                <span id="wiki-next-label"></span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+        </div>
+
+    </div><!-- .wiki-body -->
+</div><!-- .wiki-wrap -->
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    const tocLinks = Array.from(document.querySelectorAll('.wiki-toc a[data-section]'));
+    const sections = Array.from(document.querySelectorAll('.wiki-section'));
+    const ids      = sections.map(s => s.id);
+    const prevBtn  = document.getElementById('wiki-prev');
+    const nextBtn  = document.getElementById('wiki-next');
+    const prevLbl  = document.getElementById('wiki-prev-label');
+    const nextLbl  = document.getElementById('wiki-next-label');
+
+    function labelFor(idx) {
+        const link = tocLinks[idx];
+        return link ? link.textContent.trim() : '';
+    }
+
+    function showSection(id) {
+        sections.forEach(s => s.classList.remove('active'));
+        tocLinks.forEach(a => a.classList.remove('active'));
+
+        const target = document.getElementById(id);
+        if (target) target.classList.add('active');
+
+        const activeLink = document.querySelector('.wiki-toc a[data-section="' + id + '"]');
+        if (activeLink) activeLink.classList.add('active');
+
+        const idx = ids.indexOf(id);
+
+        if (idx <= 0) {
+            prevBtn.classList.add('hidden');
+        } else {
+            prevBtn.classList.remove('hidden');
+            prevLbl.textContent = labelFor(idx - 1);
+            prevBtn.onclick = () => showSection(ids[idx - 1]);
+        }
+
+        if (idx >= ids.length - 1) {
+            nextBtn.classList.add('hidden');
+        } else {
+            nextBtn.classList.remove('hidden');
+            nextLbl.textContent = labelFor(idx + 1);
+            nextBtn.onclick = () => showSection(ids[idx + 1]);
+        }
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        history.replaceState(null, '', '#' + id);
+    }
+
+    tocLinks.forEach(a => {
+        a.addEventListener('click', e => {
+            e.preventDefault();
+            showSection(a.dataset.section);
+        });
+    });
+
+    const initial = location.hash.replace('#', '') || 's1';
+    showSection(ids.includes(initial) ? initial : 's1');
+})();
+</script>
+{% endblock %}

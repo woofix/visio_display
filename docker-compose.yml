@@ -13,9 +13,9 @@ services:
       - REDIS_URL=redis://redis:6379
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - /srv/7To/Docker/visio/data:/app/static/data
+      - .data:/app/static/data
     ports:
-      - "801:8080"
+      - "8081:8080"
     restart: always
     depends_on:
       - redis
@@ -31,7 +31,7 @@ services:
     environment:
       - REDIS_URL=redis://redis:6379
     volumes:
-      - /srv/7To/Docker/visio/data:/app/static/data
+      - .data:/app/static/data
     command: rq worker --url redis://redis:6379 ramses:upload ramses:compress
     restart: always
     depends_on:

@@ -1,3 +1,4 @@
+import contextlib
 import math
 import os
 from datetime import date, datetime, timezone, timedelta
@@ -241,10 +242,8 @@ def generate_ephemeride_image(force=False):
 
     for f in os.listdir(UPLOAD_FOLDER):
         if f.startswith("ephemeride_") and f != filename:
-            try:
+            with contextlib.suppress(OSError):
                 os.remove(os.path.join(UPLOAD_FOLDER, f))
-            except Exception:
-                pass
 
     if os.path.exists(path) and not force:
         return
@@ -387,4 +386,11 @@ def generate_ephemeride_image(force=False):
                 draw.text((cx, y_num), j_text,       fill=(255, 220, 100), font=font_cd_num, anchor="mm")
                 draw.text((cx, y_lbl), label.upper(), fill=(210, 190, 255), font=font_cd_lbl, anchor="mm")
 
-    img.save(path, "JPEG", quality=95)
+    tmp_path = f"{path}.{os.getpid()}.tmp"
+    try:
+        img.save(tmp_path, "JPEG", quality=95)
+        os.replace(tmp_path, path)
+    except Exception:
+        with contextlib.suppress(OSError):
+            os.unlink(tmp_path)
+        raise

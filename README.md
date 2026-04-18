@@ -39,7 +39,7 @@ Application web légère de signalétique numérique conçue pour tourner sur Ra
 - Animation d'upload professionnelle : spinner rotatif, pourcentage en temps réel et overlay animé pendant l'envoi
 - Validation des formats à la sélection : bannière d'erreur listant les fichiers refusés (extension non supportée) avec rappel des formats acceptés
 - Activation / désactivation des médias sans suppression
-- Réorganisation par bouton (vues grille et liste)
+- Réorganisation par glisser-déposer (vues grille et liste) — désactivée automatiquement lors d'une recherche ou d'un filtre actif
 - Durée d'affichage personnalisée par média
 - Programmation horaire et/ou par dates par média
 - Assignation des médias aux écrans nommés par bouton — l'item devient immédiatement actif sur l'écran cible
@@ -49,7 +49,11 @@ Application web légère de signalétique numérique conçue pour tourner sur Ra
 - Visionneuse plein écran au clic
 - Nom de l'application personnalisable
 - Choix de la langue de l'interface (français / anglais)
-- Choix du thème de l'interface : Violet, Noir, Bleu
+- Choix du thème de l'interface : Violet, Sombre, Bleu
+
+**Wiki intégré**
+- Page d'aide accessible depuis l'interface d'administration (`/admin/wiki`)
+- Documentation interactive couvrant toutes les fonctionnalités, disponible sans quitter l'application
 
 **Sécurité & accès**
 - Contrôle d'accès à deux niveaux : super-admin et utilisateurs limités
@@ -91,12 +95,22 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 
 > Ces variables ne sont lues qu'une seule fois, lors du premier démarrage (base de données absente).
 
-**Coordonnées GPS et résolution** — modifier dans `web/app.py` :
+**Localisation météo** — configurable depuis l'interface (`/admin/settings?tab=meteo`, super-admin) :
 
-| Variable           | Description                                            | Valeur par défaut |
-|--------------------|--------------------------------------------------------|-------------------|
-| `LAT` / `LNG`      | Coordonnées GPS pour météo et lever/coucher du soleil  | Perpignan         |
-| `MAX_WIDTH/HEIGHT` | Dimensions maximales des images                        | 1920 × 1080       |
+| Champ        | Description                                            | Valeur par défaut |
+|--------------|--------------------------------------------------------|-------------------|
+| Ville        | Nom affiché sur la carte éphéméride                    | Perpignan         |
+| Latitude     | Coordonnée GPS pour météo et lever/coucher du soleil   | 42.6977           |
+| Longitude    | Coordonnée GPS pour météo et lever/coucher du soleil   | 2.8956            |
+| Fuseau horaire | Fuseau IANA (ex. `Europe/Paris`)                     | Europe/Paris      |
+
+La modification regenere automatiquement la carte éphéméride.
+
+**Résolution des images** — modifier dans `web/constants.py` :
+
+| Variable           | Description                     | Valeur par défaut |
+|--------------------|---------------------------------|-------------------|
+| `MAX_WIDTH/HEIGHT` | Dimensions maximales des images | 1920 × 1080       |
 
 ### Utilisation
 
@@ -196,11 +210,13 @@ Visio-Display/
     │   ├── media.py             # Médiathèque
     │   ├── queue.py             # File d'encodage
     │   ├── screens.py           # Gestion des écrans
-    │   ├── settings.py          # Paramètres (thème, langue, logo)
-    │   └── users.py             # Gestion des utilisateurs
+    │   ├── settings.py          # Paramètres (thème, langue, logo, météo)
+    │   ├── users.py             # Gestion des utilisateurs
+    │   └── wiki.py              # Page d'aide intégrée
     ├── services/                # Logique métier
     │   ├── config_svc.py        # Configuration applicative (lecture/écriture)
     │   ├── ephemeris_svc.py     # Génération de la carte éphéméride
+    │   ├── i18n.py              # Internationalisation (flash messages, traductions)
     │   ├── media_svc.py         # Opérations sur les fichiers médias
     │   ├── queue_svc.py         # File d'encodage + tâches RQ
     │   └── users_svc.py         # CRUD utilisateurs + permissions
@@ -215,8 +231,9 @@ Visio-Display/
         ├── admin_media.html     # Médiathèque + réorganisation + écrans
         ├── admin_upload.html    # Import de médias + suivi d'encodage
         ├── admin_queue.html     # File d'encodage + progression
-        ├── admin_settings.html  # Logo, thème, langue, mot de passe, événements
-        └── admin_superadmin.html # Gestion des comptes, permissions et écrans
+        ├── admin_settings.html  # Logo, thème, langue, mot de passe, événements, météo
+        ├── admin_superadmin.html # Gestion des comptes, permissions et écrans
+        └── admin_wiki.html      # Page d'aide intégrée
 ```
 
 > `web/static/data/` est exclu du contrôle de version.
@@ -245,6 +262,7 @@ Visio-Display/
 | `/admin/settings/theme`                   | POST    | Connecté           | Changer le thème de l'interface                      |
 | `/admin/settings/language`                | POST    | Connecté           | Changer la langue de l'interface (fr/en)             |
 | `/admin/settings/appname`                 | POST    | Super-admin        | Personnaliser le nom de l'application                |
+| `/admin/settings/meteo`                   | POST    | Super-admin        | Configurer la localisation météo (ville, GPS, fuseau) |
 | `/admin/logo/upload`                      | POST    | `logo`             | Uploader un logo personnalisé                        |
 | `/admin/logo/reset`                       | POST    | `logo`             | Réinitialiser le logo par défaut                     |
 | `/admin/users/add`                        | POST    | Super-admin        | Créer un compte utilisateur                          |
@@ -384,7 +402,7 @@ A lightweight web-based digital signage application designed to run on a Raspber
 - Professional upload animation: rotating spinner, real-time percentage counter and animated overlay during transfer
 - Format validation on file selection: error banner listing rejected files (unsupported extension) with a reminder of accepted formats
 - Enable / disable media without deleting it
-- Button-based reordering (grid and list views)
+- Drag-and-drop reordering (grid and list views) — automatically disabled when a search or filter is active
 - Custom display duration per media item
 - Time and/or date scheduling per media item
 - Media assignment to named screens via button — item is immediately active on the target screen
@@ -394,7 +412,11 @@ A lightweight web-based digital signage application designed to run on a Raspber
 - Fullscreen media viewer on click
 - Customizable application name
 - UI language selection (French / English)
-- UI theme selection: Violet, Black, Blue
+- UI theme selection: Violet, Dark, Blue
+
+**Built-in wiki**
+- Help page accessible from the admin interface (`/admin/wiki`)
+- Interactive documentation covering all features, available without leaving the application
 
 **Security & access**
 - Two-level access control: super-admin and limited users
@@ -436,12 +458,22 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 
 > These variables are only read once, on first boot (when the database does not yet exist).
 
-**GPS coordinates and resolution** — edit in `web/app.py`:
+**Weather location** — configurable from the UI (`/admin/settings?tab=meteo`, super-admin only):
 
-| Variable           | Description                                   | Default         |
-|--------------------|-----------------------------------------------|-----------------|
-| `LAT` / `LNG`      | GPS coordinates for weather and sun times     | Perpignan, FR   |
-| `MAX_WIDTH/HEIGHT` | Maximum image dimensions                      | 1920 × 1080     |
+| Field        | Description                                   | Default         |
+|--------------|-----------------------------------------------|-----------------|
+| City         | Name displayed on the ephemeris card          | Perpignan       |
+| Latitude     | GPS latitude for weather and sun times        | 42.6977         |
+| Longitude    | GPS longitude for weather and sun times       | 2.8956          |
+| Timezone     | IANA timezone string (e.g. `Europe/Paris`)    | Europe/Paris    |
+
+Saving regenerates the ephemeris card automatically.
+
+**Image resolution** — edit in `web/constants.py`:
+
+| Variable           | Description               | Default     |
+|--------------------|---------------------------|-------------|
+| `MAX_WIDTH/HEIGHT` | Maximum image dimensions  | 1920 × 1080 |
 
 ### Usage
 
@@ -541,11 +573,13 @@ Visio-Display/
     │   ├── media.py             # Media library
     │   ├── queue.py             # Encoding queue
     │   ├── screens.py           # Screen management
-    │   ├── settings.py          # Settings (theme, language, logo)
-    │   └── users.py             # User management
+    │   ├── settings.py          # Settings (theme, language, logo, weather location)
+    │   ├── users.py             # User management
+    │   └── wiki.py              # Built-in help page
     ├── services/                # Business logic
     │   ├── config_svc.py        # App config (read/write)
     │   ├── ephemeris_svc.py     # Ephemeris card generation
+    │   ├── i18n.py              # Internationalisation (flash messages, translations)
     │   ├── media_svc.py         # Media file operations
     │   ├── queue_svc.py         # Encoding queue + RQ tasks
     │   └── users_svc.py         # User CRUD + permissions
@@ -560,8 +594,9 @@ Visio-Display/
         ├── admin_media.html     # Media library + reordering + screens
         ├── admin_upload.html    # Media import + encoding progress
         ├── admin_queue.html     # Encoding queue + progress bars
-        ├── admin_settings.html  # Logo, theme, language, password, events
-        └── admin_superadmin.html # Account, permission and screen management
+        ├── admin_settings.html  # Logo, theme, language, password, events, weather
+        ├── admin_superadmin.html # Account, permission and screen management
+        └── admin_wiki.html      # Built-in help page
 ```
 
 > `web/static/data/` is excluded from version control.
@@ -590,6 +625,7 @@ Visio-Display/
 | `/admin/settings/theme`                   | POST    | Logged in          | Change the UI theme                                     |
 | `/admin/settings/language`                | POST    | Logged in          | Change the UI language (fr/en)                          |
 | `/admin/settings/appname`                 | POST    | Super-admin        | Set the application name                                |
+| `/admin/settings/meteo`                   | POST    | Super-admin        | Configure weather location (city, GPS, timezone)        |
 | `/admin/logo/upload`                      | POST    | `logo`             | Upload a custom logo                                    |
 | `/admin/logo/reset`                       | POST    | `logo`             | Reset to default logo                                   |
 | `/admin/users/add`                        | POST    | Super-admin        | Create a user account                                   |

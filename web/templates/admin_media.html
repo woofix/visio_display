@@ -95,6 +95,12 @@
 .screen-add-form input:focus { border-color:var(--primary); }
 .screen-add-form input::placeholder { color:var(--text-3); }
 
+/* Drag & drop reorder */
+.file-card[draggable="true"] { cursor:grab; }
+.file-card[draggable="true"]:active { cursor:grabbing; }
+.file-card.dragging { opacity:.3; box-shadow:none; transform:none; }
+.file-card.drag-over { outline:2px dashed var(--primary); outline-offset:3px; }
+
 /* Unassigned section */
 .unassigned-sep { display:flex;align-items:center;gap:10px;margin:22px 0 12px; }
 .unassigned-sep-line { flex:1;height:1px;background:var(--border); }
@@ -108,6 +114,15 @@
 .badge-scheduled { position:absolute;top:8px;right:8px;background:var(--primary);color:#fff;font-size:.59rem;padding:2px 7px;border-radius:10px;font-weight:700;letter-spacing:.04em;display:none; }
 .file-card.scheduled .badge-scheduled { display:block; }
 .file-card.disabled .badge-scheduled  { top:52px; }
+
+/* Screen preview modal */
+.screen-preview-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2000;align-items:center;justify-content:center; }
+.screen-preview-overlay.open { display:flex; }
+.screen-preview-box { position:relative;width:90vw;max-width:1200px;aspect-ratio:16/9;background:#000;border-radius:10px;overflow:hidden;box-shadow:0 0 0 2px rgba(138,43,226,.6),0 8px 48px rgba(0,0,0,.7); }
+.screen-preview-box iframe { width:100%;height:100%;border:none;display:block; }
+.screen-preview-close { position:absolute;top:10px;right:12px;background:rgba(0,0,0,.55);border:none;border-radius:8px;padding:5px 11px;font-size:1rem;cursor:pointer;color:#fff;line-height:1;z-index:10;transition:background .15s; }
+.screen-preview-close:hover { background:rgba(0,0,0,.8); }
+.screen-preview-label { position:absolute;bottom:10px;left:14px;color:rgba(255,255,255,.5);font-size:.72rem;z-index:10;pointer-events:none; }
 
 /* Modal */
 .modal-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:center;justify-content:center; }
@@ -141,8 +156,20 @@
     <span class="screen-bar-label">{{ t('media_screen_label') }}</span>
     <div class="screen-tabs">
         <a href="/admin/media" class="screen-tab {% if not current_screen %}active{% endif %}">{{ t('media_screen_default') }}</a>
+        {% if not current_screen %}
+        <button class="screen-tab" id="btn-preview-screen" title="Prévisualiser l'écran par défaut" style="display:flex;align-items:center;gap:5px">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            Prévisualiser
+        </button>
+        {% endif %}
         {% for s in screens %}
         <a href="/admin/media?screen={{ s }}" class="screen-tab {% if current_screen == s %}active{% endif %}">{{ s }}</a>
+        {% if current_screen == s %}
+        <button class="screen-tab" id="btn-preview-screen" title="Prévisualiser l'écran « {{ s }} »" style="display:flex;align-items:center;gap:5px">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            Prévisualiser
+        </button>
+        {% endif %}
         {% if current_screen == s and current_user_is_superadmin %}
         <form method="post" action="/admin/screens/delete/{{ s }}" style="display:inline"
               onsubmit="return confirm(SCREEN_DELETE_CONFIRM.replace('{name}', '{{ s }}'))">
@@ -293,6 +320,15 @@
     <p>{{ t('no_results') }}</p>
 </div>
 
+<!-- Screen preview modal -->
+<div class="screen-preview-overlay" id="screen-preview-overlay">
+    <div class="screen-preview-box">
+        <button class="screen-preview-close" id="screen-preview-close-btn" title="Fermer">✕</button>
+        <iframe id="screen-preview-iframe" src="" allowfullscreen></iframe>
+        <span class="screen-preview-label">{{ current_screen or t('media_screen_default') }}</span>
+    </div>
+</div>
+
 <!-- Schedule modal -->
 <div class="modal-overlay" id="schedule-modal">
     <div class="modal-box">
@@ -359,6 +395,29 @@ const JS_SCREEN_REMOVED       = {{ t('js_screen_removed') | tojson }};
 const JS_SCREEN_REMOVE_CONFIRM = {{ t('js_remove_from_screen_confirm') | tojson }};
 const JS_ADD_TO_SCREEN        = {{ t('media_add_to_screen') | tojson }};
 const SCREEN_DELETE_CONFIRM   = {{ t('media_screen_delete_confirm') | tojson }};
+
+/* ── Screen preview modal ── */
+(function() {
+    const btn = document.getElementById('btn-preview-screen');
+    if (!btn) return;
+    const overlay = document.getElementById('screen-preview-overlay');
+    const iframe  = document.getElementById('screen-preview-iframe');
+    const closeBtn = document.getElementById('screen-preview-close-btn');
+
+    function open() {
+        iframe.src = CURRENT_SCREEN ? '/?screen=' + encodeURIComponent(CURRENT_SCREEN) : '/';
+        overlay.classList.add('open');
+    }
+    function close() {
+        overlay.classList.remove('open');
+        iframe.src = '';
+    }
+
+    btn.addEventListener('click', open);
+    closeBtn.addEventListener('click', close);
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+})();
 
 /* ── Sort active on top, disabled at bottom ── */
 function sortMediaCards() {
@@ -673,5 +732,87 @@ document.querySelectorAll('.btn-remove-from-screen').forEach(btn => {
         }
     });
 });
+
+/* ── Drag & drop reorder ── */
+(function() {
+    const grid = document.getElementById('file-grid');
+    let dragSrc = null;
+
+    function isDragEnabled() {
+        const q = document.getElementById('media-search').value.trim();
+        const f = document.getElementById('media-filter').value;
+        return !q && f === 'all';
+    }
+
+    function updateDraggable() {
+        const enabled = isDragEnabled();
+        grid.querySelectorAll('.file-card').forEach(card => {
+            card.draggable = enabled;
+        });
+        grid.querySelectorAll('.thumb, .thumb-video').forEach(el => {
+            el.draggable = false;
+        });
+    }
+
+    grid.addEventListener('dragstart', e => {
+        if (e.target.matches('.thumb, .thumb-video')) {
+            e.preventDefault();
+            return;
+        }
+        const card = e.target.closest('.file-card');
+        if (!card) return;
+        dragSrc = card;
+        card.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+    });
+
+    grid.addEventListener('dragend', () => {
+        if (dragSrc) dragSrc.classList.remove('dragging');
+        grid.querySelectorAll('.file-card.drag-over').forEach(c => c.classList.remove('drag-over'));
+        dragSrc = null;
+    });
+
+    grid.addEventListener('dragover', e => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        const card = e.target.closest('.file-card');
+        grid.querySelectorAll('.file-card.drag-over').forEach(c => c.classList.remove('drag-over'));
+        if (card && card !== dragSrc) card.classList.add('drag-over');
+    });
+
+    grid.addEventListener('dragleave', e => {
+        if (!grid.contains(e.relatedTarget))
+            grid.querySelectorAll('.file-card.drag-over').forEach(c => c.classList.remove('drag-over'));
+    });
+
+    grid.addEventListener('drop', e => {
+        e.preventDefault();
+        const target = e.target.closest('.file-card');
+        if (!target || target === dragSrc) return;
+        target.classList.remove('drag-over');
+
+        const rect = target.getBoundingClientRect();
+        const isListView = grid.classList.contains('list-view');
+        const insertBefore = isListView
+            ? e.clientY < rect.top + rect.height / 2
+            : e.clientX < rect.left + rect.width / 2;
+
+        grid.insertBefore(dragSrc, insertBefore ? target : target.nextSibling);
+        saveOrder();
+    });
+
+    async function saveOrder() {
+        const order = [...grid.querySelectorAll('.file-card[data-file]')].map(c => c.dataset.file);
+        await fetch('/reorder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order, screen: CURRENT_SCREEN })
+        });
+    }
+
+    document.getElementById('media-search').addEventListener('input', updateDraggable);
+    document.getElementById('media-filter').addEventListener('change', updateDraggable);
+    updateDraggable();
+})();
 </script>
 {% endblock %}

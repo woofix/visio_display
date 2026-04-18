@@ -34,6 +34,16 @@ Application web légère de signalétique numérique conçue pour tourner sur Ra
 - Les médias de la médiathèque principale sont assignés à un ou plusieurs écrans
 - Le diaporama s'adapte automatiquement selon le paramètre `?screen=<nom>` dans l'URL
 
+**Groupes de médias**
+- Taguer les médias avec un ou plusieurs groupes libres (ex. `menu`, `infos`, `urgences`)
+- Activer ou désactiver tous les médias d'un groupe d'un seul clic depuis la médiathèque
+- Les groupes sont indépendants par écran (désactivation individuelle ou par groupe)
+
+**Alerte prioritaire**
+- Diffusion instantanée d'un message en bannière sur l'écran d'affichage (super-admin uniquement)
+- Publication automatique à chaque frappe, sans rechargement ni interruption du diaporama
+- Effacement en un clic — visible sur tous les écrans simultanément
+
 **Interface d'administration**
 - Importation par glisser-déposer avec barre de progression animée (shimmer) et prévisualisation
 - Animation d'upload professionnelle : spinner rotatif, pourcentage en temps réel et overlay animé pendant l'envoi
@@ -103,8 +113,9 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 | Latitude     | Coordonnée GPS pour météo et lever/coucher du soleil   | 42.6977           |
 | Longitude    | Coordonnée GPS pour météo et lever/coucher du soleil   | 2.8956            |
 | Fuseau horaire | Fuseau IANA (ex. `Europe/Paris`)                     | Europe/Paris      |
+| Zone scolaire | Zone de l'Éducation nationale (`A`, `B`, `C`) — détection automatique si non renseignée | auto |
 
-La modification regenere automatiquement la carte éphéméride.
+La modification régénère automatiquement la carte éphéméride.
 
 **Résolution des images** — modifier dans `web/constants.py` :
 
@@ -246,12 +257,15 @@ Visio-Display/
 | `/api/durations`                          | GET     | Non                | Durées d'affichage par fichier (`?screen=<nom>`)     |
 | `/api/config`                             | GET     | Non                | Configuration complète                               |
 | `/api/diskusage`                          | GET     | Non                | Statistiques disque                                  |
+| `/api/priority-alert`                     | GET     | Non                | Message d'alerte prioritaire en cours                |
 | `/api/queue`                              | GET     | Connecté           | État de la file d'encodage (compression + upload)    |
 | `/upload`                                 | POST    | `upload`           | Importer des fichiers (retourne JSON + jobs d'encodage) |
 | `/delete/<filename>`                      | POST    | `delete`           | Supprimer un fichier                                 |
 | `/toggle/<filename>`                      | POST    | `toggle`           | Activer / désactiver un fichier                      |
 | `/set_duration/<filename>`                | POST    | `duration`         | Définir la durée d'affichage                         |
 | `/reorder`                                | POST    | `reorder`          | Enregistrer le nouvel ordre                          |
+| `/set_groups/<filename>`                  | POST    | `toggle`           | Définir les groupes/tags d'un média                  |
+| `/toggle_group/<group_name>`              | POST    | `toggle`           | Activer / désactiver tous les médias d'un groupe     |
 | `/compress/<filename>`                    | POST    | `compress`         | Mettre une vidéo en file de compression              |
 | `/queue/cancel/<job_id>`                  | POST    | `compress`         | Annuler un job en attente                            |
 | `/regen_ephemeride`                       | POST    | `ephemeris`        | Forcer la régénération de l'éphéméride               |
@@ -275,6 +289,7 @@ Visio-Display/
 | `/admin/events/delete/<idx>`              | POST    | `ephemeris`        | Supprimer un compte à rebours                        |
 | `/admin/queue/force`                      | POST    | Super-admin        | Forcer l'encodage de toute la file immédiatement     |
 | `/admin/compress/<filename>/force`        | POST    | Super-admin        | Forcer l'encodage d'un seul fichier immédiatement    |
+| `/admin/priority-alert`                   | POST    | Super-admin        | Publier ou effacer l'alerte prioritaire              |
 
 #### Réponse de `/api/queue`
 
@@ -308,6 +323,33 @@ Visio-Display/
 ```
 
 Les quatre champs (`time_start`, `time_end`, `date_start`, `date_end`) sont tous optionnels et combinables. Un média sans entrée dans `schedules` s'affiche toujours.
+
+**Groupes (`groups`)**
+
+```json
+{
+  "groups": {
+    "cantine.jpg": ["menu"],
+    "annonce.jpg": ["infos", "urgences"]
+  },
+  "disabled_groups": ["urgences"]
+}
+```
+
+Chaque média peut appartenir à zéro, un ou plusieurs groupes. `disabled_groups` liste les groupes dont tous les médias sont masqués.
+
+**Alerte prioritaire (`priority_alert`)**
+
+```json
+{
+  "priority_alert": {
+    "message": "Réunion déplacée en salle polyvalente à 14 h.",
+    "updated_at": "2026-04-18T14:00:00+00:00"
+  }
+}
+```
+
+`message` vide ou absent = aucune bannière affichée.
 
 **Événements (`events`)**
 
@@ -397,6 +439,16 @@ A lightweight web-based digital signage application designed to run on a Raspber
 - Media from the main library can be assigned to one or more screens
 - The slideshow automatically adapts based on the `?screen=<name>` URL parameter
 
+**Media groups**
+- Tag media items with one or more free-form groups (e.g. `menu`, `news`, `alerts`)
+- Enable or disable all media in a group with a single click from the media library
+- Groups are independent per screen (individual or group-level disabling)
+
+**Priority alert**
+- Instantly broadcast a message as a banner on the display screen (super-admin only)
+- Auto-published on each keystroke, no reload or slideshow interruption
+- Clear with one click — visible on all screens simultaneously
+
 **Admin interface**
 - Drag-and-drop file import with animated (shimmer) progress bar and preview
 - Professional upload animation: rotating spinner, real-time percentage counter and animated overlay during transfer
@@ -466,6 +518,7 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 | Latitude     | GPS latitude for weather and sun times        | 42.6977         |
 | Longitude    | GPS longitude for weather and sun times       | 2.8956          |
 | Timezone     | IANA timezone string (e.g. `Europe/Paris`)    | Europe/Paris    |
+| School zone  | French education zone (`A`, `B`, `C`) — auto-detected if left blank | auto |
 
 Saving regenerates the ephemeris card automatically.
 
@@ -609,12 +662,15 @@ Visio-Display/
 | `/api/durations`                          | GET     | No                 | Per-file display durations (`?screen=<name>`)           |
 | `/api/config`                             | GET     | No                 | Full configuration                                      |
 | `/api/diskusage`                          | GET     | No                 | Disk usage stats                                        |
+| `/api/priority-alert`                     | GET     | No                 | Current priority alert message                          |
 | `/api/queue`                              | GET     | Logged in          | Encoding queue state (compression + upload jobs)        |
 | `/upload`                                 | POST    | `upload`           | Upload files (returns JSON with encoding job list)      |
 | `/delete/<filename>`                      | POST    | `delete`           | Delete a file                                           |
 | `/toggle/<filename>`                      | POST    | `toggle`           | Enable / disable a file                                 |
 | `/set_duration/<filename>`                | POST    | `duration`         | Set display duration                                    |
 | `/reorder`                                | POST    | `reorder`          | Save new media order                                    |
+| `/set_groups/<filename>`                  | POST    | `toggle`           | Set groups/tags for a media item                        |
+| `/toggle_group/<group_name>`              | POST    | `toggle`           | Enable / disable all media in a group                   |
 | `/compress/<filename>`                    | POST    | `compress`         | Queue a video for compression                           |
 | `/queue/cancel/<job_id>`                  | POST    | `compress`         | Cancel a pending compression job                        |
 | `/regen_ephemeride`                       | POST    | `ephemeris`        | Force ephemeris card regeneration                       |
@@ -638,6 +694,7 @@ Visio-Display/
 | `/admin/events/delete/<idx>`              | POST    | `ephemeris`        | Delete a countdown event                                |
 | `/admin/queue/force`                      | POST    | Super-admin        | Force-process all pending encoding jobs immediately     |
 | `/admin/compress/<filename>/force`        | POST    | Super-admin        | Force-encode a single file immediately                  |
+| `/admin/priority-alert`                   | POST    | Super-admin        | Publish or clear the priority alert banner              |
 
 #### `/api/queue` response
 
@@ -671,6 +728,33 @@ Visio-Display/
 ```
 
 All four fields (`time_start`, `time_end`, `date_start`, `date_end`) are optional and combinable. A media item with no entry in `schedules` is always displayed.
+
+**Groups (`groups`)**
+
+```json
+{
+  "groups": {
+    "canteen.jpg": ["menu"],
+    "notice.jpg": ["news", "alerts"]
+  },
+  "disabled_groups": ["alerts"]
+}
+```
+
+Each media item can belong to zero, one or several groups. `disabled_groups` lists groups whose media are all hidden.
+
+**Priority alert (`priority_alert`)**
+
+```json
+{
+  "priority_alert": {
+    "message": "Meeting moved to the main hall at 2 PM.",
+    "updated_at": "2026-04-18T14:00:00+00:00"
+  }
+}
+```
+
+An empty or absent `message` means no banner is displayed.
 
 **Events (`events`)**
 

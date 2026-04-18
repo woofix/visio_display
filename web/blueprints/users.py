@@ -1,9 +1,10 @@
 from flask import Blueprint, request, redirect, url_for, session, render_template, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime, UTC
 
 from constants import ALL_PERMISSIONS
 from services.users_svc import load_users, save_users, is_admin
-from services.config_svc import load_config
+from services.config_svc import load_config, save_config
 from services.media_svc import get_logo_path
 from services.i18n import _flash, _t
 from blueprints.guards import superadmin_guard
@@ -21,6 +22,7 @@ def admin_superadmin_page():
         users=users,
         all_permissions=[(k, _t(lbl_key)) for k, lbl_key in ALL_PERMISSIONS],
         all_screens=list(cfg.get('screens', {}).keys()),
+        priority_alert=cfg.get('priority_alert', {}),
         current_user=session.get('user'),
         logo_path=get_logo_path())
 
@@ -145,3 +147,25 @@ def set_user_screens(username):
     save_users(users)
     _flash('flash_screens_updated', 'success', username=username)
     return redirect(url_for('users.admin_superadmin_page'))
+
+
+@bp.route('/admin/priority-alert', methods=['POST'])
+def set_priority_alert():
+    g = superadmin_guard()
+    if g: return g
+
+    message = request.form.get('message', '')
+    message = ' '.join(message.split())[:280]
+
+    cfg = load_config()
+    cfg['priority_alert'] = {
+        'message': message,
+        'updated_at': datetime.now(UTC).isoformat(timespec='seconds'),
+    }
+    save_config(cfg)
+
+    return jsonify({
+        'ok': True,
+        'message': message,
+        'updated_at': cfg['priority_alert']['updated_at'],
+    })

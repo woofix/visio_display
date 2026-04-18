@@ -50,9 +50,51 @@
                 0 0 60px 30px rgba(138, 43, 226, 0.3);
             border-radius: 6px;
         }
+
+        .priority-alert {
+            position: fixed;
+            top: 22px;
+            left: 50%;
+            transform: translate(-50%, -18px);
+            width: min(92vw, 1520px);
+            padding: 18px 24px;
+            border-radius: 18px;
+            background: linear-gradient(135deg, rgba(127, 29, 29, .96), rgba(220, 38, 38, .94));
+            color: #fff;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, .45);
+            border: 1px solid rgba(255, 255, 255, .16);
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .25s ease, transform .25s ease;
+        }
+
+        .priority-alert.visible {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+
+        .priority-alert-label {
+            font: 700 1rem/1.1 system-ui, sans-serif;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+            opacity: .82;
+            margin-bottom: 8px;
+        }
+
+        .priority-alert-message {
+            font: 700 clamp(1.4rem, 2vw, 2.45rem)/1.2 system-ui, sans-serif;
+            white-space: pre-wrap;
+            word-break: break-word;
+            text-wrap: balance;
+        }
     </style>
 </head>
 <body>
+<div id="priority-alert" class="priority-alert" aria-live="polite" aria-atomic="true">
+    <div class="priority-alert-label">Alerte prioritaire</div>
+    <div id="priority-alert-message" class="priority-alert-message"></div>
+</div>
 <script>
     const DEFAULT_DURATION = 15000;
     const FADE_DURATION    = 1500;
@@ -64,6 +106,11 @@
     let currentIndex = 0;
     let currentSlide = null;
     let timer        = null;
+    let alertMessage = '';
+    let alertPoller  = null;
+
+    const alertBox = document.getElementById('priority-alert');
+    const alertText = document.getElementById('priority-alert-message');
 
     async function fetchMedia() {
         try {
@@ -84,6 +131,40 @@
         } catch (e) {
             return {};
         }
+    }
+
+    async function fetchPriorityAlert() {
+        try {
+            const res = await fetch('/api/priority-alert', { cache: 'no-store' });
+            if (!res.ok) return alertMessage;
+            const data = await res.json();
+            return (data.message || '').trim();
+        } catch (e) {
+            return alertMessage;
+        }
+    }
+
+    function renderPriorityAlert(message) {
+        if (!alertBox || !alertText) return;
+        if (!message) {
+            alertMessage = '';
+            alertText.textContent = '';
+            alertBox.classList.remove('visible');
+            return;
+        }
+        if (message === alertMessage) return;
+        alertMessage = message;
+        alertText.textContent = message;
+        alertBox.classList.add('visible');
+    }
+
+    async function refreshPriorityAlert() {
+        const message = await fetchPriorityAlert();
+        if (!message && alertMessage) {
+            renderPriorityAlert('');
+            return;
+        }
+        renderPriorityAlert(message);
     }
 
     function getDuration(item) {
@@ -174,6 +255,8 @@
 
     async function start() {
         [media, durations] = await Promise.all([fetchMedia(), fetchDurations()]);
+        await refreshPriorityAlert();
+        alertPoller = setInterval(refreshPriorityAlert, 1000);
         next();
     }
 

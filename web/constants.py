@@ -21,6 +21,23 @@ LNG               = 2.8956
 DEFAULT_METEO_VILLE = "Perpignan"
 DEFAULT_METEO_TZ    = "Europe/Paris"
 
+SCHOOL_ZONES = (
+    ("auto", "Auto"),
+    ("A", "Zone A"),
+    ("B", "Zone B"),
+    ("C", "Zone C"),
+    ("Corse", "Corse"),
+    ("Guadeloupe", "Guadeloupe"),
+    ("Guyane", "Guyane"),
+    ("Martinique", "Martinique"),
+    ("Mayotte", "Mayotte"),
+    ("Nouvelle Caledonie", "Nouvelle-Calédonie"),
+    ("Polynesie", "Polynésie"),
+    ("Reunion", "La Réunion"),
+    ("Saint-Pierre-et-Miquelon", "Saint-Pierre-et-Miquelon"),
+    ("Wallis et Futuna", "Wallis-et-Futuna"),
+)
+
 ALL_PERMISSIONS = [
     ("upload",    "perm_upload"),
     ("delete",    "perm_delete"),

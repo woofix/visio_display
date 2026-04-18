@@ -11,14 +11,16 @@ Visio-Display est une application d'**affichage dynamique** (digital signage) qu
 3. [Se connecter à l'administration](#3-se-connecter-à-ladministration)
 4. [Ajouter des médias](#4-ajouter-des-médias)
 5. [Gérer la médiathèque](#5-gérer-la-médiathèque)
-6. [Planifier l'affichage d'un média](#6-planifier-laffichage-dun-média)
-7. [Gérer plusieurs écrans](#7-gérer-plusieurs-écrans)
-8. [La carte éphéméride](#8-la-carte-éphéméride)
-9. [Paramètres personnels](#9-paramètres-personnels)
-10. [Gestion des utilisateurs (super-admin)](#10-gestion-des-utilisateurs-super-admin)
-11. [File d'encodage vidéo](#11-file-dencodage-vidéo)
-12. [Permissions disponibles](#12-permissions-disponibles)
-13. [Wiki — aide intégrée](#13-wiki--aide-intégrée)
+6. [Groupes de médias](#6-groupes-de-médias)
+7. [Planifier l'affichage d'un média](#7-planifier-laffichage-dun-média)
+8. [Gérer plusieurs écrans](#8-gérer-plusieurs-écrans)
+9. [La carte éphéméride](#9-la-carte-éphéméride)
+10. [Paramètres personnels](#10-paramètres-personnels)
+11. [Gestion des utilisateurs (super-admin)](#11-gestion-des-utilisateurs-super-admin)
+12. [File d'encodage vidéo](#12-file-dencodage-vidéo)
+13. [Alerte prioritaire (super-admin)](#13-alerte-prioritaire-super-admin)
+14. [Permissions disponibles](#14-permissions-disponibles)
+15. [Wiki — aide intégrée](#15-wiki--aide-intégrée)
 
 ---
 
@@ -121,7 +123,31 @@ Les médias non assignés apparaissent dans une section séparée en bas de page
 
 ---
 
-## 6. Planifier l'affichage d'un média
+## 6. Groupes de médias
+
+> **Permission requise :** `toggle`
+
+Les groupes (ou tags) permettent d'organiser les médias par thème et d'activer ou désactiver un ensemble d'un seul clic.
+
+### Attribuer des groupes à un média
+
+1. Dans la médiathèque, ouvrez le menu **Actions** du média souhaité.
+2. Saisissez les groupes dans le champ prévu, séparés par des virgules (ex. : `menu`, `infos`, `urgences`).
+3. Cliquez sur **Enregistrer les groupes**.
+
+Un média peut appartenir à plusieurs groupes simultanément.
+
+### Activer / désactiver un groupe
+
+La section **Groupes** (barre latérale gauche de la médiathèque) liste tous les groupes définis. Cliquez sur **Activer le groupe** ou **Désactiver le groupe** pour basculer tous ses médias d'un coup.
+
+Un badge **GROUPE DÉSACTIVÉ** s'affiche sur les médias concernés dans la grille.
+
+> **Remarque :** Un média désactivé individuellement reste désactivé même si son groupe est activé.
+
+---
+
+## 7. Planifier l'affichage d'un média
 
 > **Permission requise :** `schedule`
 
@@ -147,7 +173,7 @@ Pour supprimer une planification, videz les champs et enregistrez.
 
 ---
 
-## 7. Gérer plusieurs écrans
+## 8. Gérer plusieurs écrans
 
 Visio-Display permet de créer des **écrans nommés indépendants**, chacun avec sa propre liste de médias, son propre ordre et ses propres règles.
 
@@ -170,11 +196,11 @@ Noms réservés (interdits) : `default`, `admin`, `api`, `static`, `login`, `log
 
 - Chaque écran gère **indépendamment** l'ordre, l'activation, la durée et la planification de chaque média.
 - Un même fichier peut être **assigné à plusieurs écrans simultanément**.
-- Les utilisateurs peuvent être **restreints à certains écrans** (voir section 10).
+- Les utilisateurs peuvent être **restreints à certains écrans** (voir section 11).
 
 ---
 
-## 8. La carte éphéméride
+## 9. La carte éphéméride
 
 La carte éphéméride est une image générée automatiquement qui s'intègre dans la rotation du diaporama.
 
@@ -203,7 +229,7 @@ Le compte à rebours apparaît sur la carte à la prochaine régénération. Cli
 
 ---
 
-## 9. Paramètres personnels
+## 10. Paramètres personnels
 
 Accessible depuis **Paramètres** dans le menu.
 
@@ -230,6 +256,7 @@ Depuis **Paramètres → Météo**, le super-admin peut modifier la localisation
 | Latitude        | `43.6119`         | Coordonnée GPS (décimale, entre -90 et 90)   |
 | Longitude       | `3.8772`          | Coordonnée GPS (décimale, entre -180 et 180) |
 | Fuseau horaire  | `Europe/Paris`    | Identifiant IANA                             |
+| Zone scolaire   | `A` / `B` / `C`  | Zone de l'Éducation nationale (détection automatique si non renseignée) |
 
 Cliquer sur **Enregistrer** applique la nouvelle localisation et régénère la carte immédiatement.
 
@@ -241,7 +268,7 @@ Cliquer sur **Enregistrer** applique la nouvelle localisation et régénère la 
 
 ---
 
-## 10. Gestion des utilisateurs (super-admin)
+## 11. Gestion des utilisateurs (super-admin)
 
 Accessible depuis **Administration → Utilisateurs**.
 
@@ -255,7 +282,7 @@ Le compte est créé **sans aucune permission**. Attribuez ensuite les droits n�
 
 ### Attribuer des permissions
 
-Dans la liste des utilisateurs, cliquez sur un utilisateur pour modifier ses permissions. Cochez ou décochez chaque permission individuellement (voir [section 12](#12-permissions-disponibles)).
+Dans la liste des utilisateurs, cliquez sur un utilisateur pour modifier ses permissions. Cochez ou décochez chaque permission individuellement (voir [section 14](#14-permissions-disponibles)).
 
 ### Restreindre l'accès à des écrans
 
@@ -273,7 +300,7 @@ Cliquez sur **Supprimer** dans la fiche de l'utilisateur. Le compte super-admin 
 
 ---
 
-## 11. File d'encodage vidéo
+## 12. File d'encodage vidéo
 
 Accessible depuis **File d'encodage** dans le menu.
 
@@ -297,25 +324,42 @@ Les utilisateurs avec la permission `compress` peuvent annuler une tâche **en a
 
 ---
 
-## 12. Permissions disponibles
+## 13. Alerte prioritaire (super-admin)
+
+> **Droit requis :** super-admin
+
+L'alerte prioritaire permet de diffuser **immédiatement** un message en bannière sur l'écran d'affichage, sans interrompre le diaporama.
+
+### Utilisation
+
+1. Depuis **Administration → Super-Admin**, section **Alerte prioritaire**.
+2. Saisissez votre message dans le champ prévu (280 caractères maximum).
+3. La bannière est publiée **automatiquement** après chaque frappe — aucun bouton à cliquer.
+4. Pour retirer la bannière, cliquez sur **Effacer la bannière**.
+
+> **Attention :** La bannière reste affichée sur **tous les écrans** jusqu'à suppression manuelle, quel que soit le paramètre `?screen=` utilisé.
+
+---
+
+## 14. Permissions disponibles
 
 | Permission | Actions autorisées |
 |---|---|
 | `upload` | Importer des médias |
 | `delete` | Supprimer des médias |
 | `reorder` | Modifier l'ordre des médias |
-| `toggle` | Activer/désactiver des médias, assigner à un écran |
+| `toggle` | Activer/désactiver des médias et des groupes, assigner à un écran |
 | `duration` | Modifier la durée d'affichage |
 | `compress` | Mettre en file d'encodage, annuler une tâche |
 | `logo` | Changer ou réinitialiser le logo de l'application |
 | `ephemeris` | Régénérer la carte éphéméride, gérer les comptes à rebours |
 | `schedule` | Définir des planifications horaires et de dates |
 
-> Le super-admin dispose de **toutes les permissions** et peut en plus : créer/supprimer des comptes, créer/supprimer des écrans, personnaliser le nom de l'application, configurer la localisation météo, et forcer l'encodage hors fenêtre nocturne.
+> Le super-admin dispose de **toutes les permissions** et peut en plus : créer/supprimer des comptes, créer/supprimer des écrans, personnaliser le nom de l'application, configurer la localisation météo, publier une alerte prioritaire et forcer l'encodage hors fenêtre nocturne.
 
 ---
 
-## 13. Wiki — aide intégrée
+## 15. Wiki — aide intégrée
 
 Accessible depuis **Wiki** dans le menu de navigation.
 

@@ -523,6 +523,9 @@
 /* ── Modal ── */
 document.querySelectorAll('.thumb, .thumb-video').forEach(el => {
     el.addEventListener('click', () => {
+        if (el.dataset.previewDisabled === 'true') {
+            return;
+        }
         const mImg = document.getElementById('modal-img');
         const mVid = document.getElementById('modal-video');
         if (el.dataset.type === 'video') {

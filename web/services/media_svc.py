@@ -38,6 +38,52 @@ def get_all_media():
     return ordered + unordered
 
 
+def normalize_group_name(name):
+    cleaned = " ".join(str(name or "").split())
+    return cleaned[:48]
+
+
+def get_media_groups(filename, cfg=None):
+    cfg = cfg or load_config()
+    groups_map = cfg.get("groups", {})
+    groups = groups_map.get(filename, [])
+    if not isinstance(groups, list):
+        return []
+    normalized = []
+    seen = set()
+    for group in groups:
+        group_name = normalize_group_name(group)
+        if group_name and group_name not in seen:
+            normalized.append(group_name)
+            seen.add(group_name)
+    return normalized
+
+
+def is_media_disabled(filename, cfg):
+    if filename in cfg.get("disabled", []):
+        return True
+    disabled_groups = set(cfg.get("disabled_groups", []))
+    if not disabled_groups:
+        return False
+    return any(group in disabled_groups for group in get_media_groups(filename, cfg))
+
+
+def collect_group_states(files, cfg):
+    disabled_groups = set(cfg.get("disabled_groups", []))
+    counts = {}
+    for filename in files:
+        for group in get_media_groups(filename, cfg):
+            counts[group] = counts.get(group, 0) + 1
+    return [
+        {
+            "name": group,
+            "count": counts[group],
+            "disabled": group in disabled_groups,
+        }
+        for group in sorted(counts, key=str.casefold)
+    ]
+
+
 def is_media_scheduled(filename, cfg):
     schedules = cfg.get("schedules", {})
     if filename not in schedules:

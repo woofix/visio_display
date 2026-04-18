@@ -31,6 +31,18 @@
 .view-toggle { display:flex;gap:3px;background:var(--primary-bg);padding:3px;border-radius:8px; }
 .view-toggle button { background:none;border:none;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:.78rem;color:var(--primary);font-weight:600;transition:all .15s;font-family:inherit; }
 .view-toggle button.active { background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.1); }
+.group-panel { margin-bottom:16px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-sm); }
+.group-panel-head { display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap; }
+.group-panel-title { font-size:.78rem;font-weight:800;color:var(--text-2);text-transform:uppercase;letter-spacing:.08em; }
+.group-panel-sub { font-size:.75rem;color:var(--text-3); }
+.group-chip-list { display:flex;flex-wrap:wrap;gap:8px; }
+.group-chip { display:inline-flex;align-items:center;gap:8px;padding:7px 10px;border-radius:999px;border:1px solid var(--border);background:var(--surface-2, var(--bg)); }
+.group-chip-name { font-size:.78rem;font-weight:700;color:var(--text-2); }
+.group-chip-count { font-size:.7rem;color:var(--text-3); }
+.group-chip.disabled { background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.18); }
+.group-chip-toggle { border:none;background:var(--primary-bg);color:var(--primary);padding:5px 9px;border-radius:999px;font:inherit;font-size:.72rem;font-weight:700;cursor:pointer; }
+.group-chip.disabled .group-chip-toggle { background:rgba(239,68,68,.12);color:var(--red); }
+.group-panel-empty { font-size:.82rem;color:var(--text-3); }
 
 /* Grid */
 .file-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(215px,1fr)); gap:14px; }
@@ -43,6 +55,10 @@
 .file-card .thumb       { width:100%;height:138px;object-fit:cover;display:block;cursor:pointer; }
 .file-card .thumb-video { width:100%;height:138px;object-fit:cover;display:block;cursor:pointer;background:#0d0920; }
 .file-card .thumb:hover, .file-card .thumb-video:hover { filter:brightness(1.07); }
+.file-card.disabled .thumb,
+.file-card.disabled .thumb-video { cursor:not-allowed; pointer-events:none; }
+.file-card.disabled .thumb:hover,
+.file-card.disabled .thumb-video:hover { filter:none; }
 
 /* List view */
 .file-grid.list-view { display:flex;flex-direction:column;gap:7px; }
@@ -66,6 +82,15 @@
 .file-card .card-body { padding:11px 13px; }
 .file-card .fname { font-size:.76rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px; }
 .file-card .finfo { font-size:.69rem;color:var(--text-3);margin-bottom:9px; }
+.file-card .group-badges { display:flex;flex-wrap:wrap;gap:6px;margin-bottom:9px; }
+.file-card .group-badge { font-size:.63rem;font-weight:700;color:var(--primary);background:var(--primary-bg);padding:3px 7px;border-radius:999px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.file-card .group-badge.disabled { color:var(--red);background:rgba(239,68,68,.08); }
+.file-card .group-editor { display:flex;gap:6px;align-items:center;margin-bottom:9px; }
+.group-input { flex:1;min-width:0;padding:6px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:.74rem;font-family:inherit;color:var(--text);background:var(--surface); }
+.group-input:focus { outline:none;border-color:var(--primary); }
+.group-save-btn { border:none;background:var(--primary-bg);color:var(--primary);padding:6px 9px;border-radius:7px;font:inherit;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap; }
+.group-save-btn:disabled { opacity:.55;cursor:wait; }
+.file-card .group-hint { font-size:.67rem;color:var(--text-3);margin-bottom:10px; }
 .file-card .card-actions { display:flex;gap:5px;align-items:center;justify-content:space-between; }
 .duration-input { width:50px;padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:.78rem;text-align:center;font-family:inherit;transition:border-color .15s;color:var(--text);background:var(--surface); }
 .duration-input:focus { outline:none;border-color:var(--primary); }
@@ -107,6 +132,10 @@
 .unassigned-sep-label { font-size:.7rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.09em;white-space:nowrap; }
 .file-card.unassigned { opacity:.5; }
 .file-card.unassigned:hover { opacity:.85; }
+.file-card.unassigned .thumb,
+.file-card.unassigned .thumb-video { cursor:not-allowed; pointer-events:none; }
+.file-card.unassigned .thumb:hover,
+.file-card.unassigned .thumb-video:hover { filter:none; }
 .btn-assign { background:var(--primary);color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:.76rem;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s; }
 .btn-assign:hover { background:var(--primary-hover,#6d28d9); }
 
@@ -114,6 +143,9 @@
 .badge-scheduled { position:absolute;top:8px;right:8px;background:var(--primary);color:#fff;font-size:.59rem;padding:2px 7px;border-radius:10px;font-weight:700;letter-spacing:.04em;display:none; }
 .file-card.scheduled .badge-scheduled { display:block; }
 .file-card.disabled .badge-scheduled  { top:52px; }
+.badge-group-disabled { position:absolute;top:52px;right:8px;background:#b91c1c;color:#fff;font-size:.56rem;padding:2px 7px;border-radius:10px;font-weight:700;letter-spacing:.04em;display:none; }
+.file-card.group-disabled .badge-group-disabled { display:block; }
+.file-card.disabled .badge-group-disabled { display:none; }
 
 /* Screen preview modal */
 .screen-preview-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2000;align-items:center;justify-content:center; }
@@ -199,29 +231,70 @@
     </div>
 </div>
 
+<div class="group-panel">
+    <div class="group-panel-head">
+        <div class="group-panel-title">{{ t('media_groups_title') }}</div>
+        <div class="group-panel-sub">{{ t('media_group_hint') }}</div>
+    </div>
+    {% if group_states %}
+    <div class="group-chip-list">
+        {% for group in group_states %}
+        <div class="group-chip {% if group.disabled %}disabled{% endif %}" data-group-chip="{{ group.name }}">
+            <span class="group-chip-name">{{ group.name }}</span>
+            <span class="group-chip-count">{{ group.count }}</span>
+            <button class="group-chip-toggle btn-toggle-group" data-group="{{ group.name }}">
+                {% if group.disabled %}{{ t('media_group_enable') }}{% else %}{{ t('media_group_disable') }}{% endif %}
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="group-panel-empty">{{ t('media_groups_none') }}</div>
+    {% endif %}
+</div>
+
 <!-- Grid -->
 <div class="file-grid" id="file-grid">
     {% for file in files %}
     {% set info = infos[file] %}
     {% set sched = schedules.get(file, {}) %}
-    <div class="file-card {% if file in cfg.disabled %}disabled{% endif %} {% if sched %}scheduled{% endif %}"
+    {% set file_groups = media_groups.get(file, []) %}
+    {% set disabled_by_group = disabled_map.get(file, false) and file not in cfg.disabled %}
+    <div class="file-card {% if disabled_map.get(file, false) %}disabled{% endif %} {% if disabled_by_group %}group-disabled{% endif %} {% if sched %}scheduled{% endif %}"
          data-file="{{ file }}"
          data-type="{{ info.type }}"
-         data-disabled="{{ 'true' if file in cfg.disabled else 'false' }}"
+         data-disabled="{{ 'true' if disabled_map.get(file, false) else 'false' }}"
+         data-manually-disabled="{{ 'true' if file in cfg.disabled else 'false' }}"
+         data-group-disabled="{{ 'true' if disabled_by_group else 'false' }}"
+         data-groups="{{ file_groups | tojson | e }}"
          data-schedule="{{ sched | tojson | e }}">
         <span class="badge-scheduled">{{ t('badge_scheduled') }}</span>
+        <span class="badge-group-disabled">{{ t('media_group_disabled_badge') }}</span>
         {% if info.type == 'video' %}
         <span class="badge-video">{{ t('badge_video') }}</span>
         <video class="thumb-video" src="/static/data/{{ file }}" preload="metadata" muted
-               data-src="/static/data/{{ file }}" data-type="video"></video>
+               data-src="/static/data/{{ file }}" data-type="video"
+               data-preview-disabled="{{ 'true' if disabled_map.get(file, false) else 'false' }}"></video>
         {% else %}
         <img class="thumb" src="/static/data/{{ file }}" alt="{{ file }}"
-             data-src="/static/data/{{ file }}" data-type="image">
+             data-src="/static/data/{{ file }}" data-type="image"
+             data-preview-disabled="{{ 'true' if disabled_map.get(file, false) else 'false' }}">
         {% endif %}
         <span class="badge-disabled">{{ t('badge_disabled') }}</span>
         <div class="card-body">
             <div class="fname" title="{{ file }}">{{ file }}</div>
             <div class="finfo">{{ info.dims }} · {{ info.size }}</div>
+            <div class="group-badges">
+                {% for group in file_groups %}
+                <span class="group-badge {% if group in cfg.disabled_groups %}disabled{% endif %}">{{ group }}</span>
+                {% endfor %}
+            </div>
+            <div class="group-editor">
+                <input type="text" class="group-input" data-file="{{ file }}" value="{{ file_groups | join(', ') }}"
+                       placeholder="{{ t('media_group_input_placeholder') }}" title="{{ t('media_group_input_title') }}">
+                <button class="group-save-btn btn-save-groups" data-file="{{ file }}">{{ t('media_group_save') }}</button>
+            </div>
+            <div class="group-hint">{{ t('media_group_hint') }}</div>
             <div class="card-actions">
                 <div style="display:flex;align-items:center;gap:4px">
                     <input type="number" class="duration-input" min="3" max="300"
@@ -395,6 +468,11 @@ const JS_SCREEN_REMOVED       = {{ t('js_screen_removed') | tojson }};
 const JS_SCREEN_REMOVE_CONFIRM = {{ t('js_remove_from_screen_confirm') | tojson }};
 const JS_ADD_TO_SCREEN        = {{ t('media_add_to_screen') | tojson }};
 const SCREEN_DELETE_CONFIRM   = {{ t('media_screen_delete_confirm') | tojson }};
+const JS_GROUPS_SAVED         = {{ t('js_groups_saved') | tojson }};
+const JS_GROUP_ENABLED        = {{ t('js_group_enabled') | tojson }};
+const JS_GROUP_DISABLED       = {{ t('js_group_disabled') | tojson }};
+const JS_GROUP_ENABLE         = {{ t('media_group_enable') | tojson }};
+const JS_GROUP_DISABLE        = {{ t('media_group_disable') | tojson }};
 
 /* ── Screen preview modal ── */
 (function() {
@@ -467,6 +545,18 @@ function applyFilter() {
 document.getElementById('media-search').addEventListener('input', applyFilter);
 document.getElementById('media-filter').addEventListener('change', applyFilter);
 
+function refreshCardDisabledState(card) {
+    const isDisabled = card.dataset.manuallyDisabled === 'true' || card.dataset.groupDisabled === 'true';
+    card.dataset.disabled = isDisabled ? 'true' : 'false';
+    card.classList.toggle('disabled', isDisabled);
+    card.classList.toggle('group-disabled', card.dataset.groupDisabled === 'true' && card.dataset.manuallyDisabled !== 'true');
+    const preview = card.querySelector('.thumb, .thumb-video');
+    if (preview) {
+        preview.dataset.previewDisabled = isDisabled ? 'true' : 'false';
+        preview.style.pointerEvents = isDisabled ? 'none' : '';
+    }
+}
+
 /* ── Grid / list view toggle ── */
 (function() {
     const grid = document.getElementById('file-grid');
@@ -498,15 +588,82 @@ document.querySelectorAll('.btn-toggle').forEach(btn => {
         const data = await res.json();
         const card = btn.closest('.file-card');
         if (data.state === 'disabled') {
-            card.classList.add('disabled'); card.dataset.disabled = 'true';
+            card.dataset.manuallyDisabled = 'true';
             btn.classList.replace('success-item', 'warning-item');
             btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> ${JS_ACTION_ENABLE}`;
         } else {
-            card.classList.remove('disabled'); card.dataset.disabled = 'false';
+            card.dataset.manuallyDisabled = 'false';
             btn.classList.replace('warning-item', 'success-item');
             btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg> ${JS_ACTION_DISABLE}`;
         }
+        refreshCardDisabledState(card);
         sortMediaCards();
+    });
+});
+
+document.querySelectorAll('.btn-save-groups').forEach(btn => {
+    btn.addEventListener('click', async e => {
+        e.stopPropagation();
+        const input = btn.closest('.group-editor')?.querySelector('.group-input');
+        if (!input) return;
+        const file = btn.dataset.file;
+        const groups = input.value.split(',').map(v => v.trim()).filter(Boolean);
+        btn.disabled = true;
+        try {
+            const res = await fetch(`/set_groups/${encodeURIComponent(file)}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ groups })
+            });
+            const data = await res.json();
+            if (data.ok) {
+                showFlash(JS_GROUPS_SAVED.replace('{file}', file), 'success');
+                window.location.reload();
+            } else {
+                showFlash(data.error || JS_SAVE_ERROR, 'error');
+                btn.disabled = false;
+            }
+        } catch {
+            showFlash(JS_COMPRESS_ERR_NET, 'error');
+            btn.disabled = false;
+        }
+    });
+});
+
+document.querySelectorAll('.group-input').forEach(input => {
+    input.addEventListener('keydown', e => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        input.closest('.group-editor')?.querySelector('.btn-save-groups')?.click();
+    });
+});
+
+document.querySelectorAll('.btn-toggle-group').forEach(btn => {
+    btn.addEventListener('click', async e => {
+        e.stopPropagation();
+        const group = btn.dataset.group;
+        btn.disabled = true;
+        try {
+            const res = await fetch(`/toggle_group/${encodeURIComponent(group)}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ screen: CURRENT_SCREEN })
+            });
+            const data = await res.json();
+            if (data.state === 'disabled') {
+                showFlash(JS_GROUP_DISABLED.replace('{group}', group), 'success');
+            } else if (data.state === 'enabled') {
+                showFlash(JS_GROUP_ENABLED.replace('{group}', group), 'success');
+            } else {
+                showFlash(data.error || JS_SAVE_ERROR, 'error');
+                btn.disabled = false;
+                return;
+            }
+            window.location.reload();
+        } catch {
+            showFlash(JS_COMPRESS_ERR_NET, 'error');
+            btn.disabled = false;
+        }
     });
 });
 

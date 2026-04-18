@@ -334,6 +334,14 @@
                 <div style="font-size:.72rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">{{ t('settings_meteo_current') }}</div>
                 <div style="font-size:.92rem;font-weight:700;color:var(--text)">{{ meteo_location.ville }}</div>
                 <div style="font-size:.74rem;color:var(--text-3);margin-top:2px">{{ meteo_location.lat }}, {{ meteo_location.lng }} — {{ meteo_location.tz }}</div>
+                <div style="font-size:.74rem;color:var(--text-3);margin-top:2px">
+                    {{ t('settings_school_zone_label') }} :
+                    {% if meteo_location.school_zone == 'auto' %}
+                        {{ t('settings_school_zone_auto') }}{% if meteo_location.resolved_school_zone %} ({{ meteo_location.resolved_school_zone }}){% endif %}
+                    {% else %}
+                        {{ meteo_location.school_zone_label }}
+                    {% endif %}
+                </div>
             </div>
         </div>
 
@@ -380,6 +388,16 @@
                            min="-180" max="180"
                            style="width:100%;padding:8px 11px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:.85rem;background:var(--surface);color:var(--text)">
                 </div>
+            </div>
+            <div>
+                <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('settings_school_zone_label') }}</label>
+                <select name="school_zone"
+                        style="width:100%;padding:8px 11px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:.85rem;background:var(--surface);color:var(--text)">
+                    {% for value, label in school_zones %}
+                    <option value="{{ value }}" {% if meteo_location.school_zone == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+                <p style="font-size:.76rem;color:var(--text-3);margin-top:8px">{{ t('settings_school_zone_hint') }}</p>
             </div>
             <div>
                 <button type="submit" class="btn sm">{{ t('settings_meteo_apply_btn') }}</button>

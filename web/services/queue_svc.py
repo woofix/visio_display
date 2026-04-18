@@ -226,6 +226,20 @@ def _rq_compress_job(encode_job_id):
                         cfg[key] = lst
                 if job['filename'] in cfg.get('durations', {}):
                     cfg['durations'][new_name] = cfg['durations'].pop(job['filename'])
+                if job['filename'] in cfg.get('groups', {}):
+                    cfg['groups'][new_name] = cfg['groups'].pop(job['filename'])
+                if job['filename'] in cfg.get('schedules', {}):
+                    cfg['schedules'][new_name] = cfg['schedules'].pop(job['filename'])
+                for screen_cfg in cfg.get('screens', {}).values():
+                    for key in ('order', 'disabled'):
+                        lst = screen_cfg.get(key, [])
+                        if job['filename'] in lst:
+                            lst[lst.index(job['filename'])] = new_name
+                            screen_cfg[key] = lst
+                    if job['filename'] in screen_cfg.get('durations', {}):
+                        screen_cfg['durations'][new_name] = screen_cfg['durations'].pop(job['filename'])
+                    if job['filename'] in screen_cfg.get('schedules', {}):
+                        screen_cfg['schedules'][new_name] = screen_cfg['schedules'].pop(job['filename'])
             disabled = cfg.get('disabled', [])
             if new_name in disabled:
                 disabled.remove(new_name)

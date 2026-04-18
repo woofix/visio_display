@@ -339,6 +339,8 @@
         <a data-section="s10">10. {{ t('wiki_s10_title') }}</a>
         <a data-section="s11">11. {{ t('wiki_s11_title') }}</a>
         <a data-section="s12">12. {{ t('wiki_s12_title') }}</a>
+        <a data-section="s13">13. {{ t('wiki_s13_title') }}</a>
+        <a data-section="s14">14. {{ t('wiki_s14_title') }}</a>
     </aside>
 
     <!-- CONTENU -->
@@ -654,6 +656,51 @@
                 </tbody>
             </table>
             <div class="wiki-callout">{{ t('wiki_s12_superadmin') }}</div>
+        </section>
+
+        <!-- §13 Groupes de médias -->
+        <section class="wiki-section" id="s13">
+            <div class="wiki-section-header">
+                <div class="wiki-section-num">13</div>
+                <h2>{{ t('wiki_s13_title') }}</h2>
+            </div>
+            <p>{{ t('wiki_s13_desc') }}</p>
+            <h3>{{ t('wiki_s13_assign_title') }}</h3>
+            <div class="wiki-callout">
+                <strong>{{ t('wiki_perm_required') }}</strong> <span class="perm-badge">toggle</span>
+            </div>
+            <ol class="wiki-steps">
+                <li>{{ t('wiki_s13_assign_step1') }}</li>
+                <li>{{ t('wiki_s13_assign_step2') }}</li>
+                <li>{{ t('wiki_s13_assign_step3') }}</li>
+            </ol>
+            <h3>{{ t('wiki_s13_toggle_title') }}</h3>
+            <p>{{ t('wiki_s13_toggle_desc') }}</p>
+            <div class="wiki-callout warning">
+                <strong>{{ t('wiki_tip') }}</strong> {{ t('wiki_s13_note') }}
+            </div>
+        </section>
+
+        <!-- §14 Alerte prioritaire -->
+        <section class="wiki-section" id="s14">
+            <div class="wiki-section-header">
+                <div class="wiki-section-num">14</div>
+                <h2>{{ t('wiki_s14_title') }}</h2>
+            </div>
+            <p>{{ t('wiki_s14_desc') }}</p>
+            <div class="wiki-callout">
+                <strong>{{ t('wiki_right_required') }}</strong> {{ t('wiki_superadmin') }}
+            </div>
+            <p>{{ t('wiki_s14_access') }}</p>
+            <h3>{{ t('wiki_s14_how_title') }}</h3>
+            <ol class="wiki-steps">
+                <li>{{ t('wiki_s14_how1') }}</li>
+                <li>{{ t('wiki_s14_how2') }}</li>
+                <li>{{ t('wiki_s14_how3') }}</li>
+            </ol>
+            <div class="wiki-callout warning">
+                {{ t('wiki_s14_warning') }}
+            </div>
         </section>
 
         <!-- Navigation prev/next -->

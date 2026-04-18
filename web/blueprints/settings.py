@@ -3,12 +3,16 @@ from datetime import date
 
 from flask import Blueprint, request, redirect, url_for, session, render_template
 
-from constants import VALID_THEMES, LOGO_EXTS, IMAGES_FOLDER, DEFAULT_LOGO, LAT, LNG, DEFAULT_METEO_VILLE, DEFAULT_METEO_TZ
+from constants import (
+    VALID_THEMES, LOGO_EXTS, IMAGES_FOLDER, DEFAULT_LOGO, LAT, LNG,
+    DEFAULT_METEO_VILLE, DEFAULT_METEO_TZ, SCHOOL_ZONES,
+)
 from services.config_svc import load_config, save_config
 from services.users_svc import load_users, save_users, is_superadmin, has_permission
 from services.media_svc import get_logo_path
 from services.i18n import _flash
 from blueprints.guards import admin_guard, superadmin_guard
+from services.ephemeris_svc import get_school_zone
 
 bp = Blueprint('settings', __name__)
 
@@ -37,6 +41,9 @@ def admin_settings_page():
         "lat":   cfg.get("meteo_lat",   LAT),
         "lng":   cfg.get("meteo_lng",   LNG),
         "tz":    cfg.get("meteo_tz",    DEFAULT_METEO_TZ),
+        "school_zone": cfg.get("school_zone", "auto"),
+        "resolved_school_zone": get_school_zone(cfg),
+        "school_zone_label": dict(SCHOOL_ZONES).get(cfg.get("school_zone", "auto"), "Auto"),
     }
     return render_template('admin_settings.html',
         cfg=cfg, users=users, current_user=username,
@@ -46,6 +53,7 @@ def admin_settings_page():
         theme=user_theme,
         can_ephemeris=has_permission('ephemeris'),
         meteo_location=meteo_location,
+        school_zones=SCHOOL_ZONES,
         tab=request.args.get('tab', 'logo'))
 
 
@@ -70,6 +78,7 @@ def set_meteo_location():
     lat   = request.form.get('meteo_lat',   '').strip()
     lng   = request.form.get('meteo_lng',   '').strip()
     tz    = request.form.get('meteo_tz',    '').strip()
+    school_zone = request.form.get('school_zone', 'auto').strip() or 'auto'
     if not ville:
         _flash('flash_meteo_invalid', 'error')
         return redirect(url_for('settings.admin_settings_page') + '?tab=meteo')
@@ -83,11 +92,15 @@ def set_meteo_location():
         return redirect(url_for('settings.admin_settings_page') + '?tab=meteo')
     if not tz:
         tz = DEFAULT_METEO_TZ
+    valid_school_zones = {value for value, _label in SCHOOL_ZONES}
+    if school_zone not in valid_school_zones:
+        school_zone = 'auto'
     cfg = load_config()
     cfg['meteo_ville'] = ville
     cfg['meteo_lat']   = lat_f
     cfg['meteo_lng']   = lng_f
     cfg['meteo_tz']    = tz
+    cfg['school_zone'] = school_zone
     save_config(cfg)
     # Régénérer l'éphéméride avec la nouvelle localisation
     from services.ephemeris_svc import generate_ephemeride_image

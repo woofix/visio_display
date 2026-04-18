@@ -1,6 +1,7 @@
 import contextlib
 import math
 import os
+import unicodedata
 from datetime import date, datetime, timezone, timedelta
 
 import requests
@@ -28,6 +29,249 @@ def _get_meteo_location(cfg):
     except (TypeError, ValueError):
         lat, lng = LAT, LNG
     return lat, lng, tz, ville
+
+
+def _normalize_text(value):
+    if value is None:
+        return ""
+    normalized = unicodedata.normalize("NFKD", str(value))
+    normalized = "".join(ch for ch in normalized if not unicodedata.combining(ch))
+    return normalized.casefold().strip()
+
+
+def _normalize_school_zone(zone):
+    normalized = _normalize_text(zone)
+    aliases = {
+        "a": "A",
+        "zone a": "A",
+        "b": "B",
+        "zone b": "B",
+        "c": "C",
+        "zone c": "C",
+        "corse": "Corse",
+        "guadeloupe": "Guadeloupe",
+        "guyane": "Guyane",
+        "martinique": "Martinique",
+        "mayotte": "Mayotte",
+        "nouvelle caledonie": "Nouvelle Caledonie",
+        "polynesie": "Polynesie",
+        "reunion": "Reunion",
+        "la reunion": "Reunion",
+        "saint-pierre-et-miquelon": "Saint-Pierre-et-Miquelon",
+        "saint pierre et miquelon": "Saint-Pierre-et-Miquelon",
+        "wallis et futuna": "Wallis et Futuna",
+    }
+    return aliases.get(normalized)
+
+
+def _guess_school_zone_from_city(city):
+    city_name = _normalize_text(city)
+    if not city_name:
+        return "C"
+
+    keyword_groups = {
+        "A": (
+            "besancon", "bordeaux", "clermont ferrand", "dijon", "grenoble",
+            "limoges", "lyon", "poitiers",
+        ),
+        "B": (
+            "aix marseille", "amiens", "caen", "lille", "nancy", "metz",
+            "nantes", "nice", "normandie", "orleans", "reims", "rennes",
+            "rouen", "strasbourg",
+        ),
+        "C": (
+            "creteil", "montpellier", "paris", "toulouse", "versailles",
+            "perpignan",
+        ),
+        "Corse": ("corse", "ajaccio", "bastia"),
+        "Guadeloupe": ("guadeloupe", "basse terre", "pointe a pitre"),
+        "Guyane": ("guyane", "cayenne"),
+        "Martinique": ("martinique", "fort de france"),
+        "Mayotte": ("mayotte", "mamoudzou"),
+        "Nouvelle Caledonie": ("nouvelle caledonie", "noumea"),
+        "Polynesie": ("polynesie", "papeete", "tahiti"),
+        "Reunion": ("reunion", "saint denis"),
+        "Saint-Pierre-et-Miquelon": ("saint-pierre-et-miquelon", "saint pierre"),
+        "Wallis et Futuna": ("wallis", "futuna"),
+    }
+    for zone, keywords in keyword_groups.items():
+        if any(keyword in city_name for keyword in keywords):
+            return zone
+    return "C"
+
+
+def get_school_zone(cfg=None):
+    if cfg is None:
+        cfg = load_config()
+    explicit_zone = _normalize_school_zone(cfg.get("school_zone"))
+    if explicit_zone:
+        return explicit_zone
+    _lat, _lng, _tz, ville = _get_meteo_location(cfg)
+    return _guess_school_zone_from_city(ville)
+
+
+def _parse_api_date(raw_value):
+    if not raw_value:
+        return None
+    raw_value = str(raw_value).strip()
+    try:
+        return datetime.fromisoformat(raw_value.replace("Z", "+00:00")).date()
+    except ValueError:
+        with contextlib.suppress(ValueError):
+            return date.fromisoformat(raw_value.split("T", 1)[0])
+        with contextlib.suppress(ValueError):
+            return datetime.strptime(raw_value[:8], "%Y%m%d").date()
+    return None
+
+
+def _holiday_date_label(day, lang):
+    return day.strftime("%d/%m/%Y") if lang == "fr" else day.strftime("%Y-%m-%d")
+
+
+def get_next_school_holiday(cfg=None):
+    if cfg is None:
+        cfg = load_config()
+    lang = get_language()
+    zone = get_school_zone(cfg)
+    zone_label = f"Zone {zone}" if zone in {"A", "B", "C"} else zone
+    normalized_zone_label = _normalize_text(zone_label)
+    try:
+        today = date.today()
+        today_iso = today.isoformat()
+        best = None
+        endpoints = (
+            (
+                "https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-calendrier-scolaire/records",
+                {
+                    "limit": 20,
+                    "order_by": "start_date",
+                    "where": (
+                        f"start_date >= date'{today_iso}' "
+                        f'AND zones like "%{zone_label}%" '
+                        'AND population = "Élèves"'
+                    ),
+                },
+            ),
+            (
+                "https://data.education.gouv.fr/api/records/1.0/search/",
+                {
+                    "dataset": "fr-en-calendrier-scolaire",
+                    "rows": 20,
+                    "sort": "start_date",
+                    "refine.zones": zone_label,
+                    "refine.population": "Élèves",
+                    "q": today_iso,
+                },
+            ),
+        )
+        for url, params in endpoints:
+            response = requests.get(url, params=params, timeout=5)
+            response.raise_for_status()
+            payload = response.json()
+            records = payload.get("results") or payload.get("records") or []
+            for item in records:
+                fields = item.get("fields", item)
+                description = (fields.get("description") or "").strip()
+                if not description:
+                    continue
+                description_norm = _normalize_text(description)
+                if "vacances" not in description_norm and "pont" not in description_norm:
+                    continue
+                population = _normalize_text(fields.get("population"))
+                if population and "eleves" not in population:
+                    continue
+                record_zone = _normalize_text(fields.get("zones"))
+                if normalized_zone_label not in record_zone:
+                    continue
+                start_raw = fields.get("start_date") or fields.get("date_debut")
+                end_raw = fields.get("end_date") or fields.get("date_fin")
+                start_date = _parse_api_date(start_raw)
+                end_date = _parse_api_date(end_raw)
+                if not start_date or not end_date or start_date < today:
+                    continue
+                candidate = {
+                    "delta": (start_date - today).days,
+                    "label": description.upper(),
+                    "sub_label": _t(
+                        "ephemeris_school_break_dates",
+                        lang,
+                        start=_holiday_date_label(start_date, lang),
+                        end=_holiday_date_label(end_date, lang),
+                    ),
+                }
+                if best is None or candidate["delta"] < best["delta"]:
+                    best = candidate
+            if best is not None:
+                return best
+
+        ics_url_map = {
+            "A": "https://fr.ftp.opendatasoft.com/openscol/fr-en-calendrier-scolaire/Zone-A.ics",
+            "B": "https://fr.ftp.opendatasoft.com/openscol/fr-en-calendrier-scolaire/Zone-B.ics",
+            "C": "https://fr.ftp.opendatasoft.com/openscol/fr-en-calendrier-scolaire/Zone-C.ics",
+            "Corse": "https://fr.ftp.opendatasoft.com/openscol/fr-en-calendrier-scolaire/Corse.ics",
+            "Guadeloupe": "https://fr.ftp.opendatasoft.com/openscol/fr-en-calendrier-scolaire/Guadeloupe.ics",
+            "Guyane": "https://fr.ftp.opendatasoft.com/openscol/fr-en-calendrier-scolaire/Guyane.ics",
+            "Martinique": "https://fr.ftp.opendatasoft.com/openscol/fr-en-calendrier-scolaire/Martinique.ics",
+            "Mayotte": "https://fr.ftp.opendatasoft.com/openscol/fr-en-calendrier-scolaire/Mayotte.ics",
+            "Nouvelle Caledonie": "https://fr.ftp.opendatasoft.com/openscol/fr-en-calendrier-scolaire/NouvelleCaledonie.ics",
+            "Polynesie": "https://fr.ftp.opendatasoft.com/openscol/fr-en-calendrier-scolaire/Polynesie.ics",
+            "Reunion": "https://fr.ftp.opendatasoft.com/openscol/fr-en-calendrier-scolaire/Reunion.ics",
+            "Saint-Pierre-et-Miquelon": "https://fr.ftp.opendatasoft.com/openscol/fr-en-calendrier-scolaire/SaintPierreEtMiquelon.ics",
+            "Wallis et Futuna": "https://fr.ftp.opendatasoft.com/openscol/fr-en-calendrier-scolaire/WallisEtFutuna.ics",
+        }
+        ics_url = ics_url_map.get(zone)
+        if not ics_url:
+            return None
+        response = requests.get(ics_url, timeout=5)
+        response.raise_for_status()
+        blocks = response.text.split("BEGIN:VEVENT")
+        for block in blocks[1:]:
+            summary = ""
+            start_date = None
+            end_date = None
+            for raw_line in block.splitlines():
+                line = raw_line.strip()
+                if line.startswith("SUMMARY:"):
+                    summary = line.split(":", 1)[1].strip()
+                elif line.startswith("DTSTART"):
+                    start_date = _parse_api_date(line.split(":", 1)[1].strip())
+                elif line.startswith("DTEND"):
+                    end_date = _parse_api_date(line.split(":", 1)[1].strip())
+            if not summary or not start_date or start_date < today:
+                continue
+            if "vacances" not in _normalize_text(summary) and "pont" not in _normalize_text(summary):
+                continue
+            if end_date and end_date > start_date:
+                end_date = end_date - timedelta(days=1)
+            candidate = {
+                "delta": (start_date - today).days,
+                "label": summary.upper(),
+                "sub_label": _t(
+                    "ephemeris_school_break_dates",
+                    lang,
+                    start=_holiday_date_label(start_date, lang),
+                    end=_holiday_date_label(end_date or start_date, lang),
+                ),
+            }
+            if best is None or candidate["delta"] < best["delta"]:
+                best = candidate
+        return best
+    except Exception as e:
+        print("[SCHOOL HOLIDAYS ERROR]", e)
+    return None
+
+
+def _fit_font(draw, text, max_width, font_path, start_size, min_size=20):
+    size = start_size
+    try:
+        font = ImageFont.truetype(font_path, size)
+    except Exception:
+        return ImageFont.load_default()
+    while size > min_size and draw.textlength(text, font=font) > max_width:
+        size -= 2
+        with contextlib.suppress(Exception):
+            font = ImageFont.truetype(font_path, size)
+    return font
 
 
 def get_ephemeride_slot():
@@ -252,6 +496,7 @@ def generate_ephemeride_image(force=False):
     nom, description = get_ephemeride_nominis()
     lever, coucher   = get_sun_times(cfg)
     meteo            = get_meteo(cfg)
+    school_holiday   = get_next_school_holiday(cfg)
     today            = date.today()
     date_str         = f"{JOURS[today.weekday()]} {today.day} {MOIS[today.month]} {today.year}"
 
@@ -352,39 +597,69 @@ def generate_ephemeride_image(force=False):
 
     events = cfg.get("events", [])
     upcoming = []
+    if school_holiday:
+        upcoming.append(school_holiday)
     for ev in events:
         try:
             ev_date = date.fromisoformat(ev["date"])
             delta   = (ev_date - today).days
             if delta >= 0:
-                upcoming.append((delta, ev["label"]))
+                upcoming.append({"delta": delta, "label": ev["label"].upper(), "sub_label": None})
         except (ValueError, KeyError):
             pass
-    upcoming.sort()
+    upcoming.sort(key=lambda item: (item["delta"], item["label"]))
 
     if upcoming:
         try:
             font_cd_num = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 64)
             font_cd_lbl = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",      34)
+            font_cd_sub = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",      24)
         except Exception:
-            font_cd_num = font_cd_lbl = ImageFont.load_default()
+            font_cd_num = font_cd_lbl = font_cd_sub = ImageFont.load_default()
 
         to_show    = upcoming[:2]
-        y_num      = 960
-        y_lbl      = 1020
+        y_num      = 948
+        y_lbl      = 998
+        y_sub      = 1038
         today_text = _t('ephemeris_today', lang)
         if len(to_show) == 1:
-            delta, label = to_show[0]
+            item = to_show[0]
+            delta = item["delta"]
+            label = item["label"]
+            sub_label = item.get("sub_label")
             j_text = today_text if delta == 0 else f"J-{delta}"
             draw.text((960, y_num), j_text,       fill=(255, 220, 100), font=font_cd_num, anchor="mm")
-            draw.text((960, y_lbl), label.upper(), fill=(210, 190, 255), font=font_cd_lbl, anchor="mm")
+            label_font = _fit_font(
+                draw, label, 1040,
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 34, min_size=22
+            )
+            draw.text((960, y_lbl), label, fill=(210, 190, 255), font=label_font, anchor="mm")
+            if sub_label:
+                sub_font = _fit_font(
+                    draw, sub_label, 1040,
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 24, min_size=18
+                )
+                draw.text((960, y_sub), sub_label, fill=(200, 230, 255), font=sub_font, anchor="mm")
         else:
             draw.rectangle([930, 895, 934, 1055], fill=(200, 180, 255))
-            for i, (delta, label) in enumerate(to_show):
+            for i, item in enumerate(to_show):
+                delta = item["delta"]
+                label = item["label"]
+                sub_label = item.get("sub_label")
                 cx     = 480 if i == 0 else 1440
                 j_text = today_text if delta == 0 else f"J-{delta}"
                 draw.text((cx, y_num), j_text,       fill=(255, 220, 100), font=font_cd_num, anchor="mm")
-                draw.text((cx, y_lbl), label.upper(), fill=(210, 190, 255), font=font_cd_lbl, anchor="mm")
+                label_font = _fit_font(
+                    draw, label, 760,
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 32, min_size=20
+                )
+                draw.text((cx, y_lbl), label, fill=(210, 190, 255), font=label_font, anchor="mm")
+                if sub_label:
+                    sub_font = _fit_font(
+                        draw, sub_label, 760,
+                        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 22, min_size=16
+                    )
+                    draw.text((cx, y_sub), sub_label, fill=(200, 230, 255), font=sub_font, anchor="mm")
 
     tmp_path = f"{path}.{os.getpid()}.tmp"
     try:

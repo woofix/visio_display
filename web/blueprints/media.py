@@ -7,7 +7,8 @@ from services.config_svc import load_config, save_config
 from services.users_svc import load_users, has_permission, has_screen_access, is_superadmin
 from services.media_svc import (
     get_all_media, get_file_info, get_logo_path,
-    clean_filename, is_h264_mp4,
+    clean_filename, is_h264_mp4, get_media_groups,
+    collect_group_states, is_media_disabled, normalize_group_name,
 )
 from services.queue_svc import load_queue, save_queue, enqueue_upload_job
 from services.i18n import _flash
@@ -35,6 +36,7 @@ def admin_media():
         files        = [f for f in scfg.get('order', []) if f in set(all_media)]
         unassigned   = [f for f in all_media if f not in assigned_set]
         view_cfg     = {'disabled': scfg.get('disabled', []),
+                        'disabled_groups': scfg.get('disabled_groups', []),
                         'durations': scfg.get('durations', {})}
         schedules    = scfg.get('schedules', {})
     else:
@@ -44,9 +46,16 @@ def admin_media():
         view_cfg   = cfg
         schedules  = cfg.get('schedules', {})
 
+    media_groups = {f: get_media_groups(f, cfg) for f in all_media}
+    effective_cfg = dict(view_cfg)
+    effective_cfg['groups'] = cfg.get('groups', {})
+    group_states = collect_group_states(files, effective_cfg)
+    disabled_map = {f: is_media_disabled(f, effective_cfg) for f in files}
+
     return render_template('admin_media.html',
         files=files, unassigned=unassigned, infos=infos, cfg=view_cfg, queued=queued,
         schedules=schedules, current_screen=screen, screens=screens,
+        media_groups=media_groups, group_states=group_states, disabled_map=disabled_map,
         users=list(users.keys()), current_user=session.get('user'),
         logo_path=get_logo_path(), can_schedule=has_permission('schedule'),
         current_user_is_superadmin=is_superadmin())
@@ -77,6 +86,7 @@ def delete_file(filename):
         cfg["order"]    = [f for f in cfg.get("order", [])    if f != filename]
         cfg["disabled"] = [f for f in cfg.get("disabled", []) if f != filename]
         cfg["durations"].pop(filename, None)
+        cfg.get("groups", {}).pop(filename, None)
         cfg.get("schedules", {}).pop(filename, None)
         for scfg in cfg.get('screens', {}).values():
             scfg['order']    = [f for f in scfg.get('order', [])    if f != filename]
@@ -164,6 +174,68 @@ def toggle_file(filename):
 
     save_config(cfg)
     return jsonify({"state": state})
+
+
+@bp.route('/set_groups/<filename>', methods=['POST'])
+def set_groups(filename):
+    g = perm_guard('toggle')
+    if g: return g
+    filename = os.path.basename(filename)
+    data = request.get_json(silent=True) or {}
+    raw_groups = data.get('groups', [])
+
+    if isinstance(raw_groups, str):
+        raw_groups = raw_groups.split(',')
+    if not isinstance(raw_groups, list):
+        return jsonify({"error": "invalid groups"}), 400
+
+    groups = []
+    seen = set()
+    for group in raw_groups:
+        name = normalize_group_name(group)
+        key = name.casefold()
+        if name and key not in seen:
+            groups.append(name)
+            seen.add(key)
+
+    cfg = load_config()
+    groups_map = cfg.setdefault('groups', {})
+    if groups:
+        groups_map[filename] = groups
+    elif filename in groups_map:
+        del groups_map[filename]
+
+    save_config(cfg)
+    return jsonify({"ok": True, "groups": groups})
+
+
+@bp.route('/toggle_group/<path:group_name>', methods=['POST'])
+def toggle_group(group_name):
+    g = perm_guard('toggle')
+    if g: return g
+    data = request.get_json(silent=True) or {}
+    screen = data.get('screen', '').strip().lower()
+    normalized_group = normalize_group_name(group_name)
+    if not normalized_group:
+        return jsonify({"error": "invalid group"}), 400
+    if screen and not has_screen_access(screen):
+        return jsonify({"error": "screen access denied"}), 403
+
+    cfg = load_config()
+    if screen and screen in cfg.get('screens', {}):
+        disabled_groups = cfg['screens'][screen].setdefault('disabled_groups', [])
+    else:
+        disabled_groups = cfg.setdefault('disabled_groups', [])
+
+    if normalized_group in disabled_groups:
+        disabled_groups.remove(normalized_group)
+        state = "enabled"
+    else:
+        disabled_groups.append(normalized_group)
+        state = "disabled"
+
+    save_config(cfg)
+    return jsonify({"state": state, "group": normalized_group})
 
 
 @bp.route('/set_duration/<filename>', methods=['POST'])

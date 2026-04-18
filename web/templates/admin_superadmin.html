@@ -54,6 +54,18 @@
 .add-user-form input::placeholder { color: var(--text-3); }
 
 .delete-btn-wrap { margin-left: auto; }
+.alert-panel { display:flex; flex-direction:column; gap:12px; }
+.alert-panel p { font-size:.8rem; color:var(--text-3); line-height:1.5; }
+.alert-live { display:flex; align-items:center; gap:8px; font-size:.74rem; color:var(--text-3); }
+.alert-live-dot { width:9px; height:9px; border-radius:50%; background:#dc2626; box-shadow:0 0 0 5px rgba(220,38,38,.12); flex-shrink:0; }
+.alert-live-text { color:#991b1b; font-weight:700; }
+.alert-editor { width:100%; min-height:110px; resize:vertical; padding:12px 14px; border:1.5px solid var(--border); border-radius:var(--radius-sm); font:inherit; color:var(--text); background:var(--surface); line-height:1.5; }
+.alert-editor:focus { outline:none; border-color:#dc2626; box-shadow:0 0 0 3px rgba(220,38,38,.12); }
+.alert-actions { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.alert-status { font-size:.74rem; color:var(--text-3); min-height:1.1em; }
+.alert-preview { border:1px solid rgba(220,38,38,.18); background:linear-gradient(135deg, rgba(127,29,29,.96), rgba(220,38,38,.94)); color:#fff; border-radius:14px; padding:12px 14px; box-shadow:0 10px 30px rgba(127,29,29,.18); }
+.alert-preview-label { font-size:.68rem; letter-spacing:.08em; text-transform:uppercase; opacity:.82; font-weight:700; margin-bottom:6px; }
+.alert-preview-body { font-size:.95rem; font-weight:700; line-height:1.4; white-space:pre-wrap; word-break:break-word; }
 
 @media(max-width:700px) { .sa-grid { grid-template-columns: 1fr; } .perm-grid { grid-template-columns: 1fr; } }
 {% endblock %}
@@ -65,6 +77,30 @@
 </div>
 
 <div class="sa-grid">
+
+    <div class="sa-block full-col">
+        <h3>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            {{ t('superadmin_priority_alert_title') }}
+        </h3>
+        <div class="alert-panel">
+            <p>{{ t('superadmin_priority_alert_desc') }}</p>
+            <div class="alert-live">
+                <span class="alert-live-dot"></span>
+                <span class="alert-live-text">{{ t('superadmin_priority_alert_live') }}</span>
+                <span>{{ t('superadmin_priority_alert_hint') }}</span>
+            </div>
+            <textarea id="priority-alert-input" class="alert-editor" maxlength="280" placeholder="{{ t('superadmin_priority_alert_placeholder') }}">{{ priority_alert.message | default('') }}</textarea>
+            <div class="alert-actions">
+                <div id="priority-alert-status" class="alert-status"></div>
+                <button type="button" class="btn secondary sm" id="priority-alert-clear">{{ t('superadmin_priority_alert_clear') }}</button>
+            </div>
+            <div id="priority-alert-preview" class="alert-preview"{% if not priority_alert.message %} style="display:none"{% endif %}>
+                <div class="alert-preview-label">{{ t('superadmin_priority_alert_preview') }}</div>
+                <div id="priority-alert-preview-body" class="alert-preview-body">{{ priority_alert.message | default('') }}</div>
+            </div>
+        </div>
+    </div>
 
     <!-- ── COMPTES ET PERMISSIONS ── -->
     <div class="sa-block full-col">
@@ -230,6 +266,78 @@
 
 {% block scripts %}
 <script>
+
+const priorityAlertInput = document.getElementById('priority-alert-input');
+const priorityAlertStatus = document.getElementById('priority-alert-status');
+const priorityAlertPreview = document.getElementById('priority-alert-preview');
+const priorityAlertPreviewBody = document.getElementById('priority-alert-preview-body');
+const priorityAlertClear = document.getElementById('priority-alert-clear');
+
+let priorityAlertTimer = null;
+let priorityAlertController = null;
+let lastSavedPriorityAlert = priorityAlertInput ? priorityAlertInput.value.trim() : '';
+
+function renderPriorityAlertPreview(message) {
+    if (!priorityAlertPreview || !priorityAlertPreviewBody) return;
+    priorityAlertPreviewBody.textContent = message;
+    priorityAlertPreview.style.display = message ? 'block' : 'none';
+}
+
+function setPriorityAlertStatus(message, isError = false) {
+    if (!priorityAlertStatus) return;
+    priorityAlertStatus.textContent = message;
+    priorityAlertStatus.style.color = isError ? '#b91c1c' : 'var(--text-3)';
+}
+
+async function pushPriorityAlert(message) {
+    if (priorityAlertController) priorityAlertController.abort();
+    priorityAlertController = new AbortController();
+    setPriorityAlertStatus('{{ t("superadmin_priority_alert_saving") }}');
+
+    try {
+        const res = await fetch('/admin/priority-alert', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+            body: new URLSearchParams({ message }),
+            signal: priorityAlertController.signal
+        });
+        if (!res.ok) throw new Error('save_failed');
+        const data = await res.json();
+        lastSavedPriorityAlert = data.message || '';
+        priorityAlertInput.value = lastSavedPriorityAlert;
+        renderPriorityAlertPreview(lastSavedPriorityAlert);
+        setPriorityAlertStatus(lastSavedPriorityAlert ? '{{ t("superadmin_priority_alert_saved") }}' : '{{ t("superadmin_priority_alert_cleared") }}');
+    } catch (err) {
+        if (err.name === 'AbortError') return;
+        setPriorityAlertStatus('{{ t("superadmin_priority_alert_error") }}', true);
+    }
+}
+
+function schedulePriorityAlertSave() {
+    if (!priorityAlertInput) return;
+    const message = priorityAlertInput.value.trim().replace(/\s+/g, ' ');
+    renderPriorityAlertPreview(message);
+    if (message === lastSavedPriorityAlert) {
+        setPriorityAlertStatus('');
+        return;
+    }
+    clearTimeout(priorityAlertTimer);
+    setPriorityAlertStatus('{{ t("superadmin_priority_alert_pending") }}');
+    priorityAlertTimer = setTimeout(() => pushPriorityAlert(message), 250);
+}
+
+if (priorityAlertInput) {
+    priorityAlertInput.addEventListener('input', schedulePriorityAlertSave);
+    renderPriorityAlertPreview(lastSavedPriorityAlert);
+}
+
+if (priorityAlertClear) {
+    priorityAlertClear.addEventListener('click', () => {
+        if (!priorityAlertInput) return;
+        priorityAlertInput.value = '';
+        schedulePriorityAlertSave();
+    });
+}
 
 function toggleAll(btn) {
     const form = btn.closest('form');

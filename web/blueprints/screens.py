@@ -21,7 +21,7 @@ def add_screen():
     if name in screens:
         flash(f"L'écran « {name} » existe déjà.", 'error')
         return redirect(url_for('media.admin_media'))
-    screens[name] = {"order": [], "disabled": [], "durations": {}, "schedules": {}}
+    screens[name] = {"order": [], "disabled": [], "disabled_groups": [], "durations": {}, "schedules": {}}
     save_config(cfg)
     return redirect(url_for('media.admin_media') + f'?screen={name}')
 

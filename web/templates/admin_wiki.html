@@ -64,6 +64,22 @@
     color: var(--primary);
     font-weight: 600;
 }
+.wiki-search-wrap { margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+.wiki-search-box { display:flex; align-items:center; gap:6px; background:var(--bg); border:1.5px solid var(--border); border-radius:var(--radius-sm); padding:5px 9px; transition:border-color .15s; }
+.wiki-search-box:focus-within { border-color:var(--primary); }
+.wiki-search-box svg { width:12px; height:12px; color:var(--text-3); flex-shrink:0; }
+.wiki-search-input { border:none; outline:none; background:transparent; font:inherit; font-size:.77rem; color:var(--text); width:100%; }
+.wiki-search-input::placeholder { color:var(--text-3); }
+.wiki-search-results { display:none; margin-top:4px; }
+.wiki-search-results.active { display:block; }
+.wiki-search-result { padding:6px 8px; border-radius:6px; cursor:pointer; transition:background .15s; margin-bottom:2px; }
+.wiki-search-result:hover { background:var(--primary-bg); }
+.wiki-search-result-title { font-size:.76rem; font-weight:700; color:var(--primary); margin-bottom:2px; }
+.wiki-search-result-snippet { font-size:.71rem; color:var(--text-3); line-height:1.4; }
+.wiki-search-result-snippet mark { background:rgba(124,58,237,.15); color:var(--primary); border-radius:2px; padding:0 2px; font-weight:600; font-style:normal; }
+.wiki-search-result-title mark { background:rgba(124,58,237,.15); border-radius:2px; padding:0 2px; font-style:normal; }
+.wiki-search-empty { font-size:.76rem; color:var(--text-3); padding:8px; text-align:center; }
+.wiki-section mark { background:rgba(124,58,237,.15); color:var(--primary); border-radius:2px; padding:0 2px; font-weight:600; }
 
 /* ── CONTENU WIKI ── */
 .wiki-body { min-width: 0; }
@@ -327,20 +343,29 @@
     <!-- TABLE DES MATIÈRES -->
     <aside class="wiki-toc">
         <div class="wiki-toc-title">{{ t('wiki_toc_title') }}</div>
-        <a data-section="s1" class="active">1. {{ t('wiki_s1_title') }}</a>
-        <a data-section="s2">2. {{ t('wiki_s2_title') }}</a>
-        <a data-section="s3">3. {{ t('wiki_s3_title') }}</a>
-        <a data-section="s4">4. {{ t('wiki_s4_title') }}</a>
-        <a data-section="s5">5. {{ t('wiki_s5_title') }}</a>
-        <a data-section="s6">6. {{ t('wiki_s6_title') }}</a>
-        <a data-section="s7">7. {{ t('wiki_s7_title') }}</a>
-        <a data-section="s8">8. {{ t('wiki_s8_title') }}</a>
-        <a data-section="s9">9. {{ t('wiki_s9_title') }}</a>
-        <a data-section="s10">10. {{ t('wiki_s10_title') }}</a>
-        <a data-section="s11">11. {{ t('wiki_s11_title') }}</a>
-        <a data-section="s12">12. {{ t('wiki_s12_title') }}</a>
-        <a data-section="s13">13. {{ t('wiki_s13_title') }}</a>
-        <a data-section="s14">14. {{ t('wiki_s14_title') }}</a>
+        <div class="wiki-search-wrap">
+            <div class="wiki-search-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="wiki-search" class="wiki-search-input" placeholder="{{ t('wiki_search_placeholder') }}" autocomplete="off">
+            </div>
+            <div class="wiki-search-results" id="wiki-search-results"></div>
+        </div>
+        <div id="wiki-toc-links">
+            <a data-section="s1" class="active">1. {{ t('wiki_s1_title') }}</a>
+            <a data-section="s2">2. {{ t('wiki_s2_title') }}</a>
+            <a data-section="s3">3. {{ t('wiki_s3_title') }}</a>
+            <a data-section="s4">4. {{ t('wiki_s4_title') }}</a>
+            <a data-section="s5">5. {{ t('wiki_s5_title') }}</a>
+            <a data-section="s6">6. {{ t('wiki_s6_title') }}</a>
+            <a data-section="s7">7. {{ t('wiki_s7_title') }}</a>
+            <a data-section="s8">8. {{ t('wiki_s8_title') }}</a>
+            <a data-section="s9">9. {{ t('wiki_s9_title') }}</a>
+            <a data-section="s10">10. {{ t('wiki_s10_title') }}</a>
+            <a data-section="s11">11. {{ t('wiki_s11_title') }}</a>
+            <a data-section="s12">12. {{ t('wiki_s12_title') }}</a>
+            <a data-section="s13">13. {{ t('wiki_s13_title') }}</a>
+            <a data-section="s14">14. {{ t('wiki_s14_title') }}</a>
+        </div>
     </aside>
 
     <!-- CONTENU -->
@@ -780,6 +805,83 @@
 
     const initial = location.hash.replace('#', '') || 's1';
     showSection(ids.includes(initial) ? initial : 's1');
+
+    /* ── Recherche ── */
+    const searchInput   = document.getElementById('wiki-search');
+    const searchResults = document.getElementById('wiki-search-results');
+    const tocLinks      = document.getElementById('wiki-toc-links');
+    const JS_NO_RESULTS = {{ t('wiki_search_no_results') | tojson }};
+
+    const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    const sectionIndex = sections.map(s => ({
+        id:    s.id,
+        title: s.querySelector('h2')?.textContent?.trim() || '',
+        text:  s.innerText,
+    }));
+
+    function highlight(str, q) {
+        return str.replace(new RegExp(`(${escRe(q)})`, 'gi'), '<mark>$1</mark>');
+    }
+
+    function snippet(text, q) {
+        const lo  = text.toLowerCase();
+        const idx = lo.indexOf(q.toLowerCase());
+        if (idx === -1) return '';
+        const start = Math.max(0, idx - 45);
+        const end   = Math.min(text.length, idx + q.length + 80);
+        return (start > 0 ? '…' : '') + text.slice(start, end).trim() + (end < text.length ? '…' : '');
+    }
+
+    searchInput.addEventListener('input', () => {
+        const q = searchInput.value.trim();
+        if (!q) {
+            searchResults.classList.remove('active');
+            searchResults.innerHTML = '';
+            tocLinks.style.display = '';
+            return;
+        }
+        tocLinks.style.display = 'none';
+        searchResults.classList.add('active');
+
+        const matches = sectionIndex.filter(s =>
+            s.text.toLowerCase().includes(q.toLowerCase()) ||
+            s.title.toLowerCase().includes(q.toLowerCase())
+        );
+
+        if (!matches.length) {
+            searchResults.innerHTML = `<div class="wiki-search-empty">${JS_NO_RESULTS}</div>`;
+            return;
+        }
+
+        searchResults.innerHTML = matches.map(s => `
+            <div class="wiki-search-result" data-target="${s.id}">
+                <div class="wiki-search-result-title">${highlight(s.title, q)}</div>
+                <div class="wiki-search-result-snippet">${highlight(snippet(s.text, q), q)}</div>
+            </div>`).join('');
+
+        searchResults.querySelectorAll('.wiki-search-result').forEach(r => {
+            r.addEventListener('click', () => {
+                searchInput.value = '';
+                searchResults.classList.remove('active');
+                searchResults.innerHTML = '';
+                tocLinks.style.display = '';
+                showSection(r.dataset.target);
+            });
+        });
+    });
+
+    searchInput.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            searchInput.value = '';
+            searchInput.dispatchEvent(new Event('input'));
+            searchInput.blur();
+        }
+        if (e.key === 'Enter') {
+            const first = searchResults.querySelector('.wiki-search-result');
+            if (first) first.click();
+        }
+    });
 })();
 </script>
 {% endblock %}

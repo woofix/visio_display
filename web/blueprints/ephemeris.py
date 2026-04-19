@@ -6,7 +6,7 @@ from services.config_svc import load_config, save_config
 from services.users_svc import is_admin, has_permission
 from services.ephemeris_svc import generate_ephemeride_image
 from services.i18n import _flash
-from blueprints.guards import perm_guard
+from blueprints.guards import perm_guard, feature_guard_json
 
 bp = Blueprint('ephemeris', __name__)
 
@@ -14,6 +14,8 @@ bp = Blueprint('ephemeris', __name__)
 @bp.route('/regen_ephemeride', methods=['POST'])
 def regen_ephemeride():
     g = perm_guard('ephemeris')
+    if g: return g
+    g = feature_guard_json('ephemeris')
     if g: return g
     generate_ephemeride_image(force=True)
     return jsonify({"ok": True})

@@ -12,6 +12,20 @@ def _default_screen_config():
     }
 
 
+def _default_features():
+    return {
+        "upload":         True,
+        "delete":         True,
+        "compress":       True,
+        "ephemeris":      True,
+        "schedule":       True,
+        "groups":         True,
+        "screens":        True,
+        "priority_alert": True,
+        "activity":       True,
+    }
+
+
 def _default_config():
     return {
         "order": [],
@@ -26,6 +40,7 @@ def _default_config():
             "message": "",
             "updated_at": None,
         },
+        "features": _default_features(),
     }
 
 
@@ -45,6 +60,8 @@ def load_config():
     merged["group_pools"] = cfg.get("group_pools", {}) if isinstance(cfg.get("group_pools"), dict) else {}
     merged["group_screens"] = cfg.get("group_screens", {}) if isinstance(cfg.get("group_screens"), dict) else {}
     merged["disabled_groups"] = cfg.get("disabled_groups", []) if isinstance(cfg.get("disabled_groups"), list) else []
+    stored_features = cfg.get("features", {})
+    merged["features"] = {**_default_features(), **(stored_features if isinstance(stored_features, dict) else {})}
     screens = cfg.get("screens", {})
     normalized_screens = {}
     if isinstance(screens, dict):
@@ -62,6 +79,11 @@ def load_config():
         'updated_at': alert.get('updated_at'),
     }
     return merged
+
+
+def is_feature_enabled(feature_name):
+    cfg = load_config()
+    return bool(cfg.get("features", {}).get(feature_name, True))
 
 
 def save_config(cfg):

@@ -103,11 +103,15 @@
             border-radius: 40px;
             padding: 8px 14px;
             z-index: 999;
+            opacity: 0;
+            transition: opacity .6s ease;
+            pointer-events: none;
+        }
+        .screen-switcher.sw-visible {
             opacity: 0.35;
-            transition: opacity .35s ease;
             pointer-events: auto;
         }
-        .screen-switcher:hover {
+        .screen-switcher.sw-visible:hover {
             opacity: 1;
         }
         .screen-switcher-label {
@@ -365,6 +369,13 @@
     /* ── Screen switcher ── */
     (function() {
         const switcher = document.getElementById('screen-switcher');
+        let hideTimer = null;
+
+        function showSwitcher() {
+            switcher.classList.add('sw-visible');
+            clearTimeout(hideTimer);
+            hideTimer = setTimeout(() => switcher.classList.remove('sw-visible'), 3000);
+        }
 
         async function buildSwitcher() {
             try {
@@ -382,6 +393,12 @@
                     });
                     switcher.appendChild(btn);
                 });
+
+                /* Apparaît brièvement au chargement puis se masque */
+                showSwitcher();
+                /* Réapparaît sur mouvement de souris ou toucher */
+                document.addEventListener('mousemove', showSwitcher);
+                document.addEventListener('touchstart', showSwitcher);
             } catch(e) { switcher.remove(); }
         }
 

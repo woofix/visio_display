@@ -5,7 +5,7 @@ from flask import Blueprint, request, redirect, url_for, session, render_templat
 
 from constants import (
     VALID_THEMES, LOGO_EXTS, IMAGES_FOLDER, DEFAULT_LOGO, LAT, LNG,
-    DEFAULT_METEO_VILLE, DEFAULT_METEO_TZ, SCHOOL_ZONES,
+    DEFAULT_METEO_VILLE, DEFAULT_METEO_TZ, SCHOOL_ZONES, ALL_FEATURES,
 )
 from services.config_svc import load_config, save_config
 from services.users_svc import load_users, save_users, is_superadmin, has_permission
@@ -139,6 +139,36 @@ def set_language():
         save_users(users)
     _flash('flash_language_updated', 'success')
     return redirect(url_for('settings.admin_settings_page') + '?tab=language')
+
+
+@bp.route('/admin/features')
+def admin_features_page():
+    g = superadmin_guard()
+    if g: return g
+    cfg = load_config()
+    return render_template('admin_features.html',
+        all_features=ALL_FEATURES,
+        features=cfg.get('features', {}),
+        current_user=session.get('user'),
+        logo_path=get_logo_path())
+
+
+@bp.route('/admin/features/toggle', methods=['POST'])
+def toggle_feature():
+    g = superadmin_guard()
+    if g: return g
+    feature = request.form.get('feature', '').strip()
+    valid_keys = {k for k, _, _ in ALL_FEATURES}
+    if feature not in valid_keys:
+        _flash('flash_feature_disabled_access', 'error')
+        return redirect(url_for('settings.admin_features_page'))
+    cfg = load_config()
+    features = dict(cfg.get('features', {}))
+    features[feature] = not bool(features.get(feature, True))
+    cfg['features'] = features
+    save_config(cfg)
+    _flash('flash_feature_updated', 'success')
+    return redirect(url_for('settings.admin_features_page'))
 
 
 @bp.route('/admin/logo/upload', methods=['POST'])

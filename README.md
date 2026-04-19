@@ -65,6 +65,12 @@ Application web légère de signalétique numérique conçue pour tourner sur Ra
 - Choix de la langue de l'interface (français / anglais)
 - Choix du thème de l'interface : Violet, Sombre, Bleu
 
+**Journal d'activité**
+- Enregistre toutes les actions utilisateurs : uploads, suppressions, connexions/déconnexions, activations/désactivations de médias et de groupes, compressions vidéo
+- Chaque entrée indique l'utilisateur responsable, le fichier concerné et les détails (état, taille avant/après…)
+- Filtres par type d'action, par utilisateur et recherche libre
+- Les compressions automatiques nocturnes sont tracées sous l'utilisateur `system`
+
 **Wiki intégré**
 - Page d'aide accessible depuis l'interface d'administration (`/admin/wiki`)
 - Documentation interactive couvrant toutes les fonctionnalités, disponible sans quitter l'application
@@ -479,6 +485,12 @@ A lightweight web-based digital signage application designed to run on a Raspber
 - Customizable application name
 - UI language selection (French / English)
 - UI theme selection: Violet, Dark, Blue
+
+**Activity log**
+- Records all user actions: uploads, deletions, logins/logouts, media and group enable/disable, video compressions
+- Each entry shows the responsible user, the affected file and details (state, before/after size…)
+- Filters by action type, by user, and free-text search
+- Automatic overnight compressions are logged under the `system` user
 
 **Built-in wiki**
 - Help page accessible from the admin interface (`/admin/wiki`)

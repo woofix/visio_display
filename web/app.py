@@ -5,13 +5,13 @@ import json
 import os
 from flask import Flask
 
-from constants import ALL_PERMISSIONS, DB_FILE, CONFIG_FILE, QUEUE_FILE, USERS_FILE
+from constants import ALL_PERMISSIONS, ALL_FEATURES, DB_FILE, CONFIG_FILE, QUEUE_FILE, USERS_FILE
 from db import db, AppConfig, User, EncodeJob
 from services.users_svc import init_users
 from services.queue_svc import start_encoder_thread
 from services.i18n import get_language, _trans
 from services.users_svc import load_users, is_superadmin, has_permission
-from services.config_svc import load_config
+from services.config_svc import load_config, is_feature_enabled
 from flask import session
 from translations import TRANSLATIONS
 
@@ -140,6 +140,7 @@ def create_app(start_scheduler=True, test_config=None):
         return dict(
             current_user_is_superadmin=is_superadmin(),
             has_permission=has_permission,
+            is_feature_enabled=is_feature_enabled,
             theme=user_theme,
             app_name=cfg.get('app_name', 'Helios'),
             lang=lang,

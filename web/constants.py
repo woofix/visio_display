@@ -50,6 +50,18 @@ ALL_PERMISSIONS = [
     ("schedule",  "perm_schedule"),
 ]
 
+ALL_FEATURES = [
+    ("upload",         "feature_upload",         "feature_upload_desc"),
+    ("delete",         "feature_delete",          "feature_delete_desc"),
+    ("compress",       "feature_compress",        "feature_compress_desc"),
+    ("ephemeris",      "feature_ephemeris",       "feature_ephemeris_desc"),
+    ("schedule",       "feature_schedule",        "feature_schedule_desc"),
+    ("groups",         "feature_groups",          "feature_groups_desc"),
+    ("screens",        "feature_screens",         "feature_screens_desc"),
+    ("priority_alert", "feature_priority_alert",  "feature_priority_alert_desc"),
+    ("activity",       "feature_activity",        "feature_activity_desc"),
+]
+
 RESERVED_SCREEN_NAMES = {'default', 'admin', 'api', 'static', 'login', 'logout'}
 
 VALID_THEMES = ('violet', 'bleu', 'sombre')

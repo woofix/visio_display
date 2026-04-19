@@ -20,7 +20,8 @@ Visio-Display est une application d'**affichage dynamique** (digital signage) qu
 12. [File d'encodage vidéo](#12-file-dencodage-vidéo)
 13. [Alerte prioritaire (super-admin)](#13-alerte-prioritaire-super-admin)
 14. [Permissions disponibles](#14-permissions-disponibles)
-15. [Wiki — aide intégrée](#15-wiki--aide-intégrée)
+15. [Journal d'activité](#15-journal-dactivité)
+16. [Wiki — aide intégrée](#16-wiki--aide-intégrée)
 
 ---
 
@@ -374,7 +375,34 @@ L'alerte prioritaire permet de diffuser **immédiatement** un message en banniè
 
 ---
 
-## 15. Wiki — aide intégrée
+## 15. Journal d'activité
+
+Accessible depuis **Journal d'activité** dans le menu de navigation.
+
+Le journal retrace toutes les actions effectuées par les utilisateurs sur l'application.
+
+### Actions enregistrées
+
+| Action | Description |
+|---|---|
+| **Upload** | Import d'un fichier (image, vidéo ou PDF) — utilisateur et fichier indiqués |
+| **Suppression** | Suppression définitive d'un fichier |
+| **Connexion** | Ouverture de session |
+| **Déconnexion** | Fermeture de session |
+| **Activation** | Activation ou désactivation d'un média ou d'un groupe — l'état résultant (`enabled` / `disabled`) et l'écran concerné sont précisés |
+| **Compression** | Démarrage et résultat d'une compression vidéo automatique (taille avant/après, taux de réduction) — effectuée par `system` |
+
+### Filtres disponibles
+
+- **Recherche libre** : par nom de fichier, utilisateur ou détails
+- **Par type d'action** : Upload, Suppression, Connexion, Déconnexion, Activation, Compression
+- **Par utilisateur**
+
+> **Note :** Les compressions vidéo automatiques (planifiées la nuit) sont enregistrées sous l'utilisateur `system`.
+
+---
+
+## 16. Wiki — aide intégrée
 
 Accessible depuis **Wiki** dans le menu de navigation.
 

@@ -365,6 +365,7 @@
             <a data-section="s12">12. {{ t('wiki_s12_title') }}</a>
             <a data-section="s13">13. {{ t('wiki_s13_title') }}</a>
             <a data-section="s14">14. {{ t('wiki_s14_title') }}</a>
+            <a data-section="s15">15. {{ t('wiki_s15_title') }}</a>
         </div>
     </aside>
 
@@ -730,6 +731,30 @@
             </ol>
             <div class="wiki-callout warning">
                 {{ t('wiki_s14_warning') }}
+            </div>
+        </section>
+
+        <!-- §15 Journal d'activité -->
+        <section class="wiki-section" id="s15">
+            <div class="wiki-section-header">
+                <div class="wiki-section-num">15</div>
+                <h2>{{ t('wiki_s15_title') }}</h2>
+            </div>
+            <p>{{ t('wiki_s15_desc') }}</p>
+            <div class="wiki-callout">{{ t('wiki_s15_access') }}</div>
+            <h3>{{ t('wiki_s15_actions_title') }}</h3>
+            <ul>
+                <li>{{ t('wiki_s15_action_upload') }}</li>
+                <li>{{ t('wiki_s15_action_delete') }}</li>
+                <li>{{ t('wiki_s15_action_login') }}</li>
+                <li>{{ t('wiki_s15_action_logout') }}</li>
+                <li>{{ t('wiki_s15_action_toggle') }}</li>
+                <li>{{ t('wiki_s15_action_compress') }}</li>
+            </ul>
+            <h3>{{ t('wiki_s15_filters_title') }}</h3>
+            <p>{{ t('wiki_s15_filters_desc') }}</p>
+            <div class="wiki-callout warning">
+                <strong>{{ t('wiki_tip') }}</strong> {{ t('wiki_s15_who') }}
             </div>
         </section>
 

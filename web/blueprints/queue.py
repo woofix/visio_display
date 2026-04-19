@@ -14,7 +14,7 @@ from services.queue_svc import (
 )
 from services.media_svc import get_logo_path
 from services.i18n import _flash
-from blueprints.guards import admin_guard, superadmin_guard, perm_guard
+from blueprints.guards import admin_guard, superadmin_guard, perm_guard, feature_guard_json
 
 bp = Blueprint('queue', __name__)
 
@@ -32,6 +32,8 @@ def admin_queue_view():
 @bp.route('/compress/<filename>', methods=['POST'])
 def compress_video(filename):
     g = perm_guard('compress')
+    if g: return g
+    g = feature_guard_json('compress')
     if g: return g
     filename = os.path.basename(filename)
     ext = os.path.splitext(filename)[1].lower()

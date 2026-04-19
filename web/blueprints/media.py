@@ -14,7 +14,7 @@ from services.media_svc import (
 from services.queue_svc import load_queue, save_queue, enqueue_upload_job
 from services.i18n import _flash
 from services.activity_svc import log_activity
-from blueprints.guards import admin_guard, perm_guard
+from blueprints.guards import admin_guard, perm_guard, feature_guard_json
 
 bp = Blueprint('media', __name__)
 
@@ -79,6 +79,8 @@ def admin_upload_page():
 def delete_file(filename):
     redir = admin_guard()
     if redir: return redir
+    g = feature_guard_json('delete')
+    if g: return g
     if not has_permission('delete'):
         _flash('flash_no_perm_delete', 'error')
         return redirect(url_for('media.admin_media'))
@@ -112,6 +114,8 @@ def delete_file(filename):
 def upload_file():
     redir = admin_guard()
     if redir: return redir
+    g = feature_guard_json('upload')
+    if g: return g
     if not has_permission('upload'):
         _flash('flash_no_perm_upload', 'error')
         return redirect(url_for('media.admin_upload_page'))
@@ -182,12 +186,16 @@ def toggle_file(filename):
         state = "disabled"
 
     save_config(cfg)
+    details = state + (' → ' + screen if screen else '')
+    log_activity(session.get('user'), 'toggle', filename=filename, details=details)
     return jsonify({"state": state})
 
 
 @bp.route('/set_groups/<filename>', methods=['POST'])
 def set_groups(filename):
     g = perm_guard('toggle')
+    if g: return g
+    g = feature_guard_json('groups')
     if g: return g
     filename = os.path.basename(filename)
     data = request.get_json(silent=True) or {}
@@ -267,6 +275,8 @@ def set_group_pool(group_name):
 def toggle_group(group_name):
     g = perm_guard('toggle')
     if g: return g
+    g = feature_guard_json('groups')
+    if g: return g
     data = request.get_json(silent=True) or {}
     screen = data.get('screen', '').strip().lower()
     normalized_group = normalize_group_name(group_name)
@@ -289,6 +299,8 @@ def toggle_group(group_name):
         state = "disabled"
 
     save_config(cfg)
+    details = state + ' (groupe: ' + normalized_group + ')' + (' → ' + screen if screen else '')
+    log_activity(session.get('user'), 'toggle', filename=None, details=details)
     return jsonify({"state": state, "group": normalized_group})
 
 
@@ -336,6 +348,8 @@ def reorder():
 @bp.route('/schedule/<path:filename>', methods=['POST'])
 def set_schedule(filename):
     g = perm_guard('schedule')
+    if g: return g
+    g = feature_guard_json('schedule')
     if g: return g
     filename = os.path.basename(filename)
     data     = request.get_json(silent=True) or {}

@@ -3,7 +3,7 @@ from flask import Blueprint, request, redirect, url_for, flash, jsonify
 from services.config_svc import load_config, save_config
 from services.users_svc import has_screen_access
 from services.media_svc import valid_screen_name
-from blueprints.guards import superadmin_guard, perm_guard
+from blueprints.guards import superadmin_guard, perm_guard, feature_guard
 
 bp = Blueprint('screens', __name__)
 
@@ -11,6 +11,8 @@ bp = Blueprint('screens', __name__)
 @bp.route('/admin/screens/add', methods=['POST'])
 def add_screen():
     redir = superadmin_guard()
+    if redir: return redir
+    redir = feature_guard('screens')
     if redir: return redir
     name = request.form.get('screen_name', '').strip().lower()
     if not valid_screen_name(name):
@@ -29,6 +31,8 @@ def add_screen():
 @bp.route('/admin/screens/delete/<name>', methods=['POST'])
 def delete_screen(name):
     redir = superadmin_guard()
+    if redir: return redir
+    redir = feature_guard('screens')
     if redir: return redir
     cfg     = load_config()
     screens = cfg.get('screens', {})

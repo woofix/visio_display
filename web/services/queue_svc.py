@@ -202,6 +202,8 @@ def _rq_compress_job(encode_job_id):
         tmp = src + '.compress_tmp.mp4'
         out = os.path.splitext(src)[0] + '.mp4'
 
+        from services.activity_svc import log_activity
+        log_activity('system', 'compress', filename=job['filename'], details='démarrage')
         ok = _reencode_with_progress(src, tmp, compress=True, job_id=encode_job_id)
         if ok:
             os.replace(tmp, out)
@@ -245,6 +247,8 @@ def _rq_compress_job(encode_job_id):
                 disabled.remove(new_name)
                 cfg['disabled'] = disabled
             save_config(cfg)
+            log_activity('system', 'compress', filename=new_name,
+                         details=f"{job['before']}MB → {job['after']}MB (x{job['ratio']})")
         else:
             try:
                 os.remove(tmp)
@@ -252,6 +256,7 @@ def _rq_compress_job(encode_job_id):
                 pass
             job['status']  = 'error'
             job['message'] = _t('ffmpeg_failed')
+            log_activity('system', 'compress', filename=job['filename'], details='erreur ffmpeg')
 
         job['finished'] = datetime.now().isoformat()
         save_queue(q)

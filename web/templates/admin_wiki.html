@@ -807,41 +807,44 @@
     showSection(ids.includes(initial) ? initial : 's1');
 
     /* ── Recherche ── */
-    const searchInput   = document.getElementById('wiki-search');
-    const searchResults = document.getElementById('wiki-search-results');
-    const tocLinks      = document.getElementById('wiki-toc-links');
-    const JS_NO_RESULTS = {{ t('wiki_search_no_results') | tojson }};
+    const searchInput    = document.getElementById('wiki-search');
+    const searchResults  = document.getElementById('wiki-search-results');
+    const tocLinksWrap   = document.getElementById('wiki-toc-links');
+    const JS_NO_RESULTS  = {{ t('wiki_search_no_results') | tojson }};
 
-    const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const escRe = str => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
     const sectionIndex = sections.map(s => ({
         id:    s.id,
         title: s.querySelector('h2')?.textContent?.trim() || '',
-        text:  s.innerText,
+        text:  s.textContent,
     }));
 
-    function highlight(str, q) {
+    function hlText(str, q) {
         return str.replace(new RegExp(`(${escRe(q)})`, 'gi'), '<mark>$1</mark>');
     }
 
-    function snippet(text, q) {
+    function getSnippet(text, q) {
         const lo  = text.toLowerCase();
         const idx = lo.indexOf(q.toLowerCase());
-        if (idx === -1) return '';
+        if (idx === -1) return text.slice(0, 100) + '…';
         const start = Math.max(0, idx - 45);
         const end   = Math.min(text.length, idx + q.length + 80);
         return (start > 0 ? '…' : '') + text.slice(start, end).trim() + (end < text.length ? '…' : '');
     }
 
+    function clearSearch() {
+        searchInput.value = '';
+        searchResults.classList.remove('active');
+        searchResults.innerHTML = '';
+        tocLinksWrap.style.display = '';
+    }
+
     searchInput.addEventListener('input', () => {
         const q = searchInput.value.trim();
-        if (!q) {
-            searchResults.classList.remove('active');
-            searchResults.innerHTML = '';
-            tocLinks.style.display = '';
-            return;
-        }
-        tocLinks.style.display = 'none';
+        if (!q) { clearSearch(); return; }
+
+        tocLinksWrap.style.display = 'none';
         searchResults.classList.add('active');
 
         const matches = sectionIndex.filter(s =>
@@ -856,27 +859,20 @@
 
         searchResults.innerHTML = matches.map(s => `
             <div class="wiki-search-result" data-target="${s.id}">
-                <div class="wiki-search-result-title">${highlight(s.title, q)}</div>
-                <div class="wiki-search-result-snippet">${highlight(snippet(s.text, q), q)}</div>
+                <div class="wiki-search-result-title">${hlText(s.title, q)}</div>
+                <div class="wiki-search-result-snippet">${hlText(getSnippet(s.text, q), q)}</div>
             </div>`).join('');
 
         searchResults.querySelectorAll('.wiki-search-result').forEach(r => {
             r.addEventListener('click', () => {
-                searchInput.value = '';
-                searchResults.classList.remove('active');
-                searchResults.innerHTML = '';
-                tocLinks.style.display = '';
+                clearSearch();
                 showSection(r.dataset.target);
             });
         });
     });
 
     searchInput.addEventListener('keydown', e => {
-        if (e.key === 'Escape') {
-            searchInput.value = '';
-            searchInput.dispatchEvent(new Event('input'));
-            searchInput.blur();
-        }
+        if (e.key === 'Escape') { clearSearch(); searchInput.blur(); }
         if (e.key === 'Enter') {
             const first = searchResults.querySelector('.wiki-search-result');
             if (first) first.click();

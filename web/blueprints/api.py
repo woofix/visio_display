@@ -71,6 +71,12 @@ def api_pools():
     return jsonify(cfg.get('group_pools', {}))
 
 
+@bp.route('/api/screens')
+def api_screens():
+    cfg = load_config()
+    return jsonify(list(cfg.get('screens', {}).keys()))
+
+
 @bp.route('/api/diskusage')
 def api_diskusage():
     return jsonify(get_disk_usage())

@@ -88,9 +88,57 @@
             word-break: break-word;
             text-wrap: balance;
         }
+
+        .screen-switcher {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            background: rgba(10, 10, 15, 0.72);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,.1);
+            border-radius: 40px;
+            padding: 8px 14px;
+            z-index: 999;
+            opacity: 0.35;
+            transition: opacity .35s ease;
+            pointer-events: auto;
+        }
+        .screen-switcher:hover {
+            opacity: 1;
+        }
+        .screen-switcher-label {
+            font: 600 .65rem/1 system-ui, sans-serif;
+            text-transform: uppercase;
+            letter-spacing: .09em;
+            color: rgba(255,255,255,.4);
+            padding-right: 6px;
+            border-right: 1px solid rgba(255,255,255,.15);
+            margin-right: 2px;
+            white-space: nowrap;
+        }
+        .screen-btn {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,.18);
+            border-radius: 20px;
+            color: rgba(255,255,255,.65);
+            padding: 5px 15px;
+            font: 600 .78rem/1 system-ui, sans-serif;
+            cursor: pointer;
+            transition: background .15s, color .15s, border-color .15s;
+            white-space: nowrap;
+        }
+        .screen-btn:hover { background: rgba(138,43,226,.5); border-color: rgba(138,43,226,.8); color: #fff; }
+        .screen-btn.active { background: rgba(138,43,226,.75); border-color: rgba(138,43,226,1); color: #fff; }
     </style>
 </head>
 <body>
+<div id="screen-switcher" class="screen-switcher">
+    <span class="screen-switcher-label">Écran</span>
+</div>
 <div id="priority-alert" class="priority-alert" aria-live="polite" aria-atomic="true">
     <div class="priority-alert-label">Alerte prioritaire</div>
     <div id="priority-alert-message" class="priority-alert-message"></div>
@@ -313,6 +361,32 @@
     }
 
     start();
+
+    /* ── Screen switcher ── */
+    (function() {
+        const switcher = document.getElementById('screen-switcher');
+
+        async function buildSwitcher() {
+            try {
+                const res = await fetch('/api/screens', { cache: 'no-store' });
+                if (!res.ok) return;
+                const screens = await res.json();
+                if (!screens.length) { switcher.remove(); return; }
+
+                ['', ...screens].forEach(s => {
+                    const btn = document.createElement('button');
+                    btn.className = 'screen-btn' + (s === SCREEN ? ' active' : '');
+                    btn.textContent = s || 'Défaut';
+                    btn.addEventListener('click', () => {
+                        window.location.href = s ? '/?screen=' + encodeURIComponent(s) : '/';
+                    });
+                    switcher.appendChild(btn);
+                });
+            } catch(e) { switcher.remove(); }
+        }
+
+        buildSwitcher();
+    })();
 </script>
 </body>
 </html>

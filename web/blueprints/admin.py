@@ -12,11 +12,12 @@ bp = Blueprint('admin', __name__)
 def admin_page():
     redir = admin_guard()
     if redir: return redir
-    cfg   = load_config()
-    files = get_all_media()
-    disk  = get_disk_usage()
-    users = load_users()
+    cfg     = load_config()
+    files   = get_all_media()
+    disk    = get_disk_usage()
+    users   = load_users()
+    screens = list(cfg.get('screens', {}).keys())
     return render_template('admin_dashboard.html',
-        files=files, cfg=cfg, disk=disk,
+        files=files, cfg=cfg, disk=disk, screens=screens,
         users=list(users.keys()), current_user=session.get('user'),
         logo_path=get_logo_path())

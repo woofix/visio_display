@@ -164,6 +164,10 @@
 .file-card.group-disabled .badge-group-disabled { display:block; }
 .file-card.disabled .badge-group-disabled { display:none; }
 
+/* Preview button (screen-bar action) */
+.btn-preview-screen { background:var(--primary);color:#fff;border:none;border-radius:6px;padding:6px 13px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s;white-space:nowrap; }
+.btn-preview-screen:hover { background:var(--primary-hover,#6d28d9); }
+
 /* Screen preview modal */
 .screen-preview-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2000;align-items:center;justify-content:center; }
 .screen-preview-overlay.open { display:flex; }
@@ -205,20 +209,8 @@
     <span class="screen-bar-label">{{ t('media_screen_label') }}</span>
     <div class="screen-tabs">
         <a href="/admin/media" class="screen-tab {% if not current_screen %}active{% endif %}">{{ t('media_screen_default') }}</a>
-        {% if not current_screen %}
-        <button class="screen-tab" id="btn-preview-screen" title="Prévisualiser l'écran par défaut" style="display:flex;align-items:center;gap:5px">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-            Prévisualiser
-        </button>
-        {% endif %}
         {% for s in screens %}
         <a href="/admin/media?screen={{ s }}" class="screen-tab {% if current_screen == s %}active{% endif %}">{{ s }}</a>
-        {% if current_screen == s %}
-        <button class="screen-tab" id="btn-preview-screen" title="Prévisualiser l'écran « {{ s }} »" style="display:flex;align-items:center;gap:5px">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-            Prévisualiser
-        </button>
-        {% endif %}
         {% if current_screen == s and current_user_is_superadmin %}
         <form method="post" action="/admin/screens/delete/{{ s }}" style="display:inline"
               onsubmit="return confirm(SCREEN_DELETE_CONFIRM.replace('{name}', '{{ s }}'))">
@@ -227,6 +219,12 @@
         {% endif %}
         {% endfor %}
     </div>
+    <button class="btn-preview-screen" id="btn-preview-screen"
+            title="{% if current_screen %}Prévisualiser « {{ current_screen }} »{% else %}Prévisualiser l'écran par défaut{% endif %}"
+            style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-shrink:0">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        Prévisualiser
+    </button>
 </div>
 
 <!-- Toolbar -->

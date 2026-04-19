@@ -66,6 +66,9 @@
 .quick-card h3  { font-size:.88rem; font-weight:700; color:var(--text); margin-bottom:4px; }
 .quick-card p   { font-size:.76rem; color:var(--text-3); line-height:1.5; }
 .quick-card-arrow { font-size:.75rem; color:var(--primary); font-weight:600; margin-top:10px; display:flex; align-items:center; gap:4px; }
+.quick-card-screens { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
+.quick-card-screen-btn { background:var(--primary-bg); color:var(--primary); border:1px solid var(--primary-light,#c4b5fd); border-radius:20px; padding:4px 12px; font-size:.72rem; font-weight:600; cursor:pointer; font-family:inherit; transition:background .15s,color .15s; text-decoration:none; display:inline-flex; align-items:center; gap:4px; }
+.quick-card-screen-btn:hover { background:var(--primary); color:#fff; }
 
 @media(max-width:1000px) { .quick-grid { grid-template-columns:1fr 1fr; } }
 @media(max-width:800px) { .hero-grid { grid-template-columns:1fr 1fr; } .quick-grid { grid-template-columns:1fr; } }
@@ -163,13 +166,24 @@
         <p>{{ t('quick_queue_desc') }}</p>
         <div class="quick-card-arrow">{{ t('quick_access') }} <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:12px;height:12px"><polyline points="9 18 15 12 9 6"/></svg></div>
     </a>
-    <a class="quick-card" href="/" target="_blank">
+    <div class="quick-card">
         <div class="quick-card-icon orange">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
         </div>
         <h3>{{ t('quick_preview_title') }}</h3>
         <p>{{ t('quick_preview_desc') }}</p>
-        <div class="quick-card-arrow">{{ t('quick_access') }} <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:12px;height:12px"><polyline points="9 18 15 12 9 6"/></svg></div>
-    </a>
+        <div class="quick-card-screens">
+            <a class="quick-card-screen-btn" href="/" target="_blank">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                {{ t('media_screen_default') }}
+            </a>
+            {% for s in screens %}
+            <a class="quick-card-screen-btn" href="/?screen={{ s | urlencode }}" target="_blank">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                {{ s }}
+            </a>
+            {% endfor %}
+        </div>
+    </div>
 </div>
 {% endblock %}

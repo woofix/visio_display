@@ -145,6 +145,19 @@ Un badge **GROUPE DÉSACTIVÉ** s'affiche sur les médias concernés dans la gri
 
 > **Remarque :** Un média désactivé individuellement reste désactivé même si son groupe est activé.
 
+### Lier un groupe à des écrans
+
+Par défaut, un groupe est **global** : il apparaît dans la barre de groupes quel que soit l'écran sélectionné.
+
+Vous pouvez restreindre un groupe à un ou plusieurs écrans spécifiques :
+
+1. Dans le panneau **Groupes** en haut de la médiathèque, repérez le groupe souhaité.
+2. Cliquez sur l'icône **🔗** en bout de chip pour ouvrir le sélecteur d'écrans.
+3. Cliquez sur les écrans auxquels ce groupe doit être lié — les boutons actifs s'affichent en violet (l'entrée **Défaut** correspond à l'écran sans paramètre `?screen=`).
+4. La liaison est enregistrée immédiatement. Le groupe n'apparaîtra plus que sur les écrans sélectionnés.
+
+> **Remarque :** Si aucun écran n'est sélectionné, le groupe redevient global (visible sur tous les écrans).
+
 ---
 
 ## 7. Planifier l'affichage d'un média

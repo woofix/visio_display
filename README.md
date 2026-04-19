@@ -38,6 +38,7 @@ Application web légère de signalétique numérique conçue pour tourner sur Ra
 - Taguer les médias avec un ou plusieurs groupes libres (ex. `menu`, `infos`, `urgences`)
 - Activer ou désactiver tous les médias d'un groupe d'un seul clic depuis la médiathèque
 - Les groupes sont indépendants par écran (désactivation individuelle ou par groupe)
+- Liaison écrans : chaque groupe peut être restreint à un ou plusieurs écrans spécifiques — sans liaison il est global (visible sur tous les écrans)
 
 **Alerte prioritaire**
 - Diffusion instantanée d'un message en bannière sur l'écran d'affichage (super-admin uniquement)
@@ -266,6 +267,7 @@ Visio-Display/
 | `/reorder`                                | POST    | `reorder`          | Enregistrer le nouvel ordre                          |
 | `/set_groups/<filename>`                  | POST    | `toggle`           | Définir les groupes/tags d'un média                  |
 | `/toggle_group/<group_name>`              | POST    | `toggle`           | Activer / désactiver tous les médias d'un groupe     |
+| `/set_group_screens/<group_name>`         | POST    | `toggle`           | Lier un groupe à des écrans spécifiques (liste vide = global) |
 | `/compress/<filename>`                    | POST    | `compress`         | Mettre une vidéo en file de compression              |
 | `/queue/cancel/<job_id>`                  | POST    | `compress`         | Annuler un job en attente                            |
 | `/regen_ephemeride`                       | POST    | `ephemeris`        | Forcer la régénération de l'éphéméride               |
@@ -324,7 +326,7 @@ Visio-Display/
 
 Les quatre champs (`time_start`, `time_end`, `date_start`, `date_end`) sont tous optionnels et combinables. Un média sans entrée dans `schedules` s'affiche toujours.
 
-**Groupes (`groups`)**
+**Groupes (`groups`, `group_screens`)**
 
 ```json
 {
@@ -332,11 +334,15 @@ Les quatre champs (`time_start`, `time_end`, `date_start`, `date_end`) sont tous
     "cantine.jpg": ["menu"],
     "annonce.jpg": ["infos", "urgences"]
   },
+  "group_screens": {
+    "menu": ["", "cafeteria"],
+    "infos": ["hall"]
+  },
   "disabled_groups": ["urgences"]
 }
 ```
 
-Chaque média peut appartenir à zéro, un ou plusieurs groupes. `disabled_groups` liste les groupes dont tous les médias sont masqués.
+Chaque média peut appartenir à zéro, un ou plusieurs groupes. `disabled_groups` liste les groupes dont tous les médias sont masqués. `group_screens` restreint un groupe à des écrans spécifiques — `""` désigne l'écran par défaut ; une entrée absente ou liste vide = groupe global (visible sur tous les écrans).
 
 **Alerte prioritaire (`priority_alert`)**
 
@@ -443,6 +449,7 @@ A lightweight web-based digital signage application designed to run on a Raspber
 - Tag media items with one or more free-form groups (e.g. `menu`, `news`, `alerts`)
 - Enable or disable all media in a group with a single click from the media library
 - Groups are independent per screen (individual or group-level disabling)
+- Screen linking: each group can be restricted to one or more specific screens — with no link it is global (visible on all screens)
 
 **Priority alert**
 - Instantly broadcast a message as a banner on the display screen (super-admin only)
@@ -671,6 +678,7 @@ Visio-Display/
 | `/reorder`                                | POST    | `reorder`          | Save new media order                                    |
 | `/set_groups/<filename>`                  | POST    | `toggle`           | Set groups/tags for a media item                        |
 | `/toggle_group/<group_name>`              | POST    | `toggle`           | Enable / disable all media in a group                   |
+| `/set_group_screens/<group_name>`         | POST    | `toggle`           | Link a group to specific screens (empty list = global)  |
 | `/compress/<filename>`                    | POST    | `compress`         | Queue a video for compression                           |
 | `/queue/cancel/<job_id>`                  | POST    | `compress`         | Cancel a pending compression job                        |
 | `/regen_ephemeride`                       | POST    | `ephemeris`        | Force ephemeris card regeneration                       |
@@ -729,7 +737,7 @@ Visio-Display/
 
 All four fields (`time_start`, `time_end`, `date_start`, `date_end`) are optional and combinable. A media item with no entry in `schedules` is always displayed.
 
-**Groups (`groups`)**
+**Groups (`groups`, `group_screens`)**
 
 ```json
 {
@@ -737,11 +745,15 @@ All four fields (`time_start`, `time_end`, `date_start`, `date_end`) are optiona
     "canteen.jpg": ["menu"],
     "notice.jpg": ["news", "alerts"]
   },
+  "group_screens": {
+    "menu": ["", "cafeteria"],
+    "news": ["hall"]
+  },
   "disabled_groups": ["alerts"]
 }
 ```
 
-Each media item can belong to zero, one or several groups. `disabled_groups` lists groups whose media are all hidden.
+Each media item can belong to zero, one or several groups. `disabled_groups` lists groups whose media are all hidden. `group_screens` restricts a group to specific screens — `""` refers to the default screen; a missing entry or empty list = global group (visible on all screens).
 
 **Priority alert (`priority_alert`)**
 

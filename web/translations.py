@@ -601,6 +601,8 @@ TRANSLATIONS = {
         'wiki_s13_toggle_title': 'Activer / désactiver un groupe',
         'wiki_s13_toggle_desc': 'Dans la médiathèque, la section Groupes (barre latérale gauche) liste tous les groupes définis. Cliquez sur Activer le groupe ou Désactiver le groupe pour basculer tous les médias du groupe simultanément. Un badge GROUPE DÉSACTIVÉ s\'affiche sur les médias concernés.',
         'wiki_s13_note': 'Un média désactivé individuellement reste désactivé même si son groupe est activé.',
+        'wiki_s13_screens_title': 'Lier un groupe à des écrans',
+        'wiki_s13_screens_desc': 'Par défaut, un groupe est global et s\'affiche sur tous les écrans. Cliquez sur l\'icône 🔗 dans le chip de groupe pour ouvrir le sélecteur d\'écrans et restreindre ce groupe à un ou plusieurs écrans spécifiques (y compris l\'écran Défaut). Aucune sélection = groupe global visible partout.',
         # §14 Alerte prioritaire
         'wiki_s14_title': 'Alerte prioritaire',
         'wiki_s14_desc': 'La fonctionnalité d\'alerte prioritaire permet au super-admin de diffuser immédiatement un message en bannière sur l\'écran d\'affichage, sans interrompre le diaporama.',
@@ -1220,6 +1222,8 @@ TRANSLATIONS = {
         'wiki_s13_toggle_title': 'Enable / disable a group',
         'wiki_s13_toggle_desc': 'In the media library, the Groups section (left sidebar) lists all defined groups. Click Enable group or Disable group to toggle all media in the group at once. A GROUP DISABLED badge appears on the affected media items.',
         'wiki_s13_note': 'A media item disabled individually stays disabled even if its group is enabled.',
+        'wiki_s13_screens_title': 'Link a group to screens',
+        'wiki_s13_screens_desc': 'By default, a group is global and appears on all screens. Click the 🔗 icon on a group chip to open the screen picker and restrict that group to one or more specific screens (including the Default screen). No selection = global group visible everywhere.',
         # §14 Priority alert
         'wiki_s14_title': 'Priority alert',
         'wiki_s14_desc': 'The priority alert feature lets the super-admin instantly broadcast a message as a banner on the display screen, without interrupting the slideshow.',

@@ -9,6 +9,7 @@ from services.media_svc import (
     get_all_media, get_file_info, get_logo_path,
     clean_filename, is_h264_mp4, get_media_groups,
     collect_group_states, is_media_disabled, normalize_group_name,
+    get_group_active_screens,
 )
 from services.queue_svc import load_queue, save_queue, enqueue_upload_job
 from services.i18n import _flash
@@ -50,7 +51,9 @@ def admin_media():
     media_groups = {f: get_media_groups(f, cfg) for f in all_media}
     effective_cfg = dict(view_cfg)
     effective_cfg['groups'] = cfg.get('groups', {})
-    group_states = collect_group_states(files, effective_cfg)
+    effective_cfg['group_pools'] = cfg.get('group_pools', {})
+    effective_cfg['group_screens'] = cfg.get('group_screens', {})
+    group_states = collect_group_states(files, effective_cfg, screen=screen)
     disabled_map = {f: is_media_disabled(f, effective_cfg) for f in files}
 
     return render_template('admin_media.html',
@@ -213,6 +216,51 @@ def set_groups(filename):
 
     save_config(cfg)
     return jsonify({"ok": True, "groups": groups})
+
+
+@bp.route('/set_group_screens/<path:group_name>', methods=['POST'])
+def set_group_screens(group_name):
+    g = perm_guard('toggle')
+    if g: return g
+    normalized = normalize_group_name(group_name)
+    if not normalized:
+        return jsonify({"error": "invalid group"}), 400
+    data = request.get_json(silent=True) or {}
+    screens_list = data.get('screens', [])
+    if not isinstance(screens_list, list):
+        return jsonify({"error": "invalid screens"}), 400
+    cfg = load_config()
+    valid_screens = set(cfg.get('screens', {}).keys()) | {''}
+    screens_list = [s for s in screens_list if s in valid_screens]
+    group_screens = cfg.setdefault('group_screens', {})
+    if screens_list:
+        group_screens[normalized] = screens_list
+    else:
+        group_screens.pop(normalized, None)
+    save_config(cfg)
+    return jsonify({"ok": True, "group": normalized, "screens": screens_list})
+
+
+@bp.route('/set_group_pool/<path:group_name>', methods=['POST'])
+def set_group_pool(group_name):
+    g = perm_guard('toggle')
+    if g: return g
+    normalized = normalize_group_name(group_name)
+    if not normalized:
+        return jsonify({"error": "invalid group"}), 400
+    data = request.get_json(silent=True) or {}
+    try:
+        pool_size = max(0, int(data.get('pool_size', 0)))
+    except (TypeError, ValueError):
+        return jsonify({"error": "invalid pool_size"}), 400
+    cfg = load_config()
+    group_pools = cfg.setdefault('group_pools', {})
+    if pool_size > 0:
+        group_pools[normalized] = pool_size
+    else:
+        group_pools.pop(normalized, None)
+    save_config(cfg)
+    return jsonify({"ok": True, "group": normalized, "pool_size": pool_size})
 
 
 @bp.route('/toggle_group/<path:group_name>', methods=['POST'])

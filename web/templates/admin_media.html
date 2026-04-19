@@ -36,13 +36,30 @@
 .group-panel-title { font-size:.78rem;font-weight:800;color:var(--text-2);text-transform:uppercase;letter-spacing:.08em; }
 .group-panel-sub { font-size:.75rem;color:var(--text-3); }
 .group-chip-list { display:flex;flex-wrap:wrap;gap:8px; }
-.group-chip { display:inline-flex;align-items:center;gap:8px;padding:7px 10px;border-radius:999px;border:1px solid var(--border);background:var(--surface-2, var(--bg)); }
+.group-chip { display:inline-flex;flex-direction:column;border:1px solid var(--border);background:var(--surface-2, var(--bg));border-radius:10px;overflow:hidden; }
+.group-chip-main { display:flex;align-items:center;gap:8px;padding:7px 10px; }
 .group-chip-name { font-size:.78rem;font-weight:700;color:var(--text-2); }
 .group-chip-count { font-size:.7rem;color:var(--text-3); }
 .group-chip.disabled { background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.18); }
 .group-chip-toggle { border:none;background:var(--primary-bg);color:var(--primary);padding:5px 9px;border-radius:999px;font:inherit;font-size:.72rem;font-weight:700;cursor:pointer; }
 .group-chip.disabled .group-chip-toggle { background:rgba(239,68,68,.12);color:var(--red); }
+.group-pool-wrap { display:inline-flex;align-items:center;gap:3px;background:var(--surface-2,var(--bg));border:1px solid var(--border);border-radius:999px;padding:3px 8px; }
+.group-pool-label { font-size:.75rem; }
+.group-pool-input { width:36px;border:none;background:transparent;color:var(--text-1);font:inherit;font-size:.72rem;text-align:center;padding:0; }
+.group-pool-input:focus { outline:none; }
+.group-pool-sep { font-size:.72rem;color:var(--text-3);white-space:nowrap; }
 .group-panel-empty { font-size:.82rem;color:var(--text-3); }
+.btn-group-screens-toggle { border:none;background:transparent;color:var(--text-3);padding:3px 6px;border-radius:6px;font:inherit;font-size:.72rem;cursor:pointer;display:inline-flex;align-items:center;gap:3px;transition:color .15s,background .15s; }
+.btn-group-screens-toggle:hover { color:var(--primary);background:var(--primary-bg); }
+.group-chip.screens-linked .btn-group-screens-toggle { color:var(--primary); }
+.group-screens-count { background:var(--primary);color:#fff;border-radius:999px;padding:0 5px;font-size:.62rem;font-weight:700; }
+.group-screens-row { display:none;align-items:center;flex-wrap:wrap;gap:5px;padding:6px 10px;border-top:1px solid var(--border);background:var(--bg,var(--surface)); }
+.group-chip.screens-open .group-screens-row { display:flex; }
+.group-screens-label { color:var(--text-3);font-size:.7rem;white-space:nowrap;margin-right:2px; }
+.group-screens-hint { color:var(--text-3);font-style:italic;font-size:.7rem; }
+.btn-group-screen-link { border:1.5px solid var(--border);background:transparent;color:var(--text-3);padding:2px 9px;border-radius:999px;font:inherit;font-size:.7rem;cursor:pointer;transition:all .15s; }
+.btn-group-screen-link.linked { border-color:var(--primary);background:var(--primary-bg);color:var(--primary);font-weight:700; }
+.btn-group-screen-link:hover:not(.linked) { border-color:var(--primary);color:var(--primary); }
 
 /* Grid */
 .file-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(215px,1fr)); gap:14px; }
@@ -239,12 +256,41 @@
     {% if group_states %}
     <div class="group-chip-list">
         {% for group in group_states %}
-        <div class="group-chip {% if group.disabled %}disabled{% endif %}" data-group-chip="{{ group.name }}">
-            <span class="group-chip-name">{{ group.name }}</span>
-            <span class="group-chip-count">{{ group.count }}</span>
-            <button class="group-chip-toggle btn-toggle-group" data-group="{{ group.name }}">
-                {% if group.disabled %}{{ t('media_group_enable') }}{% else %}{{ t('media_group_disable') }}{% endif %}
-            </button>
+        <div class="group-chip {% if group.disabled %}disabled{% endif %} {% if group.screens %}screens-linked{% endif %}"
+             data-group-chip="{{ group.name }}" data-screens="{{ group.screens | tojson | e }}">
+            <div class="group-chip-main">
+                <span class="group-chip-name">{{ group.name }}</span>
+                <span class="group-chip-count">{{ group.count }}</span>
+                <button class="group-chip-toggle btn-toggle-group" data-group="{{ group.name }}">
+                    {% if group.disabled %}{{ t('media_group_enable') }}{% else %}{{ t('media_group_disable') }}{% endif %}
+                </button>
+                <span class="group-pool-wrap" title="{{ t('media_group_pool_title') }}">
+                    <span class="group-pool-label">🎲</span>
+                    <input type="number" class="group-pool-input" min="0" max="9999"
+                           data-group="{{ group.name }}"
+                           value="{{ group.pool_size if group.pool_size else '' }}"
+                           placeholder="…">
+                    <span class="group-pool-sep">/{{ group.count }}</span>
+                </span>
+                {% if screens %}
+                <button class="btn-group-screens-toggle" data-group="{{ group.name }}" title="{{ t('group_screens_title') }}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                    {% if group.screens %}<span class="group-screens-count">{{ group.screens | length }}</span>{% endif %}
+                </button>
+                {% endif %}
+            </div>
+            {% if screens %}
+            <div class="group-screens-row">
+                <span class="group-screens-label">{{ t('group_screens_label') }} :</span>
+                <button class="btn-group-screen-link {% if '' in group.screens %}linked{% endif %}"
+                        data-group="{{ group.name }}" data-screen="">{{ t('media_screen_default') }}</button>
+                {% for s in screens %}
+                <button class="btn-group-screen-link {% if s in group.screens %}linked{% endif %}"
+                        data-group="{{ group.name }}" data-screen="{{ s }}">{{ s }}</button>
+                {% endfor %}
+                {% if not group.screens %}<span class="group-screens-hint">{{ t('group_screens_global') }}</span>{% endif %}
+            </div>
+            {% endif %}
         </div>
         {% endfor %}
     </div>
@@ -473,6 +519,10 @@ const JS_GROUP_ENABLED        = {{ t('js_group_enabled') | tojson }};
 const JS_GROUP_DISABLED       = {{ t('js_group_disabled') | tojson }};
 const JS_GROUP_ENABLE         = {{ t('media_group_enable') | tojson }};
 const JS_GROUP_DISABLE        = {{ t('media_group_disable') | tojson }};
+const JS_GROUP_POOL_SAVED     = {{ t('js_group_pool_saved') | tojson }};
+const JS_GROUP_POOL_CLEARED   = {{ t('js_group_pool_cleared') | tojson }};
+const JS_GROUP_SCREENS_SAVED  = {{ t('js_group_screens_saved') | tojson }};
+const ALL_SCREENS             = {{ screens | tojson }};
 
 /* ── Screen preview modal ── */
 (function() {
@@ -664,6 +714,93 @@ document.querySelectorAll('.btn-toggle-group').forEach(btn => {
             showFlash(JS_COMPRESS_ERR_NET, 'error');
             btn.disabled = false;
         }
+    });
+});
+
+/* ── Group pool size ── */
+document.querySelectorAll('.group-pool-input').forEach(input => {
+    let timer;
+    const save = async () => {
+        const group = input.dataset.group;
+        const poolSize = parseInt(input.value) || 0;
+        try {
+            const res = await fetch(`/set_group_pool/${encodeURIComponent(group)}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ pool_size: poolSize })
+            });
+            const data = await res.json();
+            if (data.ok) {
+                if (poolSize > 0) {
+                    showFlash(JS_GROUP_POOL_SAVED.replace('{group}', group).replace('{size}', poolSize), 'success');
+                } else {
+                    showFlash(JS_GROUP_POOL_CLEARED.replace('{group}', group), 'success');
+                }
+            } else {
+                showFlash(data.error || JS_SAVE_ERROR, 'error');
+            }
+        } catch {
+            showFlash(JS_SAVE_ERROR, 'error');
+        }
+    };
+    input.addEventListener('change', () => { clearTimeout(timer); timer = setTimeout(save, 400); });
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') { clearTimeout(timer); save(); } });
+});
+
+/* ── Group screens toggle (ouvre/ferme le picker) ── */
+document.querySelectorAll('.btn-group-screens-toggle').forEach(btn => {
+    btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const chip = document.querySelector(`.group-chip[data-group-chip="${btn.dataset.group}"]`);
+        if (chip) chip.classList.toggle('screens-open');
+    });
+});
+
+/* ── Liaison groupe ↔ écran ── */
+document.querySelectorAll('.btn-group-screen-link').forEach(btn => {
+    btn.addEventListener('click', async e => {
+        e.stopPropagation();
+        const group  = btn.dataset.group;
+        const screen = btn.dataset.screen;
+        const chip   = document.querySelector(`.group-chip[data-group-chip="${group}"]`);
+        const current = JSON.parse(chip.dataset.screens || '[]');
+        const next    = current.includes(screen)
+            ? current.filter(s => s !== screen)
+            : [...current, screen];
+        btn.disabled = true;
+        try {
+            const res  = await fetch(`/set_group_screens/${encodeURIComponent(group)}`, {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ screens: next })
+            });
+            const data = await res.json();
+            if (data.ok) {
+                chip.dataset.screens = JSON.stringify(data.screens);
+                btn.classList.toggle('linked', data.screens.includes(screen));
+                chip.classList.toggle('screens-linked', data.screens.length > 0);
+                const countEl = chip.querySelector('.group-screens-count');
+                const toggleBtn = chip.querySelector('.btn-group-screens-toggle');
+                if (data.screens.length > 0) {
+                    if (countEl) { countEl.textContent = data.screens.length; }
+                    else if (toggleBtn) {
+                        const span = document.createElement('span');
+                        span.className = 'group-screens-count';
+                        span.textContent = data.screens.length;
+                        toggleBtn.appendChild(span);
+                    }
+                } else {
+                    countEl?.remove();
+                }
+                const hint = chip.querySelector('.group-screens-hint');
+                if (hint) hint.style.display = data.screens.length ? 'none' : '';
+                showFlash(JS_GROUP_SCREENS_SAVED.replace('{group}', group), 'success');
+            } else {
+                showFlash(data.error || JS_SAVE_ERROR, 'error');
+            }
+        } catch {
+            showFlash(JS_SAVE_ERROR, 'error');
+        }
+        btn.disabled = false;
     });
 });
 

@@ -18,6 +18,8 @@ def _default_config():
         "durations": {},
         "disabled": [],
         "groups": {},
+        "group_pools": {},
+        "group_screens": {},
         "disabled_groups": [],
         "screens": {},
         "priority_alert": {
@@ -40,6 +42,8 @@ def load_config():
     merged = _default_config()
     merged.update(cfg)
     merged["groups"] = cfg.get("groups", {}) if isinstance(cfg.get("groups"), dict) else {}
+    merged["group_pools"] = cfg.get("group_pools", {}) if isinstance(cfg.get("group_pools"), dict) else {}
+    merged["group_screens"] = cfg.get("group_screens", {}) if isinstance(cfg.get("group_screens"), dict) else {}
     merged["disabled_groups"] = cfg.get("disabled_groups", []) if isinstance(cfg.get("disabled_groups"), list) else []
     screens = cfg.get("screens", {})
     normalized_screens = {}

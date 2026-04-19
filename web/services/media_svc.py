@@ -68,17 +68,33 @@ def is_media_disabled(filename, cfg):
     return any(group in disabled_groups for group in get_media_groups(filename, cfg))
 
 
-def collect_group_states(files, cfg):
+def get_group_active_screens(group_name, cfg):
+    """Retourne la liste des écrans auxquels ce groupe est lié (vide = global)."""
+    return cfg.get("group_screens", {}).get(group_name, [])
+
+
+def is_group_active_on_screen(group_name, cfg, screen):
+    """True si le groupe est actif sur l'écran donné (global ou explicitement lié)."""
+    screens = get_group_active_screens(group_name, cfg)
+    return not screens or screen in screens
+
+
+def collect_group_states(files, cfg, screen=None):
     disabled_groups = set(cfg.get("disabled_groups", []))
+    group_pools = cfg.get("group_pools", {})
     counts = {}
     for filename in files:
         for group in get_media_groups(filename, cfg):
+            if screen is not None and not is_group_active_on_screen(group, cfg, screen):
+                continue
             counts[group] = counts.get(group, 0) + 1
     return [
         {
             "name": group,
             "count": counts[group],
             "disabled": group in disabled_groups,
+            "pool_size": group_pools.get(group, 0),
+            "screens": get_group_active_screens(group, cfg),
         }
         for group in sorted(counts, key=str.casefold)
     ]

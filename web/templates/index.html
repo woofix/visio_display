@@ -103,6 +103,8 @@
 
     let media        = [];
     let durations    = {};
+    let groupPools   = {};
+    let sampledMedia = [];
     let currentIndex = 0;
     let currentSlide = null;
     let timer        = null;
@@ -121,6 +123,47 @@
         } catch (e) {
             return media.length ? media : [];
         }
+    }
+
+    async function fetchPools() {
+        try {
+            const res = await fetch('/api/pools' + SCREEN_PARAM, { cache: 'no-store' });
+            if (!res.ok) return {};
+            return await res.json();
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function getFilename(path) {
+        return path.split('/').pop().split('?')[0];
+    }
+
+    function samplePools(mediaList, pools) {
+        if (!Object.keys(pools).length) return mediaList;
+        const pooledGroups = new Set(Object.keys(pools));
+        const groupSamples = {};
+        for (const [group, size] of Object.entries(pools)) {
+            const groupItems = mediaList.filter(item => (item.groups || []).includes(group));
+            const shuffled = [...groupItems];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            groupSamples[group] = new Set(shuffled.slice(0, size).map(item => getFilename(item.path)));
+        }
+        const result = [];
+        const seen = new Set();
+        for (const item of mediaList) {
+            const fname = getFilename(item.path);
+            if (seen.has(fname)) continue;
+            seen.add(fname);
+            const itemPooledGroups = (item.groups || []).filter(g => pooledGroups.has(g));
+            if (itemPooledGroups.length === 0 || itemPooledGroups.some(g => groupSamples[g].has(fname))) {
+                result.push(item);
+            }
+        }
+        return result.length ? result : mediaList;
     }
 
     async function fetchDurations() {
@@ -219,11 +262,18 @@
         if (timer) { clearTimeout(timer); timer = null; }
 
         // Rafraîchit systématiquement la liste et les durées à chaque transition
-        const [freshMedia, freshDurations] = await Promise.all([fetchMedia(), fetchDurations()]);
-        durations = freshDurations;
+        const [freshMedia, freshDurations, freshPools] = await Promise.all([
+            fetchMedia(), fetchDurations(), fetchPools()
+        ]);
+        durations  = freshDurations;
+        groupPools = freshPools;
 
         if (freshMedia.length) {
-            media = freshMedia;
+            // Nouveau tirage au sort au début de chaque passage (index 0)
+            if (currentIndex === 0) {
+                sampledMedia = samplePools(freshMedia, groupPools);
+            }
+            media = sampledMedia.length ? sampledMedia : freshMedia;
             // Recentre l'index si hors bornes
             if (currentIndex >= media.length) currentIndex = 0;
         }
@@ -254,7 +304,9 @@
     }
 
     async function start() {
-        [media, durations] = await Promise.all([fetchMedia(), fetchDurations()]);
+        [media, durations, groupPools] = await Promise.all([fetchMedia(), fetchDurations(), fetchPools()]);
+        sampledMedia = samplePools(media, groupPools);
+        media = sampledMedia.length ? sampledMedia : media;
         await refreshPriorityAlert();
         alertPoller = setInterval(refreshPriorityAlert, 1000);
         next();

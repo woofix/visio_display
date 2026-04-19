@@ -33,6 +33,9 @@ Application web légère de signalétique numérique conçue pour tourner sur Ra
 - Chaque écran dispose de sa propre liste de médias, son propre ordre, ses propres désactivations, durées et programmations
 - Les médias de la médiathèque principale sont assignés à un ou plusieurs écrans
 - Le diaporama s'adapte automatiquement selon le paramètre `?screen=<nom>` dans l'URL
+- Sélecteur d'écran intégré à la page d'affichage public — barre flottante en bas, permet de basculer d'écran sans retaper l'URL
+- Tableau de bord : la carte **Prévisualiser** affiche un bouton par écran pour ouvrir directement le diaporama correspondant dans un nouvel onglet
+- Médiathèque : bouton **Prévisualiser** à droite de la barre d'écrans pour ouvrir une fenêtre d'aperçu de l'écran actif
 
 **Groupes de médias**
 - Taguer les médias avec un ou plusieurs groupes libres (ex. `menu`, `infos`, `urgences`)
@@ -258,6 +261,7 @@ Visio-Display/
 | `/api/durations`                          | GET     | Non                | Durées d'affichage par fichier (`?screen=<nom>`)     |
 | `/api/config`                             | GET     | Non                | Configuration complète                               |
 | `/api/diskusage`                          | GET     | Non                | Statistiques disque                                  |
+| `/api/screens`                            | GET     | Non                | Liste des écrans nommés                              |
 | `/api/priority-alert`                     | GET     | Non                | Message d'alerte prioritaire en cours                |
 | `/api/queue`                              | GET     | Connecté           | État de la file d'encodage (compression + upload)    |
 | `/upload`                                 | POST    | `upload`           | Importer des fichiers (retourne JSON + jobs d'encodage) |
@@ -444,6 +448,9 @@ A lightweight web-based digital signage application designed to run on a Raspber
 - Each screen has its own media list, order, disabled items, durations, and schedules
 - Media from the main library can be assigned to one or more screens
 - The slideshow automatically adapts based on the `?screen=<name>` URL parameter
+- Built-in screen selector on the public display page — floating bar at the bottom, switch screens without retyping the URL
+- Dashboard: the **Preview** card shows one button per screen to open the corresponding slideshow directly in a new tab
+- Media library: **Preview** button on the right side of the screen bar opens a preview window for the active screen
 
 **Media groups**
 - Tag media items with one or more free-form groups (e.g. `menu`, `news`, `alerts`)
@@ -669,6 +676,7 @@ Visio-Display/
 | `/api/durations`                          | GET     | No                 | Per-file display durations (`?screen=<name>`)           |
 | `/api/config`                             | GET     | No                 | Full configuration                                      |
 | `/api/diskusage`                          | GET     | No                 | Disk usage stats                                        |
+| `/api/screens`                            | GET     | No                 | List of named screens                                   |
 | `/api/priority-alert`                     | GET     | No                 | Current priority alert message                          |
 | `/api/queue`                              | GET     | Logged in          | Encoding queue state (compression + upload jobs)        |
 | `/upload`                                 | POST    | `upload`           | Upload files (returns JSON with encoding job list)      |

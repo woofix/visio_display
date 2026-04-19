@@ -44,6 +44,7 @@ La page d'affichage est conçue pour fonctionner en plein écran, sans interacti
 - Les **vidéos** sont lues intégralement (ou jusqu'à la durée limite configurée).
 - La **carte éphéméride** (météo, lever/coucher du soleil, saint du jour, compte à rebours) est automatiquement insérée dans la rotation.
 - La liste des médias se **met à jour en temps réel** : tout changement effectué dans l'administration prend effet au prochain changement de diapositive, sans rechargement de la page.
+- Un **sélecteur d'écran** est affiché en bas de la page — semi-transparent au repos, pleinement visible au survol. Cliquez sur un écran pour y basculer directement sans retaper l'URL.
 
 > **Conseil d'utilisation** : Sur un Raspberry Pi, configurez le navigateur en mode kiosk (`chromium-browser --kiosk http://localhost:8081`) pour un affichage plein écran sans barre de navigation.
 
@@ -202,8 +203,9 @@ Noms réservés (interdits) : `default`, `admin`, `api`, `static`, `login`, `log
 
 ### Accéder à un écran
 
-- **Affichage public :** `http://<serveur>:8081?screen=nom-ecran`
-- **Administration :** Sélectionnez l'écran via le sélecteur en haut de la médiathèque.
+- **Affichage public :** `http://<serveur>:8081?screen=nom-ecran` — le sélecteur d'écran en bas de la page permet aussi de basculer directement.
+- **Médiathèque :** sélectionnez l'écran via les onglets en haut ; le bouton **Prévisualiser** (à droite de la barre) ouvre une fenêtre d'aperçu de l'écran actif.
+- **Tableau de bord :** la carte **Prévisualiser** propose un bouton par écran pour ouvrir le diaporama correspondant dans un nouvel onglet.
 
 ### Fonctionnement par écran
 

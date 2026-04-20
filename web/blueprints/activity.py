@@ -27,5 +27,8 @@ def activity_page():
 def api_activity():
     redir = admin_guard()
     if redir: return jsonify({"error": "unauthorized"}), 401
-    limit = min(int(request.args.get('limit', 200)), 1000)
+    try:
+        limit = min(int(request.args.get('limit', 200)), 1000)
+    except (TypeError, ValueError):
+        limit = 200
     return jsonify(get_activity_log(limit=limit))

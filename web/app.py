@@ -3,9 +3,14 @@
 
 import json
 import os
-from flask import Flask
+import secrets
+import shutil
+from flask import Flask, abort, request
 
-from constants import ALL_PERMISSIONS, ALL_FEATURES, DB_FILE, CONFIG_FILE, QUEUE_FILE, USERS_FILE
+from constants import (
+    ALL_PERMISSIONS, DB_FILE, CONFIG_FILE, QUEUE_FILE, USERS_FILE,
+    LEGACY_DB_FILE, LEGACY_CONFIG_FILE, LEGACY_QUEUE_FILE, LEGACY_USERS_FILE,
+)
 from db import db, AppConfig, User, EncodeJob
 from services.users_svc import init_users
 from services.queue_svc import start_encoder_thread
@@ -14,6 +19,19 @@ from services.users_svc import load_users, is_superadmin, has_permission
 from services.config_svc import load_config, is_feature_enabled
 from flask import session
 from translations import TRANSLATIONS
+
+
+def _migrate_legacy_storage():
+    for legacy, current in (
+        (LEGACY_DB_FILE, DB_FILE),
+        (LEGACY_CONFIG_FILE, CONFIG_FILE),
+        (LEGACY_QUEUE_FILE, QUEUE_FILE),
+        (LEGACY_USERS_FILE, USERS_FILE),
+    ):
+        if os.path.exists(current) or not os.path.exists(legacy):
+            continue
+        os.makedirs(os.path.dirname(current), exist_ok=True)
+        shutil.move(legacy, current)
 
 
 def _migrate_from_json():
@@ -62,12 +80,24 @@ def _migrate_from_json():
         db.session.rollback()
 
 
+def _get_csrf_token():
+    token = session.get('_csrf_token')
+    if not token:
+        token = secrets.token_urlsafe(32)
+        session['_csrf_token'] = token
+    return token
+
+
 def create_app(start_scheduler=True, test_config=None):
+    _migrate_legacy_storage()
     app = Flask(__name__)
     app.secret_key = os.environ.get('SECRET_KEY')
     if not app.secret_key:
         raise RuntimeError("La variable d'environnement SECRET_KEY est obligatoire.")
     app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 Mo
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE', '').lower() in {'1', 'true', 'yes'}
 
     # SQLAlchemy
     app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.abspath(DB_FILE)}'
@@ -102,6 +132,21 @@ def create_app(start_scheduler=True, test_config=None):
     for bp in (auth_bp, admin_bp, media_bp, screens_bp, queue_bp,
                ephemeris_bp, users_bp, settings_bp, api_bp, wiki_bp, activity_bp):
         app.register_blueprint(bp)
+
+    @app.before_request
+    def protect_from_csrf():
+        if request.method in {'GET', 'HEAD', 'OPTIONS', 'TRACE'}:
+            return None
+        if request.endpoint == 'static':
+            return None
+        provided = (
+            request.headers.get('X-CSRF-Token')
+            or request.form.get('_csrf_token')
+            or (request.get_json(silent=True) or {}).get('_csrf_token')
+        )
+        if not provided or provided != _get_csrf_token():
+            abort(400, description='CSRF token missing or invalid')
+        return None
 
     @app.route('/')
     def index():
@@ -146,6 +191,7 @@ def create_app(start_scheduler=True, test_config=None):
             lang=lang,
             t=t,
             all_permissions=translated_permissions,
+            csrf_token=_get_csrf_token,
         )
 
     if start_scheduler:

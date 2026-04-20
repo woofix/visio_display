@@ -11,9 +11,10 @@ services:
     env_file: .env
     environment:
       - REDIS_URL=redis://redis:6379
+      - VISIO_DATA_DIR=/app/data
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - .data:/app/static/data
+      - ./.data/media:/app/static/data
+      - ./.data/private:/app/data
     ports:
       - "8081:8080"
     restart: always
@@ -30,8 +31,10 @@ services:
     env_file: .env
     environment:
       - REDIS_URL=redis://redis:6379
+      - VISIO_DATA_DIR=/app/data
     volumes:
-      - /srv/7To/Docker/visio/data:/app/static/data
+      - ./.data/media:/app/static/data
+      - ./.data/private:/app/data
     command: rq worker --url redis://redis:6379 visio-display:upload visio-display:compress
     restart: always
     depends_on:

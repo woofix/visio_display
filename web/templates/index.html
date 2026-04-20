@@ -162,6 +162,7 @@
     let timer        = null;
     let alertMessage = '';
     let alertPoller  = null;
+    let mediaRefreshTimer = null;
 
     const alertBox = document.getElementById('priority-alert');
     const alertText = document.getElementById('priority-alert-message');
@@ -310,25 +311,22 @@
         return el;
     }
 
-    async function next() {
-        if (timer) { clearTimeout(timer); timer = null; }
-
-        // Rafraîchit systématiquement la liste et les durées à chaque transition
+    async function refreshMediaState() {
         const [freshMedia, freshDurations, freshPools] = await Promise.all([
             fetchMedia(), fetchDurations(), fetchPools()
         ]);
         durations  = freshDurations;
         groupPools = freshPools;
-
-        if (freshMedia.length) {
-            // Nouveau tirage au sort au début de chaque passage (index 0)
-            if (currentIndex === 0) {
-                sampledMedia = samplePools(freshMedia, groupPools);
-            }
-            media = sampledMedia.length ? sampledMedia : freshMedia;
-            // Recentre l'index si hors bornes
-            if (currentIndex >= media.length) currentIndex = 0;
+        if (!freshMedia.length) return;
+        if (currentIndex === 0 || !sampledMedia.length) {
+            sampledMedia = samplePools(freshMedia, groupPools);
         }
+        media = sampledMedia.length ? sampledMedia : freshMedia;
+        if (currentIndex >= media.length) currentIndex = 0;
+    }
+
+    async function next() {
+        if (timer) { clearTimeout(timer); timer = null; }
 
         if (!media.length) {
             timer = setTimeout(next, 5000);
@@ -356,11 +354,10 @@
     }
 
     async function start() {
-        [media, durations, groupPools] = await Promise.all([fetchMedia(), fetchDurations(), fetchPools()]);
-        sampledMedia = samplePools(media, groupPools);
-        media = sampledMedia.length ? sampledMedia : media;
+        await refreshMediaState();
         await refreshPriorityAlert();
-        alertPoller = setInterval(refreshPriorityAlert, 1000);
+        alertPoller = setInterval(refreshPriorityAlert, 5000);
+        mediaRefreshTimer = setInterval(refreshMediaState, 15000);
         next();
     }
 

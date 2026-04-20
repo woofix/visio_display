@@ -59,6 +59,7 @@
         {% endif %}
         {% endwith %}
         <form method="post">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
             <label for="username">{{ t('login_username') }}</label>
             <input type="text" name="username" id="username" required>
             <label for="password">{{ t('login_password') }}</label>

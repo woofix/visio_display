@@ -9,7 +9,6 @@ from services.media_svc import (
     get_all_media, get_file_info, get_logo_path,
     clean_filename, is_h264_mp4, get_media_groups,
     collect_group_states, is_media_disabled, normalize_group_name,
-    get_group_active_screens,
 )
 from services.queue_svc import load_queue, save_queue, enqueue_upload_job
 from services.i18n import _flash
@@ -313,13 +312,18 @@ def set_duration(filename):
     screen   = data.get('screen', '').strip().lower()
     if screen and not has_screen_access(screen):
         return jsonify({"error": "screen access denied"}), 403
-    duration = data.get('duration', 15)
+    try:
+        duration = int(data.get('duration', 15))
+    except (TypeError, ValueError):
+        return jsonify({"error": "invalid duration"}), 400
+    if duration < 1 or duration > 3600:
+        return jsonify({"error": "invalid duration"}), 400
     cfg      = load_config()
 
     if screen and screen in cfg.get('screens', {}):
-        cfg['screens'][screen].setdefault('durations', {})[filename] = int(duration)
+        cfg['screens'][screen].setdefault('durations', {})[filename] = duration
     else:
-        cfg.setdefault('durations', {})[filename] = int(duration)
+        cfg.setdefault('durations', {})[filename] = duration
 
     save_config(cfg)
     return jsonify({"ok": True})
@@ -334,7 +338,11 @@ def reorder():
     if screen and not has_screen_access(screen):
         return jsonify({"error": "screen access denied"}), 403
     order = data.get('order', [])
+    if not isinstance(order, list) or not all(isinstance(item, str) for item in order):
+        return jsonify({"error": "invalid order"}), 400
     cfg   = load_config()
+    valid_files = set(get_all_media())
+    order = [item for item in order if item in valid_files]
 
     if screen and screen in cfg.get('screens', {}):
         cfg['screens'][screen]['order'] = order
@@ -368,6 +376,21 @@ def set_schedule(filename):
         v = str(data.get(k, "")).strip()
         if v:
             sched[k] = v
+    for time_key in ("time_start", "time_end"):
+        if time_key in sched:
+            try:
+                hour, minute = map(int, sched[time_key].split(":"))
+                if not (0 <= hour <= 23 and 0 <= minute <= 59):
+                    raise ValueError
+            except (TypeError, ValueError):
+                return jsonify({"error": "invalid schedule"}), 400
+    for date_key in ("date_start", "date_end"):
+        if date_key in sched:
+            try:
+                from datetime import date
+                date.fromisoformat(sched[date_key])
+            except (TypeError, ValueError):
+                return jsonify({"error": "invalid schedule"}), 400
     if sched:
         schedules[filename] = sched
     elif filename in schedules:

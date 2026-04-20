@@ -2,10 +2,15 @@ import os
 
 UPLOAD_FOLDER = 'static/data'
 IMAGES_FOLDER = 'static/images'
-DB_FILE       = 'static/data/visio-display.db'
-CONFIG_FILE   = 'static/data/config.json'
-QUEUE_FILE    = 'static/data/queue.json'
-USERS_FILE    = 'static/data/users.json'
+PRIVATE_DATA_DIR = os.environ.get('VISIO_DATA_DIR', 'data/private')
+DB_FILE       = os.path.join(PRIVATE_DATA_DIR, 'visio-display.db')
+CONFIG_FILE   = os.path.join(PRIVATE_DATA_DIR, 'config.json')
+QUEUE_FILE    = os.path.join(PRIVATE_DATA_DIR, 'queue.json')
+USERS_FILE    = os.path.join(PRIVATE_DATA_DIR, 'users.json')
+LEGACY_DB_FILE     = os.path.join(UPLOAD_FOLDER, 'visio-display.db')
+LEGACY_CONFIG_FILE = os.path.join(UPLOAD_FOLDER, 'config.json')
+LEGACY_QUEUE_FILE  = os.path.join(UPLOAD_FOLDER, 'queue.json')
+LEGACY_USERS_FILE  = os.path.join(UPLOAD_FOLDER, 'users.json')
 DEFAULT_LOGO  = 'logo.svg'
 LOGO_EXTS     = {'.svg', '.png', '.jpg', '.jpeg'}
 
@@ -67,3 +72,4 @@ RESERVED_SCREEN_NAMES = {'default', 'admin', 'api', 'static', 'login', 'logout'}
 VALID_THEMES = ('violet', 'bleu', 'sombre')
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(PRIVATE_DATA_DIR, exist_ok=True)

@@ -1,6 +1,7 @@
 import contextlib
 import math
 import os
+import threading
 import unicodedata
 from datetime import date, datetime, timezone, timedelta
 
@@ -12,6 +13,8 @@ from services.config_svc import load_config
 from services.i18n import _t, get_language
 from services.media_svc import strip_html
 from translations import JOURS_BY_LANG, MOIS_BY_LANG, WMO_CODES_BY_LANG
+
+_EPHEMERIS_LOCK = threading.Lock()
 
 
 def get_utc_offset():
@@ -484,46 +487,50 @@ def generate_ephemeride_image(force=False):
     filename = f"ephemeride_{slot}.jpg"
     path     = os.path.join(UPLOAD_FOLDER, filename)
 
-    for f in os.listdir(UPLOAD_FOLDER):
-        if f.startswith("ephemeride_") and f != filename:
-            with contextlib.suppress(OSError):
-                os.remove(os.path.join(UPLOAD_FOLDER, f))
-
     if os.path.exists(path) and not force:
         return
 
-    cfg              = load_config()
-    nom, description = get_ephemeride_nominis()
-    lever, coucher   = get_sun_times(cfg)
-    meteo            = get_meteo(cfg)
-    school_holiday   = get_next_school_holiday(cfg)
-    today            = date.today()
-    date_str         = f"{JOURS[today.weekday()]} {today.day} {MOIS[today.month]} {today.year}"
+    with _EPHEMERIS_LOCK:
+        if os.path.exists(path) and not force:
+            return
 
-    img  = Image.new("RGB", (1920, 1080), (0, 0, 0))
-    draw = ImageDraw.Draw(img)
+        for f in os.listdir(UPLOAD_FOLDER):
+            if f.startswith("ephemeride_") and f != filename:
+                with contextlib.suppress(OSError):
+                    os.remove(os.path.join(UPLOAD_FOLDER, f))
 
-    top, bot, halo_rgb = get_weather_palette(meteo.get("code", -1))
-    for y in range(1080):
-        t = y / 1080
-        r = int(top[0] + (bot[0] - top[0]) * t)
-        g = int(top[1] + (bot[1] - top[1]) * t)
-        b = int(top[2] + (bot[2] - top[2]) * t)
-        draw.line([(0, y), (1920, y)], fill=(r, g, b))
+        cfg              = load_config()
+        nom, description = get_ephemeride_nominis()
+        lever, coucher   = get_sun_times(cfg)
+        meteo            = get_meteo(cfg)
+        school_holiday   = get_next_school_holiday(cfg)
+        today            = date.today()
+        date_str         = f"{JOURS[today.weekday()]} {today.day} {MOIS[today.month]} {today.year}"
 
-    halo      = Image.new("RGB", (1920, 1080), (0, 0, 0))
-    halo_draw = ImageDraw.Draw(halo)
-    for radius in range(350, 0, -8):
-        intensity = int(90 * (1 - radius / 350))
-        hr = min(255, int(intensity * halo_rgb[0] * 2))
-        hg = min(255, int(intensity * halo_rgb[1] * 2))
-        hb = min(255, int(intensity * halo_rgb[2] * 2))
-        halo_draw.ellipse(
-            [960 - radius, 540 - radius, 960 + radius, 540 + radius],
-            outline=(hr, hg, hb)
-        )
-    img  = Image.blend(img, halo, alpha=0.5)
-    draw = ImageDraw.Draw(img)
+        img  = Image.new("RGB", (1920, 1080), (0, 0, 0))
+        draw = ImageDraw.Draw(img)
+
+        top, bot, halo_rgb = get_weather_palette(meteo.get("code", -1))
+        for y in range(1080):
+            t = y / 1080
+            r = int(top[0] + (bot[0] - top[0]) * t)
+            g = int(top[1] + (bot[1] - top[1]) * t)
+            b = int(top[2] + (bot[2] - top[2]) * t)
+            draw.line([(0, y), (1920, y)], fill=(r, g, b))
+
+        halo      = Image.new("RGB", (1920, 1080), (0, 0, 0))
+        halo_draw = ImageDraw.Draw(halo)
+        for radius in range(350, 0, -8):
+            intensity = int(90 * (1 - radius / 350))
+            hr = min(255, int(intensity * halo_rgb[0] * 2))
+            hg = min(255, int(intensity * halo_rgb[1] * 2))
+            hb = min(255, int(intensity * halo_rgb[2] * 2))
+            halo_draw.ellipse(
+                [960 - radius, 540 - radius, 960 + radius, 540 + radius],
+                outline=(hr, hg, hb)
+            )
+        img  = Image.blend(img, halo, alpha=0.5)
+        draw = ImageDraw.Draw(img)
 
     try:
         font_title = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 80)
@@ -612,10 +619,8 @@ def generate_ephemeride_image(force=False):
     if upcoming:
         try:
             font_cd_num = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 64)
-            font_cd_lbl = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",      34)
-            font_cd_sub = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",      24)
         except Exception:
-            font_cd_num = font_cd_lbl = font_cd_sub = ImageFont.load_default()
+            font_cd_num = ImageFont.load_default()
 
         to_show    = upcoming[:2]
         y_num      = 948
@@ -661,11 +666,11 @@ def generate_ephemeride_image(force=False):
                     )
                     draw.text((cx, y_sub), sub_label, fill=(200, 230, 255), font=sub_font, anchor="mm")
 
-    tmp_path = f"{path}.{os.getpid()}.tmp"
-    try:
-        img.save(tmp_path, "JPEG", quality=95)
-        os.replace(tmp_path, path)
-    except Exception:
-        with contextlib.suppress(OSError):
-            os.unlink(tmp_path)
-        raise
+        tmp_path = f"{path}.{os.getpid()}.tmp"
+        try:
+            img.save(tmp_path, "JPEG", quality=95)
+            os.replace(tmp_path, path)
+        except Exception:
+            with contextlib.suppress(OSError):
+                os.unlink(tmp_path)
+            raise

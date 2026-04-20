@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 
 from services.config_svc import load_config
+from services.users_svc import is_admin
 from services.media_svc import (
     get_all_media, get_file_info, is_media_scheduled, get_disk_usage,
     is_media_disabled, get_media_groups, is_group_active_on_screen,
@@ -14,6 +15,8 @@ bp = Blueprint('api', __name__)
 
 @bp.route('/api/config')
 def api_config():
+    if not is_admin():
+        return jsonify({"error": "unauthorized"}), 401
     return jsonify(load_config())
 
 

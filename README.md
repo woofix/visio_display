@@ -162,6 +162,16 @@ chromium-browser --kiosk --noerrdialogs --disable-infobars http://localhost:8081
 
 **Interface d'administration :** ouvrir `http://<hôte>:8081/admin` et se connecter.
 
+**Réinitialiser un mot de passe super-admin (hors interface) :**
+
+```bash
+cd web
+python3 tools/reset_superadmin_password.py --list
+python3 tools/reset_superadmin_password.py --user <nom-super-admin>
+```
+
+Le script demande le nouveau mot de passe de façon masquée et met à jour uniquement le hash en base. Si un seul super-admin existe, l'option `--user` est facultative.
+
 ### Rôles et permissions
 
 **Super-admin**

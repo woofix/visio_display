@@ -470,13 +470,11 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
 
     <nav class="sidebar-nav">
 
-        <div class="nav-label">{{ t('nav_label_dashboard') }}</div>
+        <div class="nav-label">{{ t('nav_label_main') }}</div>
         <a href="/admin" class="nav-item {% if path == '/admin' %}active{% endif %}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
             {{ t('nav_overview') }}
         </a>
-
-        <div class="nav-label" style="margin-top:8px">{{ t('nav_label_contents') }}</div>
         <a href="/admin/media" class="nav-item {% if path == '/admin/media' %}active{% endif %}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
             {{ t('nav_media') }}
@@ -496,24 +494,8 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
             {{ t('nav_activity') }}
         </a>
 
-        {% if current_user_is_superadmin %}
-        <div class="nav-label" style="margin-top:8px">{{ t('nav_label_administration') }}</div>
-        <a href="/admin/superadmin" class="nav-item {% if path == '/admin/superadmin' %}active{% endif %}" style="color:#f59e0b">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-            {{ t('nav_superadmin') }}
-        </a>
-        <a href="/admin/features" class="nav-item {% if path == '/admin/features' %}active{% endif %}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-            {{ t('nav_features') }}
-        </a>
-        {% endif %}
-
-        <a href="/admin/wiki" class="nav-item {% if path == '/admin/wiki' %}active{% endif %}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-            {{ t('nav_wiki') }}
-        </a>
         <div class="nav-label" style="margin-top:8px">{{ t('nav_label_settings') }}</div>
-        <button class="nav-item nav-item-parent {% if path.startswith('/admin/settings') %}open{% endif %}" id="nav-settings-toggle">
+        <button class="nav-item nav-item-parent {% if path.startswith('/admin/settings') %}open{% endif %}" data-nav-toggle="nav-settings-sub">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
             {{ t('nav_settings') }}
             <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
@@ -554,6 +536,31 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
                 {{ t('tab_language') }}
             </a>
         </div>
+
+        {% if current_user_is_superadmin %}
+        <div class="nav-label" style="margin-top:8px">{{ t('nav_label_advanced') }}</div>
+        <button class="nav-item nav-item-parent {% if path in ['/admin/superadmin', '/admin/features'] %}open{% endif %}" data-nav-toggle="nav-advanced-sub">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            {{ t('nav_label_administration') }}
+            <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        <div class="nav-subnav {% if path in ['/admin/superadmin', '/admin/features'] %}open{% endif %}" id="nav-advanced-sub">
+            <a href="/admin/superadmin" class="nav-item nav-subitem {% if path == '/admin/superadmin' %}active{% endif %}" style="color:#f59e0b">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                {{ t('nav_superadmin') }}
+            </a>
+            <a href="/admin/features" class="nav-item nav-subitem {% if path == '/admin/features' %}active{% endif %}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                {{ t('nav_features') }}
+            </a>
+        </div>
+        {% endif %}
+
+        <div class="nav-label" style="margin-top:8px">{{ t('nav_label_help') }}</div>
+        <a href="/admin/wiki" class="nav-item {% if path == '/admin/wiki' %}active{% endif %}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            {{ t('nav_wiki') }}
+        </a>
 
     </nav>
 
@@ -660,9 +667,6 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
     const sidebar = document.getElementById('sidebar');
     const mobileToggle = document.getElementById('mobile-nav-toggle');
     const mobileBackdrop = document.getElementById('mobile-sidebar-backdrop');
-    const toggle = document.getElementById('nav-settings-toggle');
-    const sub    = document.getElementById('nav-settings-sub');
-
     function setSidebarOpen(open) {
         if (!sidebar || !mobileToggle || !mobileBackdrop) return;
         sidebar.classList.toggle('mobile-open', open);
@@ -671,16 +675,15 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
         mobileToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
     }
 
-    if (toggle && sub) {
+    document.querySelectorAll('[data-nav-toggle]').forEach(toggle => {
+        const targetId = toggle.getAttribute('data-nav-toggle');
+        const sub = targetId ? document.getElementById(targetId) : null;
+        if (!sub) return;
         toggle.addEventListener('click', () => {
             toggle.classList.toggle('open');
             sub.classList.toggle('open');
         });
-        if (window.location.pathname.startsWith('/admin/settings')) {
-            toggle.classList.add('open');
-            sub.classList.add('open');
-        }
-    }
+    });
 
     if (mobileToggle && sidebar && mobileBackdrop) {
         mobileToggle.addEventListener('click', () => {
@@ -725,7 +728,8 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
             const wasOpen = userMenu.classList.contains('open');
             closeAll();
             if (!wasOpen) {
-                userMenu.classList.remove('drop-down');
+                // The account menu lives in the top bar, so it must always open downward.
+                userMenu.classList.add('drop-down');
                 userMenu.classList.add('open');
                 const rect = userMenu.getBoundingClientRect();
                 if (rect.right > window.innerWidth - 8) {

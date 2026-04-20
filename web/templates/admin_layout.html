@@ -445,10 +445,13 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
                 <div class="user-role">{% if current_user_is_superadmin %}<span style="color:#f59e0b;font-weight:700">{{ t('role_superadmin') }}</span>{% else %}{{ t('role_admin') }}{% endif %}</div>
             </div>
         </div>
-        <a href="/logout" class="btn secondary" style="width:100%;justify-content:center;font-size:.79rem">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-            {{ t('btn_logout') }}
-        </a>
+        <form method="post" action="/logout">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn secondary" style="width:100%;justify-content:center;font-size:.79rem">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                {{ t('btn_logout') }}
+            </button>
+        </form>
     </div>
 </aside>
 
@@ -486,10 +489,13 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
                         {{ t('user_menu_change_password') }}
                     </a>
                     <div class="dropdown-separator"></div>
-                    <a class="dropdown-item danger" href="/logout">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                        {{ t('btn_logout') }}
-                    </a>
+                    <form method="post" action="/logout">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="dropdown-item danger" style="width:100%">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                            {{ t('btn_logout') }}
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>

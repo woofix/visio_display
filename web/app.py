@@ -215,6 +215,9 @@ def create_app(start_scheduler=True, test_config=None):
         response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
         response.headers.setdefault('Permissions-Policy', 'camera=(), geolocation=(), microphone=()')
         response.headers.setdefault('Cross-Origin-Opener-Policy', 'same-origin')
+        response.headers.setdefault('Cross-Origin-Resource-Policy', 'same-origin')
+        response.headers.setdefault('Origin-Agent-Cluster', '?1')
+        response.headers.setdefault('X-Permitted-Cross-Domain-Policies', 'none')
 
         sensitive_path = (
             request.path in {'/login', '/logout'}
@@ -227,6 +230,7 @@ def create_app(start_scheduler=True, test_config=None):
             response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0, private'
             response.headers['Pragma'] = 'no-cache'
             response.headers['Expires'] = '0'
+            response.vary.add('Cookie')
 
         if request.is_secure:
             response.headers.setdefault('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')

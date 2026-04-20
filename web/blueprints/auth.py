@@ -29,8 +29,12 @@ def login():
     return render_template('login.html', logo_path=get_logo_path())
 
 
-@bp.route('/logout')
+@bp.route('/logout', methods=['GET', 'POST'])
 def logout():
+    if request.method != 'POST':
+        if session.get('user'):
+            return redirect(url_for('admin.admin_page'))
+        return redirect(url_for('auth.login'))
     user = session.get('user')
     session.clear()
     if user:

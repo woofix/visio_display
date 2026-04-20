@@ -15,6 +15,18 @@ from services.media_svc import strip_html
 from translations import JOURS_BY_LANG, MOIS_BY_LANG, WMO_CODES_BY_LANG
 
 _EPHEMERIS_LOCK = threading.Lock()
+_MODERN_NAME_POOL = (
+    "Gabriel", "Lina", "Jules", "Louise", "Raphael", "Emma", "Noah", "Jade",
+    "Leo", "Alice", "Adam", "Chloe", "Louis", "Rose", "Arthur", "Mila",
+    "Hugo", "Ambre", "Lucas", "Anna", "Eden", "Mia", "Sacha", "Ines",
+    "Nino", "Lena", "Isaac", "Nina", "Mael", "Lea", "Tiago", "Iris",
+    "Elias", "Julia", "Axel", "Eva", "Mathis", "Zoé", "Tom", "Sarah",
+    "Oscar", "Lou", "Marius", "Alya", "Liam", "Elena", "Theo", "Romy",
+    "Ethan", "Yasmine", "Malo", "Agathe", "Samuel", "Manon", "Côme", "Jeanne",
+    "Pablo", "Aya", "Nael", "Lucie", "Martin", "Lya", "Aaron", "Margot",
+    "Victor", "Amelia", "Basile", "Elsa", "Robin", "Louna", "Elio", "Olivia",
+    "Antonin", "Camille", "Noe", "Celeste", "Maxime", "Juliette", "Nolan", "Elise",
+)
 
 
 def get_utc_offset():
@@ -283,20 +295,61 @@ def get_ephemeride_slot():
     return now.strftime(f"%Y-%m-%d_{slot:02d}h")
 
 
-def get_ephemeride_nominis():
+def _get_modern_name_of_day(target_date=None):
+    target_date = target_date or date.today()
+    day_index = target_date.timetuple().tm_yday - 1
+    return _MODERN_NAME_POOL[day_index % len(_MODERN_NAME_POOL)]
+
+
+def _displayable_saint_name(raw_name):
+    name = " ".join(str(raw_name or "").split())
+    if not name:
+        return ""
+
+    prefixes = (
+        "Saint ", "Sainte ", "Saints ", "Saintes ",
+        "Bienheureux ", "Bienheureuse ", "Bienheureux et Bienheureuses ",
+    )
+    for prefix in prefixes:
+        if name.startswith(prefix):
+            name = name[len(prefix):].strip()
+            break
+
+    for separator in (" ,", ",", " (", " de ", " d’", " d'"):
+        if separator in name:
+            name = name.split(separator, 1)[0].strip()
+            break
+
+    if not name:
+        return ""
+
+    parts = name.split()
+    if len(parts) == 1:
+        return parts[0]
+
+    compound_starters = {"Jean", "Marie", "Anne", "Charles"}
+    if parts[0] in compound_starters and parts[1][:1].isupper():
+        return f"{parts[0]} {parts[1]}"
+    return parts[0]
+
+
+def get_ephemeride_nominis(target_date=None):
+    target_date = target_date or date.today()
+    modern_name = _get_modern_name_of_day(target_date)
     url = "https://nominis.cef.fr/json/saintdujour.php"
     try:
         r = requests.get(url, timeout=5)
         r.raise_for_status()
         data  = r.json()
         saint = data["response"]["saintdujour"]
-        nom   = strip_html(saint.get("nom", "Ephemeride"))
-        desc  = strip_html(saint.get("description", ""))
-        return nom, desc
+        traditional_name = strip_html(saint.get("nom", "")).strip()
+        if traditional_name:
+            desc = strip_html(saint.get("description", "")).strip()
+            return _displayable_saint_name(traditional_name) or traditional_name, desc
+        return modern_name, ""
     except Exception as e:
         print("[NOMINIS ERROR]", e)
-        lang = get_language()
-        return _t('ephemeris_saint_default', lang), ""
+        return modern_name, ""
 
 
 def get_sun_times(cfg=None):
@@ -550,7 +603,12 @@ def generate_ephemeride_image(force=False):
     draw.text((960, 155), _t('ephemeris_title', lang),    fill=(220, 200, 255), font=font_title, anchor="mm")
     draw.text((960, 290), date_str,                        fill=(255, 255, 255), font=font_date,  anchor="mm")
     draw.rectangle([160, 370, 1760, 374], fill=(200, 180, 255))
-    draw.text((960, 450), nom.upper(),                     fill=(255, 255, 255), font=font_saint, anchor="mm")
+    saint_greeting = _t('ephemeris_saint_greeting', lang, name=nom)
+    saint_font = _fit_font(
+        draw, saint_greeting.upper(), 1480,
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 75, min_size=36
+    )
+    draw.text((960, 450), saint_greeting.upper(),         fill=(255, 255, 255), font=saint_font, anchor="mm")
 
     if description:
         words = description.split()

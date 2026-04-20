@@ -20,6 +20,7 @@ def admin_superadmin_page():
     cfg   = load_config()
     return render_template('admin_superadmin.html',
         users=users,
+        cfg=cfg,
         all_permissions=[(k, _t(lbl_key)) for k, lbl_key in ALL_PERMISSIONS],
         all_screens=list(cfg.get('screens', {}).keys()),
         priority_alert=cfg.get('priority_alert', {}),

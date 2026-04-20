@@ -1509,8 +1509,17 @@ document.querySelectorAll('.btn-delete').forEach(btn => {
         const action = btn.dataset.action;
         if (!confirm(`Supprimer « ${file} » ?\nCette action est irréversible.`)) return;
         const form = document.createElement('form');
-        form.method = 'POST'; form.action = action;
-        document.body.appendChild(form); form.submit();
+        form.method = 'POST';
+        form.action = action;
+
+        const csrf = document.createElement('input');
+        csrf.type = 'hidden';
+        csrf.name = '_csrf_token';
+        csrf.value = window.CSRF_TOKEN;
+        form.appendChild(csrf);
+
+        document.body.appendChild(form);
+        form.submit();
     });
 });
 

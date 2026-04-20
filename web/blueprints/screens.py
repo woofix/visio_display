@@ -1,6 +1,6 @@
 from flask import Blueprint, request, redirect, url_for, flash, jsonify
 
-from services.config_svc import load_config, save_config
+from services.config_svc import load_config, save_config, normalize_default_screen_name
 from services.users_svc import has_screen_access
 from services.media_svc import valid_screen_name
 from blueprints.guards import superadmin_guard, perm_guard, feature_guard
@@ -41,6 +41,25 @@ def delete_screen(name):
         save_config(cfg)
         flash(f"Écran « {name} » supprimé.", 'success')
     return redirect(url_for('media.admin_media'))
+
+
+@bp.route('/admin/screens/default-name', methods=['POST'])
+def update_default_screen_name():
+    redir = superadmin_guard()
+    if redir: return redir
+    redir = feature_guard('screens')
+    if redir: return redir
+
+    cfg = load_config()
+    new_name = normalize_default_screen_name(request.form.get('default_screen_name', ''))
+    cfg['default_screen_name'] = new_name
+    save_config(cfg)
+
+    if new_name:
+        flash(f"Nom de l'écran par défaut mis à jour : « {new_name} ».", 'success')
+    else:
+        flash("Nom personnalisé supprimé pour l'écran par défaut.", 'success')
+    return redirect(url_for('users.admin_superadmin_page'))
 
 
 @bp.route('/screen_assign/<path:filename>', methods=['POST'])

@@ -208,7 +208,7 @@
 <div class="screen-bar">
     <span class="screen-bar-label">{{ t('media_screen_label') }}</span>
     <div class="screen-tabs">
-        <a href="/admin/media" class="screen-tab {% if not current_screen %}active{% endif %}">{{ t('media_screen_default') }}</a>
+        <a href="/admin/media" class="screen-tab {% if not current_screen %}active{% endif %}">{{ default_screen_name }}</a>
         {% for s in screens %}
         <a href="/admin/media?screen={{ s }}" class="screen-tab {% if current_screen == s %}active{% endif %}">{{ s }}</a>
         {% if current_screen == s and current_user_is_superadmin %}
@@ -220,7 +220,7 @@
         {% endfor %}
     </div>
     <button class="btn-preview-screen" id="btn-preview-screen"
-            title="{% if current_screen %}Prévisualiser « {{ current_screen }} »{% else %}Prévisualiser l'écran par défaut{% endif %}"
+            title="{% if current_screen %}Prévisualiser « {{ current_screen }} »{% else %}Prévisualiser « {{ default_screen_name }} »{% endif %}"
             style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-shrink:0">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
         Prévisualiser
@@ -281,7 +281,7 @@
             <div class="group-screens-row">
                 <span class="group-screens-label">{{ t('group_screens_label') }} :</span>
                 <button class="btn-group-screen-link {% if '' in group.screens %}linked{% endif %}"
-                        data-group="{{ group.name }}" data-screen="">{{ t('media_screen_default') }}</button>
+                        data-group="{{ group.name }}" data-screen="">{{ default_screen_name }}</button>
                 {% for s in screens %}
                 <button class="btn-group-screen-link {% if s in group.screens %}linked{% endif %}"
                         data-group="{{ group.name }}" data-screen="{{ s }}">{{ s }}</button>
@@ -442,7 +442,7 @@
     <div class="screen-preview-box">
         <button class="screen-preview-close" id="screen-preview-close-btn" title="Fermer">✕</button>
         <iframe id="screen-preview-iframe" src="" allowfullscreen></iframe>
-        <span class="screen-preview-label">{{ current_screen or t('media_screen_default') }}</span>
+        <span class="screen-preview-label">{{ current_screen or default_screen_name }}</span>
     </div>
 </div>
 
@@ -864,8 +864,18 @@ document.querySelectorAll('.btn-delete').forEach(btn => {
     btn.addEventListener('click', e => {
         e.stopPropagation();
         if (!confirm(JS_CONFIRM_DELETE.replace('{file}', btn.dataset.file))) return;
-        const form = document.createElement('form'); form.method = 'POST'; form.action = btn.dataset.action;
-        document.body.appendChild(form); form.submit();
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = btn.dataset.action;
+
+        const csrf = document.createElement('input');
+        csrf.type = 'hidden';
+        csrf.name = '_csrf_token';
+        csrf.value = window.CSRF_TOKEN;
+        form.appendChild(csrf);
+
+        document.body.appendChild(form);
+        form.submit();
     });
 });
 

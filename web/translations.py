@@ -374,6 +374,8 @@ TRANSLATIONS = {
         'superadmin_screens_none_defined': 'Aucun écran défini pour l\u2019instant.',
         'superadmin_screens_manage': 'Gestion des écrans',
         'superadmin_screens_create': 'Créer un écran',
+        'superadmin_default_screen_placeholder': 'Nom de l’écran par défaut',
+        'superadmin_default_screen_save': 'Enregistrer le nom',
 
         # ── Fonctionnalités ──
         'features_title': 'Fonctionnalités',
@@ -437,6 +439,8 @@ TRANSLATIONS = {
         'ephemeris_today': "Aujourd'hui !",
         'ephemeris_weather_unknown': 'INDISPONIBLE',
         'ephemeris_saint_default': 'Bonne journee',
+        'ephemeris_saint_greeting': 'Bonne fête {name}',
+        'ephemeris_traditional_saint': 'Tradition : saint {name}',
         'ephemeris_school_break_default': 'VACANCES SCOLAIRES',
         'ephemeris_school_break_dates': 'du {start} au {end}',
         # ── Wiki ──
@@ -1058,6 +1062,8 @@ TRANSLATIONS = {
         'superadmin_screens_none_defined': 'No screens defined yet.',
         'superadmin_screens_manage': 'Screen Management',
         'superadmin_screens_create': 'Create a screen',
+        'superadmin_default_screen_placeholder': 'Default screen name',
+        'superadmin_default_screen_save': 'Save name',
 
         # ── Features ──
         'features_title': 'Features',
@@ -1121,6 +1127,8 @@ TRANSLATIONS = {
         'ephemeris_today': 'Today!',
         'ephemeris_weather_unknown': 'UNAVAILABLE',
         'ephemeris_saint_default': 'Good day',
+        'ephemeris_saint_greeting': 'Happy name day {name}',
+        'ephemeris_traditional_saint': 'Traditional saint: {name}',
         'ephemeris_school_break_default': 'SCHOOL HOLIDAYS',
         'ephemeris_school_break_dates': 'from {start} to {end}',
         # ── Wiki ──

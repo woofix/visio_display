@@ -18,7 +18,7 @@ from services.users_svc import init_users
 from services.queue_svc import start_encoder_thread
 from services.i18n import get_language, _trans
 from services.users_svc import load_users, is_superadmin, has_permission
-from services.config_svc import load_config, is_feature_enabled
+from services.config_svc import load_config, is_feature_enabled, get_default_screen_name
 from flask import session
 from translations import TRANSLATIONS
 
@@ -263,6 +263,7 @@ def create_app(start_scheduler=True, test_config=None):
         entry    = users.get(username, {})
         user_theme = entry.get('theme', 'violet') if isinstance(entry, dict) else 'violet'
         cfg = load_config()
+        default_screen_name = get_default_screen_name(cfg) or t('media_screen_default')
 
         translated_permissions = [(k, t(lbl_key)) for k, lbl_key in ALL_PERMISSIONS]
 
@@ -275,6 +276,7 @@ def create_app(start_scheduler=True, test_config=None):
             lang=lang,
             t=t,
             all_permissions=translated_permissions,
+            default_screen_name=default_screen_name,
             csrf_token=_get_csrf_token,
         )
 

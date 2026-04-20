@@ -150,6 +150,7 @@
 <script>
     const DEFAULT_DURATION = 15000;
     const FADE_DURATION    = 1500;
+    const DEFAULT_SCREEN_NAME = {{ default_screen_name | tojson }};
     const SCREEN           = new URLSearchParams(location.search).get('screen') || '';
     const SCREEN_PARAM     = SCREEN ? `?screen=${encodeURIComponent(SCREEN)}` : '';
 
@@ -384,7 +385,7 @@
                 ['', ...screens].forEach(s => {
                     const btn = document.createElement('button');
                     btn.className = 'screen-btn' + (s === SCREEN ? ' active' : '');
-                    btn.textContent = s || 'Défaut';
+                    btn.textContent = s || DEFAULT_SCREEN_NAME;
                     btn.addEventListener('click', () => {
                         window.location.href = s ? '/?screen=' + encodeURIComponent(s) : '/';
                     });

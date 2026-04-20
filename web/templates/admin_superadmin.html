@@ -226,6 +226,11 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
             {{ t('superadmin_screens_manage') }}
         </h3>
+        <form action="/admin/screens/default-name" method="post" class="add-user-form" style="margin-bottom:12px">
+            <input type="text" name="default_screen_name" value="{{ cfg.get('default_screen_name', '') }}"
+                   placeholder="{{ t('superadmin_default_screen_placeholder') }}" maxlength="48">
+            <div><button type="submit" class="btn sm">{{ t('superadmin_default_screen_save') }}</button></div>
+        </form>
         {% if all_screens %}
         <ul style="list-style:none;padding:0;margin:0 0 16px 0;display:flex;flex-direction:column;gap:8px">
             {% for s in all_screens %}

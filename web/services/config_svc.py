@@ -2,6 +2,17 @@ import json
 from db import db, AppConfig
 
 
+def normalize_default_screen_name(value):
+    cleaned = " ".join(str(value or "").split())
+    return cleaned[:48]
+
+
+def get_default_screen_name(cfg=None):
+    cfg = cfg or load_config()
+    custom_name = normalize_default_screen_name(cfg.get("default_screen_name", ""))
+    return custom_name or None
+
+
 def _default_screen_config():
     return {
         "order": [],
@@ -35,6 +46,7 @@ def _default_config():
         "group_pools": {},
         "group_screens": {},
         "disabled_groups": [],
+        "default_screen_name": "",
         "screens": {},
         "priority_alert": {
             "message": "",
@@ -60,6 +72,7 @@ def load_config():
     merged["group_pools"] = cfg.get("group_pools", {}) if isinstance(cfg.get("group_pools"), dict) else {}
     merged["group_screens"] = cfg.get("group_screens", {}) if isinstance(cfg.get("group_screens"), dict) else {}
     merged["disabled_groups"] = cfg.get("disabled_groups", []) if isinstance(cfg.get("disabled_groups"), list) else []
+    merged["default_screen_name"] = normalize_default_screen_name(cfg.get("default_screen_name", ""))
     stored_features = cfg.get("features", {})
     merged["features"] = {**_default_features(), **(stored_features if isinstance(stored_features, dict) else {})}
     screens = cfg.get("screens", {})

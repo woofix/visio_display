@@ -404,28 +404,28 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
                 {{ t('nav_admins') }}
                 {% if users is defined %}<span class="nav-badge">{{ users|length }}</span>{% endif %}
             </a>
-            <a href="/admin/settings?tab=theme" class="nav-item nav-subitem {% if path == '/admin/settings' and request.args.get('tab') == 'theme' %}active{% endif %}">
+            <a href="/admin/settings?tab=theme" class="nav-item nav-subitem {% if path == '/admin/settings' and (tab|default('logo')) == 'theme' %}active{% endif %}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20"/><path d="M2 12h10"/></svg>
                 {{ t('nav_theme') }}
             </a>
             {% if current_user_is_superadmin %}
-            <a href="/admin/settings?tab=application" class="nav-item nav-subitem {% if path == '/admin/settings' and request.args.get('tab') == 'application' %}active{% endif %}">
+            <a href="/admin/settings?tab=application" class="nav-item nav-subitem {% if path == '/admin/settings' and (tab|default('logo')) == 'application' %}active{% endif %}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
                 {{ t('nav_application') }}
             </a>
-            <a href="/admin/settings?tab=meteo" class="nav-item nav-subitem {% if path == '/admin/settings' and request.args.get('tab') == 'meteo' %}active{% endif %}">
+            <a href="/admin/settings?tab=meteo" class="nav-item nav-subitem {% if path == '/admin/settings' and (tab|default('logo')) == 'meteo' %}active{% endif %}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/></svg>
                 {{ t('tab_meteo') }}
             </a>
             {% endif %}
-            {% if can_ephemeris %}
-            <a href="/admin/settings?tab=evenements" class="nav-item nav-subitem {% if path == '/admin/settings' and request.args.get('tab') == 'evenements' %}active{% endif %}">
+            {% if has_permission('ephemeris') and is_feature_enabled('ephemeris') %}
+            <a href="/admin/settings?tab=evenements" class="nav-item nav-subitem {% if path == '/admin/settings' and (tab|default('logo')) == 'evenements' %}active{% endif %}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                 {{ t('tab_events') }}
                 {% if users is defined and events is defined and events %}<span class="nav-badge">{{ events|length }}</span>{% endif %}
             </a>
             {% endif %}
-            <a href="/admin/settings?tab=language" class="nav-item nav-subitem {% if path == '/admin/settings' and request.args.get('tab') == 'language' %}active{% endif %}">
+            <a href="/admin/settings?tab=language" class="nav-item nav-subitem {% if path == '/admin/settings' and (tab|default('logo')) == 'language' %}active{% endif %}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
                 {{ t('tab_language') }}
             </a>
@@ -465,11 +465,13 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
         <div class="topbar-right">
             {% block topbar_actions %}{% endblock %}
 
+            {% if has_permission('ephemeris') and is_feature_enabled('ephemeris') %}
             <button class="btn-icon btn-warn" id="btn-regen" title="{{ t('btn_ephemeris') }}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
             </button>
             <span id="regen-ok" style="font-size:.78rem;color:var(--green);display:none;font-weight:600">✓</span>
             <div class="topbar-vsep"></div>
+            {% endif %}
 
             <div class="user-menu-wrap">
                 <button class="user-menu-btn" id="user-menu-btn">

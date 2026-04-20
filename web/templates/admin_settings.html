@@ -90,7 +90,7 @@
 .lang-name { font-size:.9rem; font-weight:700; color:var(--text); }
 {% endblock %}
 
-{% set active_tab = request.args.get('tab', 'logo') %}
+{% set active_tab = tab | default('logo') %}
 
 {% block content %}
 <div class="page-header">

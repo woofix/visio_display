@@ -17,6 +17,15 @@ from services.ephemeris_svc import get_school_zone
 bp = Blueprint('settings', __name__)
 
 
+def _normalize_settings_tab(raw_tab):
+    tab = (raw_tab or 'logo').strip().lower()
+    aliases = {
+        'events': 'evenements',
+        'event': 'evenements',
+    }
+    return aliases.get(tab, tab)
+
+
 @bp.route('/admin/settings')
 def admin_settings_page():
     redir = admin_guard()
@@ -45,6 +54,7 @@ def admin_settings_page():
         "resolved_school_zone": get_school_zone(cfg),
         "school_zone_label": dict(SCHOOL_ZONES).get(cfg.get("school_zone", "auto"), "Auto"),
     }
+    active_tab = _normalize_settings_tab(request.args.get('tab', 'logo'))
     return render_template('admin_settings.html',
         cfg=cfg, users=users, current_user=username,
         logo_path=get_logo_path(),
@@ -54,7 +64,7 @@ def admin_settings_page():
         can_ephemeris=has_permission('ephemeris'),
         meteo_location=meteo_location,
         school_zones=SCHOOL_ZONES,
-        tab=request.args.get('tab', 'logo'))
+        tab=active_tab)
 
 
 @bp.route('/admin/settings/appname', methods=['POST'])

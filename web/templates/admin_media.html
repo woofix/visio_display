@@ -109,7 +109,6 @@
 .group-save-btn:disabled { opacity:.55;cursor:wait; }
 .file-card .group-hint { font-size:.67rem;color:var(--text-3);margin-bottom:10px; }
 .file-card .card-actions { display:flex;gap:8px;align-items:center;justify-content:space-between; flex-wrap:wrap; }
-.quick-actions { display:flex;gap:6px;align-items:center;flex-wrap:wrap; }
 .card-actions-right { display:flex;gap:6px;align-items:center;margin-left:auto; }
 .quick-action-btn { min-height:30px; }
 .duration-input { width:50px;padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:.78rem;text-align:center;font-family:inherit;transition:border-color .15s;color:var(--text);background:var(--surface); }
@@ -438,18 +437,6 @@
             </div>
             <div class="group-hint">{{ t('media_group_hint') }}</div>
             <div class="card-actions">
-                <div class="quick-actions">
-                    {% if file not in queued %}
-                    <button class="btn sm {% if file in cfg.disabled %}success{% else %}warning{% endif %} quick-action-btn btn-toggle" data-file="{{ file }}">
-                        {% if file in cfg.disabled %}{{ t('action_enable') }}{% else %}{{ t('action_disable') }}{% endif %}
-                    </button>
-                    {% endif %}
-                    {% if can_schedule %}
-                    <button class="btn sm secondary quick-action-btn btn-schedule" data-file="{{ file }}">
-                        {{ t('action_schedule') }}
-                    </button>
-                    {% endif %}
-                </div>
                 <div class="card-actions-right">
                     <div style="display:flex;align-items:center;gap:4px">
                         <input type="number" class="duration-input" min="3" max="300"
@@ -457,21 +444,36 @@
                                title="{{ t('duration_title') }}" data-file="{{ file }}">
                         <span class="duration-unit">s</span>
                     </div>
-                    {% if file in queued or info.type == 'video' or current_screen %}
+                    {% if (can_toggle and file not in queued) or can_schedule or file in queued or info.type == 'video' or current_screen %}
                     <div class="dropdown">
                         <button class="btn sm secondary dropdown-toggle">
                             {{ t('actions_more') }} <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:10px;height:10px"><polyline points="6 9 12 15 18 9"/></svg>
                         </button>
                         <div class="dropdown-menu">
                             <div class="dropdown-label">{{ file[:24] }}{% if file|length > 24 %}…{% endif %}</div>
-                            {% if file in queued %}
+                            {% if (can_toggle and file not in queued) or can_schedule or file in queued %}
                             <div class="dropdown-label">{{ t('dropdown_label_manage') }}</div>
+                            {% if can_toggle and file not in queued %}
+                            <button class="dropdown-item btn-toggle" data-file="{{ file }}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                                {% if file in cfg.disabled %}{{ t('action_enable') }}{% else %}{{ t('action_disable') }}{% endif %}
+                            </button>
+                            {% endif %}
+                            {% if can_schedule %}
+                            <button class="dropdown-item btn-schedule" data-file="{{ file }}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
+                                {{ t('action_schedule') }}
+                            </button>
+                            {% endif %}
+                            {% if file in queued %}
                             <button class="dropdown-item" disabled style="opacity:.45;cursor:not-allowed">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                                 {{ t('action_pending_encoding') }}
                             </button>
                             {% endif %}
+                            {% endif %}
                             {% if info.type == 'video' and file not in queued %}
+                            <div class="dropdown-separator"></div>
                             <div class="dropdown-label">{{ t('dropdown_label_technical') }}</div>
                             <button class="dropdown-item btn-compress" data-file="{{ file }}">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg>

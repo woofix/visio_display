@@ -60,7 +60,8 @@ def admin_media():
         schedules=schedules, current_screen=screen, screens=screens,
         media_groups=media_groups, group_states=group_states, disabled_map=disabled_map,
         users=list(users.keys()), current_user=session.get('user'),
-        logo_path=get_logo_path(), can_schedule=has_permission('schedule'),
+        logo_path=get_logo_path(), can_toggle=has_permission('toggle'),
+        can_schedule=has_permission('schedule'),
         current_user_is_superadmin=is_superadmin())
 
 

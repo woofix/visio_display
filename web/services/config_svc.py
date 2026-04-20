@@ -42,6 +42,7 @@ def _default_config():
         "order": [],
         "durations": {},
         "disabled": [],
+        "hidden_recent_jobs": [],
         "groups": {},
         "group_pools": {},
         "group_screens": {},
@@ -71,6 +72,10 @@ def load_config():
     merged["groups"] = cfg.get("groups", {}) if isinstance(cfg.get("groups"), dict) else {}
     merged["group_pools"] = cfg.get("group_pools", {}) if isinstance(cfg.get("group_pools"), dict) else {}
     merged["group_screens"] = cfg.get("group_screens", {}) if isinstance(cfg.get("group_screens"), dict) else {}
+    merged["hidden_recent_jobs"] = [
+        str(job_id) for job_id in cfg.get("hidden_recent_jobs", [])
+        if str(job_id).strip()
+    ] if isinstance(cfg.get("hidden_recent_jobs"), list) else []
     merged["disabled_groups"] = cfg.get("disabled_groups", []) if isinstance(cfg.get("disabled_groups"), list) else []
     merged["default_screen_name"] = normalize_default_screen_name(cfg.get("default_screen_name", ""))
     stored_features = cfg.get("features", {})

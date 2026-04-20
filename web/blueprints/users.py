@@ -172,3 +172,4 @@ def set_priority_alert():
         'message': message,
         'updated_at': cfg['priority_alert']['updated_at'],
     })
+

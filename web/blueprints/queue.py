@@ -6,6 +6,7 @@ from flask import Blueprint, render_template, redirect, url_for, jsonify, sessio
 
 from constants import UPLOAD_FOLDER, VIDEO_EXTS
 from services.users_svc import load_users, is_admin, is_superadmin
+from services.config_svc import load_config, save_config
 from services.queue_svc import (
     load_queue, save_queue,
     _rq_compress_job, _compress_q,
@@ -67,8 +68,16 @@ def cancel_job(job_id):
         return jsonify({"error": "not found"}), 404
     if job['status'] == 'processing':
         return jsonify({"error": "cannot cancel"}), 400
-    q.remove(job)
-    save_queue(q)
+    if job['status'] == 'pending':
+        q.remove(job)
+        save_queue(q)
+    else:
+        cfg = load_config()
+        hidden = cfg.get('hidden_recent_jobs', [])
+        if job_id not in hidden:
+            hidden.append(job_id)
+            cfg['hidden_recent_jobs'] = hidden
+            save_config(cfg)
     return jsonify({"ok": True})
 
 
@@ -132,9 +141,11 @@ def force_compress_single(filename):
 def api_queue():
     if not is_admin():
         return jsonify({"error": "unauthorized"}), 401
-    q      = load_queue()
+    q = load_queue()
+    cfg = load_config()
+    hidden_recent = set(cfg.get('hidden_recent_jobs', []))
     active = [j for j in q if j['status'] in ('pending', 'processing')]
-    recent = [j for j in q if j['status'] in ('done', 'error')][-5:]
+    recent = [j for j in q if j['status'] in ('done', 'error') and j['id'] not in hidden_recent][-5:]
 
     # Attach compress progress from Redis for processing jobs
     r = get_redis()

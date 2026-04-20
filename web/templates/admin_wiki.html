@@ -19,8 +19,31 @@
     align-items: start;
 }
 @media (max-width: 900px) {
-    .wiki-wrap { grid-template-columns: 1fr; }
-    .wiki-toc  { display: none; }
+    .wiki-wrap {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    .wiki-toc  {
+        position: static;
+        top: auto;
+        margin-bottom: 0;
+    }
+    #wiki-toc-links {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        max-height: 260px;
+        overflow: auto;
+        padding-bottom: 0;
+        scrollbar-width: thin;
+    }
+    .wiki-toc a {
+        min-width: 0;
+        white-space: normal;
+        background: var(--surface-alt);
+        border: 1px solid var(--border);
+        padding: 8px 10px;
+    }
 }
 
 /* ── TABLE DES MATIÈRES ── */
@@ -42,6 +65,35 @@
     margin-bottom: 10px;
     padding-bottom: 8px;
     border-bottom: 1px solid var(--border);
+}
+.wiki-toc-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+.wiki-toc-toggle {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface-alt);
+    color: var(--text-2);
+    border-radius: 999px;
+    padding: 6px 10px;
+    font: inherit;
+    font-size: .74rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.wiki-toc-toggle svg {
+    width: 13px;
+    height: 13px;
+    transition: transform .15s ease;
+}
+.wiki-toc.mobile-links-open .wiki-toc-toggle svg {
+    transform: rotate(180deg);
 }
 .wiki-toc a {
     display: block;
@@ -261,14 +313,68 @@
     gap: 10px;
 }
 @media (max-width: 640px) {
+    .wiki-hero {
+        padding: 18px 16px;
+        margin-bottom: 16px;
+    }
+    .wiki-hero-title {
+        font-size: 1rem;
+        line-height: 1.4;
+    }
+    .wiki-hero-sub {
+        font-size: .78rem;
+        color: rgba(255,255,255,.7);
+    }
+    .wiki-toc-title {
+        margin-bottom: 0;
+        padding-bottom: 0;
+        border-bottom: none;
+    }
     .wiki-section {
         padding: 18px 16px;
     }
     .wiki-section-header {
         align-items: flex-start;
     }
+    .wiki-toc {
+        padding: 14px;
+    }
+    .wiki-toc-toggle {
+        display: inline-flex;
+    }
+    #wiki-toc-links {
+        display: none;
+        grid-template-columns: 1fr;
+        max-height: none;
+        margin-top: 10px;
+    }
+    .wiki-toc.mobile-links-open #wiki-toc-links {
+        display: grid;
+    }
+    .wiki-search-wrap {
+        margin-bottom: 0;
+        padding-bottom: 0;
+        border-bottom: none;
+    }
+    .wiki-search-box {
+        padding: 8px 10px;
+    }
+    .wiki-search-input {
+        font-size: .82rem;
+    }
     .wiki-nav {
         flex-direction: column;
+    }
+    .wiki-nav-btn {
+        width: 100%;
+        justify-content: center;
+    }
+    .wiki-table {
+        font-size: .78rem;
+    }
+    .wiki-table th,
+    .wiki-table td {
+        padding: 8px 10px;
     }
 }
 .wiki-nav-btn {
@@ -354,8 +460,14 @@
 <div class="wiki-wrap">
 
     <!-- TABLE DES MATIÈRES -->
-    <aside class="wiki-toc">
-        <div class="wiki-toc-title">{{ t('wiki_toc_title') }}</div>
+    <aside class="wiki-toc" id="wiki-toc">
+        <div class="wiki-toc-head">
+            <div class="wiki-toc-title">{{ t('wiki_toc_title') }}</div>
+            <button type="button" class="wiki-toc-toggle" id="wiki-toc-toggle" aria-expanded="false" aria-controls="wiki-toc-links">
+                Sections
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+        </div>
         <div class="wiki-search-wrap">
             <div class="wiki-search-box">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -839,6 +951,7 @@
     tocLinks.forEach(a => {
         a.addEventListener('click', e => {
             e.preventDefault();
+            setMobileTocOpen(false);
             showSection(a.dataset.section);
         });
     });
@@ -850,6 +963,8 @@
     const searchInput    = document.getElementById('wiki-search');
     const searchResults  = document.getElementById('wiki-search-results');
     const tocLinksWrap   = document.getElementById('wiki-toc-links');
+    const tocContainer   = document.getElementById('wiki-toc');
+    const tocToggle      = document.getElementById('wiki-toc-toggle');
     const JS_NO_RESULTS  = {{ t('wiki_search_no_results') | tojson }};
 
     const escRe = str => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -880,10 +995,27 @@
         tocLinksWrap.style.display = '';
     }
 
+    function setMobileTocOpen(open) {
+        if (!tocContainer || !tocToggle) return;
+        tocContainer.classList.toggle('mobile-links-open', open);
+        tocToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+
+    if (tocToggle) {
+        tocToggle.addEventListener('click', () => {
+            setMobileTocOpen(!tocContainer.classList.contains('mobile-links-open'));
+        });
+    }
+
+    if (window.matchMedia('(max-width: 640px)').matches) {
+        setMobileTocOpen(false);
+    }
+
     searchInput.addEventListener('input', () => {
         const q = searchInput.value.trim();
         if (!q) { clearSearch(); return; }
 
+        setMobileTocOpen(false);
         tocLinksWrap.style.display = 'none';
         searchResults.classList.add('active');
 
@@ -906,6 +1038,7 @@
         searchResults.querySelectorAll('.wiki-search-result').forEach(r => {
             r.addEventListener('click', () => {
                 clearSearch();
+                setMobileTocOpen(false);
                 showSection(r.dataset.target);
             });
         });

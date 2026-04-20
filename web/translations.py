@@ -612,6 +612,7 @@ TRANSLATIONS = {
         'wiki_s10_screen2': 'Cases cochées → l\'utilisateur ne voit et ne gère que les écrans sélectionnés.',
         'wiki_s10_reset_title': 'Réinitialiser un mot de passe',
         'wiki_s10_reset_desc': 'Cliquez sur Réinitialiser le mot de passe dans la fiche de l\'utilisateur et saisissez le nouveau mot de passe.',
+        'wiki_s10_reset_superadmin_note': 'Le mot de passe du super-admin ne se réinitialise pas depuis l\'interface. En cas de perte, utilisez le script de maintenance web/tools/reset_superadmin_password.py depuis le serveur (voir le README).',
         'wiki_s10_delete_title': 'Supprimer un compte',
         'wiki_s10_delete_desc': 'Cliquez sur Supprimer dans la fiche de l\'utilisateur. Le compte super-admin ne peut pas être supprimé.',
         # §11
@@ -1296,6 +1297,7 @@ TRANSLATIONS = {
         'wiki_s10_screen2': 'Boxes checked → the user only sees and manages the selected screens.',
         'wiki_s10_reset_title': 'Reset a password',
         'wiki_s10_reset_desc': 'Click Reset password in the user record and enter the new password.',
+        'wiki_s10_reset_superadmin_note': 'The super-admin password cannot be reset from the interface. If it is lost, use the maintenance script web/tools/reset_superadmin_password.py on the server (see the README).',
         'wiki_s10_delete_title': 'Delete an account',
         'wiki_s10_delete_desc': 'Click Delete in the user record. The super-admin account cannot be deleted.',
         'wiki_s11_window_title': 'Automatic encoding window',

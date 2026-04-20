@@ -310,6 +310,8 @@ Dans la fiche d'un utilisateur, section **Écrans autorisés** :
 
 Cliquez sur **Réinitialiser le mot de passe** dans la fiche de l'utilisateur et saisissez le nouveau mot de passe.
 
+Le mot de passe du **super-admin** ne se réinitialise pas depuis l'interface. En cas de perte, utilisez le script de maintenance `web/tools/reset_superadmin_password.py` depuis le serveur (voir le `README.md` pour la procédure).
+
 ### Supprimer un compte
 
 Cliquez sur **Supprimer** dans la fiche de l'utilisateur. Le compte super-admin ne peut pas être supprimé.

@@ -5,7 +5,9 @@ import json
 import os
 import secrets
 import shutil
+from datetime import timedelta
 from flask import Flask, abort, request
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from constants import (
     ALL_PERMISSIONS, DB_FILE, CONFIG_FILE, QUEUE_FILE, USERS_FILE,
@@ -19,6 +21,28 @@ from services.users_svc import load_users, is_superadmin, has_permission
 from services.config_svc import load_config, is_feature_enabled
 from flask import session
 from translations import TRANSLATIONS
+
+
+def _env_flag(name, default=False):
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {'1', 'true', 'yes', 'on'}
+
+
+def _env_int(name, default):
+    raw = os.environ.get(name, '').strip()
+    if not raw:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        return default
+
+
+def _env_csv(name):
+    raw = os.environ.get(name, '')
+    return [item.strip() for item in raw.split(',') if item.strip()]
 
 
 def _migrate_legacy_storage():
@@ -95,9 +119,19 @@ def create_app(start_scheduler=True, test_config=None):
     if not app.secret_key:
         raise RuntimeError("La variable d'environnement SECRET_KEY est obligatoire.")
     app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 Mo
+    app.config['MAX_FORM_MEMORY_SIZE'] = 16 * 1024 * 1024
     app.config['SESSION_COOKIE_HTTPONLY'] = True
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-    app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE', '').lower() in {'1', 'true', 'yes'}
+    app.config['SESSION_COOKIE_SECURE'] = _env_flag('SESSION_COOKIE_SECURE')
+    app.config['SESSION_COOKIE_NAME'] = os.environ.get('SESSION_COOKIE_NAME', 'visio_session')
+    app.config['SESSION_COOKIE_PATH'] = '/'
+    app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(
+        minutes=max(5, _env_int('SESSION_LIFETIME_MINUTES', 480))
+    )
+    app.config['SESSION_REFRESH_EACH_REQUEST'] = False
+    trusted_hosts = _env_csv('TRUSTED_HOSTS')
+    if trusted_hosts:
+        app.config['TRUSTED_HOSTS'] = trusted_hosts
 
     # SQLAlchemy
     app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.abspath(DB_FILE)}'
@@ -108,6 +142,17 @@ def create_app(start_scheduler=True, test_config=None):
 
     if test_config:
         app.config.update(test_config)
+
+    proxy_count = max(0, _env_int('TRUST_PROXY_COUNT', 0))
+    if proxy_count:
+        app.wsgi_app = ProxyFix(
+            app.wsgi_app,
+            x_for=proxy_count,
+            x_proto=proxy_count,
+            x_host=proxy_count,
+            x_port=proxy_count,
+            x_prefix=proxy_count,
+        )
 
     db.init_app(app)
 
@@ -144,9 +189,48 @@ def create_app(start_scheduler=True, test_config=None):
             or request.form.get('_csrf_token')
             or (request.get_json(silent=True) or {}).get('_csrf_token')
         )
-        if not provided or provided != _get_csrf_token():
+        if not provided or not secrets.compare_digest(str(provided), _get_csrf_token()):
             abort(400, description='CSRF token missing or invalid')
         return None
+
+    @app.after_request
+    def apply_security_headers(response):
+        csp = (
+            "default-src 'self'; "
+            "base-uri 'self'; "
+            "form-action 'self'; "
+            "frame-ancestors 'self'; "
+            "object-src 'none'; "
+            "img-src 'self' data:; "
+            "font-src 'self' https://fonts.gstatic.com; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+            "script-src 'self' 'unsafe-inline'; "
+            "connect-src 'self' https://geocoding-api.open-meteo.com; "
+            "media-src 'self' blob: data:; "
+            "worker-src 'self' blob:"
+        )
+        response.headers.setdefault('Content-Security-Policy', csp)
+        response.headers.setdefault('Referrer-Policy', 'same-origin')
+        response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+        response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
+        response.headers.setdefault('Permissions-Policy', 'camera=(), geolocation=(), microphone=()')
+        response.headers.setdefault('Cross-Origin-Opener-Policy', 'same-origin')
+
+        sensitive_path = (
+            request.path in {'/login', '/logout'}
+            or request.path.startswith('/admin')
+            or request.path.startswith('/api/config')
+            or request.path.startswith('/api/activity')
+            or request.path.startswith('/api/queue')
+        )
+        if session.get('user') or sensitive_path:
+            response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0, private'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
+
+        if request.is_secure:
+            response.headers.setdefault('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+        return response
 
     @app.route('/')
     def index():

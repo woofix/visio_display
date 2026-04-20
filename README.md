@@ -112,6 +112,11 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 | `ADMIN_USER`     | Nom du compte super-admin (créé au premier démarrage uniquement)   |
 | `ADMIN_PASSWORD` | Mot de passe du super-admin (8 caractères minimum)                 |
 | `SECRET_KEY`     | Clé de signature des sessions Flask (obligatoire)                  |
+| `SESSION_COOKIE_SECURE` | Force le cookie de session en mode `Secure` (recommandé derrière HTTPS) |
+| `SESSION_COOKIE_NAME` | Nom du cookie de session Flask (défaut : `visio_session`) |
+| `SESSION_LIFETIME_MINUTES` | Durée de vie maximale d’une session connectée (défaut : `480`) |
+| `TRUSTED_HOSTS` | Liste d’hôtes autorisés séparés par des virgules pour filtrer l’en-tête `Host` |
+| `TRUST_PROXY_COUNT` | Nombre de proxies inverse de confiance pour interpréter `X-Forwarded-*` |
 
 > Ces variables ne sont lues qu'une seule fois, lors du premier démarrage (base de données absente).
 
@@ -533,6 +538,11 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 | `ADMIN_USER`     | Super-admin username (read only on first boot)                    |
 | `ADMIN_PASSWORD` | Super-admin password (minimum 8 characters)                       |
 | `SECRET_KEY`     | Flask session signing key (required)                              |
+| `SESSION_COOKIE_SECURE` | Forces the session cookie to use `Secure` (recommended behind HTTPS) |
+| `SESSION_COOKIE_NAME` | Flask session cookie name (default: `visio_session`) |
+| `SESSION_LIFETIME_MINUTES` | Maximum lifetime of an authenticated session (default: `480`) |
+| `TRUSTED_HOSTS` | Comma-separated allowlist of hostnames accepted from the `Host` header |
+| `TRUST_PROXY_COUNT` | Number of trusted reverse proxies for `X-Forwarded-*` headers |
 
 > These variables are only read once, on first boot (when the database does not yet exist).
 

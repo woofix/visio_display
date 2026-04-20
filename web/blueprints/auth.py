@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session
+import secrets
 from werkzeug.security import check_password_hash
 
 from services.users_svc import load_users
@@ -18,7 +19,10 @@ def login():
         entry    = users.get(username, {})
         pwd_hash = entry.get('password', '') if isinstance(entry, dict) else entry
         if username in users and check_password_hash(pwd_hash, password):
+            session.clear()
+            session.permanent = True
             session['user'] = username
+            session['_csrf_token'] = secrets.token_urlsafe(32)
             log_activity(username, 'login')
             return redirect(url_for('admin.admin_page'))
         _flash('flash_wrong_credentials', 'error')
@@ -28,7 +32,7 @@ def login():
 @bp.route('/logout')
 def logout():
     user = session.get('user')
-    session.pop('user', None)
+    session.clear()
     if user:
         log_activity(user, 'logout')
     return redirect(url_for('auth.login'))

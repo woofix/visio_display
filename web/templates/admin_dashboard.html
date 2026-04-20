@@ -72,6 +72,17 @@
 
 @media(max-width:1000px) { .quick-grid { grid-template-columns:1fr 1fr; } }
 @media(max-width:800px) { .hero-grid { grid-template-columns:1fr 1fr; } .quick-grid { grid-template-columns:1fr; } }
+@media(max-width:640px) {
+    .hero { padding: 20px 16px 18px; }
+    .hero::before { width: 140px; height: 140px; top: -28px; right: -28px; }
+    .hero::after { width: 96px; height: 96px; right: 22px; bottom: -34px; }
+    .hero-grid { grid-template-columns: 1fr; }
+    .hero-stat { padding: 12px 14px; }
+    .hero-stat-val { font-size: 1.45rem; }
+    .disk-header { flex-wrap: wrap; gap: 8px; }
+    .disk-legend { flex-direction: column; gap: 8px; }
+    .quick-card { padding: 16px; }
+}
 {% endblock %}
 
 {% block content %}

@@ -71,6 +71,16 @@
 .tl-note  { color: var(--text-3); margin-top: 1px; }
 
 @media(max-width:800px) { .queue-layout { grid-template-columns: 1fr; } }
+@media(max-width:640px) {
+    .job-card,
+    .window-banner {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+    .job-status {
+        white-space: normal;
+    }
+}
 {% endblock %}
 
 {% block content %}

@@ -88,6 +88,19 @@
 .lang-card input[type=radio] { position:absolute; opacity:0; pointer-events:none; }
 .lang-flag { font-size:1.6rem; }
 .lang-name { font-size:.9rem; font-weight:700; color:var(--text); }
+.settings-two-col { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+@media(max-width:700px) {
+    .lang-grid { grid-template-columns:1fr; max-width:none; }
+    .settings-two-col { grid-template-columns:1fr; }
+    .event-list li,
+    .admin-list li {
+        flex-wrap: wrap;
+        align-items: flex-start;
+    }
+    .event-date {
+        white-space: normal;
+    }
+}
 {% endblock %}
 
 {% set active_tab = tab | default('logo') %}
@@ -327,7 +340,7 @@
 
         <!-- Formulaire de sauvegarde -->
         <form action="/admin/settings/meteo" method="post" style="display:flex;flex-direction:column;gap:14px;max-width:560px" id="meteo-form">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="settings-two-col">
                 <div>
                     <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('settings_meteo_city_label') }}</label>
                     <input type="text" name="meteo_ville" id="meteo-ville" value="{{ meteo_location.ville }}" required maxlength="80"
@@ -340,7 +353,7 @@
                            style="width:100%;padding:8px 11px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:.85rem;background:var(--surface);color:var(--text)">
                 </div>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="settings-two-col">
                 <div>
                     <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('settings_meteo_lat_label') }}</label>
                     <input type="number" step="any" name="meteo_lat" id="meteo-lat" value="{{ meteo_location.lat }}" required

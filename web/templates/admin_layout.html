@@ -110,6 +110,7 @@
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html { font-size: 15px; scroll-behavior: smooth; }
         body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
+        body.sidebar-open { overflow: hidden; }
 
         /* ── SIDEBAR ── */
         .sidebar {
@@ -165,6 +166,20 @@
 
         /* ── MAIN ── */
         .main { margin-left: 240px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+        .mobile-sidebar-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(7, 13, 20, .55);
+            backdrop-filter: blur(4px);
+            z-index: 190;
+            opacity: 0;
+            transition: opacity .2s ease;
+        }
+        .mobile-sidebar-backdrop.open {
+            display: block;
+            opacity: 1;
+        }
 
         /* ── TOPBAR ── */
         .topbar {
@@ -181,6 +196,8 @@
         .topbar-title { font-size: .92rem; font-weight: 700; color: var(--text); }
         .topbar-sub   { font-size: .7rem; color: var(--text-3); font-weight: 400; }
         .topbar-right { display: flex; align-items: center; gap: 8px; }
+        .topbar-text { min-width: 0; }
+        .mobile-nav-toggle { display: none; }
 
         /* ── BUTTONS ── */
         .btn { background: var(--primary); color: #fff; border: none; padding: 8px 16px; border-radius: var(--radius-sm); font-size: .83rem; font-weight: 600; cursor: pointer; transition: all .15s; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; font-family: inherit; }
@@ -265,8 +282,6 @@
         [data-theme="bleu"] .dropdown-menu { background: var(--surface); }
 
         /* ── RESPONSIVE ── */
-        @media (max-width: 900px) { .sidebar { display: none; } .main { margin-left: 0; } .content { padding: 16px 16px 40px; } }
-
         /* ── BREADCRUMBS ── */
         .topbar-breadcrumbs { display:flex; align-items:center; gap:5px; }
         .bc-link { font-size:.78rem; color:var(--text-3); text-decoration:none; font-weight:500; transition:color .12s; white-space:nowrap; }
@@ -288,6 +303,113 @@
         .page-header h1 { font-size:1.35rem; font-weight:800; color:var(--text); letter-spacing:-.02em; }
         .page-header p  { font-size:.82rem; color:var(--text-3); margin-top:3px; }
         .page-header-actions { display:flex; gap:8px; align-items:center; flex-shrink:0; padding-top:4px; }
+
+        @media (max-width: 1100px) {
+            .topbar {
+                height: auto;
+                min-height: 58px;
+                padding: 10px 18px;
+                gap: 12px;
+                flex-wrap: wrap;
+                align-items: center;
+            }
+            .topbar-left, .topbar-right {
+                min-width: 0;
+            }
+            .topbar-right {
+                margin-left: auto;
+                flex-wrap: wrap;
+                justify-content: flex-end;
+            }
+            .topbar-breadcrumbs {
+                max-width: 100%;
+                overflow-x: auto;
+                scrollbar-width: none;
+            }
+            .topbar-breadcrumbs::-webkit-scrollbar { display: none; }
+            .bc-current, .topbar-sub {
+                overflow-wrap: anywhere;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .sidebar {
+                left: 0;
+                transform: translateX(-100%);
+                transition: transform .22s ease;
+                display: flex;
+                max-width: min(86vw, 320px);
+                width: min(86vw, 320px);
+                box-shadow: var(--shadow-lg);
+            }
+            .sidebar.mobile-open { transform: translateX(0); }
+            .main { margin-left: 0; min-width: 0; width: 100%; }
+            .content { padding: 16px 16px 40px; }
+            .mobile-nav-toggle { display: inline-flex; }
+            .topbar-left {
+                flex: 1 1 100%;
+                min-width: 0;
+            }
+            .topbar-right {
+                width: 100%;
+                justify-content: space-between;
+            }
+            .user-menu-wrap {
+                margin-left: auto;
+            }
+            .dropdown-menu {
+                max-width: min(88vw, 320px);
+            }
+        }
+
+        @media (max-width: 640px) {
+            html { font-size: 14px; }
+            .content { padding-inline: 12px; }
+            .card { padding: 18px 16px; }
+            .topbar {
+                padding: 10px 12px;
+            }
+            .topbar-left {
+                gap: 8px;
+            }
+            .topbar-icon {
+                width: 28px;
+                height: 28px;
+            }
+            .topbar-right {
+                gap: 6px;
+            }
+            .topbar-sub {
+                margin-top: 4px;
+                line-height: 1.4;
+            }
+            .page-header {
+                margin-bottom: 18px;
+            }
+            .page-header-actions {
+                width: 100%;
+                flex-wrap: wrap;
+            }
+            .btn, .btn.sm, .btn-icon, .user-menu-btn {
+                min-height: 40px;
+            }
+            .user-menu-btn {
+                max-width: 100%;
+            }
+            .user-menu-btn svg:last-child,
+            .topbar-vsep,
+            .bc-link,
+            .bc-sep {
+                display: none;
+            }
+            .topbar-breadcrumbs {
+                display: block;
+            }
+            .bc-current {
+                display: block;
+                font-size: .98rem;
+            }
+        }
 
         {% block styles %}{% endblock %}
     </style>
@@ -330,8 +452,10 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
 
 {% set path = request.path %}
 
+<div class="mobile-sidebar-backdrop" id="mobile-sidebar-backdrop" aria-hidden="true"></div>
+
 <!-- ═══ SIDEBAR ═══ -->
-<aside class="sidebar">
+<aside class="sidebar" id="sidebar">
     <div class="sidebar-brand">
         <div class="brand-logo">
             <div class="brand-icon">
@@ -459,8 +583,11 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
 <div class="main">
     <header class="topbar">
         <div class="topbar-left">
+            <button class="btn-icon mobile-nav-toggle" id="mobile-nav-toggle" type="button" aria-label="Ouvrir la navigation" aria-expanded="false" aria-controls="sidebar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+            </button>
             <div class="topbar-icon">{% block topbar_icon %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>{% endblock %}</div>
-            <div>
+            <div class="topbar-text">
                 {% block topbar_breadcrumbs %}<div class="topbar-breadcrumbs"><span class="bc-current">{% block topbar_title %}{{ t('topbar_default_title') }}{% endblock %}</span></div>{% endblock %}
                 <div class="topbar-sub" style="margin-top:2px">{% block topbar_sub %}{{ app_name }} — {{ t('topbar_default_sub') }}{% endblock %}</div>
             </div>
@@ -530,17 +657,47 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
 <script>
 /* ── Sidebar subnav ── */
 (function() {
+    const sidebar = document.getElementById('sidebar');
+    const mobileToggle = document.getElementById('mobile-nav-toggle');
+    const mobileBackdrop = document.getElementById('mobile-sidebar-backdrop');
     const toggle = document.getElementById('nav-settings-toggle');
     const sub    = document.getElementById('nav-settings-sub');
-    if (!toggle) return;
-    toggle.addEventListener('click', () => {
-        toggle.classList.toggle('open');
-        sub.classList.toggle('open');
-    });
-    if (window.location.pathname.startsWith('/admin/settings')) {
-        toggle.classList.add('open');
-        sub.classList.add('open');
+
+    function setSidebarOpen(open) {
+        if (!sidebar || !mobileToggle || !mobileBackdrop) return;
+        sidebar.classList.toggle('mobile-open', open);
+        mobileBackdrop.classList.toggle('open', open);
+        document.body.classList.toggle('sidebar-open', open);
+        mobileToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
     }
+
+    if (toggle && sub) {
+        toggle.addEventListener('click', () => {
+            toggle.classList.toggle('open');
+            sub.classList.toggle('open');
+        });
+        if (window.location.pathname.startsWith('/admin/settings')) {
+            toggle.classList.add('open');
+            sub.classList.add('open');
+        }
+    }
+
+    if (mobileToggle && sidebar && mobileBackdrop) {
+        mobileToggle.addEventListener('click', () => {
+            setSidebarOpen(!sidebar.classList.contains('mobile-open'));
+        });
+        mobileBackdrop.addEventListener('click', () => setSidebarOpen(false));
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 900) setSidebarOpen(false);
+        });
+        document.querySelectorAll('.sidebar a, .sidebar button[type="submit"]').forEach(el => {
+            el.addEventListener('click', () => {
+                if (window.innerWidth <= 900) setSidebarOpen(false);
+            });
+        });
+    }
+
+    window.__closeMobileSidebar = () => setSidebarOpen(false);
 })();
 
 /* ── Dropdowns ── */
@@ -567,7 +724,14 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
             e.stopPropagation();
             const wasOpen = userMenu.classList.contains('open');
             closeAll();
-            if (!wasOpen) userMenu.classList.add('open');
+            if (!wasOpen) {
+                userMenu.classList.remove('drop-down');
+                userMenu.classList.add('open');
+                const rect = userMenu.getBoundingClientRect();
+                if (rect.right > window.innerWidth - 8) {
+                    userMenu.style.right = '0';
+                }
+            }
         });
     }
     document.addEventListener('click', closeAll);
@@ -601,15 +765,20 @@ document.getElementById('modal').addEventListener('click', e => {
 });
 
 /* ── Éphéméride ── */
-document.getElementById('btn-regen').addEventListener('click', async function() {
-    this.disabled = true; this.textContent = '…';
-    await fetch('/regen_ephemeride', { method: 'POST' });
-    this.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>`;
-    this.disabled = false;
-    const ok = document.getElementById('regen-ok');
-    ok.style.display = 'inline';
-    setTimeout(() => ok.style.display = 'none', 2500);
-});
+const regenBtn = document.getElementById('btn-regen');
+if (regenBtn) {
+    regenBtn.addEventListener('click', async function() {
+        this.disabled = true; this.textContent = '…';
+        await fetch('/regen_ephemeride', { method: 'POST' });
+        this.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>`;
+        this.disabled = false;
+        const ok = document.getElementById('regen-ok');
+        if (ok) {
+            ok.style.display = 'inline';
+            setTimeout(() => ok.style.display = 'none', 2500);
+        }
+    });
+}
 
 /* ── Queue badge (global) ── */
 async function updateQueueBadge() {

@@ -381,6 +381,8 @@ Accessible depuis **Journal d'activité** dans le menu de navigation.
 
 Le journal retrace toutes les actions effectuées par les utilisateurs sur l'application.
 
+Les opérations sensibles d'administration utilisent une session authentifiée protégée par cookie sécurisé côté serveur, contrôle CSRF sur les formulaires et appels d'écriture, et déconnexion confirmée par action `POST`.
+
 ### Actions enregistrées
 
 | Action | Description |
@@ -388,7 +390,7 @@ Le journal retrace toutes les actions effectuées par les utilisateurs sur l'app
 | **Upload** | Import d'un fichier (image, vidéo ou PDF) — utilisateur et fichier indiqués |
 | **Suppression** | Suppression définitive d'un fichier |
 | **Connexion** | Ouverture de session |
-| **Déconnexion** | Fermeture de session |
+| **Déconnexion** | Fermeture de session via action sécurisée |
 | **Activation** | Activation ou désactivation d'un média ou d'un groupe — l'état résultant (`enabled` / `disabled`) et l'écran concerné sont précisés |
 | **Compression** | Démarrage et résultat d'une compression vidéo automatique (taille avant/après, taux de réduction) — effectuée par `system` |
 
@@ -407,6 +409,8 @@ Le journal retrace toutes les actions effectuées par les utilisateurs sur l'app
 Accessible depuis **Wiki** dans le menu de navigation.
 
 La page Wiki est une documentation interactive intégrée directement à l'interface d'administration. Elle couvre l'ensemble des fonctionnalités de Visio-Display : gestion des médias, planification, écrans multiples, encodage vidéo, permissions, etc.
+
+Elle reflète aussi les règles de sécurité de l'interface: session administrateur, formulaires protégés par jeton CSRF et déconnexion via bouton sécurisé.
 
 - Disponible à tout moment depuis n'importe quelle page de l'administration.
 - Organisée par sections avec une table des matières latérale pour naviguer rapidement.

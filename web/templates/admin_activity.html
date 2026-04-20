@@ -75,6 +75,16 @@
 .empty-log svg { width: 44px; height: 44px; color: #ddd6fe; display: block; margin: 0 auto 12px; }
 
 #log-count { font-size: .78rem; color: var(--text-3); margin-left: auto; }
+@media(max-width: 640px) {
+    .activity-toolbar input,
+    .activity-toolbar select,
+    #log-count {
+        width: 100%;
+    }
+    #log-count {
+        margin-left: 0;
+    }
+}
 {% endblock %}
 
 {% block content %}

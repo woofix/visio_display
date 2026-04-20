@@ -189,6 +189,8 @@
     border-collapse: collapse;
     font-size: .82rem;
     margin: 10px 0;
+    display: block;
+    overflow-x: auto;
 }
 .wiki-table th {
     background: var(--surface-alt);
@@ -257,6 +259,17 @@
     justify-content: space-between;
     margin-top: 16px;
     gap: 10px;
+}
+@media (max-width: 640px) {
+    .wiki-section {
+        padding: 18px 16px;
+    }
+    .wiki-section-header {
+        align-items: flex-start;
+    }
+    .wiki-nav {
+        flex-direction: column;
+    }
 }
 .wiki-nav-btn {
     display: inline-flex;

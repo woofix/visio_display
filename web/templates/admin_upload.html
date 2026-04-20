@@ -140,7 +140,24 @@
 .info-row-text strong { display: block; color: var(--text); font-weight: 600; margin-bottom: 1px; }
 .info-row-text span { color: var(--text-3); font-size: .75rem; }
 
-@media(max-width: 860px) { .upload-grid { grid-template-columns: 1fr; } }
+@media(max-width: 860px) {
+    .upload-grid { grid-template-columns: 1fr; }
+}
+@media(max-width: 640px) {
+    .upload-area {
+        padding: 32px 16px;
+    }
+    #file-preview .prev-item {
+        width: calc(50% - 4px);
+        aspect-ratio: 1;
+        height: auto;
+    }
+    .encode-job-name,
+    .info-row,
+    .rejected-banner-header {
+        flex-wrap: wrap;
+    }
+}
 {% endblock %}
 
 {% block content %}
@@ -215,7 +232,7 @@
                     </div>
                 </div>
 
-                <div style="padding: 16px 24px; background: var(--surface-alt); border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                <div style="padding: 16px 24px; background: var(--surface-alt); border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
                     <span style="font-size: .76rem; color: var(--text-3);">{{ t('upload_max_size') }}</span>
                     <button type="submit" class="btn success">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>

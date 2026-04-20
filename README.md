@@ -6,7 +6,7 @@
 
 ## Français
 
-Application web légère de signalétique numérique conçue pour tourner sur Raspberry Pi. Elle affiche un diaporama plein écran d'images et de vidéos avec des transitions en fondu enchaîné, et génère automatiquement une carte éphéméride quotidienne.
+Application web légère de signalétique numérique. Elle affiche un diaporama plein écran d'images et de vidéos avec des transitions en fondu enchaîné, et génère automatiquement une carte éphéméride quotidienne.
 
 ### Fonctionnalités
 
@@ -119,6 +119,16 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 | `TRUST_PROXY_COUNT` | Nombre de proxies inverse de confiance pour interpréter `X-Forwarded-*` |
 
 > Ces variables ne sont lues qu'une seule fois, lors du premier démarrage (base de données absente).
+
+**Durcissement HTTP / session**
+
+- Cookie de session signé avec `SECRET_KEY`, marqué `HttpOnly` et `SameSite=Lax`
+- Cookie `Secure` activable via `SESSION_COOKIE_SECURE=1` pour un déploiement derrière HTTPS
+- Durée de session bornée via `SESSION_LIFETIME_MINUTES` sans rafraîchissement infini à chaque requête
+- Protection CSRF sur toutes les requêtes d'écriture (`POST`, JSON et formulaires)
+- Déconnexion réalisée en `POST` protégé par CSRF, pas en simple lien `GET`
+- Filtrage d'hôtes via `TRUSTED_HOSTS` et prise en charge d'un reverse proxy via `TRUST_PROXY_COUNT`
+- En-têtes de sécurité appliqués: CSP, HSTS en HTTPS, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `Cross-Origin-Opener-Policy` et `Cross-Origin-Resource-Policy`
 
 **Localisation météo** — configurable depuis l'interface (`/admin/settings?tab=meteo`, super-admin) :
 
@@ -432,7 +442,7 @@ MIT License — Copyright (c) 2026 Woofix
 
 ## English
 
-A lightweight web-based digital signage application designed to run on a Raspberry Pi. It displays a fullscreen slideshow of images and videos with smooth crossfade transitions, and automatically generates a daily ephemeris card.
+A lightweight web-based digital signage. It displays a fullscreen slideshow of images and videos with smooth crossfade transitions, and automatically generates a daily ephemeris card.
 
 ### Features
 
@@ -545,6 +555,16 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 | `TRUST_PROXY_COUNT` | Number of trusted reverse proxies for `X-Forwarded-*` headers |
 
 > These variables are only read once, on first boot (when the database does not yet exist).
+
+**HTTP / session hardening**
+
+- Session cookie is signed with `SECRET_KEY` and marked `HttpOnly` and `SameSite=Lax`
+- `Secure` cookies can be enforced with `SESSION_COOKIE_SECURE=1` when deployed behind HTTPS
+- Session lifetime is bounded with `SESSION_LIFETIME_MINUTES` and is not refreshed indefinitely on every request
+- CSRF protection is enforced on all state-changing requests (`POST`, JSON and form submissions)
+- Logout is performed through a CSRF-protected `POST`, not a plain `GET` link
+- Host header filtering is available through `TRUSTED_HOSTS`, with reverse-proxy awareness via `TRUST_PROXY_COUNT`
+- Security headers are applied: CSP, HSTS on HTTPS, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `Cross-Origin-Opener-Policy`, and `Cross-Origin-Resource-Policy`
 
 **Weather location** — configurable from the UI (`/admin/settings?tab=meteo`, super-admin only):
 

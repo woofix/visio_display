@@ -536,6 +536,12 @@
             <div class="wiki-callout">
                 <strong>{{ t('wiki_tip') }}</strong> {{ t('wiki_s2_kiosk') }}
             </div>
+            <h3>{{ t('wiki_s2_practical_title') }}</h3>
+            <ul>
+                <li>{{ t('wiki_s2_practical1') }}</li>
+                <li>{{ t('wiki_s2_practical2') }}</li>
+                <li>{{ t('wiki_s2_practical3') }}</li>
+            </ul>
         </section>
 
         <!-- §3 Connexion -->
@@ -551,6 +557,11 @@
             </ol>
             <p>{{ t('wiki_s3_dashboard') }}</p>
             <p>{{ t('wiki_s3_logout') }}</p>
+            <h3>{{ t('wiki_s3_note_title') }}</h3>
+            <ul>
+                <li>{{ t('wiki_s3_note1') }}</li>
+                <li>{{ t('wiki_s3_note2') }}</li>
+            </ul>
         </section>
 
         <!-- §4 Ajouter des médias -->
@@ -580,6 +591,12 @@
 
             <h3>{{ t('wiki_s4_encode_title') }}</h3>
             <p>{{ t('wiki_s4_encode_desc') }}</p>
+            <h3>{{ t('wiki_s4_tips_title') }}</h3>
+            <ul>
+                <li>{{ t('wiki_s4_tip1') }}</li>
+                <li>{{ t('wiki_s4_tip2') }}</li>
+                <li>{{ t('wiki_s4_tip3') }}</li>
+            </ul>
         </section>
 
         <!-- §5 Médiathèque -->
@@ -611,6 +628,12 @@
             <p>{{ t('wiki_s5_reorder_desc') }}</p>
             <h3>{{ t('wiki_s5_assign_title') }}</h3>
             <p>{{ t('wiki_s5_assign_desc') }}</p>
+            <h3>{{ t('wiki_s5_reading_title') }}</h3>
+            <ul>
+                <li>{{ t('wiki_s5_reading1') }}</li>
+                <li>{{ t('wiki_s5_reading2') }}</li>
+                <li>{{ t('wiki_s5_reading3') }}</li>
+            </ul>
         </section>
 
         <!-- §6 Planification -->
@@ -637,6 +660,20 @@
                     <tr><td>{{ t('wiki_s6_end_date') }}</td><td>AAAA-MM-JJ</td><td><code>2026-06-15</code></td></tr>
                 </tbody>
             </table>
+            <h3>{{ t('wiki_s6_rules_title') }}</h3>
+            <ul>
+                <li>{{ t('wiki_s6_rule1') }}</li>
+                <li>{{ t('wiki_s6_rule2') }}</li>
+                <li>{{ t('wiki_s6_rule3') }}</li>
+                <li>{{ t('wiki_s6_rule4') }}</li>
+                <li>{{ t('wiki_s6_rule5') }}</li>
+            </ul>
+            <h3>{{ t('wiki_s6_weekly_title') }}</h3>
+            <ul>
+                <li>{{ t('wiki_s6_weekly1') }}</li>
+                <li>{{ t('wiki_s6_weekly2') }}</li>
+                <li>{{ t('wiki_s6_weekly3') }}</li>
+            </ul>
             <div class="wiki-callout warning">
                 <strong>{{ t('wiki_example') }}</strong> {{ t('wiki_s6_example') }}
             </div>
@@ -672,6 +709,7 @@
                 <li>{{ t('wiki_s7_rule2') }}</li>
                 <li>{{ t('wiki_s7_rule3') }}</li>
             </ul>
+            <div class="wiki-callout">{{ t('wiki_s7_install_note') }}</div>
         </section>
 
         <!-- §8 Éphéméride -->
@@ -697,6 +735,7 @@
             <div class="wiki-callout">
                 <strong>{{ t('wiki_perm_required') }}</strong> <span class="perm-badge">ephemeris</span>
             </div>
+            <p>{{ t('wiki_s8_events_note') }}</p>
             <ol class="wiki-steps">
                 <li>{{ t('wiki_s8_step1') }}</li>
                 <li>{{ t('wiki_s8_step2') }}</li>
@@ -721,6 +760,7 @@
             <p>{{ t('wiki_s9_theme_personal') }}</p>
             <h3>{{ t('wiki_s9_lang_title') }}</h3>
             <p>{{ t('wiki_s9_lang_desc') }}</p>
+            <p>{{ t('wiki_s9_lang_note') }}</p>
             <h3>{{ t('wiki_s9_pwd_title') }}</h3>
             <ol class="wiki-steps">
                 <li>{{ t('wiki_s9_pwd_step1') }}</li>
@@ -747,6 +787,7 @@
                 <div class="wiki-section-num">10</div>
                 <h2>{{ t('wiki_s10_title') }}</h2>
             </div>
+            <p>{{ t('wiki_s10_access') }}</p>
             <h3>{{ t('wiki_s10_create_title') }}</h3>
             <ol class="wiki-steps">
                 <li>{{ t('wiki_s10_step1') }}</li>
@@ -756,6 +797,7 @@
             <div class="wiki-callout warning">{{ t('wiki_s10_noperm') }}</div>
             <h3>{{ t('wiki_s10_perm_title') }}</h3>
             <p>{{ t('wiki_s10_perm_desc') }}</p>
+            <p>{{ t('wiki_s10_perm_note') }}</p>
             <h3>{{ t('wiki_s10_screens_title') }}</h3>
             <ul>
                 <li>{{ t('wiki_s10_screen1') }}</li>
@@ -788,6 +830,7 @@
             </ul>
             <h3>{{ t('wiki_s11_cancel_title') }}</h3>
             <p>{{ t('wiki_s11_cancel_desc') }}</p>
+            <div class="wiki-callout">{{ t('wiki_s11_note') }}</div>
         </section>
 
         <!-- §12 Permissions -->
@@ -811,6 +854,7 @@
                 </tbody>
             </table>
             <div class="wiki-callout">{{ t('wiki_s12_superadmin') }}</div>
+            <p>{{ t('wiki_s12_note') }}</p>
         </section>
 
         <!-- §13 Groupes de médias -->

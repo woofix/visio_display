@@ -51,6 +51,12 @@ La page d'affichage est conçue pour fonctionner en plein écran, sans interacti
 
 Si vous utilisez l'installation client automatique depuis l'administration, saisissez l'**URL de base du serveur** (par exemple `https://cargot.tomas66.net`) puis, si besoin, le **nom d'écran**. Le client reconstruit lui-même l'URL finale d'affichage et ajoute `?screen=<nom>` uniquement quand un écran nommé est configuré.
 
+### À savoir
+
+- Un média **désactivé** ou **hors plage de diffusion** n'apparaît pas sur l'écran public, même s'il reste visible dans l'administration.
+- Chaque **écran nommé** possède sa propre sélection de médias, son propre ordre et ses propres règles.
+- Les changements deviennent visibles **sans recharger** la page publique : il suffit d'attendre la prochaine transition.
+
 ---
 
 ## 3. Se connecter à l'administration
@@ -62,6 +68,11 @@ Si vous utilisez l'installation client automatique depuis l'administration, sais
 Le tableau de bord affiche un résumé : nombre de médias, espace disque utilisé/disponible, et des accès rapides vers les différentes sections.
 
 Pour vous déconnecter, cliquez sur votre nom en haut à droite puis **Déconnexion**.
+
+### Après connexion
+
+- Les menus affichés dépendent de vos **permissions** : certaines sections peuvent être absentes si votre compte n'y a pas accès.
+- Le tableau de bord sert surtout de **point d'entrée rapide** ; la gestion détaillée se fait ensuite dans la médiathèque, les paramètres et les plages de diffusion.
 
 ---
 
@@ -89,6 +100,12 @@ Les vidéos qui ne sont pas déjà au format H.264/MP4 sont **automatiquement r�
 - Une compression supplémentaire peut être planifiée la nuit (22h–6h) pour réduire la taille sur le disque.
 
 Une fois l'import terminé, le bouton **Voir les médias** vous redirige vers la médiathèque.
+
+### Bonnes pratiques
+
+- Utilisez des **noms de fichiers explicites** : ils seront réutilisés dans la médiathèque, les plages de diffusion et le journal d'activité.
+- Après import, vérifiez la **durée d'affichage**, l'**activation** et l'**écran cible** dans la médiathèque.
+- Les **PDF** sont intégrés comme contenus visuels ; si le rendu ne convient pas, il vaut souvent mieux préparer une image exportée au bon format.
 
 ---
 
@@ -125,6 +142,12 @@ Faites glisser les médias pour modifier l'ordre de passage dans le diaporama. L
 
 Les médias non assignés apparaissent dans une section séparée en bas de page. Cliquez sur **Ajouter à l'écran** pour les intégrer à l'écran actuellement sélectionné.
 
+### Lire la médiathèque
+
+- La **recherche** et les **filtres** permettent d'isoler rapidement les médias actifs, désactivés ou d'un type précis.
+- Les **badges** visibles sur une carte signalent notamment un média désactivé, une plage enregistrée ou un groupe désactivé.
+- La vue dépend de **l'écran sélectionné** : vérifiez toujours l'onglet d'écran avant de modifier l'ordre ou les affectations.
+
 ---
 
 ## 6. Groupes de médias
@@ -146,6 +169,8 @@ Un média peut appartenir à plusieurs groupes simultanément.
 La section **Groupes** (barre latérale gauche de la médiathèque) liste tous les groupes définis. Cliquez sur **Activer le groupe** ou **Désactiver le groupe** pour basculer tous ses médias d'un coup.
 
 Un badge **GROUPE DÉSACTIVÉ** s'affiche sur les médias concernés dans la grille.
+
+L'entrée **Médiathèque** du menu n'affiche pas de compteur du nombre de médias.
 
 > **Remarque :** Un média désactivé individuellement reste désactivé même si son groupe est activé.
 
@@ -170,6 +195,8 @@ Vous pouvez restreindre un groupe à un ou plusieurs écrans spécifiques :
 
 La planification permet d'afficher un média uniquement dans une **plage horaire** ou une **période de dates** définie. Les deux conditions peuvent être combinées.
 
+La page **Plages de diffusion** propose également un **calendrier hebdomadaire**. Les noms des jours y suivent la langue choisie dans l'interface : en français, ils s'affichent en français.
+
 ### Configurer une planification
 
 1. Dans la médiathèque, cliquez sur l'icône de planification du média souhaité.
@@ -183,6 +210,20 @@ La planification permet d'afficher un média uniquement dans une **plage horaire
 | Date de fin | AAAA-MM-JJ | `2026-06-15` |
 
 3. Cliquez sur **Enregistrer**. La règle prend effet au prochain changement de diapositive.
+
+### Comment la règle est interprétée
+
+- Si vous renseignez uniquement les **heures**, le média réapparaît **chaque jour** dans cette plage horaire, sans date de fin.
+- Si vous renseignez uniquement les **dates**, le média reste visible **toute la journée** entre ces deux dates, incluses.
+- Si vous combinez **dates et heures**, les deux conditions doivent être vraies en même temps : le média n'est affiché que pendant les heures choisies et seulement entre les dates définies.
+- Si vous laissez **tous les champs vides**, vous supprimez la restriction : le média redevient visible en continu.
+- La planification s'applique au média sur **l'écran concerné**. Un même fichier peut donc avoir des règles différentes selon l'écran.
+
+### Lire la page Plages de diffusion
+
+- La liste récapitule chaque règle enregistrée avec l'écran, le média, les groupes et la plage active.
+- Le calendrier hebdomadaire montre les plages prévues jour par jour pour repérer rapidement les trous ou les chevauchements.
+- Les noms des jours suivent la langue de l'interface.
 
 > **Exemple :** Un menu de cantine visible uniquement de 11h à 13h, du lundi au vendredi — configurez `11:00`–`13:00` en plage horaire. L'affichage s'arrête et reprend automatiquement.
 
@@ -216,6 +257,8 @@ Noms réservés (interdits) : `default`, `admin`, `api`, `static`, `login`, `log
 - Un même fichier peut être **assigné à plusieurs écrans simultanément**.
 - Les utilisateurs peuvent être **restreints à certains écrans** (voir section 11).
 
+> **Conseil :** lors de l'installation d'un client d'affichage, indiquez l'URL de base du serveur puis, si nécessaire, le nom d'écran. Le poste client construit lui-même l'URL finale à ouvrir.
+
 ### Installer un client d'affichage
 
 Depuis **Paramètres > Installation client** :
@@ -243,16 +286,18 @@ La carte éphéméride est une image générée automatiquement qui s'intègre d
 - **Saint du jour**
 - **Météo actuelle** : température, ressenti, vitesse du vent, précipitations
 - **Lever et coucher du soleil**
-- **Comptes à rebours** personnalisés (ex. : *Vacances d'été : 42 jours*)
+- **Événements datés** personnalisés (ex. : *Vacances d'été : 42 jours*)
 
 ### Mise à jour
 
 - La carte se **régénère toutes les 2 heures** et automatiquement à minuit.
 - Un bouton **Forcer la régénération** est disponible dans les paramètres (permission `ephemeris`).
 
-### Gérer les comptes à rebours
+### Gérer les événements datés
 
 > **Permission requise :** `ephemeris`
+
+Seuls les **prochains événements à venir** sont affichés sur la carte. Le libellé saisi dans les paramètres est repris tel quel.
 
 Dans **Paramètres → Événements** :
 1. Cliquez sur **Ajouter un événement**.
@@ -280,6 +325,8 @@ Ce réglage est **personnel** : il ne modifie pas l'affichage des autres utilisa
 
 Choisissez entre **Français (FR)** et **Anglais (EN)**.
 
+La langue choisie modifie les **libellés de l'administration** et du **wiki intégré**. Elle n'a pas d'effet sur les médias eux-mêmes.
+
 ### Localisation météo (super-admin)
 
 Depuis **Paramètres → Météo** (entrée directe dans le menu gauche), le super-admin peut modifier la localisation utilisée pour la carte éphéméride :
@@ -297,19 +344,21 @@ Un champ de recherche par nom de ville (autocomplétion via Open-Meteo) remplit 
 ### Changer son mot de passe
 
 1. Dans **Paramètres → Admins**, descendez jusqu'à la section **Changer le mot de passe**.
-2. Saisissez votre mot de passe actuel, puis le nouveau (8 caractères minimum).
+2. Saisissez votre mot de passe actuel, puis le nouveau (10 caractères minimum).
 3. Cliquez sur **Enregistrer**.
 
 ---
 
 ## 11. Gestion des utilisateurs (super-admin)
 
-Accessible depuis **Administration → Utilisateurs**.
+Accessible depuis **Paramètres → Utilisateurs**.
+
+L'entrée **Utilisateurs** du menu n'affiche pas de compteur du nombre de comptes.
 
 ### Créer un compte
 
-1. Cliquez sur **Nouvel utilisateur**.
-2. Renseignez le nom d'utilisateur et un mot de passe (8 caractères minimum).
+1. Cliquez sur **Ajouter un compte**.
+2. Renseignez le nom d'utilisateur et un mot de passe (10 caractères minimum).
 3. Cliquez sur **Créer**.
 
 Le compte est créé **sans aucune permission**. Attribuez ensuite les droits nécessaires.
@@ -317,6 +366,8 @@ Le compte est créé **sans aucune permission**. Attribuez ensuite les droits n�
 ### Attribuer des permissions
 
 Dans la liste des utilisateurs, cliquez sur un utilisateur pour modifier ses permissions. Cochez ou décochez chaque permission individuellement (voir [section 14](#14-permissions-disponibles)).
+
+Un utilisateur **sans permission** peut se connecter, mais ne verra que les sections autorisées par son profil.
 
 ### Restreindre l'accès à des écrans
 
@@ -358,6 +409,8 @@ Par défaut, la compression des vidéos est planifiée la nuit entre **22h et 6h
 
 Les utilisateurs avec la permission `compress` peuvent annuler une tâche **en attente** (pas encore démarrée) depuis la file d'encodage.
 
+> **Remarque :** l'encodage améliore surtout la compatibilité et réduit la taille disque des vidéos. Il n'est généralement pas utile pour une image ou un PDF.
+
 ---
 
 ## 13. Alerte prioritaire (super-admin)
@@ -388,16 +441,20 @@ L'alerte prioritaire permet de diffuser **immédiatement** un message en banniè
 | `duration` | Modifier la durée d'affichage |
 | `compress` | Mettre en file d'encodage, annuler une tâche |
 | `logo` | Changer ou réinitialiser le logo de l'application |
-| `ephemeris` | Régénérer la carte éphéméride, gérer les comptes à rebours |
+| `ephemeris` | Régénérer la carte éphéméride, gérer les événements datés |
 | `schedule` | Définir des planifications horaires et de dates |
 
 > Le super-admin dispose de **toutes les permissions** et peut en plus : créer/supprimer des comptes, créer/supprimer des écrans, personnaliser le nom de l'application, configurer la localisation météo, publier une alerte prioritaire et forcer l'encodage hors fenêtre nocturne.
+
+Les permissions peuvent être **combinées librement**. Donnez seulement les droits nécessaires à la tâche de l'utilisateur.
 
 ---
 
 ## 15. Journal d'activité
 
 Accessible depuis **Journal d'activité** dans le menu de navigation.
+
+Le journal sert d'**historique d'exploitation** : il permet de vérifier rapidement qui a fait quoi avant de conclure à un dysfonctionnement.
 
 Le journal retrace toutes les actions effectuées par les utilisateurs sur l'application.
 

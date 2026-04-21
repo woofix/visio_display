@@ -1,13 +1,13 @@
 {% extends 'admin_layout.html' %}
 
-{% block title %}Programmations{% endblock %}
+{% block title %}{{ t('nav_programming') }}{% endblock %}
 {% block topbar_icon %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg>{% endblock %}
 {% block topbar_breadcrumbs %}<div class="topbar-breadcrumbs">
     <a href="/admin" class="bc-link">{{ app_name }}</a>
     <svg class="bc-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
     <a href="/admin/media" class="bc-link">Contenus</a>
     <svg class="bc-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-    <span class="bc-current">Programmations</span>
+    <span class="bc-current">{{ t('nav_programming') }}</span>
 </div>{% endblock %}
 {% block topbar_sub %}Vue liste, filtres et calendrier hebdomadaire{% endblock %}
 
@@ -98,14 +98,14 @@
 {% block content %}
 <div class="page-header">
     <div>
-        <h1>Programmations</h1>
+        <h1>{{ t('nav_programming') }}</h1>
         <p>Une lecture beaucoup plus claire des créneaux par écran, média, groupe et semaine.</p>
     </div>
     {% if can_schedule %}
     <div class="page-header-actions">
         <button type="button" class="btn" id="btn-create-programming">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Nouvelle programmation
+            Nouvelle plage
         </button>
     </div>
     {% endif %}
@@ -158,7 +158,7 @@
 
     <section class="summary-grid">
         <article class="programming-summary">
-            <div class="summary-label">Programmations visibles</div>
+            <div class="summary-label">Plages visibles</div>
             <div class="summary-value" id="summary-visible">{{ entries|length }}</div>
             <div class="summary-note">Après application des filtres.</div>
         </article>
@@ -175,15 +175,15 @@
         <article class="programming-summary">
             <div class="summary-label">Trous semaine</div>
             <div class="summary-value">{{ calendar_rows | sum(attribute='gap_count') }}</div>
-            <div class="summary-note">Intervalles vides entre deux programmations.</div>
+            <div class="summary-note">Intervalles vides entre deux plages de diffusion.</div>
         </article>
     </section>
 
     <section class="programming-panel">
         <div class="panel-head">
             <div>
-                <div class="panel-title">Liste des programmations</div>
-                <div class="panel-sub">Chaque ligne peut être modifiée, dupliquée ou supprimée.</div>
+                <div class="panel-title">Liste des plages</div>
+                <div class="panel-sub">Chaque plage peut être modifiée, dupliquée ou supprimée.</div>
             </div>
         </div>
         {% if entries %}
@@ -267,9 +267,9 @@
                 </tbody>
             </table>
         </div>
-        <div id="list-empty-state" class="empty-state-programming" style="display:none">Aucune programmation ne correspond aux filtres actuels.</div>
+        <div id="list-empty-state" class="empty-state-programming" style="display:none">Aucune plage ne correspond aux filtres actuels.</div>
         {% else %}
-        <div class="empty-state-programming">Aucune programmation n’est encore définie. Créez-en une depuis cette vue.</div>
+        <div class="empty-state-programming">Aucune plage n’est encore définie. Créez-en une depuis cette vue.</div>
         {% endif %}
     </section>
 
@@ -336,7 +336,7 @@
                     </div>
                     {% endfor %}
                 </div>
-                <div class="calendar-empty" {% if cell.items %}style="display:none"{% endif %}>Aucune programmation.</div>
+                <div class="calendar-empty" {% if cell.items %}style="display:none"{% endif %}>Aucune plage.</div>
             </div>
             {% endfor %}
             {% endfor %}
@@ -348,8 +348,8 @@
 <div class="modal-overlay" id="programming-modal">
     <div class="modal-box">
         <button type="button" class="modal-close" id="programming-modal-close">&times;</button>
-        <div class="modal-title" id="programming-modal-title">Nouvelle programmation</div>
-        <div class="modal-sub" id="programming-modal-sub">Créez, modifiez ou dupliquez une programmation.</div>
+        <div class="modal-title" id="programming-modal-title">Nouvelle plage</div>
+        <div class="modal-sub" id="programming-modal-sub">Créez, modifiez ou dupliquez une plage de diffusion.</div>
 
         <div class="modal-grid">
             <div class="full form-group">
@@ -502,7 +502,7 @@ if (canSchedule) {
         currentMode = mode;
         originalFilename = payload.originalFilename || payload.filename || '';
         originalScreen = payload.originalScreen || payload.screen || '';
-        modalTitle.textContent = mode === 'edit' ? 'Modifier la programmation' : (mode === 'duplicate' ? 'Dupliquer la programmation' : 'Nouvelle programmation');
+        modalTitle.textContent = mode === 'edit' ? 'Modifier la plage' : (mode === 'duplicate' ? 'Dupliquer la plage' : 'Nouvelle plage');
         filenameField.value = payload.filename || filenameField.options[0]?.value || '';
         screenField.value = payload.screen || '';
         dateStartField.value = payload.dateStart || '';
@@ -583,7 +583,7 @@ if (canSchedule) {
     });
 
     deleteBtn.addEventListener('click', async () => {
-        if (!confirm('Supprimer cette programmation ?')) return;
+        if (!confirm('Supprimer cette plage ?')) return;
         try {
             await postJson('/programming/delete', {
                 filename: originalFilename,

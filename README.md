@@ -88,6 +88,8 @@ Application web légère de signalétique numérique. Elle affiche un diaporama 
 
 ### Installation
 
+**Cette section concerne uniquement l'installation du serveur Visio-Display.**
+
 ```bash
 git clone <url-du-dépôt>
 cd Visio-Display
@@ -98,11 +100,20 @@ docker compose up -d --build
 
 L'application est disponible sur `http://<hôte>:8081`.
 
-**Générer une SECRET_KEY sécurisée :**
+**SECRET_KEY du serveur (obligatoire) :**
+
+Cette clé sert à signer les sessions Flask du serveur. Elle reste nécessaire même si les clients sont ensuite installés à distance via SSH.
+
+**Générer une valeur aléatoire sécurisée :**
 
 ```bash
 python3 -c "import secrets; print(secrets.token_hex(32))"
 ```
+
+**Pour installer un client d'affichage distant et le surveiller depuis l'administration :**
+- installer d'abord le serveur avec les étapes ci-dessus ;
+- puis aller plus bas dans la section **Utilisation**, sous **Installation automatisée d'un client** ;
+- cette partie décrit l'installation à distance via SSH, l'autologin, le mode kiosque et le heartbeat client visible dans l'admin.
 
 ### Configuration
 
@@ -164,7 +175,7 @@ chromium-browser --kiosk --noerrdialogs --disable-infobars http://localhost:8081
 Avec le client installé via `install.sh`, la session kiosque désactive automatiquement la mise en veille de l'écran (DPMS/X11) et inhibe la veille machine tant que le navigateur d'affichage est lancé.
 Le client construit automatiquement l'URL d'affichage à partir de l'URL du serveur et du nom d'écran configurés lors de l'installation.
 
-**Installation automatisée d'un client :**
+**Installation automatisée d'un client distant :**
 
 Depuis l'onglet **Paramètres > Installation client**, renseigner :
 - l'hôte ou l'IP du client ;
@@ -180,6 +191,8 @@ Le script distant configure alors automatiquement :
 - le nom de machine Linux ;
 - l'URL d'affichage finale, avec `?screen=<nom>` si un écran est défini ;
 - le heartbeat client vers `/api/client-heartbeat`.
+
+**Surveillance des clients :**
 
 Les clients détectés dans l'administration sont rafraîchis automatiquement et les nouvelles installations envoient un heartbeat toutes les 30 secondes environ.
 
@@ -558,6 +571,8 @@ A lightweight web-based digital signage. It displays a fullscreen slideshow of i
 
 ### Installation
 
+**This section only covers the Visio-Display server installation.**
+
 ```bash
 git clone <repository-url>
 cd Visio-Display
@@ -568,11 +583,20 @@ docker compose up -d --build
 
 The application will be available at `http://<host>:8081`.
 
-**Generate a secure SECRET_KEY:**
+**Server SECRET_KEY (required):**
+
+This key signs the Flask sessions used by the server. It is still required even if display clients are later installed remotely over SSH.
+
+**Generate a secure random value:**
 
 ```bash
 python3 -c "import secrets; print(secrets.token_hex(32))"
 ```
+
+**To install a remote display client and monitor it from the admin UI:**
+- first install the server with the steps above;
+- then scroll down to the **Usage** section, under **Automated remote client installation**;
+- that part explains remote SSH setup, autologin, kiosk mode, and the client heartbeat visible in the admin UI.
 
 ### Configuration
 
@@ -634,7 +658,7 @@ chromium-browser --kiosk --noerrdialogs --disable-infobars http://localhost:8081
 When the client is installed with `install.sh`, the kiosk session automatically disables display sleep (DPMS/X11) and inhibits system sleep while the display browser is running.
 The client automatically builds the display URL from the configured server URL and screen name during installation.
 
-**Automated client installation:**
+**Automated remote client installation:**
 
 From **Settings > Client installation**, provide:
 - the client host or IP;
@@ -650,6 +674,8 @@ The remote script then configures:
 - the Linux hostname;
 - the final display URL, with `?screen=<name>` when a screen is defined;
 - the client heartbeat to `/api/client-heartbeat`.
+
+**Client monitoring:**
 
 Detected clients in the admin UI refresh automatically, and new installations send a heartbeat roughly every 30 seconds.
 

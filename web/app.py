@@ -196,6 +196,7 @@ def create_app(start_scheduler=True, test_config=None):
     # Blueprints
     from blueprints.auth      import bp as auth_bp
     from blueprints.admin     import bp as admin_bp
+    from blueprints.campaigns import bp as campaigns_bp
     from blueprints.media     import bp as media_bp
     from blueprints.screens   import bp as screens_bp
     from blueprints.queue     import bp as queue_bp
@@ -206,7 +207,7 @@ def create_app(start_scheduler=True, test_config=None):
     from blueprints.wiki      import bp as wiki_bp
     from blueprints.activity  import bp as activity_bp
 
-    for bp in (auth_bp, admin_bp, media_bp, screens_bp, queue_bp,
+    for bp in (auth_bp, admin_bp, campaigns_bp, media_bp, screens_bp, queue_bp,
                ephemeris_bp, users_bp, settings_bp, api_bp, wiki_bp, activity_bp):
         app.register_blueprint(bp)
 

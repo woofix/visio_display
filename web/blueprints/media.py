@@ -20,6 +20,7 @@ from services.schedule_svc import (
     build_schedule_entries, schedule_summary, analyze_schedule_week,
     parse_iso_date, start_of_week, week_days,
 )
+from services.campaign_svc import get_campaigns, save_campaigns_to_config, cleanup_campaigns_for_deleted_media
 from blueprints.guards import admin_guard, perm_guard, feature_guard, feature_guard_json
 
 bp = Blueprint('media', __name__)
@@ -222,6 +223,7 @@ def delete_file(filename):
         cfg["durations"].pop(filename, None)
         cfg.get("groups", {}).pop(filename, None)
         cfg.get("schedules", {}).pop(filename, None)
+        save_campaigns_to_config(cfg, cleanup_campaigns_for_deleted_media(get_campaigns(cfg), filename))
         for scfg in cfg.get('screens', {}).values():
             scfg['order']    = [f for f in scfg.get('order', [])    if f != filename]
             scfg['disabled'] = [f for f in scfg.get('disabled', []) if f != filename]

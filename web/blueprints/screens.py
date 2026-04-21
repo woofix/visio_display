@@ -1,6 +1,7 @@
 from flask import Blueprint, request, redirect, url_for, flash, jsonify
 
 from services.config_svc import load_config, save_config, normalize_default_screen_name
+from services.campaign_svc import cleanup_campaigns_for_deleted_screen, get_campaigns, save_campaigns_to_config
 from services.users_svc import has_screen_access
 from services.media_svc import valid_screen_name
 from blueprints.guards import superadmin_guard, perm_guard, feature_guard
@@ -38,6 +39,7 @@ def delete_screen(name):
     screens = cfg.get('screens', {})
     if name in screens:
         del screens[name]
+        save_campaigns_to_config(cfg, cleanup_campaigns_for_deleted_screen(get_campaigns(cfg), name))
         save_config(cfg)
         flash(f"Écran « {name} » supprimé.", 'success')
     return redirect(url_for('media.admin_media'))

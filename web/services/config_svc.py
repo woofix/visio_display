@@ -49,6 +49,7 @@ def _default_config():
         "disabled_groups": [],
         "default_screen_name": "",
         "screens": {},
+        "campaigns": [],
         "priority_alert": {
             "message": "",
             "updated_at": None,
@@ -72,6 +73,7 @@ def load_config():
     merged["groups"] = cfg.get("groups", {}) if isinstance(cfg.get("groups"), dict) else {}
     merged["group_pools"] = cfg.get("group_pools", {}) if isinstance(cfg.get("group_pools"), dict) else {}
     merged["group_screens"] = cfg.get("group_screens", {}) if isinstance(cfg.get("group_screens"), dict) else {}
+    merged["campaigns"] = cfg.get("campaigns", []) if isinstance(cfg.get("campaigns"), list) else []
     merged["hidden_recent_jobs"] = [
         str(job_id) for job_id in cfg.get("hidden_recent_jobs", [])
         if str(job_id).strip()

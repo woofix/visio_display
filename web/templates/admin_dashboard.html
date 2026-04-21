@@ -69,6 +69,15 @@
 .quick-card-screens { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
 .quick-card-screen-btn { background:var(--primary-bg); color:var(--primary); border:1px solid var(--primary-light,#c4b5fd); border-radius:20px; padding:4px 12px; font-size:.72rem; font-weight:600; cursor:pointer; font-family:inherit; transition:background .15s,color .15s; text-decoration:none; display:inline-flex; align-items:center; gap:4px; }
 .quick-card-screen-btn:hover { background:var(--primary); color:#fff; }
+.campaign-strip { margin-top:20px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow-sm); padding:18px 20px; }
+.campaign-strip-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
+.campaign-strip-title { font-size:.92rem; font-weight:800; color:var(--text); }
+.campaign-strip-sub { font-size:.76rem; color:var(--text-3); }
+.campaign-list { display:flex; flex-wrap:wrap; gap:10px; }
+.campaign-pill { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:12px; background:var(--surface-alt); border:1px solid var(--border); color:inherit; text-decoration:none; min-width:220px; }
+.campaign-pill strong { display:block; font-size:.8rem; color:var(--text); }
+.campaign-pill span { display:block; font-size:.7rem; color:var(--text-3); }
+.campaign-priority { background:var(--primary-bg); color:var(--primary); border-radius:999px; padding:4px 9px; font-size:.68rem; font-weight:800; }
 
 @media(max-width:1000px) { .quick-grid { grid-template-columns:1fr 1fr; } }
 @media(max-width:800px) { .hero-grid { grid-template-columns:1fr 1fr; } .quick-grid { grid-template-columns:1fr; } }
@@ -197,4 +206,27 @@
         </div>
     </div>
 </div>
+
+{% if active_campaigns %}
+<div class="campaign-strip">
+    <div class="campaign-strip-head">
+        <div>
+            <div class="campaign-strip-title">{{ t('dashboard_campaigns_title') }}</div>
+            <div class="campaign-strip-sub">{{ t('dashboard_campaigns_sub') }}</div>
+        </div>
+        <a href="/admin/campaigns" class="btn secondary sm">{{ t('dashboard_campaigns_cta') }}</a>
+    </div>
+    <div class="campaign-list">
+        {% for campaign in active_campaigns %}
+        <a class="campaign-pill" href="/admin/campaigns?campaign={{ campaign.id }}">
+            <div>
+                <strong>{{ campaign.name }}</strong>
+                <span>{{ campaign.start_date or '—' }} → {{ campaign.end_date or '—' }}</span>
+            </div>
+            <span class="campaign-priority">{{ t('campaigns_priority_badge', priority=campaign.priority) }}</span>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
 {% endblock %}

@@ -33,3 +33,7 @@ data/*.webm
 data/*.mov
 data/*.avi
 data/*.mkv
+
+private/
+data/
+.env

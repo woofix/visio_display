@@ -1,8 +1,0 @@
-services:
-  app:
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - /srv/7To/Docker/visio/data:/app/static/data
-  worker:
-    volumes:
-      - /srv/7To/Docker/visio/data:/app/static/data

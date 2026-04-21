@@ -1,0 +1,457 @@
+#!/bin/bash
+
+set -e
+
+SCRIPT_PATH="$(realpath "$0")"
+USER_NAME_INPUT="${VISIO_USER_NAME:-}"
+SERVER_URL_INPUT="${VISIO_SERVER_URL:-}"
+SCREEN_NAME_INPUT="${VISIO_SCREEN_NAME:-}"
+MACHINE_NAME_INPUT="${VISIO_MACHINE_NAME:-}"
+AUTO_REBOOT=1
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --user)
+            shift
+            USER_NAME_INPUT="${1:-}"
+            ;;
+        --user=*)
+            USER_NAME_INPUT="${1#*=}"
+            ;;
+        --server-url)
+            shift
+            SERVER_URL_INPUT="${1:-}"
+            ;;
+        --server-url=*)
+            SERVER_URL_INPUT="${1#*=}"
+            ;;
+        --screen-name)
+            shift
+            SCREEN_NAME_INPUT="${1:-}"
+            ;;
+        --screen-name=*)
+            SCREEN_NAME_INPUT="${1#*=}"
+            ;;
+        --machine-name)
+            shift
+            MACHINE_NAME_INPUT="${1:-}"
+            ;;
+        --machine-name=*)
+            MACHINE_NAME_INPUT="${1#*=}"
+            ;;
+        --no-reboot)
+            AUTO_REBOOT=0
+            ;;
+        -h|--help)
+            cat <<'EOF'
+Usage: install.sh [--user NOM_UTILISATEUR] [--server-url URL] [--screen-name NOM] [--machine-name NOM] [--no-reboot]
+
+Options:
+  --user NOM_UTILISATEUR  Utilisateur local a configurer pour l'autologin/kiosk
+  --server-url URL        URL du serveur a ouvrir au demarrage du client
+  --screen-name NOM       Nom d'ecran a enregistrer dans la configuration client
+  --machine-name NOM      Nom d'hote Linux a appliquer sur la machine cliente
+  --no-reboot             N'effectue pas le reboot final automatiquement
+EOF
+            exit 0
+            ;;
+        *)
+            echo "Option inconnue : $1"
+            exit 1
+            ;;
+    esac
+    shift
+done
+
+if [ "$(id -u)" -ne 0 ]; then
+    REEXEC_CMD="bash $(printf '%q' "$SCRIPT_PATH")"
+    if [ -n "$USER_NAME_INPUT" ]; then
+        REEXEC_CMD="$REEXEC_CMD --user $(printf '%q' "$USER_NAME_INPUT")"
+    fi
+    if [ -n "$SERVER_URL_INPUT" ]; then
+        REEXEC_CMD="$REEXEC_CMD --server-url $(printf '%q' "$SERVER_URL_INPUT")"
+    fi
+    if [ -n "$SCREEN_NAME_INPUT" ]; then
+        REEXEC_CMD="$REEXEC_CMD --screen-name $(printf '%q' "$SCREEN_NAME_INPUT")"
+    fi
+    if [ -n "$MACHINE_NAME_INPUT" ]; then
+        REEXEC_CMD="$REEXEC_CMD --machine-name $(printf '%q' "$MACHINE_NAME_INPUT")"
+    fi
+    if [ "$AUTO_REBOOT" -eq 0 ]; then
+        REEXEC_CMD="$REEXEC_CMD --no-reboot"
+    fi
+    exec su -c "$REEXEC_CMD"
+fi
+
+if [ -n "$USER_NAME_INPUT" ]; then
+    USER_NAME="$USER_NAME_INPUT"
+    echo "==> Utilisateur preconfigure : $USER_NAME"
+else
+    echo "==> Choix de l'utilisateur à configurer"
+    read -rp "Nom de l'utilisateur local pour l'autologin/kiosk : " USER_NAME
+fi
+
+if [ -z "$USER_NAME" ] || [ "$USER_NAME" = "root" ]; then
+    echo "Utilisateur invalide."
+    exit 1
+fi
+
+if ! id "$USER_NAME" >/dev/null 2>&1; then
+    echo "Utilisateur introuvable : $USER_NAME"
+    exit 1
+fi
+
+if [ -n "$MACHINE_NAME_INPUT" ]; then
+    MACHINE_NAME_INPUT="$(printf '%s' "$MACHINE_NAME_INPUT" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9-]+/-/g; s/^-+//; s/-+$//; s/-+/-/g' | cut -c1-63)"
+    if [ -z "$MACHINE_NAME_INPUT" ]; then
+        echo "Nom de machine invalide."
+        exit 1
+    fi
+fi
+
+USER_HOME="$(eval echo "~$USER_NAME")"
+VISIO_DIR="/opt/visio"
+CONFIG_DIR="/etc/visio"
+CONFIG_FILE="$CONFIG_DIR/client.conf"
+
+echo "==> Désactivation dépôt cdrom si présent"
+[ -f /etc/apt/sources.list ] && sed -i 's|^deb cdrom:|#deb cdrom:|g' /etc/apt/sources.list
+
+echo "==> Installation des paquets"
+apt update
+apt install -y \
+  curl xorg xinit openbox firefox-esr xterm unclutter \
+  xserver-xorg-legacy x11-xserver-utils polkitd
+
+echo "==> Création des dossiers"
+mkdir -p \
+  "$VISIO_DIR" \
+  "$CONFIG_DIR" \
+  /etc/systemd/system/getty@tty1.service.d \
+  /etc/X11 \
+  /etc/polkit-1/rules.d
+
+echo "==> Préparation du fichier de configuration"
+touch "$CONFIG_FILE"
+chown "$USER_NAME:$USER_NAME" "$CONFIG_FILE"
+chmod 664 "$CONFIG_FILE"
+
+if [ -n "$MACHINE_NAME_INPUT" ]; then
+    echo "==> Configuration du nom de machine : $MACHINE_NAME_INPUT"
+    hostnamectl set-hostname "$MACHINE_NAME_INPUT" 2>/dev/null || echo "$MACHINE_NAME_INPUT" > /etc/hostname
+    if [ -f /etc/hosts ]; then
+        sed -i -E "s/^127\.0\.1\.1[[:space:]]+.*/127.0.1.1\t$MACHINE_NAME_INPUT/" /etc/hosts || true
+        if ! grep -Eq '^127\.0\.1\.1[[:space:]]+' /etc/hosts; then
+            printf '127.0.1.1\t%s\n' "$MACHINE_NAME_INPUT" >> /etc/hosts
+        fi
+    fi
+fi
+
+if [ -n "$SERVER_URL_INPUT" ]; then
+    echo "==> Préconfiguration du client"
+    cat > "$CONFIG_FILE" <<EOC
+SERVER_URL=$SERVER_URL_INPUT
+SCREEN_NAME=$SCREEN_NAME_INPUT
+EOC
+fi
+
+echo "==> Configuration Xwrapper"
+cat > /etc/X11/Xwrapper.config <<'EOF'
+allowed_users=anybody
+needs_root_rights=yes
+EOF
+
+echo "==> Autorisation reboot/poweroff pour $USER_NAME"
+cat > /etc/polkit-1/rules.d/49-visio-power.rules <<EOF
+polkit.addRule(function(action, subject) {
+    if ((action.id == "org.freedesktop.login1.power-off" ||
+         action.id == "org.freedesktop.login1.reboot") &&
+        subject.user == "$USER_NAME") {
+        return polkit.Result.YES;
+    }
+});
+EOF
+chmod 644 /etc/polkit-1/rules.d/49-visio-power.rules
+
+echo "==> Création bootstrap.sh"
+cat > "$VISIO_DIR/bootstrap.sh" <<'EOF'
+#!/bin/bash
+
+CONFIG="/etc/visio/client.conf"
+TMP_URL="/tmp/visio_url_input"
+TMP_NAME="/tmp/visio_name_input"
+
+rm -f "$TMP_URL" "$TMP_NAME"
+
+xterm -fa Monospace -fs 14 -fullscreen -bg black -fg green -e bash -c '
+clear
+echo
+echo "========================================"
+echo "        CONFIGURATION VISIO"
+echo "========================================"
+echo
+read -rp "Entrez l URL du serveur : " URL
+read -rp "Nom de l ecran (optionnel) : " NAME
+echo "$URL" > /tmp/visio_url_input
+echo "$NAME" > /tmp/visio_name_input
+'
+
+URL="$(cat "$TMP_URL" 2>/dev/null || true)"
+NAME="$(cat "$TMP_NAME" 2>/dev/null || true)"
+rm -f "$TMP_URL" "$TMP_NAME"
+
+[ -z "$URL" ] && exit 1
+
+cat > "$CONFIG" <<EOC
+SERVER_URL=$URL
+SCREEN_NAME=$NAME
+EOC
+EOF
+
+chmod +x "$VISIO_DIR/bootstrap.sh"
+
+echo "==> Création kiosk.sh"
+cat > "$VISIO_DIR/kiosk.sh" <<'EOF'
+#!/bin/bash
+
+set -euo pipefail
+
+CONFIG="/etc/visio/client.conf"
+
+extract_host() {
+    echo "$1" | sed -E 's#^[a-zA-Z]+://##' | cut -d/ -f1 | cut -d: -f1
+}
+
+wait_with_ui() {
+    local host="$1"
+    xterm -fa Monospace -fs 14 -fullscreen -bg black -fg green -e bash -c "
+spin='|/-\\\\'
+i=0
+
+clear
+echo
+echo 'Connexion au serveur en cours...'
+echo
+echo 'Serveur : $host'
+echo
+
+while true; do
+    i=\$(( (i + 1) % 4 ))
+    printf '\r[%c] Attente reseau...' \"\${spin:\$i:1}\"
+    ping -c1 -W1 '$host' >/dev/null 2>&1 && break
+    sleep 2
+done
+
+echo
+sleep 1
+"
+}
+
+bootstrap_ui() {
+    xterm -fa Monospace -fs 14 -fullscreen -bg black -fg green -e /opt/visio/bootstrap.sh
+}
+
+error_ui() {
+    local msg="$1"
+    xterm -fa Monospace -fs 14 -fullscreen -bg black -fg red -e bash -c "
+clear
+echo
+echo '$msg'
+echo
+read -p 'Appuie sur Entree...'
+"
+}
+
+if [ ! -s "$CONFIG" ]; then
+    bootstrap_ui
+fi
+
+if [ ! -s "$CONFIG" ]; then
+    error_ui "Configuration absente dans /etc/visio/client.conf"
+    exit 1
+fi
+
+SERVER_URL="$(grep '^SERVER_URL=' "$CONFIG" | cut -d '=' -f2-)"
+SCREEN_NAME="$(grep '^SCREEN_NAME=' "$CONFIG" | cut -d '=' -f2-)"
+TARGET_HOST="$(extract_host "$SERVER_URL")"
+
+DISPLAY_URL="$(
+python3 - <<'PY' "$SERVER_URL" "$SCREEN_NAME"
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+import sys
+
+raw_url = (sys.argv[1] or '').strip()
+screen_name = (sys.argv[2] or '').strip()
+parts = urlsplit(raw_url)
+query = dict(parse_qsl(parts.query, keep_blank_values=True))
+if screen_name:
+    query['screen'] = screen_name
+display_url = urlunsplit((
+    parts.scheme,
+    parts.netloc,
+    parts.path or '/',
+    urlencode(query),
+    parts.fragment,
+))
+print(display_url)
+PY
+)"
+
+[ -z "$SERVER_URL" ] || [ -z "$TARGET_HOST" ] && {
+    error_ui "Configuration invalide dans /etc/visio/client.conf"
+    exit 1
+}
+
+wait_with_ui "$TARGET_HOST"
+
+pkill -x unclutter 2>/dev/null || true
+unclutter -idle 0 &
+openbox-session &
+
+sleep 1
+# Désactive la veille écran X11 tant que la session kiosque tourne.
+xset s off
+xset -dpms
+xset s noblank
+
+# Empêche aussi la machine de partir en veille côté systemd pendant le kiosque.
+exec systemd-inhibit \
+    --what=idle:sleep:handle-lid-switch \
+    --who="Visio Display" \
+    --why="Kiosque d'affichage actif" \
+    firefox-esr --kiosk "$DISPLAY_URL"
+EOF
+
+chmod +x "$VISIO_DIR/kiosk.sh"
+
+echo "==> Création client-heartbeat.sh"
+cat > "$VISIO_DIR/client-heartbeat.sh" <<'EOF'
+#!/bin/bash
+
+set -euo pipefail
+
+CONFIG="/etc/visio/client.conf"
+
+[ -s "$CONFIG" ] || exit 0
+
+SERVER_URL="$(grep '^SERVER_URL=' "$CONFIG" | cut -d '=' -f2-)"
+SCREEN_NAME="$(grep '^SCREEN_NAME=' "$CONFIG" | cut -d '=' -f2-)"
+
+[ -n "$SERVER_URL" ] || exit 0
+
+HEARTBEAT_URL="$(
+python3 - <<'PY' "$SERVER_URL"
+from urllib.parse import urlsplit, urlunsplit
+import sys
+
+raw = (sys.argv[1] or '').strip()
+parts = urlsplit(raw)
+base = urlunsplit((parts.scheme, parts.netloc, '', '', '')).rstrip('/')
+print(f"{base}/api/client-heartbeat" if base else '')
+PY
+)"
+
+[ -n "$HEARTBEAT_URL" ] || exit 0
+
+HOSTNAME_VALUE="$(hostname 2>/dev/null || true)"
+MACHINE_ID="$HOSTNAME_VALUE"
+[ -n "$MACHINE_ID" ] || MACHINE_ID="$(cat /etc/machine-id 2>/dev/null || true)"
+
+payload=$(
+python3 - <<'PY' "$MACHINE_ID" "$HOSTNAME_VALUE" "$SCREEN_NAME" "$SERVER_URL"
+import json, sys
+print(json.dumps({
+    "machine_id": sys.argv[1],
+    "hostname": sys.argv[2],
+    "client_name": sys.argv[3] or sys.argv[2],
+    "screen_name": sys.argv[3],
+    "server_url": sys.argv[4],
+}))
+PY
+)
+
+curl -fsS --max-time 10 \
+  -H "Content-Type: application/json" \
+  -d "$payload" \
+  "$HEARTBEAT_URL" >/dev/null
+EOF
+
+chmod +x "$VISIO_DIR/client-heartbeat.sh"
+
+echo "==> Création .xinitrc"
+cat > "$USER_HOME/.xinitrc" <<'EOF'
+#!/bin/bash
+exec /opt/visio/kiosk.sh
+EOF
+chmod +x "$USER_HOME/.xinitrc"
+chown "$USER_NAME:$USER_NAME" "$USER_HOME/.xinitrc"
+
+echo "==> Création .bash_profile"
+cat > "$USER_HOME/.bash_profile" <<'EOF'
+if [ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
+    startx
+fi
+EOF
+chown "$USER_NAME:$USER_NAME" "$USER_HOME/.bash_profile"
+
+echo "==> Activation autologin tty1"
+cat > /etc/systemd/system/getty@tty1.service.d/override.conf <<EOF
+[Service]
+ExecStart=
+ExecStart=-/sbin/agetty --autologin $USER_NAME --noclear %I \$TERM
+Type=idle
+EOF
+
+echo "==> Service premier reboot"
+cat > /etc/systemd/system/visio-firstboot.service <<'EOF'
+[Unit]
+Description=Premier reboot apres installation Visio
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -c '/bin/systemctl disable visio-firstboot.service; rm -f /etc/systemd/system/visio-firstboot.service; /bin/systemctl daemon-reload; sleep 3; /bin/systemctl reboot'
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+echo "==> Service heartbeat client"
+cat > /etc/systemd/system/visio-client-heartbeat.service <<'EOF'
+[Unit]
+Description=Heartbeat du client Visio vers le serveur
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/visio/client-heartbeat.sh
+EOF
+
+cat > /etc/systemd/system/visio-client-heartbeat.timer <<'EOF'
+[Unit]
+Description=Envoi periodique du heartbeat client Visio
+
+[Timer]
+OnBootSec=15
+OnUnitActiveSec=30
+Unit=visio-client-heartbeat.service
+
+[Install]
+WantedBy=timers.target
+EOF
+
+/bin/systemctl daemon-reload
+/bin/systemctl enable visio-firstboot.service
+/bin/systemctl enable --now visio-client-heartbeat.timer
+/bin/systemctl start visio-client-heartbeat.service || true
+
+echo "Installation terminée."
+echo "Utilisateur configuré : $USER_NAME"
+if [ "$AUTO_REBOOT" -eq 1 ]; then
+    echo "Redémarrage automatique dans 3 secondes..."
+    sleep 3
+    /bin/systemctl reboot
+else
+    echo "Redémarrage automatique désactivé (--no-reboot)."
+fi

@@ -1,0 +1,14 @@
+**/__pycache__
+**/*.pyc
+**/*.pyo
+.env
+.env.*
+*.log
+.git
+.gitignore
+.github
+CONTRIBUTING.md
+web/.venv
+web/tests
+web/requirements-dev.txt
+web/.pytest_cache

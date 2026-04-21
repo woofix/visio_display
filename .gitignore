@@ -1,0 +1,39 @@
+# Secrets
+.env
+.env.*
+
+# Databases and private runtime data
+data/*.db
+web/static/data/*.db
+data/private/
+web/data/private/
+
+# Logs
+*.log
+data/*.log
+
+# OS junk
+.DS_Store
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Local virtual envs
+.venv/
+web/.venv/
+
+# Uploaded/generated media you don't want in git
+data/*.mp4
+data/*.jpg
+data/*.jpeg
+data/*.png
+data/*.avif
+data/*.webm
+data/*.mov
+data/*.avi
+data/*.mkv
+
+private/
+data/
+.env

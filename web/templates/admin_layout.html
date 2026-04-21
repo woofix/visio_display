@@ -495,12 +495,12 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
         </a>
 
         <div class="nav-label" style="margin-top:8px">{{ t('nav_label_settings') }}</div>
-        <button class="nav-item nav-item-parent {% if path.startswith('/admin/settings') %}open{% endif %}" data-nav-toggle="nav-settings-sub">
+        <button class="nav-item nav-item-parent {% if path.startswith('/admin/settings') or path == '/admin/superadmin' %}open{% endif %}" data-nav-toggle="nav-settings-sub">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
             {{ t('nav_settings') }}
             <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
-        <div class="nav-subnav {% if path.startswith('/admin/settings') %}open{% endif %}" id="nav-settings-sub">
+        <div class="nav-subnav {% if path.startswith('/admin/settings') or path == '/admin/superadmin' %}open{% endif %}" id="nav-settings-sub">
             <a href="/admin/settings?tab=logo" class="nav-item nav-subitem {% if path == '/admin/settings' and (tab|default('logo')) == 'logo' %}active{% endif %}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
                 {{ t('nav_logo') }}
@@ -515,6 +515,10 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
                 {{ t('nav_theme') }}
             </a>
             {% if current_user_is_superadmin %}
+            <a href="/admin/settings?tab=installation" class="nav-item nav-subitem {% if path == '/admin/settings' and (tab|default('logo')) == 'installation' %}active{% endif %}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                {{ t('nav_installation') }}
+            </a>
             <a href="/admin/settings?tab=application" class="nav-item nav-subitem {% if path == '/admin/settings' and (tab|default('logo')) == 'application' %}active{% endif %}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
                 {{ t('nav_application') }}
@@ -522,6 +526,10 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
             <a href="/admin/settings?tab=meteo" class="nav-item nav-subitem {% if path == '/admin/settings' and (tab|default('logo')) == 'meteo' %}active{% endif %}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/></svg>
                 {{ t('tab_meteo') }}
+            </a>
+            <a href="/admin/superadmin" class="nav-item nav-subitem {% if path == '/admin/superadmin' %}active{% endif %}" style="color:#f59e0b">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                {{ t('nav_superadmin') }}
             </a>
             {% endif %}
             {% if has_permission('ephemeris') and is_feature_enabled('ephemeris') %}
@@ -539,21 +547,10 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
 
         {% if current_user_is_superadmin %}
         <div class="nav-label" style="margin-top:8px">{{ t('nav_label_advanced') }}</div>
-        <button class="nav-item nav-item-parent {% if path in ['/admin/superadmin', '/admin/features'] %}open{% endif %}" data-nav-toggle="nav-advanced-sub">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-            {{ t('nav_label_administration') }}
-            <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-        </button>
-        <div class="nav-subnav {% if path in ['/admin/superadmin', '/admin/features'] %}open{% endif %}" id="nav-advanced-sub">
-            <a href="/admin/superadmin" class="nav-item nav-subitem {% if path == '/admin/superadmin' %}active{% endif %}" style="color:#f59e0b">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                {{ t('nav_superadmin') }}
-            </a>
-            <a href="/admin/features" class="nav-item nav-subitem {% if path == '/admin/features' %}active{% endif %}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                {{ t('nav_features') }}
-            </a>
-        </div>
+        <a href="/admin/features" class="nav-item {% if path == '/admin/features' %}active{% endif %}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            {{ t('nav_features') }}
+        </a>
         {% endif %}
 
         <div class="nav-label" style="margin-top:8px">{{ t('nav_label_help') }}</div>
@@ -622,6 +619,12 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                         {{ t('user_menu_change_password') }}
                     </a>
+                    {% if current_user_is_superadmin %}
+                    <a class="dropdown-item" href="/admin/superadmin">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                        {{ t('nav_superadmin') }}
+                    </a>
+                    {% endif %}
                     <div class="dropdown-separator"></div>
                     <form method="post" action="/logout">
                         <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">

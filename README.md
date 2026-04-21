@@ -74,6 +74,7 @@ Application web légère de signalétique numérique. Elle affiche un diaporama 
 **Wiki intégré**
 - Page d'aide accessible depuis l'interface d'administration (`/admin/wiki`)
 - Documentation interactive couvrant toutes les fonctionnalités, disponible sans quitter l'application
+- Version Markdown fournie dans `GUIDE_UTILISATEUR.md` pour la documentation du projet
 
 **Sécurité & accès**
 - Contrôle d'accès à deux niveaux : super-admin et utilisateurs limités
@@ -110,7 +111,7 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 | Variable         | Description                                                        |
 |------------------|--------------------------------------------------------------------|
 | `ADMIN_USER`     | Nom du compte super-admin (créé au premier démarrage uniquement)   |
-| `ADMIN_PASSWORD` | Mot de passe du super-admin (8 caractères minimum)                 |
+| `ADMIN_PASSWORD` | Mot de passe du super-admin (10 caractères minimum)                |
 | `SECRET_KEY`     | Clé de signature des sessions Flask (obligatoire)                  |
 | `SESSION_COOKIE_SECURE` | Force le cookie de session en mode `Secure` (recommandé derrière HTTPS) |
 | `SESSION_COOKIE_NAME` | Nom du cookie de session Flask (défaut : `visio_session`) |
@@ -160,6 +161,28 @@ La modification régénère automatiquement la carte éphéméride.
 chromium-browser --kiosk --noerrdialogs --disable-infobars http://localhost:8081
 ```
 
+Avec le client installé via `install.sh`, la session kiosque désactive automatiquement la mise en veille de l'écran (DPMS/X11) et inhibe la veille machine tant que le navigateur d'affichage est lancé.
+Le client construit automatiquement l'URL d'affichage à partir de l'URL du serveur et du nom d'écran configurés lors de l'installation.
+
+**Installation automatisée d'un client :**
+
+Depuis l'onglet **Paramètres > Installation client**, renseigner :
+- l'hôte ou l'IP du client ;
+- le port SSH ;
+- l'utilisateur SSH ;
+- l'utilisateur local à configurer pour l'autologin ;
+- l'URL de base du serveur (ex. `https://cargot.tomas66.net`) ;
+- le nom d'écran (ex. `reception` ou `cuisine`) ;
+- le nom de la machine cliente.
+
+Le script distant configure alors automatiquement :
+- l'autologin et le mode kiosque ;
+- le nom de machine Linux ;
+- l'URL d'affichage finale, avec `?screen=<nom>` si un écran est défini ;
+- le heartbeat client vers `/api/client-heartbeat`.
+
+Les clients détectés dans l'administration sont rafraîchis automatiquement et les nouvelles installations envoient un heartbeat toutes les 30 secondes environ.
+
 **Interface d'administration :** ouvrir `http://<hôte>:8081/admin` et se connecter.
 
 **Réinitialiser un mot de passe super-admin (hors interface) :**
@@ -171,6 +194,7 @@ python3 tools/reset_superadmin_password.py --user <nom-super-admin>
 ```
 
 Le script demande le nouveau mot de passe de façon masquée et met à jour uniquement le hash en base. Si un seul super-admin existe, l'option `--user` est facultative.
+Le mot de passe du super-admin ne peut pas être réinitialisé depuis l'interface d'administration.
 
 ### Rôles et permissions
 
@@ -520,6 +544,7 @@ A lightweight web-based digital signage. It displays a fullscreen slideshow of i
 **Built-in wiki**
 - Help page accessible from the admin interface (`/admin/wiki`)
 - Interactive documentation covering all features, available without leaving the application
+- Markdown project guide available in `GUIDE_UTILISATEUR.md`
 
 **Security & access**
 - Two-level access control: super-admin and limited users
@@ -606,7 +631,40 @@ Saving regenerates the ephemeris card automatically.
 chromium-browser --kiosk --noerrdialogs --disable-infobars http://localhost:8081
 ```
 
+When the client is installed with `install.sh`, the kiosk session automatically disables display sleep (DPMS/X11) and inhibits system sleep while the display browser is running.
+The client automatically builds the display URL from the configured server URL and screen name during installation.
+
+**Automated client installation:**
+
+From **Settings > Client installation**, provide:
+- the client host or IP;
+- the SSH port;
+- the SSH user;
+- the local user to configure for autologin;
+- the base server URL (for example `https://cargot.tomas66.net`);
+- the screen name (for example `reception` or `cuisine`);
+- the client machine name.
+
+The remote script then configures:
+- autologin and kiosk mode;
+- the Linux hostname;
+- the final display URL, with `?screen=<name>` when a screen is defined;
+- the client heartbeat to `/api/client-heartbeat`.
+
+Detected clients in the admin UI refresh automatically, and new installations send a heartbeat roughly every 30 seconds.
+
 **Admin interface:** open `http://<host>:8081/admin` and log in with your credentials.
+
+**Reset a super-admin password (outside the UI):**
+
+```bash
+cd web
+python3 tools/reset_superadmin_password.py --list
+python3 tools/reset_superadmin_password.py --user <super-admin-name>
+```
+
+The script prompts for the new password securely and only updates the password hash in the database. If there is only one super-admin account, the `--user` option is optional.
+The super-admin password cannot be reset from the admin interface.
 
 ### Roles & Permissions
 

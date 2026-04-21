@@ -9,6 +9,7 @@ from services.media_svc import (
     get_all_media, get_file_info, get_logo_path,
     clean_filename, is_h264_mp4, get_media_groups,
     collect_group_states, is_media_disabled, normalize_group_name,
+    ensure_unique_filename, is_valid_uploaded_image,
 )
 from services.queue_svc import load_queue, save_queue, enqueue_upload_job
 from services.i18n import _flash
@@ -129,18 +130,27 @@ def upload_file():
         if not file or file.filename == '':
             continue
         filename = clean_filename(file.filename)
+        if not filename:
+            continue
         ext      = os.path.splitext(filename)[1].lower()
+        allowed_exts = VIDEO_EXTS + ('.pdf', '.jpg', '.jpeg', '.png')
+        if ext not in allowed_exts:
+            return jsonify({"error": "unsupported file type"}), 400
+        filename = ensure_unique_filename(UPLOAD_FOLDER, filename)
         dest     = os.path.join(UPLOAD_FOLDER, filename)
 
         if ext == '.pdf':
             from pdf2image import convert_from_path
             file.save(dest)
-            images = convert_from_path(dest)
-            for i, img in enumerate(images):
-                img_path = dest.replace('.pdf', f'_page_{i+1}.jpg')
-                img.save(img_path, 'JPEG', quality=95)
-            os.remove(dest)
-            log_activity(session.get('user'), 'upload', filename=filename, details='pdf→jpg')
+            try:
+                images = convert_from_path(dest)
+                for i, img in enumerate(images):
+                    img_path = dest.replace('.pdf', f'_page_{i+1}.jpg')
+                    img.save(img_path, 'JPEG', quality=95)
+                log_activity(session.get('user'), 'upload', filename=filename, details='pdf→jpg')
+            finally:
+                if os.path.exists(dest):
+                    os.remove(dest)
 
         elif ext in VIDEO_EXTS:
             tmp = dest + '.tmp' + ext
@@ -157,6 +167,9 @@ def upload_file():
 
         else:
             file.save(dest)
+            if not is_valid_uploaded_image(dest):
+                os.remove(dest)
+                return jsonify({"error": "invalid image file"}), 400
             log_activity(session.get('user'), 'upload', filename=filename)
 
     return jsonify({"ok": True, "jobs": upload_job_ids, "redirect": "/admin/media"})

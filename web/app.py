@@ -58,6 +58,23 @@ def _migrate_legacy_storage():
         shutil.move(legacy, current)
 
 
+def _harden_private_storage_permissions():
+    private_dir = os.path.dirname(DB_FILE)
+    try:
+        os.makedirs(private_dir, mode=0o700, exist_ok=True)
+        os.chmod(private_dir, 0o700)
+    except OSError:
+        pass
+
+    for path in (DB_FILE, CONFIG_FILE, QUEUE_FILE, USERS_FILE):
+        if not os.path.exists(path):
+            continue
+        try:
+            os.chmod(path, 0o600)
+        except OSError:
+            pass
+
+
 def _migrate_from_json():
     try:
         if AppConfig.query.count() == 0:
@@ -114,6 +131,7 @@ def _get_csrf_token():
 
 def create_app(start_scheduler=True, test_config=None):
     _migrate_legacy_storage()
+    _harden_private_storage_permissions()
     app = Flask(__name__)
     app.secret_key = os.environ.get('SECRET_KEY')
     if not app.secret_key:
@@ -160,6 +178,7 @@ def create_app(start_scheduler=True, test_config=None):
         db.create_all()
         _migrate_from_json()
         init_users()
+        _harden_private_storage_permissions()
 
     # Blueprints
     from blueprints.auth      import bp as auth_bp
@@ -183,6 +202,10 @@ def create_app(start_scheduler=True, test_config=None):
         if request.method in {'GET', 'HEAD', 'OPTIONS', 'TRACE'}:
             return None
         if request.endpoint == 'static':
+            return None
+        if request.endpoint == 'auth.login':
+            return None
+        if request.endpoint == 'api.api_client_heartbeat':
             return None
         provided = (
             request.headers.get('X-CSRF-Token')

@@ -3,7 +3,10 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, UTC
 
 from constants import ALL_PERMISSIONS
-from services.users_svc import load_users, save_users, is_admin
+from services.users_svc import (
+    load_users, save_users, is_admin,
+    is_valid_password, is_valid_username, normalize_username,
+)
 from services.config_svc import load_config, save_config
 from services.media_svc import get_logo_path
 from services.i18n import _flash, _t
@@ -32,12 +35,15 @@ def admin_superadmin_page():
 def add_user():
     g = superadmin_guard()
     if g: return g
-    username = request.form.get('username', '').strip()
+    username = normalize_username(request.form.get('username', ''))
     password = request.form.get('password', '').strip()
     if not username or not password:
         _flash('flash_user_pass_required', 'error')
         return redirect(url_for('users.admin_superadmin_page'))
-    if len(password) < 8:
+    if not is_valid_username(username):
+        _flash('flash_invalid_username', 'error')
+        return redirect(url_for('users.admin_superadmin_page'))
+    if not is_valid_password(password):
         _flash('flash_password_too_short', 'error')
         return redirect(url_for('users.admin_superadmin_page'))
     users = load_users()
@@ -83,7 +89,7 @@ def change_password():
     if not check_password_hash(pwd_hash, current):
         _flash('flash_wrong_password', 'error')
         return redirect(url_for('settings.admin_settings_page') + '?tab=admins')
-    if len(new_pwd) < 8:
+    if not is_valid_password(new_pwd):
         _flash('flash_new_password_too_short', 'error')
         return redirect(url_for('settings.admin_settings_page') + '?tab=admins')
     users[username]['password'] = generate_password_hash(new_pwd)
@@ -101,7 +107,7 @@ def reset_user_password(username):
         _flash('flash_user_not_found', 'error')
         return redirect(url_for('users.admin_superadmin_page'))
     new_pwd = request.form.get('new_password', '').strip()
-    if len(new_pwd) < 8:
+    if not is_valid_password(new_pwd):
         _flash('flash_new_password_too_short', 'error')
         return redirect(url_for('users.admin_superadmin_page'))
     users[username]['password'] = generate_password_hash(new_pwd)
@@ -172,4 +178,3 @@ def set_priority_alert():
         'message': message,
         'updated_at': cfg['priority_alert']['updated_at'],
     })
-

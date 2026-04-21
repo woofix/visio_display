@@ -7,7 +7,7 @@
     <svg class="bc-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
     <span class="bc-current">{% block topbar_title %}{{ t('settings_title') }}{% endblock %}</span>
 </div>{% endblock %}
-{% block topbar_sub %}{{ t('settings_topbar_sub') }}{% endblock %}
+{% block topbar_sub %}{{ settings_topbar_subtitle }}{% endblock %}
 
 {% block styles %}
 /* Tab bar */
@@ -88,9 +88,46 @@
 .lang-card input[type=radio] { position:absolute; opacity:0; pointer-events:none; }
 .lang-flag { font-size:1.6rem; }
 .lang-name { font-size:.9rem; font-weight:700; color:var(--text); }
+.install-grid { display:grid; grid-template-columns:minmax(320px, 560px) minmax(280px, 1fr); gap:20px; align-items:start; }
+.install-panels { display:grid; grid-template-columns:repeat(2, minmax(280px, 1fr)); gap:20px; align-items:start; }
+.install-form { display:flex; flex-direction:column; gap:14px; }
+.install-form input { width:100%; padding:9px 11px; border:1.5px solid var(--border); border-radius:var(--radius-sm); font-size:.85rem; background:var(--surface); color:var(--text); }
+.install-form input[type=password] { letter-spacing:.03em; }
+.install-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:20px 22px; box-shadow:var(--shadow-sm); }
+.install-card-title { font-size:.82rem; font-weight:700; color:var(--primary); text-transform:uppercase; letter-spacing:.07em; margin-bottom:8px; }
+.install-help { font-size:.76rem; color:var(--text-3); line-height:1.6; }
+.install-note { background:var(--surface-alt); border:1px solid var(--border); border-radius:12px; padding:14px 16px; }
+.known-clients-card { margin-bottom:20px; }
+.known-clients-list { display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 420px)); gap:12px; align-items:start; }
+.known-client-item { border:1px solid var(--border); border-radius:14px; padding:14px; background:var(--surface); display:flex; flex-direction:column; gap:10px; width:100%; }
+.known-client-head { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+.known-client-name { font-size:.9rem; font-weight:700; color:var(--text); }
+.known-client-meta { font-size:.74rem; color:var(--text-3); line-height:1.5; }
+.known-client-ip { font:600 .86rem/1.2 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; color:var(--primary); }
+.known-client-badges { display:flex; flex-wrap:wrap; gap:6px; }
+.known-client-badge { font-size:.66rem; font-weight:700; padding:4px 8px; border-radius:999px; background:var(--surface-alt); color:var(--text-2); border:1px solid var(--border); }
+.known-client-badge.online { background:#ecfdf5; color:#166534; border-color:#bbf7d0; }
+.known-client-badge.offline { background:#fef2f2; color:#991b1b; border-color:#fecaca; }
+.known-client-actions { display:flex; gap:8px; flex-wrap:wrap; }
+.known-clients-empty { font-size:.82rem; color:var(--text-3); }
+.install-status { border-radius:12px; padding:14px 16px; margin-bottom:14px; border:1px solid var(--border); }
+.install-status.ok { background:#f0fdf4; border-color:#bbf7d0; color:#166534; }
+.install-status.ko { background:#fef2f2; border-color:#fecaca; color:#991b1b; }
+.install-status.loading { background:#eff6ff; border-color:#bfdbfe; color:#1d4ed8; }
+.install-log { background:#0f172a; color:#e2e8f0; border-radius:12px; padding:14px 16px; font:12px/1.5 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; white-space:pre-wrap; overflow:auto; max-height:420px; }
+.install-cmds { display:flex; flex-direction:column; gap:10px; margin-top:14px; }
+.install-cmds code { display:block; white-space:pre-wrap; word-break:break-word; background:var(--surface-alt); border:1px solid var(--border); border-radius:10px; padding:10px 12px; color:var(--text); }
+.install-checkbox { display:flex; align-items:center; gap:8px; font-size:.8rem; color:var(--text-2); }
+.install-checkbox input { width:auto; }
+.btn.loading { pointer-events:none; opacity:.9; }
+.btn-spinner { width:14px; height:14px; border:2px solid rgba(255,255,255,.35); border-top-color:#fff; border-radius:50%; display:inline-block; animation:install-spin .75s linear infinite; }
+@keyframes install-spin { to { transform:rotate(360deg); } }
 .settings-two-col { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
 @media(max-width:700px) {
     .lang-grid { grid-template-columns:1fr; max-width:none; }
+    .install-grid { grid-template-columns:1fr; }
+    .install-panels { grid-template-columns:1fr; }
+    .known-clients-list { grid-template-columns:1fr; }
     .settings-two-col { grid-template-columns:1fr; }
     .event-list li,
     .admin-list li {
@@ -226,6 +263,201 @@
             </div>
         </form>
     </div>
+
+    {% if current_user_is_superadmin %}
+    <!-- ── ONGLET INSTALLATION CLIENT ── -->
+    <div id="tab-installation" class="tab-pane {% if active_tab == 'installation' %}active{% endif %}">
+        <div class="install-note" style="margin-bottom:16px">
+            <div class="logo-section-label" style="margin-bottom:10px">{{ t('install_requirements_title') }}</div>
+            <p class="install-help">{{ t('install_requirements_desc') }}</p>
+            <p class="install-help" style="margin-top:10px">{{ t('client_control_note') }}</p>
+        </div>
+
+        <div class="install-card known-clients-card">
+            <div class="install-card-title">{{ t('known_clients_title') }}</div>
+            <p style="font-size:.82rem;color:var(--text-3);margin-bottom:16px">{{ t('known_clients_subtitle') }}</p>
+            <div class="known-clients-list" id="known-clients-list">
+                {% for client in known_clients %}
+                <div class="known-client-item" data-client-card data-seconds-left="{{ client.seconds_until_hidden }}">
+                    <div class="known-client-head">
+                        <div>
+                            <div class="known-client-name">{{ client.display_name }}</div>
+                            <div class="known-client-meta">
+                                {% if client.hostname %}{{ t('known_clients_hostname') }} {{ client.hostname }}<br>{% endif %}
+                                {% if client.screen_name %}{{ t('known_clients_screen') }} {{ client.screen_name }}<br>{% endif %}
+                                {{ t('known_clients_last_seen') }} {{ client.last_seen_relative }}<br>
+                                {{ t('known_clients_countdown') }} <span data-client-countdown>{{ client.seconds_until_hidden }}s</span>
+                            </div>
+                        </div>
+                        <span class="known-client-badge {% if client.is_online %}online{% else %}offline{% endif %}">
+                            {{ t('known_clients_status_online') if client.is_online else t('known_clients_status_offline') }}
+                        </span>
+                    </div>
+                    <div class="known-client-ip">{{ client.ip_address or 'IP inconnue' }}</div>
+                    <div class="known-client-badges">
+                        {% if client.server_url %}<span class="known-client-badge">{{ client.server_url }}</span>{% endif %}
+                        {% if client.machine_id %}<span class="known-client-badge">{{ client.machine_id }}</span>{% endif %}
+                    </div>
+                    <div class="known-client-actions">
+                        <button type="button" class="btn secondary sm btn-use-client"
+                                data-target-form="install-client-form"
+                                data-host="{{ client.ip_address }}">{{ t('known_clients_use_install') }}</button>
+                        <button type="button" class="btn sm btn-use-client"
+                                data-target-form="client-control-form"
+                                data-host="{{ client.ip_address }}">{{ t('known_clients_use_control') }}</button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <p class="known-clients-empty" id="known-clients-empty" {% if known_clients %}style="display:none"{% endif %}>{{ t('known_clients_empty') }}</p>
+        </div>
+
+        <div class="install-grid">
+            <div class="install-panels" style="grid-column:1 / -1">
+                <div class="install-card">
+                    <div class="install-card-title">{{ t('install_title') }}</div>
+                    <p style="font-size:.82rem;color:var(--text-3);margin-bottom:20px">{{ t('install_subtitle') }}</p>
+                    <form action="/admin/settings/install-client" method="post" class="install-form" id="install-client-form">
+                        <div>
+                            <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('install_host_label') }}</label>
+                            <input type="text" name="host" value="{{ install_defaults.host }}" placeholder="{{ t('install_host_placeholder') }}" required>
+                        </div>
+                        <div class="settings-two-col">
+                            <div>
+                                <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('install_port_label') }}</label>
+                                <input type="number" name="port" value="{{ install_defaults.port }}" min="1" max="65535" required>
+                            </div>
+                            <div>
+                                <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('install_ssh_user_label') }}</label>
+                                <input type="text" name="ssh_user" value="{{ install_defaults.ssh_user }}" placeholder="debian" required>
+                            </div>
+                        </div>
+                        <div>
+                            <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('install_kiosk_user_label') }}</label>
+                            <input type="text" name="kiosk_user" value="{{ install_defaults.kiosk_user }}" placeholder="eleve" required>
+                        </div>
+                        <div>
+                            <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('install_server_url_label') }}</label>
+                            <input type="url" id="install-server-url" name="server_url" value="{{ install_defaults.server_url }}" placeholder="{{ t('install_server_url_placeholder') }}" required>
+                        </div>
+                        <div>
+                            <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('install_screen_name_label') }}</label>
+                            <input type="text" name="screen_name" value="{{ install_defaults.screen_name }}" placeholder="{{ t('install_screen_name_placeholder') }}" maxlength="32">
+                        </div>
+                        <div>
+                            <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('install_machine_name_label') }}</label>
+                            <input type="text" name="machine_name" value="{{ install_defaults.machine_name }}" placeholder="{{ t('install_machine_name_placeholder') }}" maxlength="63" required>
+                        </div>
+                        <div>
+                            <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('install_ssh_password_label') }}</label>
+                            <input type="password" name="ssh_password" autocomplete="new-password" required>
+                        </div>
+                        <label class="install-checkbox">
+                            <input type="checkbox" name="sudo_same_as_ssh" {% if install_defaults.sudo_same_as_ssh %}checked{% endif %}>
+                            <span>{{ t('install_sudo_same_as_ssh') }}</span>
+                        </label>
+                        <div>
+                            <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('install_sudo_password_label') }}</label>
+                            <input type="password" name="sudo_password" autocomplete="new-password" placeholder="{{ t('install_sudo_password_placeholder') }}">
+                        </div>
+                        <div class="install-help">{{ t('install_help') }}</div>
+                        <div>
+                            <button type="submit" class="btn sm" id="install-submit-btn">
+                                <span id="install-submit-label">{{ t('install_submit') }}</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="install-card">
+                    <div class="install-card-title">{{ t('client_control_title') }}</div>
+                    <p style="font-size:.82rem;color:var(--text-3);margin-bottom:20px">{{ t('client_control_subtitle') }}</p>
+                    <form action="/admin/settings/client-power" method="post" class="install-form" id="client-control-form">
+                        <input type="hidden" name="action" id="client-action-input" value="">
+                        <div>
+                            <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('install_host_label') }}</label>
+                            <input type="text" name="host" value="{{ client_control_defaults.host }}" placeholder="{{ t('install_host_placeholder') }}" required>
+                        </div>
+                        <div class="settings-two-col">
+                            <div>
+                                <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('install_port_label') }}</label>
+                                <input type="number" name="port" value="{{ client_control_defaults.port }}" min="1" max="65535" required>
+                            </div>
+                            <div>
+                                <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('install_ssh_user_label') }}</label>
+                                <input type="text" name="ssh_user" value="{{ client_control_defaults.ssh_user }}" placeholder="debian" required>
+                            </div>
+                        </div>
+                        <div>
+                            <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('install_ssh_password_label') }}</label>
+                            <input type="password" name="ssh_password" autocomplete="new-password" required>
+                        </div>
+                        <label class="install-checkbox">
+                            <input type="checkbox" name="sudo_same_as_ssh" {% if client_control_defaults.sudo_same_as_ssh %}checked{% endif %}>
+                            <span>{{ t('install_sudo_same_as_ssh') }}</span>
+                        </label>
+                        <div>
+                            <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('install_sudo_password_label') }}</label>
+                            <input type="password" name="sudo_password" autocomplete="new-password" placeholder="{{ t('install_sudo_password_placeholder') }}">
+                        </div>
+                        <div class="install-help">{{ t('client_control_help') }}</div>
+                        <div style="display:flex;gap:10px;flex-wrap:wrap">
+                            <button type="submit" class="btn sm danger" data-action-value="shutdown" id="client-shutdown-btn">
+                                <span id="client-shutdown-label">{{ t('client_control_shutdown') }}</span>
+                            </button>
+                            <button type="submit" class="btn sm" data-action-value="restart" id="client-restart-btn">
+                                <span id="client-restart-label">{{ t('client_control_restart') }}</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top:16px;display:none" id="install-loading-box">
+            <div class="install-status loading">
+                <strong>{{ t('install_loading_title') }}</strong><br>
+                <span style="font-size:.82rem;opacity:.9">{{ t('install_loading_desc') }}</span>
+            </div>
+        </div>
+
+        {% if install_result %}
+        <div style="margin-top:16px">
+            <div class="install-status {% if install_result.ok %}ok{% else %}ko{% endif %}">
+                <strong>{{ install_result.summary }}</strong>
+            </div>
+            <div class="logo-section-label" style="margin-bottom:10px">{{ t('install_log_title') }}</div>
+            <div class="install-log">{{ install_result.output }}</div>
+            {% if install_result.commands %}
+            <div class="install-cmds">
+                <div class="logo-section-label">{{ t('install_manual_title') }}</div>
+                {% for cmd in install_result.commands %}
+                <code>{{ cmd }}</code>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% if client_control_result %}
+        <div style="margin-top:16px">
+            <div class="install-status {% if client_control_result.ok %}ok{% else %}ko{% endif %}">
+                <strong>{{ client_control_result.summary }}</strong>
+            </div>
+            <div class="logo-section-label" style="margin-bottom:10px">{{ t('install_log_title') }}</div>
+            <div class="install-log">{{ client_control_result.output }}</div>
+            {% if client_control_result.commands %}
+            <div class="install-cmds">
+                <div class="logo-section-label">{{ t('install_manual_title') }}</div>
+                {% for cmd in client_control_result.commands %}
+                <code>{{ cmd }}</code>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
 
     <!-- ── ONGLET ADMINISTRATEURS ── -->
     <div id="tab-admins" class="tab-pane {% if active_tab == 'admins' %}active{% endif %}">
@@ -455,12 +687,219 @@
 
 {% block scripts %}
 <script>
+(function() {
+    const serverUrlInput = document.getElementById('install-server-url');
+    if (!serverUrlInput) return;
+    if (!serverUrlInput.value.trim()) {
+        serverUrlInput.value = window.location.origin;
+    }
+})();
+
+(function() {
+    document.querySelectorAll('.btn-use-client').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const form = document.getElementById(btn.dataset.targetForm || '');
+            const hostInput = form?.querySelector('input[name="host"]');
+            if (!form || !hostInput) return;
+            hostInput.value = btn.dataset.host || '';
+            hostInput.focus();
+            hostInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+    });
+})();
+
+(function() {
+    const list = document.getElementById('known-clients-list');
+    const empty = document.getElementById('known-clients-empty');
+    if (!list) return;
+
+    const texts = {
+        hostname: {{ t('known_clients_hostname') | tojson }},
+        screen: {{ t('known_clients_screen') | tojson }},
+        lastSeen: {{ t('known_clients_last_seen') | tojson }},
+        countdown: {{ t('known_clients_countdown') | tojson }},
+        online: {{ t('known_clients_status_online') | tojson }},
+        offline: {{ t('known_clients_status_offline') | tojson }},
+        useInstall: {{ t('known_clients_use_install') | tojson }},
+        useControl: {{ t('known_clients_use_control') | tojson }},
+        empty: {{ t('known_clients_empty') | tojson }},
+        unknownIp: 'IP inconnue',
+    };
+
+    const formatCountdown = (seconds) => {
+        const safe = Math.max(0, Number(seconds) || 0);
+        const minutes = Math.floor(safe / 60);
+        const remain = safe % 60;
+        if (minutes <= 0) return `${remain}s`;
+        return `${minutes}m ${String(remain).padStart(2, '0')}s`;
+    };
+
+    const syncEmptyState = () => {
+        const hasCards = Boolean(list.querySelector('[data-client-card]'));
+        list.style.display = hasCards ? '' : 'none';
+        if (empty) empty.style.display = hasCards ? 'none' : 'block';
+    };
+
+    const escapeHtml = (value) => String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+
+    const bindUseClientButtons = (root) => {
+        root.querySelectorAll('.btn-use-client').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const form = document.getElementById(btn.dataset.targetForm || '');
+                const hostInput = form?.querySelector('input[name="host"]');
+                if (!form || !hostInput) return;
+                hostInput.value = btn.dataset.host || '';
+                hostInput.focus();
+                hostInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            });
+        });
+    };
+
+    const renderClientCard = (client) => {
+        const meta = [];
+        if (client.hostname) meta.push(`${escapeHtml(texts.hostname)} ${escapeHtml(client.hostname)}`);
+        if (client.screen_name) meta.push(`${escapeHtml(texts.screen)} ${escapeHtml(client.screen_name)}`);
+        meta.push(`${escapeHtml(texts.lastSeen)} ${escapeHtml(client.last_seen_relative || '')}`);
+        meta.push(`${escapeHtml(texts.countdown)} <span data-client-countdown>${formatCountdown(client.seconds_until_hidden)}</span>`);
+
+        return `
+            <div class="known-client-item" data-client-card data-seconds-left="${Number(client.seconds_until_hidden) || 0}">
+                <div class="known-client-head">
+                    <div>
+                        <div class="known-client-name">${escapeHtml(client.display_name || '')}</div>
+                        <div class="known-client-meta">${meta.join('<br>')}</div>
+                    </div>
+                    <span class="known-client-badge ${client.is_online ? 'online' : 'offline'}">
+                        ${escapeHtml(client.is_online ? texts.online : texts.offline)}
+                    </span>
+                </div>
+                <div class="known-client-ip">${escapeHtml(client.ip_address || texts.unknownIp)}</div>
+                <div class="known-client-badges">
+                    ${client.server_url ? `<span class="known-client-badge">${escapeHtml(client.server_url)}</span>` : ''}
+                    ${client.machine_id ? `<span class="known-client-badge">${escapeHtml(client.machine_id)}</span>` : ''}
+                </div>
+                <div class="known-client-actions">
+                    <button type="button" class="btn secondary sm btn-use-client" data-target-form="install-client-form" data-host="${escapeHtml(client.ip_address || '')}">${escapeHtml(texts.useInstall)}</button>
+                    <button type="button" class="btn sm btn-use-client" data-target-form="client-control-form" data-host="${escapeHtml(client.ip_address || '')}">${escapeHtml(texts.useControl)}</button>
+                </div>
+            </div>
+        `;
+    };
+
+    const startCountdown = (card) => {
+        if (card.dataset.timerBound === '1') return;
+        card.dataset.timerBound = '1';
+        const countdown = card.querySelector('[data-client-countdown]');
+        let secondsLeft = Number(card.dataset.secondsLeft || 0);
+        if (countdown) countdown.textContent = formatCountdown(secondsLeft);
+
+        const timer = window.setInterval(() => {
+            secondsLeft -= 1;
+            if (secondsLeft <= 0) {
+                window.clearInterval(timer);
+                card.remove();
+                syncEmptyState();
+                return;
+            }
+            card.dataset.secondsLeft = String(secondsLeft);
+            if (countdown) countdown.textContent = formatCountdown(secondsLeft);
+        }, 1000);
+    };
+
+    const renderClients = (clients) => {
+        list.innerHTML = (clients || []).map(renderClientCard).join('');
+        list.querySelectorAll('[data-client-card]').forEach(startCountdown);
+        bindUseClientButtons(list);
+        syncEmptyState();
+    };
+
+    list.querySelectorAll('[data-client-card]').forEach((card) => {
+        startCountdown(card);
+    });
+
+    syncEmptyState();
+
+    let refreshInFlight = false;
+    const refreshClients = async () => {
+        if (refreshInFlight) return;
+        refreshInFlight = true;
+        try {
+            const resp = await fetch('/admin/settings/known-clients', { cache: 'no-store' });
+            if (!resp.ok) return;
+            const data = await resp.json();
+            if (!data.ok) return;
+            renderClients(data.clients || []);
+        } catch (e) {
+            // Keep the current view if a refresh fails temporarily.
+        } finally {
+            refreshInFlight = false;
+        }
+    };
+
+    window.setInterval(refreshClients, 10000);
+})();
+
 document.querySelectorAll('.theme-card input[type=radio]').forEach(radio => {
     radio.addEventListener('change', () => {
         document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('selected'));
         radio.closest('.theme-card').classList.add('selected');
     });
 });
+
+(function() {
+    const form = document.getElementById('install-client-form');
+    const button = document.getElementById('install-submit-btn');
+    const label = document.getElementById('install-submit-label');
+    const loadingBox = document.getElementById('install-loading-box');
+    if (!form || !button || !label || !loadingBox) return;
+
+    form.addEventListener('submit', () => {
+        button.disabled = true;
+        button.classList.add('loading');
+        label.innerHTML = `<span class="btn-spinner"></span> {{ t('install_loading_button') }}`;
+        loadingBox.style.display = 'block';
+    });
+})();
+
+(function() {
+    const form = document.getElementById('client-control-form');
+    const shutdownBtn = document.getElementById('client-shutdown-btn');
+    const restartBtn = document.getElementById('client-restart-btn');
+    const shutdownLabel = document.getElementById('client-shutdown-label');
+    const restartLabel = document.getElementById('client-restart-label');
+    const actionInput = document.getElementById('client-action-input');
+    if (!form || !shutdownBtn || !restartBtn || !shutdownLabel || !restartLabel || !actionInput) return;
+
+    shutdownBtn.addEventListener('click', () => {
+        actionInput.value = 'shutdown';
+    });
+    restartBtn.addEventListener('click', () => {
+        actionInput.value = 'restart';
+    });
+
+    form.addEventListener('submit', event => {
+        const submitter = event.submitter;
+        const actionValue = submitter?.dataset?.actionValue || actionInput.value;
+        if (!actionValue) return;
+        actionInput.value = actionValue;
+
+        shutdownBtn.disabled = true;
+        restartBtn.disabled = true;
+        shutdownBtn.classList.add('loading');
+        restartBtn.classList.add('loading');
+
+        if (actionValue === 'shutdown') {
+            shutdownLabel.innerHTML = `<span class="btn-spinner"></span> {{ t('client_control_shutdown_loading') }}`;
+        } else {
+            restartLabel.innerHTML = `<span class="btn-spinner"></span> {{ t('client_control_restart_loading') }}`;
+        }
+    });
+})();
 
 /* ── Recherche de ville via Open-Meteo geocoding API ── */
 async function searchMeteoCity() {

@@ -164,6 +164,7 @@
     let alertMessage = '';
     let alertPoller  = null;
     let mediaRefreshTimer = null;
+    let wakeLock     = null;
 
     const alertBox = document.getElementById('priority-alert');
     const alertText = document.getElementById('priority-alert-message');
@@ -238,6 +239,18 @@
             return (data.message || '').trim();
         } catch (e) {
             return alertMessage;
+        }
+    }
+
+    async function requestWakeLock() {
+        if (!('wakeLock' in navigator) || document.visibilityState !== 'visible') return;
+        try {
+            wakeLock = await navigator.wakeLock.request('screen');
+            wakeLock.addEventListener('release', () => {
+                wakeLock = null;
+            }, { once: true });
+        } catch (e) {
+            wakeLock = null;
         }
     }
 
@@ -355,6 +368,7 @@
     }
 
     async function start() {
+        await requestWakeLock();
         await refreshMediaState();
         await refreshPriorityAlert();
         alertPoller = setInterval(refreshPriorityAlert, 5000);
@@ -363,6 +377,12 @@
     }
 
     start();
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            requestWakeLock();
+        }
+    });
 
     /* ── Screen switcher ── */
     (function() {

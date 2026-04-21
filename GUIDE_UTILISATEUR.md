@@ -49,6 +49,8 @@ La page d'affichage est conçue pour fonctionner en plein écran, sans interacti
 
 > **Conseil d'utilisation** : Sur un Raspberry Pi, configurez le navigateur en mode kiosk (`chromium-browser --kiosk http://localhost:8081`) pour un affichage plein écran sans barre de navigation.
 
+Si vous utilisez l'installation client automatique depuis l'administration, saisissez l'**URL de base du serveur** (par exemple `https://cargot.tomas66.net`) puis, si besoin, le **nom d'écran**. Le client reconstruit lui-même l'URL finale d'affichage et ajoute `?screen=<nom>` uniquement quand un écran nommé est configuré.
+
 ---
 
 ## 3. Se connecter à l'administration
@@ -213,6 +215,22 @@ Noms réservés (interdits) : `default`, `admin`, `api`, `static`, `login`, `log
 - Chaque écran gère **indépendamment** l'ordre, l'activation, la durée et la planification de chaque média.
 - Un même fichier peut être **assigné à plusieurs écrans simultanément**.
 - Les utilisateurs peuvent être **restreints à certains écrans** (voir section 11).
+
+### Installer un client d'affichage
+
+Depuis **Paramètres > Installation client** :
+
+1. Renseignez l'hôte ou l'IP du poste client, le port SSH, l'utilisateur SSH et l'utilisateur local à configurer.
+2. Saisissez l'**URL de base du serveur** (ex. `https://cargot.tomas66.net`), pas une URL écrite en dur par écran.
+3. Renseignez le **nom d'écran** si le poste doit ouvrir un écran nommé (ex. `reception`, `cuisine`).
+4. Renseignez le **nom de la machine** cliente.
+5. Lancez l'installation.
+
+Le script configure automatiquement l'autologin, le mode kiosque, le nom d'hôte Linux, la veille désactivée pendant l'affichage et la remontée d'état du client vers le serveur.
+
+### Clients détectés
+
+Dans l'onglet **Paramètres > Installation client**, la zone **Clients détectés** se met à jour automatiquement. Les nouvelles installations remontent leur IP, leur nom de machine et leur écran environ toutes les 30 secondes.
 
 ---
 

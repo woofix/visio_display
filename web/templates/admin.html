@@ -1326,7 +1326,7 @@
                             <h3>Ajouter un compte</h3>
                             <form action="/admin/users/add" method="post" class="form-group">
                                 <input type="text" name="username" placeholder="Nom d'utilisateur" required>
-                                <input type="password" name="password" placeholder="Mot de passe (8 car. min)" required>
+                                <input type="password" name="password" placeholder="Mot de passe (10 car. min)" required>
                                 <button type="submit" class="btn success sm">Créer le compte</button>
                             </form>
                         </div>
@@ -1336,7 +1336,7 @@
                             <h3>Changer mon mot de passe</h3>
                             <form action="/admin/users/password" method="post" class="form-group">
                                 <input type="password" name="current_password" placeholder="Mot de passe actuel" required>
-                                <input type="password" name="new_password" placeholder="Nouveau (8 car. min)" required>
+                                <input type="password" name="new_password" placeholder="Nouveau (10 car. min)" required>
                                 <button type="submit" class="btn sm">Mettre à jour</button>
                             </form>
                         </div>

@@ -1,7 +1,23 @@
 import os
+import re
 from flask import session
 from werkzeug.security import generate_password_hash
 from db import db, User
+
+USERNAME_RE = re.compile(r'^[a-zA-Z0-9_.-]{3,64}$')
+MIN_PASSWORD_LENGTH = 10
+
+
+def normalize_username(value):
+    return str(value or '').strip()
+
+
+def is_valid_username(value):
+    return bool(USERNAME_RE.fullmatch(normalize_username(value)))
+
+
+def is_valid_password(value):
+    return isinstance(value, str) and len(value.strip()) >= MIN_PASSWORD_LENGTH
 
 
 def load_users():

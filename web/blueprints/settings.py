@@ -1,20 +1,45 @@
 import os
 from datetime import date
 
-from flask import Blueprint, request, redirect, url_for, session, render_template
+from flask import Blueprint, request, redirect, url_for, session, render_template, jsonify
 
 from constants import (
     VALID_THEMES, LOGO_EXTS, IMAGES_FOLDER, DEFAULT_LOGO, LAT, LNG,
     DEFAULT_METEO_VILLE, DEFAULT_METEO_TZ, SCHOOL_ZONES, ALL_FEATURES,
+    ALL_PERMISSIONS,
 )
+from services.clients_svc import list_known_clients
 from services.config_svc import load_config, save_config
 from services.users_svc import load_users, save_users, is_superadmin, has_permission
 from services.media_svc import get_logo_path
-from services.i18n import _flash
+from services.media_svc import is_safe_svg_file, is_valid_uploaded_image
+from services.i18n import _flash, _t
 from blueprints.guards import admin_guard, superadmin_guard
 from services.ephemeris_svc import get_school_zone
+from services.deploy_svc import deploy_client_install, deploy_client_power_action
 
 bp = Blueprint('settings', __name__)
+
+
+def _normalize_machine_name(raw_value):
+    value = (raw_value or '').strip().lower()
+    allowed = 'abcdefghijklmnopqrstuvwxyz0123456789-'
+    normalized = []
+    previous_dash = False
+    for char in value:
+        if char in allowed:
+            if char == '-':
+                if previous_dash:
+                    continue
+                previous_dash = True
+            else:
+                previous_dash = False
+            normalized.append(char)
+        elif not previous_dash and normalized:
+            normalized.append('-')
+            previous_dash = True
+    result = ''.join(normalized).strip('-')
+    return result[:63]
 
 
 def _normalize_settings_tab(raw_tab):
@@ -22,49 +47,266 @@ def _normalize_settings_tab(raw_tab):
     aliases = {
         'events': 'evenements',
         'event': 'evenements',
+        'install': 'installation',
+        'installer': 'installation',
+        'superadmin': 'administration',
     }
     return aliases.get(tab, tab)
+
+
+def _settings_topbar_subtitle(active_tab, is_sa):
+    subtitles = {
+        'logo': _t('settings_sub'),
+        'admins': _t('superadmin_topbar_sub') if is_sa else _t('admins_no_management'),
+        'administration': _t('superadmin_topbar_sub'),
+        'theme': _t('theme_subtitle'),
+        'application': _t('app_subtitle'),
+        'meteo': _t('settings_meteo_subtitle'),
+        'evenements': _t('events_subtitle'),
+        'language': _t('language_subtitle'),
+        'installation': _t('install_subtitle'),
+    }
+    return subtitles.get(active_tab, _t('settings_topbar_sub'))
+
+
+def _build_settings_context(tab='logo', install_defaults=None, install_result=None,
+                            client_control_defaults=None, client_control_result=None):
+    cfg = load_config()
+    users = load_users()
+    today = date.today()
+    raw_events = cfg.get("events", [])
+    events = []
+    for ev in raw_events:
+        try:
+            ev_date = date.fromisoformat(ev["date"])
+            delta = (ev_date - today).days
+        except (ValueError, KeyError):
+            delta = None
+        events.append({**ev, "delta": delta})
+    username = session.get('user')
+    entry = users.get(username, {})
+    user_theme = entry.get('theme', 'violet') if isinstance(entry, dict) else 'violet'
+    meteo_location = {
+        "ville": cfg.get("meteo_ville", DEFAULT_METEO_VILLE),
+        "lat": cfg.get("meteo_lat", LAT),
+        "lng": cfg.get("meteo_lng", LNG),
+        "tz": cfg.get("meteo_tz", DEFAULT_METEO_TZ),
+        "school_zone": cfg.get("school_zone", "auto"),
+        "resolved_school_zone": get_school_zone(cfg),
+        "school_zone_label": dict(SCHOOL_ZONES).get(cfg.get("school_zone", "auto"), "Auto"),
+    }
+    is_sa = is_superadmin()
+    active_tab = _normalize_settings_tab(tab)
+    if active_tab in {'installation', 'administration'} and not is_sa:
+        active_tab = 'logo'
+    return dict(
+        cfg=cfg,
+        users=users,
+        current_user=username,
+        logo_path=get_logo_path(),
+        events=events,
+        current_user_is_superadmin=is_sa,
+        theme=user_theme,
+        settings_topbar_subtitle=_settings_topbar_subtitle(active_tab, is_sa),
+        can_ephemeris=has_permission('ephemeris'),
+        meteo_location=meteo_location,
+        school_zones=SCHOOL_ZONES,
+        install_defaults=install_defaults or {
+            'host': '',
+            'port': '22',
+            'ssh_user': '',
+            'kiosk_user': '',
+            'server_url': '',
+            'screen_name': '',
+            'machine_name': '',
+            'sudo_same_as_ssh': True,
+        },
+        install_result=install_result,
+        client_control_defaults=client_control_defaults or {
+            'host': '',
+            'port': '22',
+            'ssh_user': '',
+            'sudo_same_as_ssh': True,
+        },
+        client_control_result=client_control_result,
+        known_clients=list_known_clients() if is_sa else [],
+        all_permissions=[(k, _t(lbl_key)) for k, lbl_key in ALL_PERMISSIONS] if is_sa else [],
+        all_screens=list(cfg.get('screens', {}).keys()) if is_sa else [],
+        priority_alert=cfg.get('priority_alert', {}) if is_sa else {},
+        tab=active_tab,
+    )
 
 
 @bp.route('/admin/settings')
 def admin_settings_page():
     redir = admin_guard()
     if redir: return redir
-    cfg        = load_config()
-    users      = load_users()
-    today      = date.today()
-    raw_events = cfg.get("events", [])
-    events     = []
-    for ev in raw_events:
-        try:
-            ev_date = date.fromisoformat(ev["date"])
-            delta   = (ev_date - today).days
-        except (ValueError, KeyError):
-            delta = None
-        events.append({**ev, "delta": delta})
-    username   = session.get('user')
-    entry      = users.get(username, {})
-    user_theme = entry.get('theme', 'violet') if isinstance(entry, dict) else 'violet'
-    meteo_location = {
-        "ville": cfg.get("meteo_ville", DEFAULT_METEO_VILLE),
-        "lat":   cfg.get("meteo_lat",   LAT),
-        "lng":   cfg.get("meteo_lng",   LNG),
-        "tz":    cfg.get("meteo_tz",    DEFAULT_METEO_TZ),
-        "school_zone": cfg.get("school_zone", "auto"),
-        "resolved_school_zone": get_school_zone(cfg),
-        "school_zone_label": dict(SCHOOL_ZONES).get(cfg.get("school_zone", "auto"), "Auto"),
-    }
-    active_tab = _normalize_settings_tab(request.args.get('tab', 'logo'))
-    return render_template('admin_settings.html',
-        cfg=cfg, users=users, current_user=username,
-        logo_path=get_logo_path(),
-        events=events,
-        current_user_is_superadmin=is_superadmin(),
-        theme=user_theme,
-        can_ephemeris=has_permission('ephemeris'),
-        meteo_location=meteo_location,
-        school_zones=SCHOOL_ZONES,
-        tab=active_tab)
+    return render_template(
+        'admin_settings.html',
+        **_build_settings_context(tab=request.args.get('tab', 'logo'))
+    )
+
+
+@bp.route('/admin/settings/known-clients')
+def known_clients_json():
+    redir = superadmin_guard()
+    if redir:
+        return jsonify({'ok': False, 'error': 'forbidden'}), 403
+    return jsonify({
+        'ok': True,
+        'clients': list_known_clients(),
+    })
+
+
+@bp.route('/admin/settings/install-client', methods=['POST'])
+def install_client():
+    redir = superadmin_guard()
+    if redir: return redir
+
+    host = request.form.get('host', '').strip()
+    ssh_user = request.form.get('ssh_user', '').strip()
+    kiosk_user = request.form.get('kiosk_user', '').strip()
+    server_url = request.form.get('server_url', '').strip().rstrip('/')
+    screen_name = request.form.get('screen_name', '').strip()
+    machine_name = _normalize_machine_name(request.form.get('machine_name', ''))
+    ssh_password = request.form.get('ssh_password', '')
+    sudo_same_as_ssh = request.form.get('sudo_same_as_ssh') == 'on'
+    sudo_password = '' if sudo_same_as_ssh else request.form.get('sudo_password', '')
+    port_raw = request.form.get('port', '22').strip() or '22'
+
+    try:
+        port = int(port_raw)
+        if not (1 <= port <= 65535):
+            raise ValueError
+    except ValueError:
+        _flash('flash_install_invalid_port', 'error')
+        return redirect(url_for('settings.admin_settings_page') + '?tab=installation')
+
+    if not host or not ssh_user or not kiosk_user or not server_url or not machine_name or not ssh_password:
+        _flash('flash_install_missing_fields', 'error')
+        return redirect(url_for('settings.admin_settings_page') + '?tab=installation')
+    if not sudo_same_as_ssh and not sudo_password:
+        _flash('flash_install_missing_sudo_password', 'error')
+        return redirect(url_for('settings.admin_settings_page') + '?tab=installation')
+
+    install_result = deploy_client_install(
+        host=host,
+        port=port,
+        ssh_user=ssh_user,
+        kiosk_user=kiosk_user,
+        server_url=server_url,
+        screen_name=screen_name,
+        machine_name=machine_name,
+        ssh_password=ssh_password,
+        sudo_password=sudo_password,
+    )
+    install_result['summary'] = _t(install_result.get('summary_key', ''))
+
+    if install_result.get('ok'):
+        _flash('flash_install_success', 'success', host=host)
+    else:
+        _flash('flash_install_failed', 'error', host=host)
+
+    return render_template(
+        'admin_settings.html',
+        **_build_settings_context(
+            tab='installation',
+            install_defaults={
+                'host': host,
+                'port': str(port),
+                'ssh_user': ssh_user,
+                'kiosk_user': kiosk_user,
+                'server_url': server_url,
+                'screen_name': screen_name,
+                'machine_name': machine_name,
+                'sudo_same_as_ssh': sudo_same_as_ssh,
+            },
+            install_result=install_result,
+        )
+    )
+
+
+@bp.route('/admin/settings/client-power', methods=['POST'])
+def control_client_power():
+    redir = superadmin_guard()
+    if redir: return redir
+
+    host = request.form.get('host', '').strip()
+    ssh_user = request.form.get('ssh_user', '').strip()
+    ssh_password = request.form.get('ssh_password', '')
+    sudo_same_as_ssh = request.form.get('sudo_same_as_ssh') == 'on'
+    sudo_password = '' if sudo_same_as_ssh else request.form.get('sudo_password', '')
+    action = request.form.get('action', '').strip().lower()
+    if action == 'reboot':
+        action = 'restart'
+    port_raw = request.form.get('port', '22').strip() or '22'
+
+    try:
+        port = int(port_raw)
+        if not (1 <= port <= 65535):
+            raise ValueError
+    except ValueError:
+        _flash('flash_install_invalid_port', 'error')
+        return redirect(url_for('settings.admin_settings_page') + '?tab=installation')
+
+    if action not in {'shutdown', 'restart'}:
+        _flash('flash_client_control_invalid_action', 'error')
+        return redirect(url_for('settings.admin_settings_page') + '?tab=installation')
+    if not host or not ssh_user or not ssh_password:
+        _flash('flash_client_control_missing_fields', 'error')
+        return redirect(url_for('settings.admin_settings_page') + '?tab=installation')
+    if not sudo_same_as_ssh and not sudo_password:
+        _flash('flash_install_missing_sudo_password', 'error')
+        return redirect(url_for('settings.admin_settings_page') + '?tab=installation')
+
+    client_control_result = deploy_client_power_action(
+        host=host,
+        port=port,
+        ssh_user=ssh_user,
+        action=action,
+        ssh_password=ssh_password,
+        sudo_password=sudo_password,
+    )
+    client_control_result['summary'] = _t(client_control_result.get('summary_key', ''))
+
+    if client_control_result.get('ok'):
+        _flash(
+            'flash_client_control_success',
+            'success',
+            action=_t(f'client_control_action_{action}'),
+            host=host,
+        )
+    else:
+        _flash(
+            'flash_client_control_failed',
+            'error',
+            action=_t(f'client_control_action_{action}'),
+            host=host,
+        )
+
+    return render_template(
+        'admin_settings.html',
+        **_build_settings_context(
+            tab='installation',
+            client_control_defaults={
+                'host': host,
+                'port': str(port),
+                'ssh_user': ssh_user,
+                'sudo_same_as_ssh': sudo_same_as_ssh,
+            },
+            client_control_result=client_control_result,
+            install_defaults={
+                'host': '',
+                'port': '22',
+                'ssh_user': '',
+                'kiosk_user': '',
+                'server_url': '',
+                'screen_name': '',
+                'machine_name': '',
+                'sudo_same_as_ssh': True,
+            },
+        )
+    )
 
 
 @bp.route('/admin/settings/appname', methods=['POST'])
@@ -197,7 +439,17 @@ def upload_logo():
         _flash('flash_logo_format', 'error')
         return redirect(url_for('admin.admin_page'))
     filename = f'logo_custom{ext}'
-    file.save(os.path.join(IMAGES_FOLDER, filename))
+    path = os.path.join(IMAGES_FOLDER, filename)
+    file.save(path)
+    if ext == '.svg':
+        if not is_safe_svg_file(path):
+            os.remove(path)
+            _flash('flash_logo_unsafe', 'error')
+            return redirect(url_for('admin.admin_page'))
+    elif not is_valid_uploaded_image(path):
+        os.remove(path)
+        _flash('flash_logo_invalid', 'error')
+        return redirect(url_for('admin.admin_page'))
     cfg = load_config()
     cfg['logo'] = filename
     save_config(cfg)

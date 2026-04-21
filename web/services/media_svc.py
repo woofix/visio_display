@@ -28,6 +28,36 @@ def clean_filename(filename):
     return filename
 
 
+def ensure_unique_filename(directory, filename):
+    base, ext = os.path.splitext(filename)
+    candidate = filename
+    index = 1
+    while os.path.exists(os.path.join(directory, candidate)):
+        candidate = f"{base}_{index}{ext}"
+        index += 1
+    return candidate
+
+
+def is_valid_uploaded_image(path):
+    try:
+        with Image.open(path) as img:
+            img.verify()
+        return True
+    except Exception:
+        return False
+
+
+def is_safe_svg_file(path):
+    try:
+        with open(path, encoding='utf-8', errors='ignore') as handle:
+            content = handle.read(200_000)
+    except OSError:
+        return False
+    lowered = content.lower()
+    forbidden = ('<script', 'javascript:', 'onload=', 'onerror=', '<foreignobject')
+    return '<svg' in lowered and not any(token in lowered for token in forbidden)
+
+
 def get_all_media():
     cfg   = load_config()
     files = [f for f in os.listdir(UPLOAD_FOLDER)

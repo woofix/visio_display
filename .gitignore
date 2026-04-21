@@ -1,7 +1,8 @@
-.env
-data/
-web/static/data/
-**/__pycache__/
-**/*.pyc
-**/.DS_Store
-docker-compose.override.yml
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+
+web/data/private/
+data/private/

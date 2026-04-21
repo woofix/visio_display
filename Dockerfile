@@ -2,7 +2,7 @@ FROM python:3.13-slim
 
 # Dépendances système
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        poppler-utils ffmpeg \
+        poppler-utils ffmpeg openssh-client sshpass \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -14,6 +14,7 @@ RUN pip install --upgrade "pip==24.3.1" \
 
 # Code applicatif
 COPY web/ /app
+COPY install.sh /app/install.sh
 
 EXPOSE 8080
 

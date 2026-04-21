@@ -1,6 +1,9 @@
+import os
+import secrets
 from flask import Blueprint, request, jsonify
 
 from services.config_svc import load_config
+from services.clients_svc import record_client_heartbeat
 from services.users_svc import is_admin
 from services.media_svc import (
     get_all_media, get_file_info, is_media_scheduled, get_disk_usage,
@@ -8,9 +11,25 @@ from services.media_svc import (
 )
 from services.ephemeris_svc import generate_ephemeride_image
 from constants import UPLOAD_FOLDER, MEDIA_EXTS
-import os
 
 bp = Blueprint('api', __name__)
+
+
+def _best_remote_ip():
+    if request.access_route:
+        return str(request.access_route[0]).strip()
+    return str(request.remote_addr or '').strip()
+
+
+def _heartbeat_token_is_valid(data):
+    expected = os.environ.get('CLIENT_HEARTBEAT_TOKEN', '').strip()
+    if not expected:
+        return True
+    provided = (
+        request.headers.get('X-Client-Token')
+        or str(data.get('token') or '').strip()
+    )
+    return bool(provided) and secrets.compare_digest(provided, expected)
 
 
 @bp.route('/api/config')
@@ -82,4 +101,31 @@ def api_screens():
 
 @bp.route('/api/diskusage')
 def api_diskusage():
+    if not is_admin():
+        return jsonify({"error": "unauthorized"}), 401
     return jsonify(get_disk_usage())
+
+
+@bp.route('/api/client-heartbeat', methods=['POST'])
+def api_client_heartbeat():
+    data = request.get_json(silent=True) or {}
+    if not _heartbeat_token_is_valid(data):
+        return jsonify({'ok': False, 'error': 'invalid_client_token'}), 403
+    hostname = str(data.get('hostname') or '').strip()
+    machine_id = hostname or str(data.get('machine_id') or '').strip()
+    entry = record_client_heartbeat(
+        machine_id=machine_id,
+        hostname=hostname,
+        client_name=data.get('client_name', ''),
+        screen_name=data.get('screen_name', ''),
+        ip_address=_best_remote_ip(),
+        server_url=data.get('server_url', ''),
+    )
+    if entry is None:
+        return jsonify({'ok': False, 'error': 'missing_machine_id'}), 400
+    return jsonify({
+        'ok': True,
+        'machine_id': entry['machine_id'],
+        'ip_address': entry['ip_address'],
+        'last_seen': entry['last_seen'],
+    })

@@ -96,3 +96,25 @@ class EncodeJob(db.Model):
         if self.ratio     is not None: d['ratio']    = self.ratio
         if self.message   is not None: d['message']  = self.message
         return d
+
+
+class ClientHeartbeat(db.Model):
+    __tablename__ = 'client_heartbeats'
+    machine_id  = db.Column(db.String(128), primary_key=True)
+    hostname    = db.Column(db.String(128), nullable=False, default='')
+    client_name = db.Column(db.String(128), nullable=False, default='')
+    screen_name = db.Column(db.String(128), nullable=False, default='')
+    ip_address  = db.Column(db.String(64), nullable=False, default='')
+    server_url  = db.Column(db.String(512), nullable=False, default='')
+    last_seen   = db.Column(db.String(32), nullable=False, index=True)
+
+    def to_dict(self):
+        return {
+            'machine_id': self.machine_id,
+            'hostname': self.hostname,
+            'client_name': self.client_name,
+            'screen_name': self.screen_name,
+            'ip_address': self.ip_address,
+            'server_url': self.server_url,
+            'last_seen': self.last_seen,
+        }

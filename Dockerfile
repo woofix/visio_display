@@ -15,7 +15,11 @@ RUN pip install --upgrade "pip==24.3.1" \
 # Code applicatif
 COPY web/ /app
 COPY install.sh /app/install.sh
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+
+RUN chmod +x /app/install.sh /app/docker-entrypoint.sh
 
 EXPOSE 8080
 
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:8080", "wsgi:app"]

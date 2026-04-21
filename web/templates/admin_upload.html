@@ -460,6 +460,15 @@ document.getElementById('upload-form').addEventListener('submit', function(e) {
         setUploadingState(false);
         progressWrap.style.display = 'none';
         if (xhr.status === 413) { showFlash(MSG_TOO_LARGE_SINGLE, 'error'); return; }
+        if (xhr.status < 200 || xhr.status >= 300) {
+            try {
+                const data = JSON.parse(xhr.responseText);
+                showFlash(data.error || MSG_NETWORK_ERROR, 'error');
+            } catch {
+                showFlash(MSG_NETWORK_ERROR, 'error');
+            }
+            return;
+        }
         try {
             const data = JSON.parse(xhr.responseText);
             if (data.jobs && data.jobs.length > 0) {
@@ -470,7 +479,9 @@ document.getElementById('upload-form').addEventListener('submit', function(e) {
         } catch { window.location.href = '/admin/media'; }
     });
     xhr.addEventListener('error', () => { setUploadingState(false); progressWrap.style.display = 'none'; showFlash(MSG_NETWORK_ERROR, 'error'); });
-    xhr.open('POST', '/upload'); xhr.send(fd);
+    xhr.open('POST', '/upload');
+    xhr.setRequestHeader('X-CSRF-Token', window.CSRF_TOKEN);
+    xhr.send(fd);
 });
 
 function showFlash(msg, type) {

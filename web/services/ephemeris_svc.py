@@ -15,20 +15,6 @@ from services.media_svc import strip_html
 from translations import JOURS_BY_LANG, MOIS_BY_LANG, WMO_CODES_BY_LANG
 
 _EPHEMERIS_LOCK = threading.Lock()
-_MODERN_NAME_POOL = (
-    "Gabriel", "Lina", "Jules", "Louise", "Raphael", "Emma", "Noah", "Jade",
-    "Leo", "Alice", "Adam", "Chloe", "Louis", "Rose", "Arthur", "Mila",
-    "Hugo", "Ambre", "Lucas", "Anna", "Eden", "Mia", "Sacha", "Ines",
-    "Nino", "Lena", "Isaac", "Nina", "Mael", "Lea", "Tiago", "Iris",
-    "Elias", "Julia", "Axel", "Eva", "Mathis", "Zoé", "Tom", "Sarah",
-    "Oscar", "Lou", "Marius", "Alya", "Liam", "Elena", "Theo", "Romy",
-    "Ethan", "Yasmine", "Malo", "Agathe", "Samuel", "Manon", "Côme", "Jeanne",
-    "Pablo", "Aya", "Nael", "Lucie", "Martin", "Lya", "Aaron", "Margot",
-    "Victor", "Amelia", "Basile", "Elsa", "Robin", "Louna", "Elio", "Olivia",
-    "Antonin", "Camille", "Noe", "Celeste", "Maxime", "Juliette", "Nolan", "Elise",
-)
-
-
 def get_utc_offset():
     return 2 if 4 <= datetime.now().month <= 10 else 1
 
@@ -289,16 +275,72 @@ def _fit_font(draw, text, max_width, font_path, start_size, min_size=20):
     return font
 
 
+def _wrap_text_to_width(draw, text, max_width, font):
+    words = str(text or "").split()
+    if not words:
+        return [""]
+
+    lines = []
+    current = words[0]
+    for word in words[1:]:
+        candidate = f"{current} {word}"
+        if draw.textlength(candidate, font=font) <= max_width:
+            current = candidate
+        else:
+            lines.append(current)
+            current = word
+    lines.append(current)
+    return lines
+
+
+def _fit_wrapped_font(draw, text, max_width, font_path, start_size, min_size=20, max_lines=2):
+    size = start_size
+    fallback_font = ImageFont.load_default()
+    best_font = fallback_font
+    best_lines = [str(text or "")]
+
+    while size >= min_size:
+        try:
+            font = ImageFont.truetype(font_path, size)
+        except Exception:
+            return best_lines, best_font
+
+        lines = _wrap_text_to_width(draw, text, max_width, font)
+        if len(lines) <= max_lines and all(draw.textlength(line, font=font) <= max_width for line in lines):
+            return lines, font
+
+        best_font = font
+        best_lines = lines
+        size -= 2
+
+    return best_lines[:max_lines], best_font
+
+
+def _line_height(draw, font, sample="Ag"):
+    bbox = draw.textbbox((0, 0), sample, font=font)
+    return bbox[3] - bbox[1]
+
+
+def _draw_centered_lines(draw, cx, top_y, lines, font, fill, line_gap=8):
+    y = top_y
+    for line in lines:
+        draw.text((cx, y), line, fill=fill, font=font, anchor="ma")
+        y += _line_height(draw, font, line) + line_gap
+    return y
+
+
+def _draw_left_lines(draw, left_x, top_y, lines, font, fill, line_gap=8):
+    y = top_y
+    for line in lines:
+        draw.text((left_x, y), line, fill=fill, font=font, anchor="la")
+        y += _line_height(draw, font, line) + line_gap
+    return y
+
+
 def get_ephemeride_slot():
     now  = datetime.now()
     slot = (now.hour // 2) * 2
     return now.strftime(f"%Y-%m-%d_{slot:02d}h")
-
-
-def _get_modern_name_of_day(target_date=None):
-    target_date = target_date or date.today()
-    day_index = target_date.timetuple().tm_yday - 1
-    return _MODERN_NAME_POOL[day_index % len(_MODERN_NAME_POOL)]
 
 
 def _displayable_saint_name(raw_name):
@@ -335,7 +377,6 @@ def _displayable_saint_name(raw_name):
 
 def get_ephemeride_nominis(target_date=None):
     target_date = target_date or date.today()
-    modern_name = _get_modern_name_of_day(target_date)
     url = "https://nominis.cef.fr/json/saintdujour.php"
     try:
         r = requests.get(url, timeout=5)
@@ -346,10 +387,10 @@ def get_ephemeride_nominis(target_date=None):
         if traditional_name:
             desc = strip_html(saint.get("description", "")).strip()
             return _displayable_saint_name(traditional_name) or traditional_name, desc
-        return modern_name, ""
+        return None, ""
     except Exception as e:
         print("[NOMINIS ERROR]", e)
-        return modern_name, ""
+        return None, ""
 
 
 def get_sun_times(cfg=None):
@@ -409,7 +450,7 @@ def get_meteo(cfg=None):
             "https://api.open-meteo.com/v1/forecast",
             params={
                 "latitude": lat, "longitude": lng,
-                "current": "temperature_2m,apparent_temperature,weathercode,windspeed_10m,precipitation",
+                "current": "temperature_2m,apparent_temperature,weather_code,wind_speed_10m,precipitation",
                 "wind_speed_unit": "kmh", "timezone": tz_name
             },
             timeout=5
@@ -418,8 +459,8 @@ def get_meteo(cfg=None):
         current   = r.json()["current"]
         temp      = current.get("temperature_2m", "--")
         temp_res  = current.get("apparent_temperature", "--")
-        code      = current.get("weathercode", 0)
-        vent      = current.get("windspeed_10m", "--")
+        code      = current.get("weather_code", current.get("weathercode", -1))
+        vent      = current.get("wind_speed_10m", current.get("windspeed_10m", "--"))
         precip    = current.get("precipitation", 0)
         condition = wmo.get(code, _t('ephemeris_weather_unknown', lang))
         return {
@@ -603,7 +644,11 @@ def generate_ephemeride_image(force=False):
     draw.text((960, 155), _t('ephemeris_title', lang),    fill=(220, 200, 255), font=font_title, anchor="mm")
     draw.text((960, 290), date_str,                        fill=(255, 255, 255), font=font_date,  anchor="mm")
     draw.rectangle([160, 370, 1760, 374], fill=(200, 180, 255))
-    saint_greeting = _t('ephemeris_saint_greeting', lang, name=nom)
+    saint_greeting = (
+        _t('ephemeris_saint_greeting', lang, name=nom)
+        if nom else
+        _t('ephemeris_saint_unavailable', lang)
+    )
     saint_font = _fit_font(
         draw, saint_greeting.upper(), 1480,
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 75, min_size=36
@@ -628,36 +673,111 @@ def generate_ephemeride_image(force=False):
             y_desc += 58
 
     draw.rectangle([160, 650, 1760, 654], fill=(200, 180, 255))
-    draw_weather_icon(draw, 255, 762, meteo["code"], size=130)
 
     temp_label = _t('ephemeris_temp_label', lang)
     feel_label = _t('ephemeris_feel_label', lang)
     wind_label = _t('ephemeris_wind_label', lang)
     rain_label = _t('ephemeris_rain_label', lang)
+    sun_label = _t('ephemeris_sun_label', lang)
+    sunrise_label = _t('ephemeris_sunrise', lang)
+    sunset_label = _t('ephemeris_sunset', lang)
 
     _lat, _lng, _tz, ville = _get_meteo_location(cfg)
     meteo_label = f"{_t('ephemeris_meteo_prefix', lang)} - {ville.upper()}"
-    draw.text((640,  682), meteo_label,                                                           fill=(200, 180, 255), font=font_mlab,  anchor="mm")
+    temp_text = f"{temp_label} : {meteo['temp']}  ({feel_label} {meteo['ressenti']})"
+    wind_text = f"{wind_label} : {meteo['vent']}"
+    rain_text = f"{rain_label} : {meteo['precip']}"
+    weather_text_max_width = 430
+    weather_left_x = 465
+    weather_title_center_x = 600
 
-    condition_text = meteo["condition"]
-    _font_meteo = font_meteo
+    draw_weather_icon(draw, 285, 764, meteo["code"], size=130)
+    draw.rectangle([390, 705, 394, 825], fill=(200, 180, 255))
+
+    weather_top_y = 704
+    meteo_label_font = _fit_font(
+        draw,
+        meteo_label,
+        weather_text_max_width,
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        34,
+        min_size=22,
+    )
+    draw.text((weather_title_center_x, 682), meteo_label, fill=(200, 180, 255), font=meteo_label_font, anchor="mm")
+
     _meteo_font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-    _meteo_size = 48
-    while _meteo_size > 20 and draw.textlength(condition_text, font=_font_meteo) > 560:
-        _meteo_size -= 2
-        try:
-            _font_meteo = ImageFont.truetype(_meteo_font_path, _meteo_size)
-        except Exception:
-            break
-    draw.text((640,  730), condition_text,                                                         fill=(255, 255, 255), font=_font_meteo, anchor="mm")
-    draw.text((640,  778), f"{temp_label} : {meteo['temp']}  ({feel_label} {meteo['ressenti']})", fill=(200, 230, 255), font=font_mlab,  anchor="mm")
-    draw.text((640,  820), f"{wind_label} : {meteo['vent']}   {rain_label} : {meteo['precip']}",  fill=(200, 230, 255), font=font_mlab,  anchor="mm")
-    draw.rectangle([930, 665, 934, 855], fill=(200, 180, 255))
-    draw.text((1340, 700), _t('ephemeris_sun_label', lang),    fill=(200, 180, 255), font=font_mlab,  anchor="mm")
-    draw.text((1200, 760), _t('ephemeris_sunrise', lang),      fill=(200, 180, 255), font=font_label, anchor="mm")
-    draw.text((1200, 808), lever,                               fill=(255, 230, 150), font=font_sun,   anchor="mm")
-    draw.text((1480, 760), _t('ephemeris_sunset', lang),       fill=(200, 180, 255), font=font_label, anchor="mm")
-    draw.text((1480, 808), coucher,                             fill=(255, 180, 100), font=font_sun,   anchor="mm")
+    condition_lines, _font_meteo = _fit_wrapped_font(
+        draw,
+        meteo["condition"],
+        weather_text_max_width,
+        _meteo_font_path,
+        48,
+        min_size=24,
+        max_lines=3,
+    )
+    weather_next_y = _draw_left_lines(
+        draw,
+        weather_left_x,
+        weather_top_y,
+        condition_lines,
+        _font_meteo,
+        (255, 255, 255),
+        line_gap=8,
+    )
+    weather_next_y += 14
+    temp_font = _fit_font(
+        draw,
+        temp_text,
+        weather_text_max_width,
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        34,
+        min_size=22,
+    )
+    draw.text(
+        (weather_left_x, weather_next_y),
+        temp_text,
+        fill=(200, 230, 255),
+        font=temp_font,
+        anchor="la",
+    )
+    weather_next_y += _line_height(draw, temp_font) + 12
+    wind_font = _fit_font(
+        draw,
+        wind_text,
+        190,
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        34,
+        min_size=22,
+    )
+    rain_font = _fit_font(
+        draw,
+        rain_text,
+        190,
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        34,
+        min_size=22,
+    )
+    draw.text(
+        (weather_left_x, weather_next_y),
+        wind_text,
+        fill=(200, 230, 255),
+        font=wind_font,
+        anchor="la",
+    )
+    draw.text(
+        (weather_left_x + 240, weather_next_y),
+        rain_text,
+        fill=(200, 230, 255),
+        font=rain_font,
+        anchor="la",
+    )
+
+    draw.text((1365, 714), sun_label, fill=(200, 180, 255), font=font_mlab, anchor="mm")
+    draw.rectangle([1363, 740, 1367, 825], fill=(200, 180, 255))
+    draw.text((1170, 770), sunrise_label, fill=(200, 180, 255), font=font_label, anchor="mm")
+    draw.text((1170, 816), lever,         fill=(255, 230, 150), font=font_sun,   anchor="mm")
+    draw.text((1560, 770), sunset_label,  fill=(200, 180, 255), font=font_label, anchor="mm")
+    draw.text((1560, 816), coucher,       fill=(255, 180, 100), font=font_sun,   anchor="mm")
     draw.rectangle([160, 870, 1760, 874], fill=(200, 180, 255))
 
     events = cfg.get("events", [])
@@ -724,11 +844,11 @@ def generate_ephemeride_image(force=False):
                     )
                     draw.text((cx, y_sub), sub_label, fill=(200, 230, 255), font=sub_font, anchor="mm")
 
-        tmp_path = f"{path}.{os.getpid()}.tmp"
-        try:
-            img.save(tmp_path, "JPEG", quality=95)
-            os.replace(tmp_path, path)
-        except Exception:
-            with contextlib.suppress(OSError):
-                os.unlink(tmp_path)
-            raise
+    tmp_path = f"{path}.{os.getpid()}.tmp"
+    try:
+        img.save(tmp_path, "JPEG", quality=95)
+        os.replace(tmp_path, path)
+    except Exception:
+        with contextlib.suppress(OSError):
+            os.unlink(tmp_path)
+        raise

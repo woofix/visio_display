@@ -13,9 +13,9 @@ services:
       - REDIS_URL=redis://redis:6379
       - VISIO_DATA_DIR=/app/data
     volumes:
-      - ./.env:/app/.env:ro
-      - ${MEDIA_DIR:-visio_media}:/app/static/data
-      - ${PRIVATE_DIR:-visio_private}:/app/data
+      - ./.env:/app/.env
+      - ${MEDIA_DIR:-./.data/media}:/app/static/data
+      - ${PRIVATE_DIR:-./.data/private}:/app/data
     ports:
       - "${PORT:-8081}:8080"
     restart: always
@@ -34,9 +34,9 @@ services:
       - REDIS_URL=redis://redis:6379
       - VISIO_DATA_DIR=/app/data
     volumes:
-      - ./.env:/app/.env:ro
-      - ${MEDIA_DIR:-visio_media}:/app/static/data
-      - ${PRIVATE_DIR:-visio_private}:/app/data
+      - ./.env:/app/.env
+      - ${MEDIA_DIR:-./.data/media}:/app/static/data
+      - ${PRIVATE_DIR:-./.data/private}:/app/data
     command: rq worker --url redis://redis:6379 visio-display:upload visio-display:compress
     restart: always
     depends_on:
@@ -44,5 +44,3 @@ services:
 
 volumes:
   redis_data:
-  visio_media:
-  visio_private:

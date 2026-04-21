@@ -1801,10 +1801,16 @@ function showPreviews(files) {
 }
 
 const MAX_FILE_SIZE = 16 * 1024 * 1024;
+const MAX_BATCH_SIZE = 256 * 1024 * 1024;
 function checkFileSizes(files) {
     const oversized = [...files].filter(f => f.size > MAX_FILE_SIZE);
     if (oversized.length) {
         showFlash(`Fichier(s) trop volumineux (max 16 Mo) : ${oversized.map(f=>`${f.name} (${(f.size/1024/1024).toFixed(1)} Mo)`).join(', ')}`, 'error');
+        return false;
+    }
+    const totalSize = [...files].reduce((sum, f) => sum + f.size, 0);
+    if (totalSize > MAX_BATCH_SIZE) {
+        showFlash('Lot trop volumineux : la taille cumulée maximale autorisée est de 256 Mo.', 'error');
         return false;
     }
     return true;
@@ -1836,7 +1842,7 @@ document.getElementById('upload-form').addEventListener('submit', function(e) {
     xhr.addEventListener('load', () => {
         if (xhr.status === 413) {
             progressWrap.style.display = 'none';
-            showFlash('Fichier trop volumineux : la taille maximale autorisée est de 16 Mo par fichier.', 'error');
+            showFlash('Lot trop volumineux : la taille cumulée maximale autorisée est de 256 Mo.', 'error');
         } else { window.location.reload(); }
     });
     xhr.addEventListener('error', () => { progressWrap.style.display = 'none'; showFlash('Erreur réseau lors de l\'upload.', 'error'); });

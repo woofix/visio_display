@@ -1,8 +1,8 @@
 import os
-from datetime import datetime, timedelta
 
 from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify
 
+import constants as C
 from constants import UPLOAD_FOLDER, VIDEO_EXTS
 from services.config_svc import load_config, save_config
 from services.users_svc import load_users, has_permission, has_screen_access, is_superadmin
@@ -12,60 +12,29 @@ from services.media_svc import (
     collect_group_states, is_media_disabled, normalize_group_name,
     ensure_unique_filename, is_valid_uploaded_image,
 )
-from services.schedule_svc import analyze_schedule_week, build_schedule_entries, parse_iso_date, parse_time_to_minutes, schedule_summary, start_of_week, week_days
 from services.queue_svc import load_queue, save_queue, enqueue_upload_job
 from services.i18n import _flash
 from services.activity_svc import log_activity
-from blueprints.guards import admin_guard, perm_guard, feature_guard, feature_guard_json
+from blueprints.guards import admin_guard, perm_guard, feature_guard_json
 
 bp = Blueprint('media', __name__)
 
-
-def _allowed_screens(cfg):
-    return [screen for screen in cfg.get('screens', {}).keys() if has_screen_access(screen)]
-
-
-def _resolve_schedule_bucket(cfg, screen, create=False):
-    screen = str(screen or '').strip().lower()
-    if screen:
-        if screen not in cfg.get('screens', {}):
-            return None
-        if create:
-            return cfg['screens'][screen].setdefault('schedules', {})
-        return cfg['screens'][screen].get('schedules', {})
-    if create:
-        return cfg.setdefault('schedules', {})
-    return cfg.get('schedules', {})
+MAX_FILE_UPLOAD_SIZE = getattr(C, 'MAX_FILE_UPLOAD_SIZE', 16 * 1024 * 1024)
+MAX_BATCH_UPLOAD_SIZE = getattr(C, 'MAX_BATCH_UPLOAD_SIZE', 256 * 1024 * 1024)
 
 
-def _extract_schedule_payload(data, allow_empty=False):
-    sched = {}
-    for key in ("time_start", "time_end", "date_start", "date_end"):
-        value = str(data.get(key, "")).strip()
-        if value:
-            sched[key] = value
-
-    for time_key in ("time_start", "time_end"):
-        if time_key in sched and parse_time_to_minutes(sched[time_key]) is None:
-            return None, "invalid schedule"
-
-    start_minutes = parse_time_to_minutes(sched.get("time_start"))
-    end_minutes = parse_time_to_minutes(sched.get("time_end"))
-    if start_minutes is not None and end_minutes is not None and end_minutes < start_minutes:
-        return None, "invalid schedule"
-
-    for date_key in ("date_start", "date_end"):
-        if date_key in sched and parse_iso_date(sched[date_key]) is None:
-            return None, "invalid schedule"
-
-    date_start = parse_iso_date(sched.get("date_start"))
-    date_end = parse_iso_date(sched.get("date_end"))
-    if date_start and date_end and date_end < date_start:
-        return None, "invalid schedule"
-
-    if not sched and not allow_empty:
-        return None, "missing schedule"
-    return sched, None
+def _get_uploaded_file_size(file_storage):
+    stream = getattr(file_storage, 'stream', None)
+    if stream is None:
+        return 0
+    try:
+        current = stream.tell()
+        stream.seek(0, os.SEEK_END)
+        size = stream.tell()
+        stream.seek(current)
+        return size
+    except (AttributeError, OSError):
+        return 0
 
 
 @bp.route('/admin/media')
@@ -113,71 +82,6 @@ def admin_media():
         logo_path=get_logo_path(), can_toggle=has_permission('toggle'),
         can_schedule=has_permission('schedule'),
         current_user_is_superadmin=is_superadmin())
-
-
-@bp.route('/admin/programming')
-def admin_programming():
-    redir = admin_guard()
-    if redir:
-        return redir
-    feature_redir = feature_guard('schedule')
-    if feature_redir:
-        return feature_redir
-
-    cfg = load_config()
-    all_media = get_all_media()
-    infos = {filename: get_file_info(filename) for filename in all_media}
-    screens = _allowed_screens(cfg)
-    default_screen_name = cfg.get('default_screen_name') or 'Défaut'
-
-    requested_day = parse_iso_date(request.args.get('week', '').strip()) or datetime.now().date()
-    week_start = start_of_week(requested_day)
-    week_end = week_start + timedelta(days=6)
-
-    entries = build_schedule_entries(cfg, infos, screens, default_screen_name)
-    analysis = analyze_schedule_week(entries, week_start)
-    issue_counts = analysis.get('entry_issue_counts', {})
-    for row in analysis.get('calendar_rows', []):
-        row['item_count'] = sum(len(cell.get('items', [])) for cell in row.get('cells', []))
-
-    for entry in entries:
-        issues = issue_counts.get(entry['id'], {})
-        entry['summary'] = schedule_summary(entry)
-        entry['groups_label'] = ", ".join(entry['groups']) if entry['groups'] else "Sans groupe"
-        entry['overlap_count'] = issues.get('overlaps', 0)
-
-    day_names = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
-    week_labels = []
-    for index, day in enumerate(week_days(week_start)):
-        week_labels.append({
-            'iso': day.isoformat(),
-            'label': f'{day_names[index]} {day.day:02d}/{day.month:02d}',
-        })
-
-    groups = sorted({group for entry in entries for group in entry['groups']}, key=str.casefold)
-    users = load_users()
-
-    return render_template(
-        'admin_programming.html',
-        entries=entries,
-        current_screen='',
-        screens=screens,
-        screen_choices=[('', default_screen_name)] + [(screen, screen) for screen in screens],
-        filter_screen_choices=[('__global__', default_screen_name)] + [(screen, screen) for screen in screens],
-        media_choices=all_media,
-        group_choices=groups,
-        calendar_rows=analysis.get('calendar_rows', []),
-        week_start=week_start.isoformat(),
-        week_end=week_end.isoformat(),
-        previous_week=(week_start - timedelta(days=7)).isoformat(),
-        next_week=(week_start + timedelta(days=7)).isoformat(),
-        week_labels=week_labels,
-        users=list(users.keys()),
-        current_user=session.get('user'),
-        logo_path=get_logo_path(),
-        can_schedule=has_permission('schedule'),
-        current_user_is_superadmin=is_superadmin(),
-    )
 
 
 @bp.route('/admin/upload')
@@ -239,10 +143,16 @@ def upload_file():
         _flash('flash_no_file', 'error')
         return redirect(url_for('admin.admin_page'))
 
+    total_size = sum(_get_uploaded_file_size(file) for file in files if file and file.filename)
+    if total_size > MAX_BATCH_UPLOAD_SIZE:
+        return jsonify({"error": "batch too large"}), 400
+
     upload_job_ids = []
     for file in files:
         if not file or file.filename == '':
             continue
+        if _get_uploaded_file_size(file) > MAX_FILE_UPLOAD_SIZE:
+            return jsonify({"error": "file too large"}), 400
         filename = clean_filename(file.filename)
         if not filename:
             continue
@@ -493,90 +403,35 @@ def set_schedule(filename):
     if screen and not has_screen_access(screen):
         return jsonify({"error": "screen access denied"}), 403
     cfg = load_config()
-    schedules = _resolve_schedule_bucket(cfg, screen, create=True)
-    if schedules is None:
-        return jsonify({"error": "invalid screen"}), 400
 
-    sched, error = _extract_schedule_payload(data, allow_empty=True)
-    if error:
-        return jsonify({"error": error}), 400
+    if screen and screen in cfg.get('screens', {}):
+        schedules = cfg['screens'][screen].setdefault('schedules', {})
+    else:
+        schedules = cfg.setdefault('schedules', {})
+
+    sched = {}
+    for k in ("time_start", "time_end", "date_start", "date_end"):
+        v = str(data.get(k, "")).strip()
+        if v:
+            sched[k] = v
+    for time_key in ("time_start", "time_end"):
+        if time_key in sched:
+            try:
+                hour, minute = map(int, sched[time_key].split(":"))
+                if not (0 <= hour <= 23 and 0 <= minute <= 59):
+                    raise ValueError
+            except (TypeError, ValueError):
+                return jsonify({"error": "invalid schedule"}), 400
+    for date_key in ("date_start", "date_end"):
+        if date_key in sched:
+            try:
+                from datetime import date
+                date.fromisoformat(sched[date_key])
+            except (TypeError, ValueError):
+                return jsonify({"error": "invalid schedule"}), 400
     if sched:
         schedules[filename] = sched
     elif filename in schedules:
         del schedules[filename]
     save_config(cfg)
-    return jsonify({"ok": True})
-
-
-@bp.route('/programming/save', methods=['POST'])
-def save_programming():
-    g = perm_guard('schedule')
-    if g:
-        return g
-    g = feature_guard_json('schedule')
-    if g:
-        return g
-
-    data = request.get_json(silent=True) or {}
-    filename = os.path.basename(str(data.get('filename', '')).strip())
-    original_filename = os.path.basename(str(data.get('original_filename', filename)).strip())
-    screen = str(data.get('screen', '')).strip().lower()
-    original_screen = str(data.get('original_screen', screen)).strip().lower()
-
-    if not filename:
-        return jsonify({"error": "missing filename"}), 400
-    if filename not in get_all_media():
-        return jsonify({"error": "file not found"}), 404
-    if screen and not has_screen_access(screen):
-        return jsonify({"error": "screen access denied"}), 403
-    if original_screen and not has_screen_access(original_screen):
-        return jsonify({"error": "screen access denied"}), 403
-
-    sched, error = _extract_schedule_payload(data, allow_empty=False)
-    if error:
-        return jsonify({"error": error}), 400
-
-    cfg = load_config()
-    target_bucket = _resolve_schedule_bucket(cfg, screen, create=True)
-    source_bucket = _resolve_schedule_bucket(cfg, original_screen, create=False)
-    if target_bucket is None:
-        return jsonify({"error": "invalid screen"}), 400
-    if source_bucket is None:
-        return jsonify({"error": "invalid screen"}), 400
-
-    if original_filename in source_bucket and (original_filename != filename or original_screen != screen):
-        del source_bucket[original_filename]
-
-    target_bucket[filename] = sched
-    save_config(cfg)
-    details = f'{filename} → {screen or "global"}'
-    log_activity(session.get('user'), 'schedule', filename=filename, details=details)
-    return jsonify({"ok": True})
-
-
-@bp.route('/programming/delete', methods=['POST'])
-def delete_programming():
-    g = perm_guard('schedule')
-    if g:
-        return g
-    g = feature_guard_json('schedule')
-    if g:
-        return g
-
-    data = request.get_json(silent=True) or {}
-    filename = os.path.basename(str(data.get('filename', '')).strip())
-    screen = str(data.get('screen', '')).strip().lower()
-    if not filename:
-        return jsonify({"error": "missing filename"}), 400
-    if screen and not has_screen_access(screen):
-        return jsonify({"error": "screen access denied"}), 403
-
-    cfg = load_config()
-    bucket = _resolve_schedule_bucket(cfg, screen, create=False)
-    if bucket is None:
-        return jsonify({"error": "invalid screen"}), 400
-    if filename in bucket:
-        del bucket[filename]
-        save_config(cfg)
-        log_activity(session.get('user'), 'schedule', filename=filename, details=f'suppression → {screen or "global"}')
     return jsonify({"ok": True})

@@ -181,6 +181,7 @@ TRANSLATIONS = {
         'go_to_media': 'Aller à la médiathèque',
         'js_upload_too_large': 'Fichier(s) trop volumineux (max 16 Mo)\u00a0: {names}',
         'js_upload_too_large_single': 'Fichier trop volumineux (max 16 Mo).',
+        'js_upload_batch_too_large': 'Lot trop volumineux : la taille cumulée maximale est de 256 Mo.',
         'js_upload_network_error': 'Erreur réseau.',
         'js_upload_invalid_format': 'Format non reconnu — fichier(s) ignoré(s)\u00a0:',
         'js_upload_accepted_formats': 'Formats acceptés\u00a0:',
@@ -390,6 +391,8 @@ TRANSLATIONS = {
 
         # ── Flash messages ──
         'flash_file_too_large': 'Fichier trop volumineux : la taille maximale autorisée est de 16 Mo par fichier.',
+        'flash_batch_too_large': 'Lot trop volumineux : la taille cumulée maximale autorisée est de 256 Mo.',
+        'flash_upload_too_large': 'Upload trop volumineux : vérifiez la taille des fichiers et du lot.',
         'flash_please_login': 'Veuillez vous connecter.',
         'flash_superadmin_only': 'Accès réservé au super-administrateur.',
         'flash_no_perm_delete': 'Permission insuffisante pour supprimer des médias.',
@@ -950,6 +953,7 @@ TRANSLATIONS = {
         'go_to_media': 'Go to media library',
         'js_upload_too_large': 'File(s) too large (max 16 MB): {names}',
         'js_upload_too_large_single': 'File too large (max 16 MB).',
+        'js_upload_batch_too_large': 'Batch too large: the maximum combined size is 256 MB.',
         'js_upload_network_error': 'Network error.',
         'js_upload_invalid_format': 'Unrecognized format — file(s) ignored:',
         'js_upload_accepted_formats': 'Accepted formats:',
@@ -1159,6 +1163,8 @@ TRANSLATIONS = {
 
         # ── Flash messages ──
         'flash_file_too_large': 'File too large: maximum allowed size is 16 MB per file.',
+        'flash_batch_too_large': 'Batch too large: the maximum allowed combined size is 256 MB.',
+        'flash_upload_too_large': 'Upload too large: check the file and batch sizes.',
         'flash_please_login': 'Please log in.',
         'flash_superadmin_only': 'Access reserved for the super-administrator.',
         'flash_no_perm_delete': 'Insufficient permission to delete media.',

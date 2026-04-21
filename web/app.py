@@ -9,6 +9,7 @@ from datetime import timedelta
 from flask import Flask, abort, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 
+import constants as C
 from constants import (
     ALL_PERMISSIONS, DB_FILE, CONFIG_FILE, QUEUE_FILE, USERS_FILE,
     LEGACY_DB_FILE, LEGACY_CONFIG_FILE, LEGACY_QUEUE_FILE, LEGACY_USERS_FILE,
@@ -21,6 +22,9 @@ from services.users_svc import load_users, is_superadmin, has_permission
 from services.config_svc import load_config, is_feature_enabled, get_default_screen_name
 from flask import session
 from translations import TRANSLATIONS
+
+MAX_FILE_UPLOAD_SIZE = getattr(C, 'MAX_FILE_UPLOAD_SIZE', 16 * 1024 * 1024)
+MAX_BATCH_UPLOAD_SIZE = getattr(C, 'MAX_BATCH_UPLOAD_SIZE', 256 * 1024 * 1024)
 
 
 def _env_flag(name, default=False):
@@ -136,8 +140,8 @@ def create_app(start_scheduler=True, test_config=None):
     app.secret_key = os.environ.get('SECRET_KEY')
     if not app.secret_key:
         raise RuntimeError("La variable d'environnement SECRET_KEY est obligatoire.")
-    app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 Mo
-    app.config['MAX_FORM_MEMORY_SIZE'] = 16 * 1024 * 1024
+    app.config['MAX_CONTENT_LENGTH'] = MAX_BATCH_UPLOAD_SIZE
+    app.config['MAX_FORM_MEMORY_SIZE'] = MAX_BATCH_UPLOAD_SIZE
     app.config['SESSION_COOKIE_HTTPONLY'] = True
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
     app.config['SESSION_COOKIE_SECURE'] = _env_flag('SESSION_COOKIE_SECURE')
@@ -268,7 +272,13 @@ def create_app(start_scheduler=True, test_config=None):
     def too_large(e):
         from services.i18n import _flash
         from flask import redirect, url_for
-        _flash('flash_file_too_large', 'error')
+        content_length = request.content_length or 0
+        if content_length > MAX_BATCH_UPLOAD_SIZE:
+            _flash('flash_batch_too_large', 'error')
+        elif content_length > MAX_FILE_UPLOAD_SIZE:
+            _flash('flash_file_too_large', 'error')
+        else:
+            _flash('flash_upload_too_large', 'error')
         return redirect(url_for('media.admin_upload_page')), 413
 
     @app.context_processor

@@ -294,6 +294,7 @@
 <script>
 const MSG_TOO_LARGE        = {{ t('js_upload_too_large') | tojson }};
 const MSG_TOO_LARGE_SINGLE = {{ t('js_upload_too_large_single') | tojson }};
+const MSG_BATCH_TOO_LARGE  = {{ t('js_upload_batch_too_large') | tojson }};
 const MSG_NETWORK_ERROR    = {{ t('js_upload_network_error') | tojson }};
 const MSG_ENCODING_TITLE   = {{ t('upload_encoding_title') | tojson }};
 const MSG_ENCODING_DONE    = {{ t('upload_encoding_done') | tojson }};
@@ -302,6 +303,10 @@ const MSG_INVALID_FORMAT   = {{ t('js_upload_invalid_format') | tojson }};
 const MSG_ACCEPTED_FORMATS = {{ t('js_upload_accepted_formats') | tojson }};
 const MSG_UPLOADING        = {{ t('js_upload_uploading') | tojson }};
 const MSG_UPLOADING_FILES  = {{ t('js_upload_uploading_files') | tojson }};
+const MSG_UNSUPPORTED_TYPE = 'Type de fichier non pris en charge.';
+const MSG_INVALID_IMAGE    = 'Le fichier image est invalide ou corrompu.';
+const MSG_FILE_TOO_LARGE   = {{ t('js_upload_too_large_single') | tojson }};
+const MSG_UPLOAD_FAILED    = "L'envoi a échoué. Vérifiez le format du fichier et réessayez.";
 const ACCEPTED_EXTS = new Set(['.jpg','.jpeg','.png','.pdf','.mp4','.webm','.mov','.avi','.mkv']);
 const ACCEPTED_LABELS = ['JPG','PNG','PDF','MP4','MOV','WebM','AVI','MKV'];
 
@@ -385,10 +390,19 @@ function setUploadingState(active, pct, n) {
     }
 }
 
-const MAX = 16 * 1024 * 1024;
+const MAX_FILE_SIZE = 16 * 1024 * 1024;
+const MAX_BATCH_SIZE = 256 * 1024 * 1024;
 function checkSizes(files) {
-    const big = [...files].filter(f => f.size > MAX);
-    if (big.length) { showFlash(MSG_TOO_LARGE.replace('{names}', big.map(f => f.name).join(', ')), 'error'); return false; }
+    const big = [...files].filter(f => f.size > MAX_FILE_SIZE);
+    if (big.length) {
+        showFlash(MSG_TOO_LARGE.replace('{names}', big.map(f => f.name).join(', ')), 'error');
+        return false;
+    }
+    const total = [...files].reduce((sum, f) => sum + f.size, 0);
+    if (total > MAX_BATCH_SIZE) {
+        showFlash(MSG_BATCH_TOO_LARGE, 'error');
+        return false;
+    }
     return true;
 }
 
@@ -459,24 +473,30 @@ document.getElementById('upload-form').addEventListener('submit', function(e) {
     xhr.addEventListener('load', () => {
         setUploadingState(false);
         progressWrap.style.display = 'none';
-        if (xhr.status === 413) { showFlash(MSG_TOO_LARGE_SINGLE, 'error'); return; }
-        if (xhr.status < 200 || xhr.status >= 300) {
-            try {
-                const data = JSON.parse(xhr.responseText);
-                showFlash(data.error || MSG_NETWORK_ERROR, 'error');
-            } catch {
-                showFlash(MSG_NETWORK_ERROR, 'error');
-            }
-            return;
-        }
+        if (xhr.status === 413) { showFlash(MSG_BATCH_TOO_LARGE, 'error'); return; }
         try {
             const data = JSON.parse(xhr.responseText);
+            if (xhr.status >= 400) {
+                const message = data.error === 'unsupported file type'
+                    ? MSG_UNSUPPORTED_TYPE
+                    : data.error === 'invalid image file'
+                        ? MSG_INVALID_IMAGE
+                        : data.error === 'batch too large'
+                            ? MSG_BATCH_TOO_LARGE
+                        : data.error === 'file too large'
+                            ? MSG_FILE_TOO_LARGE
+                        : (data.error || MSG_UPLOAD_FAILED);
+                showFlash(message, 'error');
+                return;
+            }
             if (data.jobs && data.jobs.length > 0) {
                 startProgressPolling(data.jobs);
             } else {
                 window.location.href = data.redirect || '/admin/media';
             }
-        } catch { window.location.href = '/admin/media'; }
+        } catch {
+            showFlash(MSG_UPLOAD_FAILED, 'error');
+        }
     });
     xhr.addEventListener('error', () => { setUploadingState(false); progressWrap.style.display = 'none'; showFlash(MSG_NETWORK_ERROR, 'error'); });
     xhr.open('POST', '/upload');

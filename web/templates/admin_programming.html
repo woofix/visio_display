@@ -551,7 +551,10 @@ if (canSchedule) {
     async function postJson(url, payload) {
         const response = await fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': window.CSRF_TOKEN,
+            },
             body: JSON.stringify(payload),
         });
         const data = await response.json();

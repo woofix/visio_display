@@ -15,7 +15,8 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 try:
-    from werkzeug.security import generate_password_hash
+    from services.queue_svc import get_redis
+    from services.users_svc import set_user_password
 except ModuleNotFoundError:
     venv_python = ROOT_DIR / ".venv" / "bin" / "python"
     if venv_python.exists() and os.environ.get("VISIO_RESET_BOOTSTRAPPED") != "1":
@@ -23,7 +24,7 @@ except ModuleNotFoundError:
         env["VISIO_RESET_BOOTSTRAPPED"] = "1"
         os.execve(str(venv_python), [str(venv_python), __file__, *sys.argv[1:]], env)
     raise SystemExit(
-        "Werkzeug est introuvable. Lancez le script avec l'environnement virtuel du projet "
+        "Les dépendances Python sont introuvables. Lancez le script avec l'environnement virtuel du projet "
         f"({venv_python}) ou installez les dépendances Python."
     )
 
@@ -153,15 +154,16 @@ def main() -> int:
         validate_password(password)
 
         updated = conn.execute(
-            "update users set password_hash = ? where username = ? and superadmin = 1",
-            (generate_password_hash(password), target_user),
-        )
-        if updated.rowcount != 1:
+            "select 1 from users where username = ? and superadmin = 1",
+            (target_user,),
+        ).fetchone()
+        if not updated:
             raise SystemExit(f'Le compte "{target_user}" ne peut pas être modifié.')
-        conn.commit()
+        get_redis().ping()
+        set_user_password(target_user, password)
 
     print(f'Base : {db_path}')
-    print(f'Mot de passe mis à jour pour le super-admin "{target_user}".')
+    print(f'Mot de passe Redis mis à jour pour le super-admin "{target_user}".')
     return 0
 
 

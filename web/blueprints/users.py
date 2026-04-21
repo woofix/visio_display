@@ -1,11 +1,11 @@
 from flask import Blueprint, request, redirect, url_for, session, render_template, jsonify
-from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, UTC
 
 from constants import ALL_PERMISSIONS
 from services.users_svc import (
     load_users, save_users, is_admin,
     is_valid_password, is_valid_username, normalize_username,
+    set_user_password, verify_user_password, delete_user_password,
 )
 from services.config_svc import load_config, save_config
 from services.media_svc import get_logo_path
@@ -50,10 +50,10 @@ def add_user():
     if username in users:
         _flash('flash_user_exists', 'error', username=username)
         return redirect(url_for('users.admin_superadmin_page'))
-    users[username] = {"password": generate_password_hash(password),
-                       "superadmin": False,
+    users[username] = {"superadmin": False,
                        "permissions": []}
     save_users(users)
+    set_user_password(username, password)
     _flash('flash_user_created', 'success', username=username)
     return redirect(url_for('users.admin_superadmin_page'))
 
@@ -72,6 +72,7 @@ def delete_user(username):
         return redirect(url_for('users.admin_superadmin_page'))
     del users[username]
     save_users(users)
+    delete_user_password(username)
     _flash('flash_user_deleted', 'success', username=username)
     return redirect(url_for('users.admin_superadmin_page'))
 
@@ -83,17 +84,13 @@ def change_password():
     current  = request.form.get('current_password', '')
     new_pwd  = request.form.get('new_password', '').strip()
     username = session.get('user')
-    users    = load_users()
-    entry    = users.get(username, {})
-    pwd_hash = entry.get('password', '') if isinstance(entry, dict) else entry
-    if not check_password_hash(pwd_hash, current):
+    if not verify_user_password(username, current):
         _flash('flash_wrong_password', 'error')
         return redirect(url_for('settings.admin_settings_page') + '?tab=admins')
     if not is_valid_password(new_pwd):
         _flash('flash_new_password_too_short', 'error')
         return redirect(url_for('settings.admin_settings_page') + '?tab=admins')
-    users[username]['password'] = generate_password_hash(new_pwd)
-    save_users(users)
+    set_user_password(username, new_pwd)
     _flash('flash_password_updated', 'success')
     return redirect(url_for('settings.admin_settings_page') + '?tab=admins')
 
@@ -110,8 +107,7 @@ def reset_user_password(username):
     if not is_valid_password(new_pwd):
         _flash('flash_new_password_too_short', 'error')
         return redirect(url_for('users.admin_superadmin_page'))
-    users[username]['password'] = generate_password_hash(new_pwd)
-    save_users(users)
+    set_user_password(username, new_pwd)
     _flash('flash_user_password_reset', 'success', username=username)
     return redirect(url_for('users.admin_superadmin_page'))
 

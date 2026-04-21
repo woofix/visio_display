@@ -2,9 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 import secrets
 import threading
 import time
-from werkzeug.security import check_password_hash
-
-from services.users_svc import load_users, normalize_username
+from services.users_svc import load_users, normalize_username, verify_user_password
 from services.media_svc import get_logo_path
 from services.i18n import _flash
 from services.activity_svc import log_activity
@@ -79,9 +77,7 @@ def login():
             _flash('flash_login_rate_limited', 'error')
             return render_template('login.html', logo_path=get_logo_path()), 429
         users    = load_users()
-        entry    = users.get(username, {})
-        pwd_hash = entry.get('password', '') if isinstance(entry, dict) else entry
-        if username in users and check_password_hash(pwd_hash, password):
+        if username in users and verify_user_password(username, password):
             session.clear()
             session.permanent = True
             session['user'] = username

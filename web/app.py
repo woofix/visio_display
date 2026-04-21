@@ -96,8 +96,17 @@ def _migrate_from_json():
         if User.query.count() == 0 and os.path.exists(USERS_FILE):
             with open(USERS_FILE) as f:
                 users_dict = json.load(f)
+            from services.users_svc import set_user_password_hash, PASSWORD_HASH_PLACEHOLDER
             for username, entry in users_dict.items():
-                db.session.merge(User.from_dict(username, entry))
+                row = User.from_dict(username, entry)
+                merged = db.session.merge(row)
+                if isinstance(entry, dict):
+                    password_hash = entry.get('password', '')
+                else:
+                    password_hash = entry
+                if password_hash:
+                    set_user_password_hash(username, password_hash)
+                merged.password_hash = PASSWORD_HASH_PLACEHOLDER
             db.session.commit()
     except Exception:
         db.session.rollback()

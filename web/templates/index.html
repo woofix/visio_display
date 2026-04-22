@@ -412,9 +412,9 @@
                     switcher.appendChild(btn);
                 });
 
-                /* Apparaît brièvement au chargement puis se masque */
+                /* Briefly appears on load, then hides */
                 showSwitcher();
-                /* Réapparaît sur mouvement de souris ou toucher */
+                /* Reappears on mouse movement or touch */
                 document.addEventListener('mousemove', showSwitcher);
                 document.addEventListener('touchstart', showSwitcher);
             } catch(e) { switcher.remove(); }

@@ -47,7 +47,7 @@
     }
 }
 
-/* ── TABLE DES MATIÈRES ── */
+/* ── TABLE OF CONTENTS ── */
 .wiki-toc {
     position: sticky;
     top: 80px;
@@ -302,7 +302,7 @@
     margin-top: 1px;
 }
 
-/* Section masquée */
+/* Hidden section */
 .wiki-section { display: none; }
 .wiki-section.active { display: block; }
 
@@ -435,7 +435,7 @@
 }
 .url-tag svg { width: 12px; height: 12px; color: var(--primary); flex-shrink:0; }
 
-/* Grid accès */
+/* Access grid */
 .access-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0; }
 @media (max-width: 600px) { .access-grid { grid-template-columns: 1fr; } }
 .access-card {
@@ -460,7 +460,7 @@
 
 <div class="wiki-wrap">
 
-    <!-- TABLE DES MATIÈRES -->
+    <!-- TABLE OF CONTENTS -->
     <aside class="wiki-toc" id="wiki-toc">
         <div class="wiki-toc-head">
             <div class="wiki-toc-title">{{ t('wiki_toc_title') }}</div>
@@ -498,7 +498,7 @@
     <!-- CONTENU -->
     <div class="wiki-body">
 
-        <!-- §1 Accéder -->
+        <!-- §1 Access -->
         <section class="wiki-section active" id="s1">
             <div class="wiki-section-header">
                 <div class="wiki-section-num">1</div>
@@ -565,7 +565,7 @@
             </ul>
         </section>
 
-        <!-- §4 Ajouter des médias -->
+        <!-- §4 Add media -->
         <section class="wiki-section" id="s4">
             <div class="wiki-section-header">
                 <div class="wiki-section-num">4</div>
@@ -600,7 +600,7 @@
             </ul>
         </section>
 
-        <!-- §5 Médiathèque -->
+        <!-- §5 Media library -->
         <section class="wiki-section" id="s5">
             <div class="wiki-section-header">
                 <div class="wiki-section-num">5</div>
@@ -681,7 +681,7 @@
             <p>{{ t('wiki_s6_remove') }}</p>
         </section>
 
-        <!-- §7 Plusieurs écrans -->
+        <!-- §7 Multiple screens -->
         <section class="wiki-section" id="s7">
             <div class="wiki-section-header">
                 <div class="wiki-section-num">7</div>
@@ -713,7 +713,7 @@
             <div class="wiki-callout">{{ t('wiki_s7_install_note') }}</div>
         </section>
 
-        <!-- §8 Éphéméride -->
+        <!-- §8 Ephemeris -->
         <section class="wiki-section" id="s8">
             <div class="wiki-section-header">
                 <div class="wiki-section-num">8</div>
@@ -745,7 +745,7 @@
             <p>{{ t('wiki_s8_delete') }}</p>
         </section>
 
-        <!-- §9 Paramètres -->
+        <!-- §9 Settings -->
         <section class="wiki-section" id="s9">
             <div class="wiki-section-header">
                 <div class="wiki-section-num">9</div>
@@ -858,7 +858,7 @@
             <p>{{ t('wiki_s12_note') }}</p>
         </section>
 
-        <!-- §13 Groupes de médias -->
+        <!-- §13 Media groups -->
         <section class="wiki-section" id="s13">
             <div class="wiki-section-header">
                 <div class="wiki-section-num">13</div>
@@ -905,7 +905,7 @@
             </div>
         </section>
 
-        <!-- §15 Journal d'activité -->
+        <!-- §15 Activity log -->
         <section class="wiki-section" id="s15">
             <div class="wiki-section-header">
                 <div class="wiki-section-num">15</div>
@@ -1005,7 +1005,7 @@
     const initial = location.hash.replace('#', '') || 's1';
     showSection(ids.includes(initial) ? initial : 's1');
 
-    /* ── Recherche ── */
+    /* ── Search ── */
     const searchInput    = document.getElementById('wiki-search');
     const searchResults  = document.getElementById('wiki-search-results');
     const tocLinksWrap   = document.getElementById('wiki-toc-links');

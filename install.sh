@@ -312,12 +312,12 @@ unclutter -idle 0 &
 openbox-session &
 
 sleep 1
-# Désactive la veille écran X11 tant que la session kiosque tourne.
+# Disable X11 screen blanking while the kiosk session is running.
 xset s off
 xset -dpms
 xset s noblank
 
-# Empêche aussi la machine de partir en veille côté systemd pendant le kiosque.
+# Also prevent the machine from sleeping through systemd while the kiosk is active.
 exec systemd-inhibit \
     --what=idle:sleep:handle-lid-switch \
     --who="Visio Display" \

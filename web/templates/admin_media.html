@@ -850,7 +850,7 @@ document.querySelectorAll('.group-pool-input').forEach(input => {
     input.addEventListener('keydown', e => { if (e.key === 'Enter') { clearTimeout(timer); save(); } });
 });
 
-/* ── Group screens toggle (ouvre/ferme le picker) ── */
+/* ── Group screens toggle (opens/closes the picker) ── */
 document.querySelectorAll('.btn-group-screens-toggle').forEach(btn => {
     btn.addEventListener('click', e => {
         e.stopPropagation();
@@ -859,7 +859,7 @@ document.querySelectorAll('.btn-group-screens-toggle').forEach(btn => {
     });
 });
 
-/* ── Liaison groupe ↔ écran ── */
+/* ── Group-to-screen link ── */
 document.querySelectorAll('.btn-group-screen-link').forEach(btn => {
     btn.addEventListener('click', async e => {
         e.stopPropagation();

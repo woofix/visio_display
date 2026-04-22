@@ -3,19 +3,19 @@
 
 FROM python:3.13-slim
 
-# Dépendances système
+# System dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
         poppler-utils ffmpeg openssh-client sshpass \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Dépendances Python
+# Python dependencies
 COPY web/requirements.txt /app/requirements.txt
 RUN pip install --upgrade "pip==24.3.1" \
     && pip install --no-cache-dir -r requirements.txt
 
-# Code applicatif
+# Application code
 COPY web/ /app
 COPY install.sh /app/install.sh
 

@@ -152,7 +152,7 @@
 <div class="card">
 
 
-    <!-- ── ONGLET LOGO ── -->
+    <!-- ── LOGO TAB ── -->
     <div id="tab-logo" class="tab-pane {% if active_tab == 'logo' %}active{% endif %}">
         <div class="logo-layout">
             <div class="logo-preview">
@@ -183,7 +183,7 @@
         </div>
     </div>
 
-    <!-- ── ONGLET THÈME ── -->
+    <!-- ── THEME TAB ── -->
     <div id="tab-theme" class="tab-pane {% if active_tab == 'theme' %}active{% endif %}">
         <p style="font-size:.82rem;color:var(--text-3);margin-bottom:20px">{{ t('theme_subtitle') }}</p>
         <form action="/admin/settings/theme" method="post">
@@ -266,7 +266,7 @@
     </div>
 
     {% if current_user_is_superadmin %}
-    <!-- ── ONGLET INSTALLATION CLIENT ── -->
+    <!-- ── CLIENT INSTALLATION TAB ── -->
     <div id="tab-installation" class="tab-pane {% if active_tab == 'installation' %}active{% endif %}">
         <div class="install-note" style="margin-bottom:16px">
             <div class="logo-section-label" style="margin-bottom:10px">{{ t('install_requirements_title') }}</div>
@@ -460,7 +460,7 @@
     </div>
     {% endif %}
 
-    <!-- ── ONGLET ADMINISTRATEURS ── -->
+    <!-- ── ADMINISTRATORS TAB ── -->
     <div id="tab-admins" class="tab-pane {% if active_tab == 'admins' %}active{% endif %}">
         <div class="admins-layout">
 
@@ -519,7 +519,7 @@
     </div>
 
     {% if current_user_is_superadmin %}
-    <!-- ── ONGLET APPLICATION ── -->
+    <!-- ── APPLICATION TAB ── -->
     <div id="tab-application" class="tab-pane {% if active_tab == 'application' %}active{% endif %}">
         <p style="font-size:.82rem;color:var(--text-3);margin-bottom:20px">{{ t('app_subtitle') }}</p>
         <form action="/admin/settings/appname" method="post" style="display:flex;flex-direction:column;gap:12px;max-width:360px">
@@ -534,11 +534,11 @@
         </form>
     </div>
 
-    <!-- ── ONGLET MÉTÉO (super-admin) ── -->
+    <!-- ── WEATHER TAB (super-admin) ── -->
     <div id="tab-meteo" class="tab-pane {% if active_tab == 'meteo' %}active{% endif %}">
         <p style="font-size:.82rem;color:var(--text-3);margin-bottom:20px">{{ t('settings_meteo_subtitle') }}</p>
 
-        <!-- Config actuelle -->
+        <!-- Current configuration -->
         <div style="background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 18px;margin-bottom:24px;display:flex;align-items:center;gap:16px;max-width:560px">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;flex-shrink:0;color:var(--primary)"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/></svg>
             <div>
@@ -618,7 +618,7 @@
     {% endif %}
 
     {% if can_ephemeris %}
-    <!-- ── ONGLET COMPTES À REBOURS ── -->
+    <!-- ── COUNTDOWN TAB ── -->
     <div id="tab-evenements" class="tab-pane {% if active_tab == 'evenements' %}active{% endif %}">
         <p style="font-size:.82rem;color:var(--text-3);margin-bottom:20px">{{ t('events_subtitle') }}</p>
 
@@ -660,7 +660,7 @@
     </div>
     {% endif %}
 
-    <!-- ── ONGLET LANGUE ── -->
+    <!-- ── LANGUAGE TAB ── -->
     <div id="tab-language" class="tab-pane {% if active_tab == 'language' %}active{% endif %}">
         <p style="font-size:.82rem;color:var(--text-3);margin-bottom:20px">{{ t('language_subtitle') }}</p>
         <form action="/admin/settings/language" method="post">
@@ -902,7 +902,7 @@ document.querySelectorAll('.theme-card input[type=radio]').forEach(radio => {
     });
 })();
 
-/* ── Recherche de ville via Open-Meteo geocoding API ── */
+/* ── City search via the Open-Meteo geocoding API ── */
 async function searchMeteoCity() {
     const query   = document.getElementById('meteo-search-input').value.trim();
     const results = document.getElementById('meteo-search-results');
@@ -960,12 +960,12 @@ async function searchMeteoCity() {
     }
 }
 
-/* Recherche au Enter dans le champ */
+/* Search when Enter is pressed in the field */
 document.getElementById('meteo-search-input')?.addEventListener('keydown', e => {
     if (e.key === 'Enter') { e.preventDefault(); searchMeteoCity(); }
 });
 
-/* Fermer les résultats si clic en dehors */
+/* Close the results when clicking outside */
 document.addEventListener('click', e => {
     const results = document.getElementById('meteo-search-results');
     if (results && !results.contains(e.target) && e.target.id !== 'meteo-search-input' && e.target.id !== 'meteo-search-btn') {

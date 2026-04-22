@@ -1102,7 +1102,7 @@
             </section>
         </div>
 
-        <!-- ─── MÉDIATHÈQUE ─── -->
+        <!-- ─── MEDIA LIBRARY ─── -->
         <section id="media" class="page-section">
             <div class="section-header">
                 <div class="section-title-group">
@@ -1224,7 +1224,7 @@
             </div>
         </section>
 
-        <!-- ─── PARAMÈTRES (Logo + Admins) ─── -->
+        <!-- ─── SETTINGS (Logo + Admins) ─── -->
         <section id="settings" class="page-section">
             <div class="section-header">
                 <div class="section-title-group">
@@ -1318,7 +1318,7 @@
                     </div>
 
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px" class="two-col">
-                        <!-- Ajouter un admin -->
+                        <!-- Add an admin -->
                         <div class="admin-panel">
                             <h3>Ajouter un compte</h3>
                             <form action="/admin/users/add" method="post" class="form-group">
@@ -1353,7 +1353,7 @@
 </div>
 
 <script>
-/* ─── Navigation depuis le dashboard ─── */
+/* ─── Navigation from the dashboard ─── */
 function scrollToSection(id, filter) {
     const target = document.getElementById(id);
     if (!target) return;
@@ -1366,29 +1366,29 @@ function scrollToSection(id, filter) {
     }
 }
 
-/* ─── Init stat actifs ─── */
+/* ─── Initialize active media stat ─── */
 (function() {
     const disabled = {{ cfg.disabled | tojson }};
     const total    = {{ files | length }};
     document.getElementById('stat-active').textContent = total - disabled.length;
 })();
 
-/* ─── Tri médiathèque : actifs en haut, désactivés en bas ─── */
+/* ─── Media library sorting: active items on top, disabled items at the bottom ─── */
 function sortMediaCards() {
     const grid = document.getElementById('file-grid');
     const cards = [...grid.querySelectorAll('.file-card')];
     const active   = cards.filter(c => c.dataset.disabled === 'false');
     const disabled = cards.filter(c => c.dataset.disabled === 'true');
 
-    // Supprimer l'ancien séparateur s'il existe
+    // Remove the previous separator if it exists
     const oldSep = grid.querySelector('.disabled-separator');
     if (oldSep) oldSep.remove();
 
-    // Réordonner : actifs d'abord, puis désactivés
+    // Reorder: active items first, then disabled items
     active.forEach(c => grid.appendChild(c));
 
     if (disabled.length > 0) {
-        // Séparateur visuel entre actifs et désactivés
+        // Visual separator between active and disabled items
         const sep = document.createElement('div');
         sep.className = 'disabled-separator';
         sep.style.cssText = 'grid-column:1/-1;display:flex;align-items:center;gap:10px;margin:4px 0;';
@@ -1504,7 +1504,7 @@ sortMediaCards();
     });
 })();
 
-/* ─── Suppression via menu dropdown ─── */
+/* ─── Deletion through the dropdown menu ─── */
 document.querySelectorAll('.btn-delete').forEach(btn => {
     btn.addEventListener('click', e => {
         e.stopPropagation();
@@ -1526,7 +1526,7 @@ document.querySelectorAll('.btn-delete').forEach(btn => {
     });
 });
 
-/* ─── Onglets paramètres ─── */
+/* ─── Settings tabs ─── */
 document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -1536,7 +1536,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     });
 });
 
-/* ─── Recherche + filtre médias ─── */
+/* ─── Media search and filter ─── */
 (function() {
     const searchInput = document.getElementById('media-search');
     const filterSel   = document.getElementById('media-filter');
@@ -1593,11 +1593,11 @@ document.getElementById('modal').addEventListener('click', e => {
     }
 });
 
-/* ─── Toggle activer/désactiver ─── */
+/* ─── Enable/disable toggle ─── */
 document.querySelectorAll('.btn-toggle').forEach(btn => {
     btn.addEventListener('click', async e => {
         e.stopPropagation();
-        // Fermer le dropdown
+        // Close the dropdown
         btn.closest('.dropdown-menu')?.classList.remove('open');
         const file = btn.dataset.file;
         const res  = await fetch(`/toggle/${encodeURIComponent(file)}`, { method: 'POST' });
@@ -1621,7 +1621,7 @@ document.querySelectorAll('.btn-toggle').forEach(btn => {
     });
 });
 
-/* ─── Durée auto-save ─── */
+/* ─── Duration auto-save ─── */
 document.querySelectorAll('.duration-input').forEach(input => {
     let timer;
     input.addEventListener('input', () => {
@@ -1636,7 +1636,7 @@ document.querySelectorAll('.duration-input').forEach(input => {
     });
 });
 
-/* ─── Compression vidéo ─── */
+/* ─── Video compression ─── */
 document.querySelectorAll('.btn-compress').forEach(btn => {
     btn.addEventListener('click', async e => {
         e.stopPropagation();
@@ -1664,7 +1664,7 @@ document.querySelectorAll('.btn-compress').forEach(btn => {
     });
 });
 
-/* ─── File d'attente ─── */
+/* ─── Queue ─── */
 async function refreshQueue() {
     try {
         const res  = await fetch('/api/queue');
@@ -1732,7 +1732,7 @@ async function cancelJob(id) {
 refreshQueue();
 setInterval(refreshQueue, 30000);
 
-/* ─── Bascule vignettes / liste ─── */
+/* ─── Grid/list view toggle ─── */
 (function() {
     const grid    = document.getElementById('file-grid');
     const btnGrid = document.getElementById('btn-grid');
@@ -1751,7 +1751,7 @@ setInterval(refreshQueue, 30000);
     btnList.addEventListener('click', () => setView('list'));
 })();
 
-/* ─── Regen éphéméride ─── */
+/* ─── Ephemeris regeneration ─── */
 document.getElementById('btn-regen').addEventListener('click', async () => {
     const btn = document.getElementById('btn-regen');
     btn.disabled = true; btn.textContent = 'Régénération…';

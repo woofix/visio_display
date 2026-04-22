@@ -359,16 +359,167 @@ PY
 HOSTNAME_VALUE="$(hostname 2>/dev/null || true)"
 MACHINE_ID="$HOSTNAME_VALUE"
 [ -n "$MACHINE_ID" ] || MACHINE_ID="$(cat /etc/machine-id 2>/dev/null || true)"
+CLIENT_VERSION="2026.04"
 
 payload=$(
-python3 - <<'PY' "$MACHINE_ID" "$HOSTNAME_VALUE" "$SCREEN_NAME" "$SERVER_URL"
-import json, sys
+python3 - <<'PY' "$MACHINE_ID" "$HOSTNAME_VALUE" "$SCREEN_NAME" "$SERVER_URL" "$CLIENT_VERSION"
+import json
+import os
+import shutil
+import subprocess
+import sys
+import time
+
+
+def read_uptime_seconds():
+    try:
+        with open('/proc/uptime', encoding='utf-8') as handle:
+            return int(float(handle.read().split()[0]))
+    except Exception:
+        return None
+
+
+def read_cpu_load_percent():
+    def sample():
+        with open('/proc/stat', encoding='utf-8') as handle:
+            fields = handle.readline().split()[1:]
+        values = [int(field) for field in fields[:8]]
+        idle = values[3] + values[4]
+        total = sum(values)
+        return idle, total
+
+    try:
+        idle_1, total_1 = sample()
+        time.sleep(0.2)
+        idle_2, total_2 = sample()
+        idle_delta = idle_2 - idle_1
+        total_delta = total_2 - total_1
+        if total_delta <= 0:
+            return None
+        usage = (1 - (idle_delta / total_delta)) * 100
+        return round(max(0.0, min(100.0, usage)), 1)
+    except Exception:
+        return None
+
+
+def read_memory():
+    data = {}
+    try:
+        with open('/proc/meminfo', encoding='utf-8') as handle:
+            for line in handle:
+                key, raw_value = line.split(':', 1)
+                data[key] = int(raw_value.strip().split()[0])
+        total_mb = data.get('MemTotal')
+        available_mb = data.get('MemAvailable')
+        if total_mb is None or available_mb is None:
+            return None, None
+        total_mb //= 1024
+        used_mb = max(0, (data['MemTotal'] - data['MemAvailable']) // 1024)
+        return used_mb, total_mb
+    except Exception:
+        return None, None
+
+
+def read_temperature():
+    candidates = []
+    thermal_root = '/sys/class/thermal'
+    try:
+        for name in os.listdir(thermal_root):
+            if not name.startswith('thermal_zone'):
+                continue
+            temp_path = os.path.join(thermal_root, name, 'temp')
+            try:
+                with open(temp_path, encoding='utf-8') as handle:
+                    raw_value = handle.read().strip()
+                if not raw_value:
+                    continue
+                value = float(raw_value)
+                if value > 1000:
+                    value /= 1000.0
+                if 0 < value < 150:
+                    candidates.append(value)
+            except Exception:
+                continue
+    except Exception:
+        return None
+    if not candidates:
+        return None
+    return round(max(candidates), 1)
+
+
+def read_disk():
+    try:
+        usage = shutil.disk_usage('/')
+        total_mb = int(usage.total / (1024 * 1024))
+        free_mb = int(usage.free / (1024 * 1024))
+        return free_mb, total_mb
+    except Exception:
+        return None, None
+
+
+def read_resolution():
+    for path in (
+        '/sys/class/graphics/fb0/virtual_size',
+        '/sys/class/graphics/fb1/virtual_size',
+    ):
+        try:
+            with open(path, encoding='utf-8') as handle:
+                width, height = handle.read().strip().split(',', 1)
+            if width and height:
+                return f'{width}x{height}'
+        except Exception:
+            pass
+
+    drm_root = '/sys/class/drm'
+    try:
+        for name in os.listdir(drm_root):
+            modes_path = os.path.join(drm_root, name, 'modes')
+            try:
+                with open(modes_path, encoding='utf-8') as handle:
+                    first_mode = handle.readline().strip()
+                if first_mode:
+                    return first_mode
+            except Exception:
+                continue
+    except Exception:
+        return ''
+    return ''
+
+
+def detect_last_error():
+    try:
+        result = subprocess.run(
+            ['pgrep', '-f', 'firefox-esr.*--kiosk'],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+        if result.returncode != 0:
+            return 'Kiosk browser not running'
+    except Exception:
+        return ''
+    return ''
+
+
+ram_used_mb, ram_total_mb = read_memory()
+disk_free_mb, disk_total_mb = read_disk()
+
 print(json.dumps({
     "machine_id": sys.argv[1],
     "hostname": sys.argv[2],
     "client_name": sys.argv[3] or sys.argv[2],
     "screen_name": sys.argv[3],
     "server_url": sys.argv[4],
+    "client_version": sys.argv[5],
+    "uptime_seconds": read_uptime_seconds(),
+    "cpu_load_percent": read_cpu_load_percent(),
+    "ram_used_mb": ram_used_mb,
+    "ram_total_mb": ram_total_mb,
+    "temperature_c": read_temperature(),
+    "disk_free_mb": disk_free_mb,
+    "disk_total_mb": disk_total_mb,
+    "resolution": read_resolution(),
+    "last_error": detect_last_error(),
 }))
 PY
 )

@@ -99,8 +99,8 @@
 .install-help { font-size:.76rem; color:var(--text-3); line-height:1.6; }
 .install-note { background:var(--surface-alt); border:1px solid var(--border); border-radius:12px; padding:14px 16px; }
 .known-clients-card { margin-bottom:20px; }
-.known-clients-list { display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 420px)); gap:12px; align-items:start; }
-.known-client-item { border:1px solid var(--border); border-radius:14px; padding:14px; background:var(--surface); display:flex; flex-direction:column; gap:10px; width:100%; }
+.known-clients-list { display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 340px)); gap:12px; align-items:start; }
+.known-client-item { border:1px solid var(--border); border-radius:14px; padding:12px; background:var(--surface); display:flex; flex-direction:column; gap:10px; width:100%; }
 .known-client-head { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
 .known-client-name { font-size:.9rem; font-weight:700; color:var(--text); }
 .known-client-meta { font-size:.74rem; color:var(--text-3); line-height:1.5; }
@@ -109,6 +109,24 @@
 .known-client-badge { font-size:.66rem; font-weight:700; padding:4px 8px; border-radius:999px; background:var(--surface-alt); color:var(--text-2); border:1px solid var(--border); }
 .known-client-badge.online { background:#ecfdf5; color:#166534; border-color:#bbf7d0; }
 .known-client-badge.offline { background:#fef2f2; color:#991b1b; border-color:#fecaca; }
+.known-client-badge.healthy { background:#ecfdf5; color:#166534; border-color:#bbf7d0; }
+.known-client-badge.attention { background:#fffbeb; color:#b45309; border-color:#fde68a; }
+.known-client-badge.critical { background:#fef2f2; color:#991b1b; border-color:#fecaca; }
+.known-client-health { display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
+.known-client-overview { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px; }
+.known-client-overview-item { border:1px solid var(--border); border-radius:10px; padding:8px 9px; background:var(--surface-alt); min-width:0; }
+.known-client-overview-label { font-size:.62rem; font-weight:700; color:var(--text-3); text-transform:uppercase; letter-spacing:.05em; }
+.known-client-overview-value { margin-top:3px; font-size:.78rem; font-weight:700; color:var(--text); line-height:1.3; word-break:break-word; }
+.known-client-details { display:none; flex-direction:column; gap:10px; }
+.known-client-item[data-expanded="true"] .known-client-details { display:flex; }
+.known-client-metrics { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; }
+.known-client-metric { border:1px solid var(--border); border-radius:10px; padding:10px; background:var(--surface-alt); min-width:0; }
+.known-client-metric-label { font-size:.68rem; font-weight:700; color:var(--text-3); text-transform:uppercase; letter-spacing:.05em; }
+.known-client-metric-value { margin-top:4px; font-size:.82rem; font-weight:600; color:var(--text); line-height:1.35; word-break:break-word; }
+.known-client-error { border:1px solid #fecaca; border-radius:10px; background:#fff1f2; color:#9f1239; padding:10px 12px; font-size:.78rem; line-height:1.45; }
+.known-client-error strong { display:block; margin-bottom:4px; font-size:.7rem; text-transform:uppercase; letter-spacing:.05em; }
+.known-client-toggle { align-self:flex-start; padding:0; border:none; background:none; color:var(--primary); font-size:.78rem; font-weight:700; cursor:pointer; }
+.known-client-toggle:hover { text-decoration:underline; }
 .known-client-actions { display:flex; gap:8px; flex-wrap:wrap; }
 .known-clients-empty { font-size:.82rem; color:var(--text-3); }
 .install-status { border-radius:12px; padding:14px 16px; margin-bottom:14px; border:1px solid var(--border); }
@@ -279,33 +297,108 @@
             <p style="font-size:.82rem;color:var(--text-3);margin-bottom:16px">{{ t('known_clients_subtitle') }}</p>
             <div class="known-clients-list" id="known-clients-list">
                 {% for client in known_clients %}
-                <div class="known-client-item" data-client-card data-seconds-left="{{ client.seconds_until_hidden }}">
+                <div class="known-client-item" data-client-card data-expanded="false" data-seconds-left="{{ client.seconds_until_hidden }}">
                     <div class="known-client-head">
                         <div>
                             <div class="known-client-name">{{ client.display_name }}</div>
                             <div class="known-client-meta">
                                 {% if client.hostname %}{{ t('known_clients_hostname') }} {{ client.hostname }}<br>{% endif %}
-                                {% if client.screen_name %}{{ t('known_clients_screen') }} {{ client.screen_name }}<br>{% endif %}
-                                {{ t('known_clients_last_seen') }} {{ client.last_seen_relative }}<br>
+                                {{ t('known_clients_last_seen') }} <span data-client-last-seen data-last-seen="{{ client.last_seen }}">{{ client.last_seen_relative }}</span><br>
                                 {{ t('known_clients_countdown') }} <span data-client-countdown>{{ client.seconds_until_hidden }}s</span>
                             </div>
                         </div>
-                        <span class="known-client-badge {% if client.is_online %}online{% else %}offline{% endif %}">
-                            {{ t('known_clients_status_online') if client.is_online else t('known_clients_status_offline') }}
-                        </span>
+                        <div class="known-client-health">
+                            <span class="known-client-badge {% if client.is_online %}online{% else %}offline{% endif %}">
+                                {{ t('known_clients_status_online') if client.is_online else t('known_clients_status_offline') }}
+                            </span>
+                            <span class="known-client-badge {{ client.health_status }}">
+                                {{ t('known_clients_health_' ~ client.health_status) }}
+                            </span>
+                        </div>
                     </div>
                     <div class="known-client-ip">{{ client.ip_address or 'IP inconnue' }}</div>
                     <div class="known-client-badges">
                         {% if client.server_url %}<span class="known-client-badge">{{ client.server_url }}</span>{% endif %}
                         {% if client.machine_id %}<span class="known-client-badge">{{ client.machine_id }}</span>{% endif %}
                     </div>
-                    <div class="known-client-actions">
-                        <button type="button" class="btn secondary sm btn-use-client"
-                                data-target-form="install-client-form"
-                                data-host="{{ client.ip_address }}">{{ t('known_clients_use_install') }}</button>
-                        <button type="button" class="btn sm btn-use-client"
-                                data-target-form="client-control-form"
-                                data-host="{{ client.ip_address }}">{{ t('known_clients_use_control') }}</button>
+                    <div class="known-client-overview">
+                        <div class="known-client-overview-item">
+                            <div class="known-client-overview-label">{{ t('known_clients_cpu') }}</div>
+                            <div class="known-client-overview-value">{{ ('%.1f%%'|format(client.cpu_load_percent)) if client.cpu_load_percent is not none else t('known_clients_unavailable') }}</div>
+                        </div>
+                        <div class="known-client-overview-item">
+                            <div class="known-client-overview-label">{{ t('known_clients_ram') }}</div>
+                            <div class="known-client-overview-value">{{ ('%.1f%%'|format(client.ram_percent)) if client.ram_percent is not none else t('known_clients_unavailable') }}</div>
+                        </div>
+                        <div class="known-client-overview-item">
+                            <div class="known-client-overview-label">{{ t('known_clients_uptime') }}</div>
+                            <div class="known-client-overview-value">{{ client.uptime_human or t('known_clients_unavailable') }}</div>
+                        </div>
+                    </div>
+                    <button type="button" class="known-client-toggle" data-client-toggle aria-expanded="false">
+                        {{ t('known_clients_show_details') }}
+                    </button>
+                    <div class="known-client-details">
+                        <div class="known-client-metrics">
+                            <div class="known-client-metric">
+                                <div class="known-client-metric-label">{{ t('known_clients_screen') }}</div>
+                                <div class="known-client-metric-value">{{ client.screen_name or t('known_clients_unavailable') }}</div>
+                            </div>
+                            <div class="known-client-metric">
+                                <div class="known-client-metric-label">{{ t('known_clients_version') }}</div>
+                                <div class="known-client-metric-value">{{ client.client_version or t('known_clients_unavailable') }}</div>
+                            </div>
+                            <div class="known-client-metric">
+                                <div class="known-client-metric-label">{{ t('known_clients_uptime') }}</div>
+                                <div class="known-client-metric-value">{{ client.uptime_human or t('known_clients_unavailable') }}</div>
+                            </div>
+                            <div class="known-client-metric">
+                                <div class="known-client-metric-label">{{ t('known_clients_resolution') }}</div>
+                                <div class="known-client-metric-value">{{ client.resolution or t('known_clients_unavailable') }}</div>
+                            </div>
+                            <div class="known-client-metric">
+                                <div class="known-client-metric-label">{{ t('known_clients_cpu') }}</div>
+                                <div class="known-client-metric-value">{{ ('%.1f%%'|format(client.cpu_load_percent)) if client.cpu_load_percent is not none else t('known_clients_unavailable') }}</div>
+                            </div>
+                            <div class="known-client-metric">
+                                <div class="known-client-metric-label">{{ t('known_clients_temperature') }}</div>
+                                <div class="known-client-metric-value">{{ ('%.1f °C'|format(client.temperature_c)) if client.temperature_c is not none else t('known_clients_unavailable') }}</div>
+                            </div>
+                            <div class="known-client-metric">
+                                <div class="known-client-metric-label">{{ t('known_clients_ram') }}</div>
+                                <div class="known-client-metric-value">
+                                    {% if client.ram_used_human and client.ram_total_human %}
+                                        {{ client.ram_used_human }} / {{ client.ram_total_human }}{% if client.ram_percent is not none %} ({{ '%.1f%%'|format(client.ram_percent) }}){% endif %}
+                                    {% else %}
+                                        {{ t('known_clients_unavailable') }}
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="known-client-metric">
+                                <div class="known-client-metric-label">{{ t('known_clients_disk') }}</div>
+                                <div class="known-client-metric-value">
+                                    {% if client.disk_free_human and client.disk_total_human %}
+                                        {{ client.disk_free_human }} {{ t('known_clients_disk_free_suffix') }} / {{ client.disk_total_human }}{% if client.disk_percent is not none %} ({{ '%.1f%%'|format(client.disk_percent) }}){% endif %}
+                                    {% else %}
+                                        {{ t('known_clients_unavailable') }}
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% if client.last_error %}
+                        <div class="known-client-error">
+                            <strong>{{ t('known_clients_last_error') }}</strong>
+                            {{ client.last_error }}
+                        </div>
+                        {% endif %}
+                        <div class="known-client-actions">
+                            <button type="button" class="btn secondary sm btn-use-client"
+                                    data-target-form="install-client-form"
+                                    data-host="{{ client.ip_address }}">{{ t('known_clients_use_install') }}</button>
+                            <button type="button" class="btn sm btn-use-client"
+                                    data-target-form="client-control-form"
+                                    data-host="{{ client.ip_address }}">{{ t('known_clients_use_control') }}</button>
+                        </div>
                     </div>
                 </div>
                 {% endfor %}
@@ -377,7 +470,13 @@
                         <input type="hidden" name="action" id="client-action-input" value="">
                         <div>
                             <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('install_host_label') }}</label>
-                            <input type="text" name="host" value="{{ client_control_defaults.host }}" placeholder="{{ t('install_host_placeholder') }}" required>
+                            <select name="host" required {% if not known_clients %}disabled{% endif %}>
+                                {% for client in known_clients if client.ip_address %}
+                                <option value="{{ client.ip_address }}" {% if client_control_defaults.host == client.ip_address or (not client_control_defaults.host and loop.first) %}selected{% endif %}>
+                                    {{ client.ip_address }}{% if client.display_name %} - {{ client.display_name }}{% endif %}{% if client.hostname %} ({{ client.hostname }}){% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
                         </div>
                         <div class="settings-two-col">
                             <div>
@@ -408,6 +507,12 @@
                             </button>
                             <button type="submit" class="btn sm" data-action-value="restart" id="client-restart-btn">
                                 <span id="client-restart-label">{{ t('client_control_restart') }}</span>
+                            </button>
+                            <button type="submit" class="btn sm" data-action-value="update" id="client-update-btn">
+                                <span id="client-update-label">{{ t('client_control_update') }}</span>
+                            </button>
+                            <button type="submit" class="btn sm" data-action-value="os-update" id="client-os-update-btn">
+                                <span id="client-os-update-label">{{ t('client_control_os_update') }}</span>
                             </button>
                         </div>
                     </form>
@@ -721,6 +826,21 @@
         countdown: {{ t('known_clients_countdown') | tojson }},
         online: {{ t('known_clients_status_online') | tojson }},
         offline: {{ t('known_clients_status_offline') | tojson }},
+        healthy: {{ t('known_clients_health_healthy') | tojson }},
+        attention: {{ t('known_clients_health_attention') | tojson }},
+        critical: {{ t('known_clients_health_critical') | tojson }},
+        version: {{ t('known_clients_version') | tojson }},
+        uptime: {{ t('known_clients_uptime') | tojson }},
+        cpu: {{ t('known_clients_cpu') | tojson }},
+        ram: {{ t('known_clients_ram') | tojson }},
+        temperature: {{ t('known_clients_temperature') | tojson }},
+        disk: {{ t('known_clients_disk') | tojson }},
+        resolution: {{ t('known_clients_resolution') | tojson }},
+        lastError: {{ t('known_clients_last_error') | tojson }},
+        unavailable: {{ t('known_clients_unavailable') | tojson }},
+        showDetails: {{ t('known_clients_show_details') | tojson }},
+        hideDetails: {{ t('known_clients_hide_details') | tojson }},
+        diskFreeSuffix: {{ t('known_clients_disk_free_suffix') | tojson }},
         useInstall: {{ t('known_clients_use_install') | tojson }},
         useControl: {{ t('known_clients_use_control') | tojson }},
         empty: {{ t('known_clients_empty') | tojson }},
@@ -733,6 +853,20 @@
         const remain = safe % 60;
         if (minutes <= 0) return `${remain}s`;
         return `${minutes}m ${String(remain).padStart(2, '0')}s`;
+    };
+
+    const formatLastSeen = (value) => {
+        if (!value) return '';
+        const ts = Date.parse(value);
+        if (Number.isNaN(ts)) return '';
+        const deltaSeconds = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+        if (deltaSeconds < 60) return `${deltaSeconds}s`;
+        const minutes = Math.floor(deltaSeconds / 60);
+        if (minutes < 60) return `${minutes} min`;
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `${hours} h`;
+        const days = Math.floor(hours / 24);
+        return `${days} j`;
     };
 
     const syncEmptyState = () => {
@@ -761,32 +895,124 @@
         });
     };
 
+    const bindClientDetailsToggles = (root) => {
+        root.querySelectorAll('[data-client-toggle]').forEach((btn) => {
+            if (btn.dataset.bound === '1') return;
+            btn.dataset.bound = '1';
+            btn.addEventListener('click', () => {
+                const card = btn.closest('[data-client-card]');
+                if (!card) return;
+                const expanded = card.dataset.expanded === 'true';
+                card.dataset.expanded = expanded ? 'false' : 'true';
+                btn.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+                btn.textContent = expanded ? texts.showDetails : texts.hideDetails;
+            });
+        });
+    };
+
+    const formatPercent = (value) => Number.isFinite(Number(value)) ? `${Number(value).toFixed(1)}%` : texts.unavailable;
+    const formatTemperature = (value) => Number.isFinite(Number(value)) ? `${Number(value).toFixed(1)} °C` : texts.unavailable;
+    const formatRam = (client) => {
+        if (!client.ram_used_human || !client.ram_total_human) return texts.unavailable;
+        const percent = Number.isFinite(Number(client.ram_percent)) ? ` (${Number(client.ram_percent).toFixed(1)}%)` : '';
+        return `${client.ram_used_human} / ${client.ram_total_human}${percent}`;
+    };
+    const formatDisk = (client) => {
+        if (!client.disk_free_human || !client.disk_total_human) return texts.unavailable;
+        const percent = Number.isFinite(Number(client.disk_percent)) ? ` (${Number(client.disk_percent).toFixed(1)}%)` : '';
+        return `${client.disk_free_human} ${texts.diskFreeSuffix} / ${client.disk_total_human}${percent}`;
+    };
+    const healthLabel = (status) => texts[status] || texts.healthy;
+    const formatSummaryRam = (client) => Number.isFinite(Number(client.ram_percent))
+        ? `${Number(client.ram_percent).toFixed(1)}%`
+        : texts.unavailable;
+
     const renderClientCard = (client) => {
         const meta = [];
         if (client.hostname) meta.push(`${escapeHtml(texts.hostname)} ${escapeHtml(client.hostname)}`);
-        if (client.screen_name) meta.push(`${escapeHtml(texts.screen)} ${escapeHtml(client.screen_name)}`);
-        meta.push(`${escapeHtml(texts.lastSeen)} ${escapeHtml(client.last_seen_relative || '')}`);
+        meta.push(
+            `${escapeHtml(texts.lastSeen)} <span data-client-last-seen data-last-seen="${escapeHtml(client.last_seen || '')}">${escapeHtml(formatLastSeen(client.last_seen) || client.last_seen_relative || '')}</span>`
+        );
         meta.push(`${escapeHtml(texts.countdown)} <span data-client-countdown>${formatCountdown(client.seconds_until_hidden)}</span>`);
 
         return `
-            <div class="known-client-item" data-client-card data-seconds-left="${Number(client.seconds_until_hidden) || 0}">
+            <div class="known-client-item" data-client-card data-expanded="false" data-seconds-left="${Number(client.seconds_until_hidden) || 0}">
                 <div class="known-client-head">
                     <div>
                         <div class="known-client-name">${escapeHtml(client.display_name || '')}</div>
                         <div class="known-client-meta">${meta.join('<br>')}</div>
                     </div>
-                    <span class="known-client-badge ${client.is_online ? 'online' : 'offline'}">
-                        ${escapeHtml(client.is_online ? texts.online : texts.offline)}
-                    </span>
+                    <div class="known-client-health">
+                        <span class="known-client-badge ${client.is_online ? 'online' : 'offline'}">
+                            ${escapeHtml(client.is_online ? texts.online : texts.offline)}
+                        </span>
+                        <span class="known-client-badge ${escapeHtml(client.health_status || 'healthy')}">
+                            ${escapeHtml(healthLabel(client.health_status || 'healthy'))}
+                        </span>
+                    </div>
                 </div>
                 <div class="known-client-ip">${escapeHtml(client.ip_address || texts.unknownIp)}</div>
                 <div class="known-client-badges">
                     ${client.server_url ? `<span class="known-client-badge">${escapeHtml(client.server_url)}</span>` : ''}
                     ${client.machine_id ? `<span class="known-client-badge">${escapeHtml(client.machine_id)}</span>` : ''}
                 </div>
-                <div class="known-client-actions">
-                    <button type="button" class="btn secondary sm btn-use-client" data-target-form="install-client-form" data-host="${escapeHtml(client.ip_address || '')}">${escapeHtml(texts.useInstall)}</button>
-                    <button type="button" class="btn sm btn-use-client" data-target-form="client-control-form" data-host="${escapeHtml(client.ip_address || '')}">${escapeHtml(texts.useControl)}</button>
+                <div class="known-client-overview">
+                    <div class="known-client-overview-item">
+                        <div class="known-client-overview-label">${escapeHtml(texts.cpu)}</div>
+                        <div class="known-client-overview-value">${escapeHtml(formatPercent(client.cpu_load_percent))}</div>
+                    </div>
+                    <div class="known-client-overview-item">
+                        <div class="known-client-overview-label">${escapeHtml(texts.ram)}</div>
+                        <div class="known-client-overview-value">${escapeHtml(formatSummaryRam(client))}</div>
+                    </div>
+                    <div class="known-client-overview-item">
+                        <div class="known-client-overview-label">${escapeHtml(texts.uptime)}</div>
+                        <div class="known-client-overview-value">${escapeHtml(client.uptime_human || texts.unavailable)}</div>
+                    </div>
+                </div>
+                <button type="button" class="known-client-toggle" data-client-toggle aria-expanded="false">
+                    ${escapeHtml(texts.showDetails)}
+                </button>
+                <div class="known-client-details">
+                    <div class="known-client-metrics">
+                        <div class="known-client-metric">
+                            <div class="known-client-metric-label">${escapeHtml(texts.screen)}</div>
+                            <div class="known-client-metric-value">${escapeHtml(client.screen_name || texts.unavailable)}</div>
+                        </div>
+                        <div class="known-client-metric">
+                            <div class="known-client-metric-label">${escapeHtml(texts.version)}</div>
+                            <div class="known-client-metric-value">${escapeHtml(client.client_version || texts.unavailable)}</div>
+                        </div>
+                        <div class="known-client-metric">
+                            <div class="known-client-metric-label">${escapeHtml(texts.uptime)}</div>
+                            <div class="known-client-metric-value">${escapeHtml(client.uptime_human || texts.unavailable)}</div>
+                        </div>
+                        <div class="known-client-metric">
+                            <div class="known-client-metric-label">${escapeHtml(texts.resolution)}</div>
+                            <div class="known-client-metric-value">${escapeHtml(client.resolution || texts.unavailable)}</div>
+                        </div>
+                        <div class="known-client-metric">
+                            <div class="known-client-metric-label">${escapeHtml(texts.cpu)}</div>
+                            <div class="known-client-metric-value">${escapeHtml(formatPercent(client.cpu_load_percent))}</div>
+                        </div>
+                        <div class="known-client-metric">
+                            <div class="known-client-metric-label">${escapeHtml(texts.temperature)}</div>
+                            <div class="known-client-metric-value">${escapeHtml(formatTemperature(client.temperature_c))}</div>
+                        </div>
+                        <div class="known-client-metric">
+                            <div class="known-client-metric-label">${escapeHtml(texts.ram)}</div>
+                            <div class="known-client-metric-value">${escapeHtml(formatRam(client))}</div>
+                        </div>
+                        <div class="known-client-metric">
+                            <div class="known-client-metric-label">${escapeHtml(texts.disk)}</div>
+                            <div class="known-client-metric-value">${escapeHtml(formatDisk(client))}</div>
+                        </div>
+                    </div>
+                    ${client.last_error ? `<div class="known-client-error"><strong>${escapeHtml(texts.lastError)}</strong>${escapeHtml(client.last_error)}</div>` : ''}
+                    <div class="known-client-actions">
+                        <button type="button" class="btn secondary sm btn-use-client" data-target-form="install-client-form" data-host="${escapeHtml(client.ip_address || '')}">${escapeHtml(texts.useInstall)}</button>
+                        <button type="button" class="btn sm btn-use-client" data-target-form="client-control-form" data-host="${escapeHtml(client.ip_address || '')}">${escapeHtml(texts.useControl)}</button>
+                    </div>
                 </div>
             </div>
         `;
@@ -796,11 +1022,16 @@
         if (card.dataset.timerBound === '1') return;
         card.dataset.timerBound = '1';
         const countdown = card.querySelector('[data-client-countdown]');
+        const lastSeen = card.querySelector('[data-client-last-seen]');
         let secondsLeft = Number(card.dataset.secondsLeft || 0);
         if (countdown) countdown.textContent = formatCountdown(secondsLeft);
+        if (lastSeen) lastSeen.textContent = formatLastSeen(lastSeen.dataset.lastSeen || '') || lastSeen.textContent;
 
         const timer = window.setInterval(() => {
             secondsLeft -= 1;
+            if (lastSeen) {
+                lastSeen.textContent = formatLastSeen(lastSeen.dataset.lastSeen || '') || lastSeen.textContent;
+            }
             if (secondsLeft <= 0) {
                 window.clearInterval(timer);
                 card.remove();
@@ -816,12 +1047,14 @@
         list.innerHTML = (clients || []).map(renderClientCard).join('');
         list.querySelectorAll('[data-client-card]').forEach(startCountdown);
         bindUseClientButtons(list);
+        bindClientDetailsToggles(list);
         syncEmptyState();
     };
 
     list.querySelectorAll('[data-client-card]').forEach((card) => {
         startCountdown(card);
     });
+    bindClientDetailsToggles(list);
 
     syncEmptyState();
 
@@ -871,16 +1104,26 @@ document.querySelectorAll('.theme-card input[type=radio]').forEach(radio => {
     const form = document.getElementById('client-control-form');
     const shutdownBtn = document.getElementById('client-shutdown-btn');
     const restartBtn = document.getElementById('client-restart-btn');
+    const updateBtn = document.getElementById('client-update-btn');
+    const osUpdateBtn = document.getElementById('client-os-update-btn');
     const shutdownLabel = document.getElementById('client-shutdown-label');
     const restartLabel = document.getElementById('client-restart-label');
+    const updateLabel = document.getElementById('client-update-label');
+    const osUpdateLabel = document.getElementById('client-os-update-label');
     const actionInput = document.getElementById('client-action-input');
-    if (!form || !shutdownBtn || !restartBtn || !shutdownLabel || !restartLabel || !actionInput) return;
+    if (!form || !shutdownBtn || !restartBtn || !updateBtn || !osUpdateBtn || !shutdownLabel || !restartLabel || !updateLabel || !osUpdateLabel || !actionInput) return;
 
     shutdownBtn.addEventListener('click', () => {
         actionInput.value = 'shutdown';
     });
     restartBtn.addEventListener('click', () => {
         actionInput.value = 'restart';
+    });
+    updateBtn.addEventListener('click', () => {
+        actionInput.value = 'update';
+    });
+    osUpdateBtn.addEventListener('click', () => {
+        actionInput.value = 'os-update';
     });
 
     form.addEventListener('submit', event => {
@@ -891,13 +1134,21 @@ document.querySelectorAll('.theme-card input[type=radio]').forEach(radio => {
 
         shutdownBtn.disabled = true;
         restartBtn.disabled = true;
+        updateBtn.disabled = true;
+        osUpdateBtn.disabled = true;
         shutdownBtn.classList.add('loading');
         restartBtn.classList.add('loading');
+        updateBtn.classList.add('loading');
+        osUpdateBtn.classList.add('loading');
 
         if (actionValue === 'shutdown') {
             shutdownLabel.innerHTML = `<span class="btn-spinner"></span> {{ t('client_control_shutdown_loading') }}`;
-        } else {
+        } else if (actionValue === 'restart') {
             restartLabel.innerHTML = `<span class="btn-spinner"></span> {{ t('client_control_restart_loading') }}`;
+        } else if (actionValue === 'update') {
+            updateLabel.innerHTML = `<span class="btn-spinner"></span> {{ t('client_control_update_loading') }}`;
+        } else {
+            osUpdateLabel.innerHTML = `<span class="btn-spinner"></span> {{ t('client_control_os_update_loading') }}`;
         }
     });
 })();

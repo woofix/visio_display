@@ -277,6 +277,20 @@ Le script configure automatiquement l'autologin, le mode kiosque, le nom d'hôte
 
 Dans l'onglet **Paramètres > Installation client**, la zone **Clients détectés** se met à jour automatiquement. Les nouvelles installations remontent leur IP, leur nom de machine et leur écran environ toutes les 30 secondes.
 
+### Contrôle client distant
+
+> **Droit requis :** super-admin
+
+Depuis **Paramètres > Installation client**, la zone **Contrôle client** permet d’agir directement sur un poste déjà connu :
+
+- l’hôte se choisit dans la liste des clients détectés ; ce formulaire n’accepte pas de saisie libre d’IP ;
+- **Arrêter le client** envoie une commande d’arrêt immédiate ;
+- **Redémarrer le client** envoie une commande de redémarrage immédiate ;
+- **Réinstaller le client** relance le script d’installation du poste ;
+- **Mettre à jour Debian** lance la mise à jour système du poste.
+
+> **Attention :** la réinstallation du client n’est pas une simple mise à jour système ; elle relance bien la procédure d’installation du client d’affichage.
+
 ---
 
 ## 9. La carte éphéméride

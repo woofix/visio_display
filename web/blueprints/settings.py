@@ -25,7 +25,12 @@ from services.media_svc import is_safe_svg_file, is_valid_uploaded_image
 from services.i18n import _flash, _t
 from blueprints.guards import admin_guard, superadmin_guard
 from services.ephemeris_svc import get_school_zone
-from services.deploy_svc import deploy_client_install, deploy_client_power_action
+from services.deploy_svc import (
+    deploy_client_install,
+    deploy_client_os_update,
+    deploy_client_power_action,
+    deploy_client_update,
+)
 
 bp = Blueprint('settings', __name__)
 
@@ -258,7 +263,7 @@ def control_client_power():
         _flash('flash_install_invalid_port', 'error')
         return redirect(url_for('settings.admin_settings_page') + '?tab=installation')
 
-    if action not in {'shutdown', 'restart'}:
+    if action not in {'shutdown', 'restart', 'update', 'os-update'}:
         _flash('flash_client_control_invalid_action', 'error')
         return redirect(url_for('settings.admin_settings_page') + '?tab=installation')
     if not host or not ssh_user or not ssh_password:
@@ -268,14 +273,31 @@ def control_client_power():
         _flash('flash_install_missing_sudo_password', 'error')
         return redirect(url_for('settings.admin_settings_page') + '?tab=installation')
 
-    client_control_result = deploy_client_power_action(
-        host=host,
-        port=port,
-        ssh_user=ssh_user,
-        action=action,
-        ssh_password=ssh_password,
-        sudo_password=sudo_password,
-    )
+    if action == 'update':
+        client_control_result = deploy_client_update(
+            host=host,
+            port=port,
+            ssh_user=ssh_user,
+            ssh_password=ssh_password,
+            sudo_password=sudo_password,
+        )
+    elif action == 'os-update':
+        client_control_result = deploy_client_os_update(
+            host=host,
+            port=port,
+            ssh_user=ssh_user,
+            ssh_password=ssh_password,
+            sudo_password=sudo_password,
+        )
+    else:
+        client_control_result = deploy_client_power_action(
+            host=host,
+            port=port,
+            ssh_user=ssh_user,
+            action=action,
+            ssh_password=ssh_password,
+            sudo_password=sudo_password,
+        )
     client_control_result['summary'] = _t(client_control_result.get('summary_key', ''))
 
     if client_control_result.get('ok'):

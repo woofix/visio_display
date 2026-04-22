@@ -9,6 +9,7 @@ import shutil
 from datetime import timedelta
 
 from flask import abort, redirect, render_template, request, session, url_for
+from sqlalchemy import inspect, text
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 import constants as C
@@ -31,6 +32,20 @@ from translations import TRANSLATIONS
 
 
 LOGGER = logging.getLogger(__name__)
+
+
+CLIENT_HEARTBEAT_EXTRA_COLUMNS = {
+    "client_version": "VARCHAR(64) NOT NULL DEFAULT ''",
+    "uptime_seconds": "INTEGER",
+    "cpu_load_percent": "FLOAT",
+    "ram_used_mb": "INTEGER",
+    "ram_total_mb": "INTEGER",
+    "temperature_c": "FLOAT",
+    "disk_free_mb": "INTEGER",
+    "disk_total_mb": "INTEGER",
+    "resolution": "VARCHAR(64) NOT NULL DEFAULT ''",
+    "last_error": "VARCHAR(512) NOT NULL DEFAULT ''",
+}
 
 
 def env_flag(name, default=False):
@@ -146,6 +161,37 @@ def migrate_from_json():
         LOGGER.exception("Unable to migrate queue.json into database")
 
 
+def migrate_client_heartbeats_schema():
+    try:
+        inspector = inspect(db.engine)
+        existing_columns = {
+            column["name"]
+            for column in inspector.get_columns("client_heartbeats")
+        }
+    except Exception:
+        LOGGER.exception("Unable to inspect client_heartbeats schema")
+        return
+
+    if not existing_columns:
+        return
+    changed = False
+    for column_name, column_sql in CLIENT_HEARTBEAT_EXTRA_COLUMNS.items():
+        if column_name in existing_columns:
+            continue
+        try:
+            db.session.execute(
+                text(f"ALTER TABLE client_heartbeats ADD COLUMN {column_name} {column_sql}")
+            )
+            changed = True
+        except Exception:
+            db.session.rollback()
+            LOGGER.exception("Unable to add column %s to client_heartbeats", column_name)
+            return
+
+    if changed:
+        db.session.commit()
+
+
 def get_csrf_token():
     token = session.get("_csrf_token")
     if not token:
@@ -210,6 +256,7 @@ def initialize_database(app):
     db.init_app(app)
     with app.app_context():
         db.create_all()
+        migrate_client_heartbeats_schema()
         migrate_from_json()
         init_users()
         harden_private_storage_permissions()

@@ -6,6 +6,8 @@ import unittest
 from importlib import import_module
 from unittest.mock import patch
 
+from sqlalchemy import text
+
 
 class FakeRedis:
     def __init__(self):
@@ -150,6 +152,56 @@ class AppSmokeTests(unittest.TestCase):
             self.assertIn("hall", cfg["screens"])
             self.assertIn("disabled", cfg["screens"]["hall"])
             self.assertFalse(cfg["features"]["upload"])
+
+    def test_client_heartbeat_schema_contains_extended_columns(self):
+        with self.app.app_context():
+            from db import db
+
+            rows = db.session.execute(text("PRAGMA table_info(client_heartbeats)")).mappings().all()
+            columns = {row["name"] for row in rows}
+
+        self.assertIn("client_version", columns)
+        self.assertIn("cpu_load_percent", columns)
+        self.assertIn("last_error", columns)
+        self.assertIn("resolution", columns)
+
+    def test_client_heartbeat_api_accepts_machine_status_fields(self):
+        response = self.client.post(
+            "/api/client-heartbeat",
+            json={
+                "machine_id": "screen-01",
+                "hostname": "screen-01",
+                "client_name": "Hall",
+                "screen_name": "hall",
+                "server_url": "https://example.test",
+                "client_version": "2026.04",
+                "uptime_seconds": 3661,
+                "cpu_load_percent": 81.2,
+                "ram_used_mb": 512,
+                "ram_total_mb": 1024,
+                "temperature_c": 72.5,
+                "disk_free_mb": 2048,
+                "disk_total_mb": 8192,
+                "resolution": "1920x1080",
+                "last_error": "Kiosk browser not running",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertTrue(payload["ok"])
+
+        with self.app.app_context():
+            from services.clients_svc import list_known_clients
+
+            clients = list_known_clients()
+
+        self.assertEqual(len(clients), 1)
+        client = clients[0]
+        self.assertEqual(client["client_version"], "2026.04")
+        self.assertEqual(client["resolution"], "1920x1080")
+        self.assertEqual(client["health_status"], "critical")
+        self.assertEqual(client["last_error"], "Kiosk browser not running")
 
 
 if __name__ == "__main__":

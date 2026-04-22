@@ -14,6 +14,32 @@ def _clean_text(value, max_len=128):
     return " ".join(str(value or "").split())[:max_len]
 
 
+def _clean_resolution(value):
+    return _clean_text(value, 64)
+
+
+def _clean_error(value):
+    return _clean_text(value, 512)
+
+
+def _clean_int(value):
+    if value in (None, ''):
+        return None
+    try:
+        return max(0, int(float(value)))
+    except (TypeError, ValueError):
+        return None
+
+
+def _clean_float(value):
+    if value in (None, ''):
+        return None
+    try:
+        return round(float(value), 1)
+    except (TypeError, ValueError):
+        return None
+
+
 def _now_iso():
     return datetime.now(UTC).isoformat(timespec='seconds')
 
@@ -73,6 +99,82 @@ def _relative_last_seen(last_seen):
     return f'{days} d ago'
 
 
+def _percent(numerator, denominator):
+    if numerator is None or denominator in (None, 0):
+        return None
+    return round((numerator / denominator) * 100, 1)
+
+
+def _format_mb(value):
+    if value is None:
+        return None
+    if value >= 1024:
+        return f'{value / 1024:.1f} GB'
+    return f'{value} MB'
+
+
+def _format_duration(seconds):
+    if seconds is None:
+        return None
+    seconds = max(0, int(seconds))
+    days, remainder = divmod(seconds, 86400)
+    hours, remainder = divmod(remainder, 3600)
+    minutes, _seconds = divmod(remainder, 60)
+    if days:
+        return f'{days}d {hours}h'
+    if hours:
+        return f'{hours}h {minutes}m'
+    if minutes:
+        return f'{minutes}m'
+    return f'{_seconds}s'
+
+
+def _health_status(item):
+    ram_percent = _percent(item.get('ram_used_mb'), item.get('ram_total_mb'))
+    disk_used_mb = None
+    if item.get('disk_total_mb') is not None and item.get('disk_free_mb') is not None:
+        disk_used_mb = max(0, item['disk_total_mb'] - item['disk_free_mb'])
+    disk_percent = _percent(disk_used_mb, item.get('disk_total_mb'))
+    cpu_percent = item.get('cpu_load_percent')
+    temperature = item.get('temperature_c')
+    last_error = bool((item.get('last_error') or '').strip())
+
+    critical = (
+        last_error
+        or (cpu_percent is not None and cpu_percent >= 90)
+        or (ram_percent is not None and ram_percent >= 95)
+        or (disk_percent is not None and disk_percent >= 95)
+        or (temperature is not None and temperature >= 80)
+    )
+    if critical:
+        return 'critical'
+
+    attention = (
+        (cpu_percent is not None and cpu_percent >= 75)
+        or (ram_percent is not None and ram_percent >= 85)
+        or (disk_percent is not None and disk_percent >= 85)
+        or (temperature is not None and temperature >= 70)
+    )
+    if attention:
+        return 'attention'
+    return 'healthy'
+
+
+def _decorate_client(item):
+    item['ram_percent'] = _percent(item.get('ram_used_mb'), item.get('ram_total_mb'))
+    item['disk_used_mb'] = None
+    if item.get('disk_total_mb') is not None and item.get('disk_free_mb') is not None:
+        item['disk_used_mb'] = max(0, item['disk_total_mb'] - item['disk_free_mb'])
+    item['disk_percent'] = _percent(item.get('disk_used_mb'), item.get('disk_total_mb'))
+    item['uptime_human'] = _format_duration(item.get('uptime_seconds'))
+    item['ram_used_human'] = _format_mb(item.get('ram_used_mb'))
+    item['ram_total_human'] = _format_mb(item.get('ram_total_mb'))
+    item['disk_free_human'] = _format_mb(item.get('disk_free_mb'))
+    item['disk_total_human'] = _format_mb(item.get('disk_total_mb'))
+    item['health_status'] = _health_status(item)
+    return item
+
+
 def prune_stale_clients():
     cutoff = datetime.now(UTC) - RETENTION_WINDOW
     for row in ClientHeartbeat.query.all():
@@ -83,7 +185,12 @@ def prune_stale_clients():
 
 
 def record_client_heartbeat(machine_id, hostname='', client_name='', screen_name='',
-                            ip_address='', server_url=''):
+                            ip_address='', server_url='', client_version='',
+                            uptime_seconds=None, cpu_load_percent=None,
+                            ram_used_mb=None, ram_total_mb=None,
+                            temperature_c=None, disk_free_mb=None,
+                            disk_total_mb=None, resolution='',
+                            last_error=''):
     machine_id = _clean_text(machine_id, 128)
     if not machine_id:
         return None
@@ -98,9 +205,19 @@ def record_client_heartbeat(machine_id, hostname='', client_name='', screen_name
     row.screen_name = _clean_text(screen_name, 128)
     row.ip_address = _clean_text(ip_address, 64)
     row.server_url = _clean_text(server_url, 512)
+    row.client_version = _clean_text(client_version, 64)
+    row.uptime_seconds = _clean_int(uptime_seconds)
+    row.cpu_load_percent = _clean_float(cpu_load_percent)
+    row.ram_used_mb = _clean_int(ram_used_mb)
+    row.ram_total_mb = _clean_int(ram_total_mb)
+    row.temperature_c = _clean_float(temperature_c)
+    row.disk_free_mb = _clean_int(disk_free_mb)
+    row.disk_total_mb = _clean_int(disk_total_mb)
+    row.resolution = _clean_resolution(resolution)
+    row.last_error = _clean_error(last_error)
     row.last_seen = _now_iso()
     db.session.commit()
-    return row.to_dict()
+    return _decorate_client(row.to_dict())
 
 
 def list_known_clients():
@@ -113,6 +230,7 @@ def list_known_clients():
         item['is_online'] = bool(seen_at and now - seen_at <= ONLINE_TTL)
         item['display_name'] = _display_name(item)
         item['last_seen_relative'] = _relative_last_seen(item.get('last_seen'))
+        _decorate_client(item)
         key = _logical_client_key(item)
         current = clients_by_key.get(key)
         if current is None:
@@ -134,6 +252,16 @@ def list_known_clients():
             'ip_address',
             'server_url',
             'machine_id',
+            'client_version',
+            'uptime_seconds',
+            'cpu_load_percent',
+            'ram_used_mb',
+            'ram_total_mb',
+            'temperature_c',
+            'disk_free_mb',
+            'disk_total_mb',
+            'resolution',
+            'last_error',
         ):
             if not merged.get(field) and secondary.get(field):
                 merged[field] = secondary[field]
@@ -142,6 +270,7 @@ def list_known_clients():
             preferred.get('is_online') or secondary.get('is_online')
         )
         merged['last_seen_relative'] = _relative_last_seen(merged.get('last_seen'))
+        _decorate_client(merged)
         clients_by_key[key] = merged
 
     visible_clients = []
@@ -155,6 +284,7 @@ def list_known_clients():
             0,
             int((ONLINE_TTL - (now - seen_at)).total_seconds()),
         )
+        _decorate_client(item)
         visible_clients.append(item)
 
     return sorted(

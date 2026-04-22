@@ -109,6 +109,16 @@ class ClientHeartbeat(db.Model):
     screen_name = db.Column(db.String(128), nullable=False, default='')
     ip_address  = db.Column(db.String(64), nullable=False, default='')
     server_url  = db.Column(db.String(512), nullable=False, default='')
+    client_version = db.Column(db.String(64), nullable=False, default='')
+    uptime_seconds = db.Column(db.Integer, nullable=True)
+    cpu_load_percent = db.Column(db.Float, nullable=True)
+    ram_used_mb = db.Column(db.Integer, nullable=True)
+    ram_total_mb = db.Column(db.Integer, nullable=True)
+    temperature_c = db.Column(db.Float, nullable=True)
+    disk_free_mb = db.Column(db.Integer, nullable=True)
+    disk_total_mb = db.Column(db.Integer, nullable=True)
+    resolution = db.Column(db.String(64), nullable=False, default='')
+    last_error = db.Column(db.String(512), nullable=False, default='')
     last_seen   = db.Column(db.String(32), nullable=False, index=True)
 
     def to_dict(self):
@@ -119,5 +129,15 @@ class ClientHeartbeat(db.Model):
             'screen_name': self.screen_name,
             'ip_address': self.ip_address,
             'server_url': self.server_url,
+            'client_version': self.client_version,
+            'uptime_seconds': self.uptime_seconds,
+            'cpu_load_percent': self.cpu_load_percent,
+            'ram_used_mb': self.ram_used_mb,
+            'ram_total_mb': self.ram_total_mb,
+            'temperature_c': self.temperature_c,
+            'disk_free_mb': self.disk_free_mb,
+            'disk_total_mb': self.disk_total_mb,
+            'resolution': self.resolution,
+            'last_error': self.last_error,
             'last_seen': self.last_seen,
         }

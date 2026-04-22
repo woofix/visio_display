@@ -130,6 +130,16 @@ def api_client_heartbeat():
         screen_name=data.get('screen_name', ''),
         ip_address=_best_remote_ip(),
         server_url=data.get('server_url', ''),
+        client_version=data.get('client_version', ''),
+        uptime_seconds=data.get('uptime_seconds'),
+        cpu_load_percent=data.get('cpu_load_percent'),
+        ram_used_mb=data.get('ram_used_mb'),
+        ram_total_mb=data.get('ram_total_mb'),
+        temperature_c=data.get('temperature_c'),
+        disk_free_mb=data.get('disk_free_mb'),
+        disk_total_mb=data.get('disk_total_mb'),
+        resolution=data.get('resolution', ''),
+        last_error=data.get('last_error', ''),
     )
     if entry is None:
         return jsonify({'ok': False, 'error': 'missing_machine_id'}), 400

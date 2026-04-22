@@ -1,39 +1,38 @@
-# Secrets
+k# Secrets
 .env
 .env.*
 
-# Databases and private runtime data
-data/*.db
-web/static/data/*.db
-data/private/
-web/data/private/
+# Runtime data
+data/
+private/
+
+# Databases
+*.db
 
 # Logs
 *.log
-data/*.log
 
-# OS junk
-.DS_Store
-
-# Python cache
+# Python
 __pycache__/
 *.py[cod]
 
-# Local virtual envs
+# Virtual env
 .venv/
 web/.venv/
 
-# Uploaded/generated media you don't want in git
-data/*.mp4
-data/*.jpg
-data/*.jpeg
-data/*.png
-data/*.avif
-data/*.webm
-data/*.mov
-data/*.avi
-data/*.mkv
+# OS
+.DS_Store
 
-private/
-data/
-.env
+# Media uploads
+*.mp4
+*.jpg
+*.jpeg
+*.png
+*.avif
+*.webm
+*.mov
+*.avi
+*.mkv
+
+# Docker override (local only)
+docker-compose.override.yml

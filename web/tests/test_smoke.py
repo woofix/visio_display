@@ -3,6 +3,7 @@ import sys
 import tempfile
 import types
 import unittest
+from datetime import datetime, timedelta, timezone
 from importlib import import_module
 from unittest.mock import patch
 
@@ -140,6 +141,14 @@ class AppSmokeTests(unittest.TestCase):
 
             self.assertEqual(get_user("admin").theme, "bleu")
 
+            from services.activity_svc import get_activity_log
+
+            logs = get_activity_log(limit=10)
+            self.assertTrue(any(
+                entry["action"] == "config" and entry["details"] == "thème:bleu"
+                for entry in logs
+            ))
+
     def test_save_config_normalizes_missing_sections(self):
         with self.app.app_context():
             from services.config_svc import load_config, save_config
@@ -202,6 +211,52 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(client["resolution"], "1920x1080")
         self.assertEqual(client["health_status"], "critical")
         self.assertEqual(client["last_error"], "Kiosk browser not running")
+
+    def test_activity_log_retention_trims_old_and_excess_rows(self):
+        with self.app.app_context():
+            from db import ActivityLog, db
+            from services import activity_svc
+
+            now = datetime.now(timezone.utc)
+            rows = [
+                ActivityLog(
+                    timestamp=(now - timedelta(days=10)).strftime("%Y-%m-%dT%H:%M:%S"),
+                    username="admin",
+                    action="config",
+                    details="old",
+                ),
+                ActivityLog(
+                    timestamp=(now - timedelta(hours=3)).strftime("%Y-%m-%dT%H:%M:%S"),
+                    username="admin",
+                    action="config",
+                    details="keep-1",
+                ),
+                ActivityLog(
+                    timestamp=(now - timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M:%S"),
+                    username="admin",
+                    action="config",
+                    details="keep-2",
+                ),
+                ActivityLog(
+                    timestamp=(now - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%S"),
+                    username="admin",
+                    action="config",
+                    details="drop-overflow",
+                ),
+            ]
+            db.session.add_all(rows)
+            db.session.commit()
+
+            with patch.object(activity_svc.C, "ACTIVITY_LOG_RETENTION_DAYS", 1), patch.object(
+                activity_svc.C, "ACTIVITY_LOG_MAX_ROWS", 2
+            ):
+                deleted = activity_svc._trim_activity_log(now)
+
+            self.assertEqual(deleted, 2)
+
+            remaining = ActivityLog.query.order_by(ActivityLog.id.asc()).all()
+            self.assertEqual(len(remaining), 2)
+            self.assertEqual([row.details for row in remaining], ["keep-2", "drop-overflow"])
 
 
 if __name__ == "__main__":

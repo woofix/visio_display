@@ -1,8 +1,9 @@
 # MIT License - Copyright (c) 2026 Woofix
 # See LICENSE file for details
 
-from flask import Blueprint, jsonify, redirect, request, url_for
+from flask import Blueprint, jsonify, redirect, request, session, url_for
 
+from services.activity_svc import log_config_change
 from services.config_svc import load_config, save_config, normalize_default_screen_name
 from services.campaign_svc import cleanup_campaigns_for_deleted_screen, get_campaigns, save_campaigns_to_config
 from services.users_svc import has_screen_access
@@ -30,6 +31,7 @@ def add_screen():
         return redirect(url_for('media.admin_media'))
     screens[name] = {"order": [], "disabled": [], "disabled_groups": [], "durations": {}, "schedules": {}}
     save_config(cfg)
+    log_config_change(session.get('user'), f'écran ajouté:{name}')
     return redirect(url_for('media.admin_media') + f'?screen={name}')
 
 
@@ -45,6 +47,7 @@ def delete_screen(name):
         del screens[name]
         save_campaigns_to_config(cfg, cleanup_campaigns_for_deleted_screen(get_campaigns(cfg), name))
         save_config(cfg)
+        log_config_change(session.get('user'), f'écran supprimé:{name}')
         _flash('flash_screen_deleted', 'success', name=name)
     return redirect(url_for('media.admin_media'))
 
@@ -60,6 +63,10 @@ def update_default_screen_name():
     new_name = normalize_default_screen_name(request.form.get('default_screen_name', ''))
     cfg['default_screen_name'] = new_name
     save_config(cfg)
+    if new_name:
+        log_config_change(session.get('user'), f'nom écran par défaut:{new_name}')
+    else:
+        log_config_change(session.get('user'), 'nom écran par défaut réinitialisé')
 
     if new_name:
         _flash('flash_default_screen_name_updated', 'success', name=new_name)
@@ -100,4 +107,6 @@ def screen_assign(filename):
             disabled.remove(filename)
 
     save_config(cfg)
+    verb = 'affecté' if action == 'add' else 'retiré'
+    log_config_change(session.get('user'), f'{filename} {verb} écran:{screen}', filename=filename)
     return jsonify({'ok': True})

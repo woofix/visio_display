@@ -878,7 +878,7 @@ TRANSLATIONS = {
         'wiki_s14_superadmin_only': 'Droit requis : super-admin uniquement.',
         # §15 Activity log
         'wiki_s15_title': "Journal d'activité",
-        'wiki_s15_desc': "Le journal retrace toutes les actions effectuées par les utilisateurs : imports, suppressions, connexions, déconnexions, activations/désactivations et compressions vidéo.",
+        'wiki_s15_desc': "Le journal retrace les actions d'exploitation et d'administration : imports, suppressions, connexions, déconnexions, activations/désactivations, compressions vidéo, changements de configuration et actions sur les campagnes.",
         'wiki_s15_access': "Accessible depuis Journal d'activité dans le menu de navigation. Réservé aux administrateurs connectés.",
         'wiki_s15_actions_title': 'Actions enregistrées',
         'wiki_s15_action_upload': "Upload — import d'un fichier (image, vidéo ou PDF). L'utilisateur et le fichier sont indiqués.",
@@ -887,8 +887,12 @@ TRANSLATIONS = {
         'wiki_s15_action_logout': "Déconnexion — fermeture de session via action sécurisée.",
         'wiki_s15_action_toggle': "Activation — activation ou désactivation d'un média ou d'un groupe, avec l'état résultant (enabled / disabled) et l'écran concerné le cas échéant.",
         'wiki_s15_action_compress': "Compression — démarrage et résultat d'une compression vidéo automatique (taille avant/après, taux de réduction). Effectuée par system.",
+        'wiki_s15_action_config': "Configuration — modifications d'administration : durées, ordre, programmations, groupes, écrans, logo, thème, langue, météo, permissions, alerte prioritaire, etc.",
+        'wiki_s15_action_campaign': "Campagne — création, mise à jour, duplication, activation/désactivation et archivage des campagnes.",
         'wiki_s15_filters_title': 'Filtres disponibles',
-        'wiki_s15_filters_desc': "Filtrez les entrées par type d'action, par utilisateur, ou effectuez une recherche libre sur le nom de fichier et les détails.",
+        'wiki_s15_filters_desc': "Filtrez les entrées par type d'action, par utilisateur, ou effectuez une recherche libre sur le nom de fichier et les détails. Les types Configuration et Campagne sont disponibles en plus des actions historiques.",
+        'wiki_s15_retention_title': 'Rétention automatique',
+        'wiki_s15_retention_desc': "Le journal est purgé automatiquement pour éviter une croissance infinie : conservation par durée, plafond de lignes et compactage SQLite périodique pour récupérer l'espace disque.",
         'wiki_s15_who': "Chaque entrée indique l'utilisateur responsable de l'action. Les compressions automatiques sont enregistrées sous l'utilisateur system.",
 
         # ── Activity log ──
@@ -911,6 +915,8 @@ TRANSLATIONS = {
         'activity_action_logout': 'Déconnexion',
         'activity_action_toggle': 'Activation',
         'activity_action_compress': 'Compression',
+        'activity_action_config': 'Configuration',
+        'activity_action_campaign': 'Campagne',
         'activity_empty': 'Aucune activité enregistrée pour le moment.',
     },
 
@@ -1777,7 +1783,7 @@ TRANSLATIONS = {
         'wiki_s14_superadmin_only': 'Right required: super-admin only.',
         # §15 Activity log
         'wiki_s15_title': 'Activity log',
-        'wiki_s15_desc': 'The activity log records all actions performed by users: uploads, deletions, logins, logouts, enable/disable actions and video compressions.',
+        'wiki_s15_desc': 'The activity log records both operational and admin actions: uploads, deletions, logins, logouts, enable/disable actions, video compressions, configuration changes, and campaign actions.',
         'wiki_s15_access': 'Accessible from Activity Log in the navigation menu. Reserved for logged-in administrators.',
         'wiki_s15_actions_title': 'Logged actions',
         'wiki_s15_action_upload': 'Upload — a file was imported (image, video or PDF). The user and filename are shown.',
@@ -1786,8 +1792,12 @@ TRANSLATIONS = {
         'wiki_s15_action_logout': 'Logout — a session was closed through a secured action.',
         'wiki_s15_action_toggle': 'Toggle — a media item or group was enabled or disabled, with the resulting state (enabled / disabled) and the affected screen if applicable.',
         'wiki_s15_action_compress': 'Compression — start and result of an automatic video compression (before/after size, reduction ratio). Performed by system.',
+        'wiki_s15_action_config': 'Configuration — admin changes such as durations, ordering, schedules, groups, screens, logo, theme, language, weather, permissions, priority alert, and more.',
+        'wiki_s15_action_campaign': 'Campaign — campaign creation, update, duplication, enable/disable, and archive actions.',
         'wiki_s15_filters_title': 'Available filters',
-        'wiki_s15_filters_desc': 'Filter entries by action type, by user, or perform a free-text search on filename and details.',
+        'wiki_s15_filters_desc': 'Filter entries by action type, by user, or perform a free-text search on filename and details. Configuration and Campaign are available in addition to the historical actions.',
+        'wiki_s15_retention_title': 'Automatic retention',
+        'wiki_s15_retention_desc': 'The log is maintained automatically to avoid endless growth: age-based retention, row cap, and periodic SQLite compaction to reclaim disk space.',
         'wiki_s15_who': 'Each entry shows the user responsible for the action. Automatic compressions are logged under the system user.',
 
         # ── Activity log ──
@@ -1810,6 +1820,8 @@ TRANSLATIONS = {
         'activity_action_logout': 'Logout',
         'activity_action_toggle': 'Toggle',
         'activity_action_compress': 'Compression',
+        'activity_action_config': 'Configuration',
+        'activity_action_campaign': 'Campaign',
         'activity_empty': 'No activity recorded yet.',
     },
 }

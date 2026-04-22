@@ -55,6 +55,19 @@ def _get_schedule_bucket(cfg, screen):
     return cfg.setdefault('schedules', {})
 
 
+def _scope_details(screen):
+    return f'écran:{screen}' if screen else 'global'
+
+
+def _schedule_details(sched):
+    parts = []
+    for key in ('time_start', 'time_end', 'date_start', 'date_end'):
+        value = sched.get(key)
+        if value:
+            parts.append(f'{key}={value}')
+    return ', '.join(parts) if parts else 'aucune règle'
+
+
 def _build_schedule_payload(data):
     sched = {}
     for key in ('time_start', 'time_end', 'date_start', 'date_end'):
@@ -373,6 +386,8 @@ def set_groups(filename):
         del groups_map[filename]
 
     save_config(cfg)
+    details = f'groupes={", ".join(groups)}' if groups else 'groupes supprimés'
+    log_activity(session.get('user'), 'config', filename=filename, details=details)
     return jsonify({"ok": True, "groups": groups})
 
 
@@ -396,6 +411,8 @@ def set_group_screens(group_name):
     else:
         group_screens.pop(normalized, None)
     save_config(cfg)
+    details = f'affectation groupe {normalized}: {", ".join(screens_list) if screens_list else "tous les écrans"}'
+    log_activity(session.get('user'), 'config', details=details)
     return jsonify({"ok": True, "group": normalized, "screens": screens_list})
 
 
@@ -418,6 +435,8 @@ def set_group_pool(group_name):
     else:
         group_pools.pop(normalized, None)
     save_config(cfg)
+    details = f'pool groupe {normalized}: {pool_size}' if pool_size > 0 else f'pool groupe {normalized} supprimé'
+    log_activity(session.get('user'), 'config', details=details)
     return jsonify({"ok": True, "group": normalized, "pool_size": pool_size})
 
 
@@ -477,6 +496,8 @@ def set_duration(filename):
         cfg.setdefault('durations', {})[filename] = duration
 
     save_config(cfg)
+    log_activity(session.get('user'), 'config', filename=filename,
+                 details=f'durée={duration}s ({_scope_details(screen)})')
     return jsonify({"ok": True})
 
 
@@ -501,6 +522,7 @@ def reorder():
         cfg['order'] = order
 
     save_config(cfg)
+    log_activity(session.get('user'), 'config', details=f'ordre mis à jour ({len(order)} médias, {_scope_details(screen)})')
     return jsonify({"ok": True})
 
 
@@ -529,6 +551,8 @@ def set_schedule(filename):
     elif filename in schedules:
         del schedules[filename]
     save_config(cfg)
+    log_activity(session.get('user'), 'config', filename=filename,
+                 details=f'programmation mise à jour ({_scope_details(screen)}): {_schedule_details(sched)}')
     return jsonify({"ok": True})
 
 
@@ -570,6 +594,12 @@ def save_programming():
         source_bucket.pop(original_filename, None)
     target_bucket[filename] = sched
     save_config(cfg)
+    log_activity(
+        session.get('user'),
+        'config',
+        filename=filename,
+        details=f'programmation enregistrée ({_scope_details(screen)}): {_schedule_details(sched)}',
+    )
     return jsonify({"ok": True})
 
 
@@ -597,4 +627,6 @@ def delete_programming():
 
     bucket.pop(filename, None)
     save_config(cfg)
+    log_activity(session.get('user'), 'config', filename=filename,
+                 details=f'programmation supprimée ({_scope_details(screen)})')
     return jsonify({"ok": True})

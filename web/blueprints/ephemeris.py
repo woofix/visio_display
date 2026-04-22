@@ -3,8 +3,9 @@
 
 from datetime import date
 
-from flask import Blueprint, jsonify, redirect, request, url_for
+from flask import Blueprint, jsonify, redirect, request, session, url_for
 
+from services.activity_svc import log_config_change
 from services.config_svc import load_config, save_config
 from services.ephemeris_svc import generate_ephemeride_image
 from services.i18n import _flash
@@ -41,6 +42,7 @@ def add_event():
     cfg = load_config()
     cfg.setdefault("events", []).append({"label": label, "date": date_str})
     save_config(cfg)
+    log_config_change(session.get('user'), f'événement ajouté:{label} ({date_str})')
     generate_ephemeride_image(force=True)
     _flash('flash_event_added', 'success', label=label)
     return redirect(url_for('settings.admin_settings_page') + '?tab=evenements')
@@ -57,6 +59,7 @@ def delete_event(idx):
         removed = events.pop(idx)
         cfg["events"] = events
         save_config(cfg)
+        log_config_change(session.get('user'), f'événement supprimé:{removed["label"]} ({removed["date"]})')
         generate_ephemeride_image(force=True)
         _flash('flash_event_deleted', 'success', label=removed['label'])
     return redirect(url_for('settings.admin_settings_page') + '?tab=evenements')

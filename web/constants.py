@@ -3,6 +3,17 @@
 
 import os
 
+
+def _env_int(name, default):
+    raw_value = os.environ.get(name)
+    if raw_value is None:
+        return default
+    try:
+        return int(raw_value)
+    except (TypeError, ValueError):
+        return default
+
+
 UPLOAD_FOLDER = 'static/data'
 IMAGES_FOLDER = 'static/images'
 PRIVATE_DATA_DIR = os.environ.get('VISIO_DATA_DIR', 'data/private')
@@ -21,6 +32,13 @@ MAX_WIDTH  = 1920
 MAX_HEIGHT = 1080
 MAX_FILE_UPLOAD_SIZE = 16 * 1024 * 1024
 MAX_BATCH_UPLOAD_SIZE = 256 * 1024 * 1024
+ACTIVITY_LOG_RETENTION_DAYS = max(1, _env_int('ACTIVITY_LOG_RETENTION_DAYS', 90))
+ACTIVITY_LOG_MAX_ROWS = max(1000, _env_int('ACTIVITY_LOG_MAX_ROWS', 20000))
+ACTIVITY_LOG_CLEANUP_INTERVAL_SECONDS = max(60, _env_int('ACTIVITY_LOG_CLEANUP_INTERVAL_SECONDS', 3600))
+ACTIVITY_LOG_VACUUM_INTERVAL_SECONDS = max(
+    ACTIVITY_LOG_CLEANUP_INTERVAL_SECONDS,
+    _env_int('ACTIVITY_LOG_VACUUM_INTERVAL_SECONDS', 86400),
+)
 
 IMAGE_EXTS = ('.jpg', '.jpeg', '.png')
 VIDEO_EXTS = ('.mp4', '.webm', '.mov', '.avi', '.mkv')

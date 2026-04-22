@@ -11,6 +11,7 @@ from constants import (
     DEFAULT_METEO_VILLE, DEFAULT_METEO_TZ, SCHOOL_ZONES, ALL_FEATURES,
     ALL_PERMISSIONS,
 )
+from services.activity_svc import log_config_change
 from services.clients_svc import list_known_clients
 from services.config_svc import load_config, save_config
 from services.users_svc import (
@@ -206,6 +207,7 @@ def set_client_watchdog():
         ),
     }
     save_config(cfg)
+    log_config_change(session.get('user'), f'watchdog client mis à jour: interval={cfg["client_watchdog"]["check_interval_seconds"]}s, grâce={cfg["client_watchdog"]["grace_period_seconds"]}s, échecs={cfg["client_watchdog"]["consecutive_failures_before_reboot"]}')
     _flash('flash_client_watchdog_updated', 'success')
     return redirect(url_for('settings.admin_settings_page') + '?tab=installation')
 
@@ -266,6 +268,7 @@ def install_client():
     install_result['summary'] = _t(install_result.get('summary_key', ''))
 
     if install_result.get('ok'):
+        log_config_change(session.get('user'), f'installation client lancée:{host} ({machine_name})')
         _flash('flash_install_success', 'success', host=host)
     else:
         _flash('flash_install_failed', 'error', host=host)
@@ -350,6 +353,7 @@ def control_client_power():
     client_control_result['summary'] = _t(client_control_result.get('summary_key', ''))
 
     if client_control_result.get('ok'):
+        log_config_change(session.get('user'), f'action client:{action}:{host}')
         _flash(
             'flash_client_control_success',
             'success',
@@ -398,6 +402,7 @@ def set_appname():
         cfg = load_config()
         cfg['app_name'] = name
         save_config(cfg)
+        log_config_change(session.get('user'), f'nom application:{name}')
         _flash('flash_appname_updated', 'success')
     return redirect(url_for('settings.admin_settings_page') + '?tab=application')
 
@@ -434,6 +439,7 @@ def set_meteo_location():
     cfg['meteo_tz']    = tz
     cfg['school_zone'] = school_zone
     save_config(cfg)
+    log_config_change(session.get('user'), f'météo:{ville} ({lat_f},{lng_f}) tz={tz} zone={school_zone}')
     # Regenerate the ephemeris with the new location
     from services.ephemeris_svc import generate_ephemeride_image
     generate_ephemeride_image(force=True)
@@ -451,6 +457,7 @@ def set_theme():
     username = session.get('user')
     if username:
         update_user_theme(username, theme)
+        log_config_change(username, f'thème:{theme}')
     _flash('flash_theme_updated', 'success')
     return redirect(url_for('settings.admin_settings_page') + '?tab=theme')
 
@@ -465,6 +472,7 @@ def set_language():
     username = session.get('user')
     if username:
         update_user_language(username, lang)
+        log_config_change(username, f'langue:{lang}')
     _flash('flash_language_updated', 'success')
     return redirect(url_for('settings.admin_settings_page') + '?tab=language')
 
@@ -495,6 +503,7 @@ def toggle_feature():
     features[feature] = not bool(features.get(feature, True))
     cfg['features'] = features
     save_config(cfg)
+    log_config_change(session.get('user'), f'fonctionnalité {feature}: {features[feature]}')
     _flash('flash_feature_updated', 'success')
     return redirect(url_for('settings.admin_features_page'))
 
@@ -529,6 +538,7 @@ def upload_logo():
     cfg = load_config()
     cfg['logo'] = filename
     save_config(cfg)
+    log_config_change(session.get('user'), f'logo mis à jour:{filename}')
     _flash('flash_logo_updated', 'success')
     return redirect(url_for('admin.admin_page'))
 
@@ -543,5 +553,6 @@ def reset_logo():
     cfg = load_config()
     cfg['logo'] = DEFAULT_LOGO
     save_config(cfg)
+    log_config_change(session.get('user'), 'logo réinitialisé')
     _flash('flash_logo_reset', 'success')
     return redirect(url_for('admin.admin_page'))

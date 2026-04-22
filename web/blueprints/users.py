@@ -5,6 +5,7 @@ from datetime import datetime, UTC
 from flask import Blueprint, jsonify, redirect, render_template, request, session, url_for
 
 from constants import ALL_PERMISSIONS
+from services.activity_svc import log_config_change
 from services.users_svc import (
     create_user,
     delete_user_account,
@@ -63,6 +64,7 @@ def add_user():
         _flash('flash_user_exists', 'error', username=username)
         return redirect(url_for('users.admin_superadmin_page'))
     create_user(username, password, superadmin=False, permissions=[])
+    log_config_change(session.get('user'), f'utilisateur créé:{username}')
     _flash('flash_user_created', 'success', username=username)
     return redirect(url_for('users.admin_superadmin_page'))
 
@@ -79,6 +81,7 @@ def delete_user(username):
         _flash('flash_user_not_found', 'error')
         return redirect(url_for('users.admin_superadmin_page'))
     delete_user_account(username)
+    log_config_change(session.get('user'), f'utilisateur supprimé:{username}')
     _flash('flash_user_deleted', 'success', username=username)
     return redirect(url_for('users.admin_superadmin_page'))
 
@@ -97,6 +100,7 @@ def change_password():
         _flash('flash_new_password_too_short', 'error')
         return redirect(url_for('settings.admin_settings_page') + '?tab=admins')
     set_user_password(username, new_pwd)
+    log_config_change(username, 'mot de passe modifié')
     _flash('flash_password_updated', 'success')
     return redirect(url_for('settings.admin_settings_page') + '?tab=admins')
 
@@ -114,6 +118,7 @@ def reset_user_password(username):
         _flash('flash_new_password_too_short', 'error')
         return redirect(url_for('users.admin_superadmin_page'))
     set_user_password(username, new_pwd)
+    log_config_change(session.get('user'), f'mot de passe réinitialisé:{username}')
     _flash('flash_user_password_reset', 'success', username=username)
     return redirect(url_for('users.admin_superadmin_page'))
 
@@ -131,6 +136,7 @@ def set_permissions(username):
         return redirect(url_for('users.admin_superadmin_page'))
     perms = [p for p, _ in ALL_PERMISSIONS if request.form.get(f'perm_{p}')]
     update_user_permissions(username, perms)
+    log_config_change(session.get('user'), f'permissions {username}: {", ".join(perms) if perms else "aucune"}')
     _flash('flash_permissions_updated', 'success', username=username)
     return redirect(url_for('users.admin_superadmin_page'))
 
@@ -150,6 +156,7 @@ def set_user_screens(username):
     all_screens = list(cfg.get('screens', {}).keys())
     selected    = [s for s in all_screens if request.form.get(f'screen_{s}')]
     update_user_screens(username, selected if selected else None)
+    log_config_change(session.get('user'), f'écrans {username}: {", ".join(selected) if selected else "tous"}')
     _flash('flash_screens_updated', 'success', username=username)
     return redirect(url_for('users.admin_superadmin_page'))
 
@@ -170,6 +177,8 @@ def set_priority_alert():
         'updated_at': datetime.now(UTC).isoformat(timespec='seconds'),
     }
     save_config(cfg)
+    detail = 'alerte prioritaire supprimée' if not message else f'alerte prioritaire:{message}'
+    log_config_change(session.get('user'), detail)
 
     return jsonify({
         'ok': True,

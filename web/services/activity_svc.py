@@ -2,12 +2,89 @@
 # See LICENSE file for details
 
 import logging
-from datetime import datetime, timezone
+import time
+from datetime import datetime, timedelta, timezone
 
+import constants as C
 from db import db, ActivityLog
 
 
 LOGGER = logging.getLogger(__name__)
+_last_cleanup_ts = 0.0
+_last_vacuum_ts = 0.0
+
+
+def log_config_change(username, details, *, filename=None):
+    log_activity(username, 'config', filename=filename, details=details)
+
+
+def _trim_activity_log(now_utc):
+    deleted = 0
+    cutoff = (now_utc - timedelta(days=C.ACTIVITY_LOG_RETENTION_DAYS)).strftime('%Y-%m-%dT%H:%M:%S')
+    deleted += (
+        ActivityLog.query
+        .filter(ActivityLog.timestamp < cutoff)
+        .delete(synchronize_session=False)
+    )
+
+    remaining = ActivityLog.query.count()
+    overflow = remaining - C.ACTIVITY_LOG_MAX_ROWS
+    if overflow > 0:
+        oldest_ids = [
+            row.id
+            for row in (
+                ActivityLog.query
+                .order_by(ActivityLog.id.asc())
+                .limit(overflow)
+                .all()
+            )
+        ]
+        if oldest_ids:
+            deleted += (
+                ActivityLog.query
+                .filter(ActivityLog.id.in_(oldest_ids))
+                .delete(synchronize_session=False)
+            )
+
+    if deleted:
+        db.session.commit()
+    return deleted
+
+
+def _vacuum_activity_log():
+    engine = db.engine
+    if engine.dialect.name != 'sqlite':
+        return
+    conn = None
+    try:
+        conn = engine.raw_connection()
+        conn.execute('VACUUM')
+        conn.commit()
+    except Exception:
+        LOGGER.exception("Unable to compact activity log database")
+    finally:
+        if conn is not None:
+            conn.close()
+
+
+def _maybe_cleanup_activity_log():
+    global _last_cleanup_ts, _last_vacuum_ts
+
+    now = time.monotonic()
+    if now - _last_cleanup_ts < C.ACTIVITY_LOG_CLEANUP_INTERVAL_SECONDS:
+        return
+
+    _last_cleanup_ts = now
+    try:
+        deleted = _trim_activity_log(datetime.now(timezone.utc))
+    except Exception:
+        db.session.rollback()
+        LOGGER.exception("Unable to prune activity log")
+        return
+
+    if deleted and now - _last_vacuum_ts >= C.ACTIVITY_LOG_VACUUM_INTERVAL_SECONDS:
+        _last_vacuum_ts = now
+        _vacuum_activity_log()
 
 
 def log_activity(username, action, filename=None, details=None):
@@ -21,6 +98,7 @@ def log_activity(username, action, filename=None, details=None):
         )
         db.session.add(entry)
         db.session.commit()
+        _maybe_cleanup_activity_log()
     except Exception:
         db.session.rollback()
         LOGGER.exception("Unable to write activity log entry")

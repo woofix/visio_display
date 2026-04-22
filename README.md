@@ -68,10 +68,11 @@ Application web légère de signalétique numérique. Elle affiche un diaporama 
 - Choix du thème de l'interface : Violet, Sombre, Bleu
 
 **Journal d'activité**
-- Enregistre toutes les actions utilisateurs : uploads, suppressions, connexions/déconnexions, activations/désactivations de médias et de groupes, compressions vidéo
+- Enregistre les actions d'exploitation et d'administration : uploads, suppressions, connexions/déconnexions, activations/désactivations, compressions vidéo, changements de configuration et actions sur les campagnes
 - Chaque entrée indique l'utilisateur responsable, le fichier concerné et les détails (état, taille avant/après…)
-- Filtres par type d'action, par utilisateur et recherche libre
+- Filtres par type d'action, par utilisateur et recherche libre (`Upload`, `Suppression`, `Connexion`, `Déconnexion`, `Activation`, `Compression`, `Configuration`, `Campagne`)
 - Les compressions automatiques nocturnes sont tracées sous l'utilisateur `system`
+- Purge automatique des anciennes entrées + plafond de lignes + compactage SQLite périodique pour éviter l'explosion de l'espace disque
 
 **Wiki intégré**
 - Page d'aide accessible depuis l'interface d'administration (`/admin/wiki`)
@@ -488,6 +489,21 @@ La configuration et les utilisateurs sont stockés dans une base SQLite (`web/st
 
 Le champ `screens` est optionnel. Absent ou `null` = accès à tous les écrans. Une liste vide ou un sous-ensemble = accès restreint aux écrans listés.
 
+### Rétention du journal d'activité
+
+Le journal d'activité est automatiquement entretenu pour éviter qu'une accumulation de logs inutiles n'épuise l'espace disque :
+
+- suppression automatique des entrées plus anciennes que la durée de conservation ;
+- suppression des plus anciennes entrées si le nombre maximal de lignes est dépassé ;
+- compactage SQLite périodique après purge pour récupérer l'espace libéré.
+
+Valeurs par défaut :
+
+- `ACTIVITY_LOG_RETENTION_DAYS=90`
+- `ACTIVITY_LOG_MAX_ROWS=20000`
+- `ACTIVITY_LOG_CLEANUP_INTERVAL_SECONDS=3600`
+- `ACTIVITY_LOG_VACUUM_INTERVAL_SECONDS=86400`
+
 ### Migration depuis une version antérieure
 
 Si un fichier `users.json` au format ancien existe dans le volume, il est migré automatiquement vers la base SQLite au premier démarrage : le premier compte devient super-admin, les suivants deviennent des utilisateurs sans permissions.
@@ -560,10 +576,11 @@ A lightweight web-based digital signage. It displays a fullscreen slideshow of i
 - UI theme selection: Violet, Dark, Blue
 
 **Activity log**
-- Records all user actions: uploads, deletions, logins/logouts, media and group enable/disable, video compressions
+- Records operations and admin changes: uploads, deletions, logins/logouts, enable/disable actions, video compressions, configuration changes, and campaign actions
 - Each entry shows the responsible user, the affected file and details (state, before/after size…)
-- Filters by action type, by user, and free-text search
+- Filters by action type, by user, and free-text search (`Upload`, `Delete`, `Login`, `Logout`, `Toggle`, `Compression`, `Configuration`, `Campaign`)
 - Automatic overnight compressions are logged under the `system` user
+- Automatic retention + row cap + periodic SQLite compaction prevent the log database from growing forever
 
 **Built-in wiki**
 - Help page accessible from the admin interface (`/admin/wiki`)

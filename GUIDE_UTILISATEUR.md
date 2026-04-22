@@ -472,7 +472,7 @@ Accessible depuis **Journal d'activité** dans le menu de navigation.
 
 Le journal sert d'**historique d'exploitation** : il permet de vérifier rapidement qui a fait quoi avant de conclure à un dysfonctionnement.
 
-Le journal retrace toutes les actions effectuées par les utilisateurs sur l'application.
+Le journal retrace les actions effectuées sur l'application par les utilisateurs connectés, ainsi que certaines opérations système automatiques.
 
 Les opérations sensibles d'administration utilisent une session authentifiée protégée par cookie sécurisé côté serveur, contrôle CSRF sur les formulaires et appels d'écriture, et déconnexion confirmée par action `POST`.
 
@@ -486,14 +486,33 @@ Les opérations sensibles d'administration utilisent une session authentifiée p
 | **Déconnexion** | Fermeture de session via action sécurisée |
 | **Activation** | Activation ou désactivation d'un média ou d'un groupe — l'état résultant (`enabled` / `disabled`) et l'écran concerné sont précisés |
 | **Compression** | Démarrage et résultat d'une compression vidéo automatique (taille avant/après, taux de réduction) — effectuée par `system` |
+| **Configuration** | Modifications d'administration : durées, ordre des médias, plages de diffusion, groupes, écrans, logo, thème, langue, météo, utilisateurs, permissions, alerte prioritaire, etc. |
+| **Campagne** | Création, mise à jour, duplication, activation/désactivation et archivage des campagnes |
 
 ### Filtres disponibles
 
 - **Recherche libre** : par nom de fichier, utilisateur ou détails
-- **Par type d'action** : Upload, Suppression, Connexion, Déconnexion, Activation, Compression
+- **Par type d'action** : Upload, Suppression, Connexion, Déconnexion, Activation, Compression, Configuration, Campagne
 - **Par utilisateur**
 
-> **Note :** Les compressions vidéo automatiques (planifiées la nuit) sont enregistrées sous l'utilisateur `system`.
+### Rétention et espace disque
+
+Le journal est **purgé automatiquement** pour éviter une croissance infinie de la base SQLite :
+
+- les entrées trop anciennes sont supprimées automatiquement ;
+- un plafond de lignes est appliqué même si l'activité est très importante ;
+- un compactage SQLite (`VACUUM`) est lancé périodiquement après purge pour récupérer l'espace disque devenu inutile.
+
+Par défaut :
+
+- **conservation** : `90` jours ;
+- **taille maximale** : `20000` entrées ;
+- **fréquence de purge** : `1` heure ;
+- **fréquence minimale de compactage** : `24` heures.
+
+Ces valeurs peuvent être ajustées via les variables d'environnement `ACTIVITY_LOG_RETENTION_DAYS`, `ACTIVITY_LOG_MAX_ROWS`, `ACTIVITY_LOG_CLEANUP_INTERVAL_SECONDS` et `ACTIVITY_LOG_VACUUM_INTERVAL_SECONDS`.
+
+> **Note :** Les compressions vidéo automatiques (planifiées la nuit) sont enregistrées sous l'utilisateur `system`. Les opérations de configuration apparaissent avec l'action **Configuration** et les opérations de campagnes avec l'action **Campagne**.
 
 ---
 

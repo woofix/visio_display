@@ -8,6 +8,7 @@ from datetime import datetime
 from flask import Blueprint, render_template, redirect, url_for, jsonify, session
 
 from constants import UPLOAD_FOLDER, VIDEO_EXTS
+from services.activity_svc import log_activity, log_config_change
 from services.users_svc import load_users, is_admin, is_superadmin
 from services.config_svc import load_config, save_config
 from services.queue_svc import (
@@ -58,6 +59,7 @@ def compress_video(filename):
     }
     q.append(job)
     save_queue(q)
+    log_activity(session.get('user'), 'compress', filename=filename, details='compression en file')
     return jsonify({"ok": True, "job_id": job["id"]})
 
 
@@ -74,6 +76,7 @@ def cancel_job(job_id):
     if job['status'] == 'pending':
         q.remove(job)
         save_queue(q)
+        log_activity(session.get('user'), 'compress', filename=job['filename'], details='tâche annulée')
     else:
         cfg = load_config()
         hidden = cfg.get('hidden_recent_jobs', [])
@@ -81,6 +84,7 @@ def cancel_job(job_id):
             hidden.append(job_id)
             cfg['hidden_recent_jobs'] = hidden
             save_config(cfg)
+            log_config_change(session.get('user'), f'job compression masqué:{job_id}')
     return jsonify({"ok": True})
 
 
@@ -97,6 +101,7 @@ def force_encode():
         save_queue(q)
         for job in pending:
             _compress_q().enqueue(_rq_compress_job, job['id'], job_timeout=3600)
+        log_activity(session.get('user'), 'compress', details=f'lancement forcé de {len(pending)} tâche(s)')
     _flash('flash_force_encode_started', 'success')
     return redirect(url_for('queue.admin_queue_view'))
 
@@ -136,6 +141,7 @@ def force_compress_single(filename):
         job['started'] = datetime.now().isoformat()
         save_queue(q)
         _compress_q().enqueue(_rq_compress_job, job['id'], job_timeout=3600)
+        log_activity(session.get('user'), 'compress', filename=filename, details='compression forcée')
 
     return jsonify({"ok": True, "job_id": job["id"]})
 

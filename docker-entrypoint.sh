@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# MIT License - Copyright (c) 2026 Woofix
+# See LICENSE file for details
+
 set -eu
 
 ENV_FILE="${VISIO_ENV_FILE:-/app/.env}"

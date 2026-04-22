@@ -1,3 +1,6 @@
+# MIT License - Copyright (c) 2026 Woofix
+# See LICENSE file for details
+
 import os
 import uuid
 from datetime import datetime

@@ -1,3 +1,6 @@
+# MIT License - Copyright (c) 2026 Woofix
+# See LICENSE file for details
+
 [tool.ruff]
 line-length = 120
 exclude = [".venv", "__pycache__"]

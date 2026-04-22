@@ -1,3 +1,6 @@
+# MIT License - Copyright (c) 2026 Woofix
+# See LICENSE file for details
+
 import os
 from datetime import date
 
@@ -10,7 +13,13 @@ from constants import (
 )
 from services.clients_svc import list_known_clients
 from services.config_svc import load_config, save_config
-from services.users_svc import load_users, save_users, is_superadmin, has_permission
+from services.users_svc import (
+    has_permission,
+    is_superadmin,
+    load_users,
+    update_user_language,
+    update_user_theme,
+)
 from services.media_svc import get_logo_path
 from services.media_svc import is_safe_svg_file, is_valid_uploaded_image
 from services.i18n import _flash, _t
@@ -354,7 +363,7 @@ def set_meteo_location():
     cfg['meteo_tz']    = tz
     cfg['school_zone'] = school_zone
     save_config(cfg)
-    # Régénérer l'éphéméride avec la nouvelle localisation
+    # Regenerate the ephemeris with the new location
     from services.ephemeris_svc import generate_ephemeride_image
     generate_ephemeride_image(force=True)
     _flash('flash_meteo_updated', 'success', ville=ville)
@@ -368,11 +377,9 @@ def set_theme():
     theme = request.form.get('theme', 'violet')
     if theme not in VALID_THEMES:
         theme = 'violet'
-    users    = load_users()
     username = session.get('user')
-    if username in users:
-        users[username]['theme'] = theme
-        save_users(users)
+    if username:
+        update_user_theme(username, theme)
     _flash('flash_theme_updated', 'success')
     return redirect(url_for('settings.admin_settings_page') + '?tab=theme')
 
@@ -384,11 +391,9 @@ def set_language():
     lang = request.form.get('language', 'fr')
     if lang not in ('fr', 'en'):
         lang = 'fr'
-    users    = load_users()
     username = session.get('user')
-    if username in users:
-        users[username]['language'] = lang
-        save_users(users)
+    if username:
+        update_user_language(username, lang)
     _flash('flash_language_updated', 'success')
     return redirect(url_for('settings.admin_settings_page') + '?tab=language')
 

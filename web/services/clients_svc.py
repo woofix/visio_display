@@ -1,3 +1,6 @@
+# MIT License - Copyright (c) 2026 Woofix
+# See LICENSE file for details
+
 from datetime import datetime, timedelta, UTC
 
 from db import db, ClientHeartbeat

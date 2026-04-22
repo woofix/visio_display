@@ -1,3 +1,5 @@
+<!-- MIT License - Copyright (c) 2026 Woofix - See LICENSE file for details -->
+
 # Guide utilisateur — Visio-Display
 
 Visio-Display est une application d'**affichage dynamique** (digital signage) qui fait défiler automatiquement des images, vidéos et une carte météo/éphéméride sur un ou plusieurs écrans. Elle se pilote depuis n'importe quel navigateur via une interface d'administration web.

@@ -1,11 +1,24 @@
-from flask import Blueprint, request, redirect, url_for, session, render_template, jsonify
+# MIT License - Copyright (c) 2026 Woofix
+# See LICENSE file for details
+
 from datetime import datetime, UTC
+from flask import Blueprint, jsonify, redirect, render_template, request, session, url_for
 
 from constants import ALL_PERMISSIONS
 from services.users_svc import (
-    load_users, save_users, is_admin,
-    is_valid_password, is_valid_username, normalize_username,
-    set_user_password, verify_user_password, delete_user_password,
+    create_user,
+    delete_user_account,
+    get_user,
+    is_admin,
+    is_valid_password,
+    is_valid_username,
+    load_users,
+    normalize_username,
+    set_user_password,
+    update_user_permissions,
+    update_user_screens,
+    user_exists,
+    verify_user_password,
 )
 from services.config_svc import load_config, save_config
 from services.media_svc import get_logo_path
@@ -46,14 +59,10 @@ def add_user():
     if not is_valid_password(password):
         _flash('flash_password_too_short', 'error')
         return redirect(url_for('users.admin_superadmin_page'))
-    users = load_users()
-    if username in users:
+    if user_exists(username):
         _flash('flash_user_exists', 'error', username=username)
         return redirect(url_for('users.admin_superadmin_page'))
-    users[username] = {"superadmin": False,
-                       "permissions": []}
-    save_users(users)
-    set_user_password(username, password)
+    create_user(username, password, superadmin=False, permissions=[])
     _flash('flash_user_created', 'success', username=username)
     return redirect(url_for('users.admin_superadmin_page'))
 
@@ -62,17 +71,14 @@ def add_user():
 def delete_user(username):
     g = superadmin_guard()
     if g: return g
-    users = load_users()
-    superadmins = [u for u, e in users.items() if isinstance(e, dict) and e.get('superadmin')]
-    if username in superadmins:
+    user = get_user(username)
+    if user is not None and user.superadmin:
         _flash('flash_cannot_delete_superadmin', 'error')
         return redirect(url_for('users.admin_superadmin_page'))
-    if username not in users:
+    if user is None:
         _flash('flash_user_not_found', 'error')
         return redirect(url_for('users.admin_superadmin_page'))
-    del users[username]
-    save_users(users)
-    delete_user_password(username)
+    delete_user_account(username)
     _flash('flash_user_deleted', 'success', username=username)
     return redirect(url_for('users.admin_superadmin_page'))
 
@@ -99,8 +105,8 @@ def change_password():
 def reset_user_password(username):
     g = superadmin_guard()
     if g: return g
-    users = load_users()
-    if username not in users:
+    user = get_user(username)
+    if user is None:
         _flash('flash_user_not_found', 'error')
         return redirect(url_for('users.admin_superadmin_page'))
     new_pwd = request.form.get('new_password', '').strip()
@@ -116,17 +122,15 @@ def reset_user_password(username):
 def set_permissions(username):
     g = superadmin_guard()
     if g: return g
-    users = load_users()
-    if username not in users:
+    user = get_user(username)
+    if user is None:
         _flash('flash_user_not_found', 'error')
         return redirect(url_for('users.admin_superadmin_page'))
-    entry = users[username]
-    if isinstance(entry, dict) and entry.get('superadmin'):
+    if user.superadmin:
         _flash('flash_superadmin_perms_locked', 'error')
         return redirect(url_for('users.admin_superadmin_page'))
     perms = [p for p, _ in ALL_PERMISSIONS if request.form.get(f'perm_{p}')]
-    users[username]['permissions'] = perms
-    save_users(users)
+    update_user_permissions(username, perms)
     _flash('flash_permissions_updated', 'success', username=username)
     return redirect(url_for('users.admin_superadmin_page'))
 
@@ -135,19 +139,17 @@ def set_permissions(username):
 def set_user_screens(username):
     g = superadmin_guard()
     if g: return g
-    users = load_users()
-    if username not in users:
+    user = get_user(username)
+    if user is None:
         _flash('flash_user_not_found', 'error')
         return redirect(url_for('users.admin_superadmin_page'))
-    entry = users[username]
-    if isinstance(entry, dict) and entry.get('superadmin'):
+    if user.superadmin:
         _flash('flash_superadmin_perms_locked', 'error')
         return redirect(url_for('users.admin_superadmin_page'))
     cfg         = load_config()
     all_screens = list(cfg.get('screens', {}).keys())
     selected    = [s for s in all_screens if request.form.get(f'screen_{s}')]
-    users[username]['screens'] = selected if selected else None
-    save_users(users)
+    update_user_screens(username, selected if selected else None)
     _flash('flash_screens_updated', 'success', username=username)
     return redirect(url_for('users.admin_superadmin_page'))
 

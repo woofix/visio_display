@@ -1,5 +1,9 @@
+# MIT License - Copyright (c) 2026 Woofix
+# See LICENSE file for details
+
 import json
-from db import db, AppConfig
+
+from db import AppConfig, db
 
 
 def normalize_default_screen_name(value):
@@ -58,16 +62,9 @@ def _default_config():
     }
 
 
-def load_config():
-    row = db.session.get(AppConfig, 1)
-    if row is None:
-        return _default_config()
-    try:
-        cfg = json.loads(row.data)
-    except Exception:
-        return _default_config()
+def normalize_config(cfg):
     if not isinstance(cfg, dict):
-        return _default_config()
+        cfg = {}
     merged = _default_config()
     merged.update(cfg)
     merged["groups"] = cfg.get("groups", {}) if isinstance(cfg.get("groups"), dict) else {}
@@ -101,15 +98,27 @@ def load_config():
     return merged
 
 
+def load_config():
+    row = db.session.get(AppConfig, 1)
+    if row is None:
+        return _default_config()
+    try:
+        cfg = json.loads(row.data)
+    except json.JSONDecodeError:
+        return _default_config()
+    return normalize_config(cfg)
+
+
 def is_feature_enabled(feature_name):
     cfg = load_config()
     return bool(cfg.get("features", {}).get(feature_name, True))
 
 
 def save_config(cfg):
+    normalized = normalize_config(cfg)
     row = db.session.get(AppConfig, 1)
     if row is None:
-        db.session.add(AppConfig(id=1, data=json.dumps(cfg)))
+        db.session.add(AppConfig(id=1, data=json.dumps(normalized)))
     else:
-        row.data = json.dumps(cfg)
+        row.data = json.dumps(normalized)
     db.session.commit()

@@ -1,6 +1,13 @@
+# MIT License - Copyright (c) 2026 Woofix
+# See LICENSE file for details
+
+import logging
 from datetime import datetime, timezone
 
 from db import db, ActivityLog
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 def log_activity(username, action, filename=None, details=None):
@@ -16,6 +23,7 @@ def log_activity(username, action, filename=None, details=None):
         db.session.commit()
     except Exception:
         db.session.rollback()
+        LOGGER.exception("Unable to write activity log entry")
 
 
 def get_activity_log(limit=200):

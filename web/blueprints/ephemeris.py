@@ -1,12 +1,14 @@
+# MIT License - Copyright (c) 2026 Woofix
+# See LICENSE file for details
+
 from datetime import date
 
-from flask import Blueprint, request, redirect, url_for, jsonify
+from flask import Blueprint, jsonify, redirect, request, url_for
 
 from services.config_svc import load_config, save_config
-from services.users_svc import is_admin, has_permission
 from services.ephemeris_svc import generate_ephemeride_image
 from services.i18n import _flash
-from blueprints.guards import perm_guard, feature_guard_json
+from blueprints.guards import feature_guard_json, perm_guard, permission_redirect_guard
 
 bp = Blueprint('ephemeris', __name__)
 
@@ -23,10 +25,9 @@ def regen_ephemeride():
 
 @bp.route('/admin/events/add', methods=['POST'])
 def add_event():
-    if not is_admin(): return redirect(url_for('auth.login'))
-    if not has_permission('ephemeris'):
-        _flash('flash_no_perm', 'error')
-        return redirect(url_for('settings.admin_settings_page') + '?tab=evenements')
+    redir = permission_redirect_guard('ephemeris', 'settings.admin_settings_page', tab='evenements')
+    if redir:
+        return redir
     label    = request.form.get('label', '').strip()
     date_str = request.form.get('date', '').strip()
     if not label or not date_str:
@@ -47,10 +48,9 @@ def add_event():
 
 @bp.route('/admin/events/delete/<int:idx>', methods=['POST'])
 def delete_event(idx):
-    if not is_admin(): return redirect(url_for('auth.login'))
-    if not has_permission('ephemeris'):
-        _flash('flash_no_perm', 'error')
-        return redirect(url_for('settings.admin_settings_page') + '?tab=evenements')
+    redir = permission_redirect_guard('ephemeris', 'settings.admin_settings_page', tab='evenements')
+    if redir:
+        return redir
     cfg    = load_config()
     events = cfg.get("events", [])
     if 0 <= idx < len(events):

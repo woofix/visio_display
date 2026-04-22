@@ -1,3 +1,6 @@
+# MIT License - Copyright (c) 2026 Woofix
+# See LICENSE file for details
+
 import os
 
 UPLOAD_FOLDER = 'static/data'
@@ -16,6 +19,8 @@ LOGO_EXTS     = {'.svg', '.png', '.jpg', '.jpeg'}
 
 MAX_WIDTH  = 1920
 MAX_HEIGHT = 1080
+MAX_FILE_UPLOAD_SIZE = 16 * 1024 * 1024
+MAX_BATCH_UPLOAD_SIZE = 256 * 1024 * 1024
 
 IMAGE_EXTS = ('.jpg', '.jpeg', '.png')
 VIDEO_EXTS = ('.mp4', '.webm', '.mov', '.avi', '.mkv')

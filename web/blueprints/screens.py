@@ -1,9 +1,13 @@
-from flask import Blueprint, request, redirect, url_for, flash, jsonify
+# MIT License - Copyright (c) 2026 Woofix
+# See LICENSE file for details
+
+from flask import Blueprint, jsonify, redirect, request, url_for
 
 from services.config_svc import load_config, save_config, normalize_default_screen_name
 from services.campaign_svc import cleanup_campaigns_for_deleted_screen, get_campaigns, save_campaigns_to_config
 from services.users_svc import has_screen_access
 from services.media_svc import valid_screen_name
+from services.i18n import _flash
 from blueprints.guards import superadmin_guard, perm_guard, feature_guard
 
 bp = Blueprint('screens', __name__)
@@ -17,12 +21,12 @@ def add_screen():
     if redir: return redir
     name = request.form.get('screen_name', '').strip().lower()
     if not valid_screen_name(name):
-        flash("Nom d'écran invalide (lettres minuscules, chiffres, tirets, underscores, 1-32 chars).", 'error')
+        _flash('flash_screen_name_invalid', 'error')
         return redirect(url_for('media.admin_media'))
     cfg     = load_config()
     screens = cfg.setdefault('screens', {})
     if name in screens:
-        flash(f"L'écran « {name} » existe déjà.", 'error')
+        _flash('flash_screen_exists', 'error', name=name)
         return redirect(url_for('media.admin_media'))
     screens[name] = {"order": [], "disabled": [], "disabled_groups": [], "durations": {}, "schedules": {}}
     save_config(cfg)
@@ -41,7 +45,7 @@ def delete_screen(name):
         del screens[name]
         save_campaigns_to_config(cfg, cleanup_campaigns_for_deleted_screen(get_campaigns(cfg), name))
         save_config(cfg)
-        flash(f"Écran « {name} » supprimé.", 'success')
+        _flash('flash_screen_deleted', 'success', name=name)
     return redirect(url_for('media.admin_media'))
 
 
@@ -58,9 +62,9 @@ def update_default_screen_name():
     save_config(cfg)
 
     if new_name:
-        flash(f"Nom de l'écran par défaut mis à jour : « {new_name} ».", 'success')
+        _flash('flash_default_screen_name_updated', 'success', name=new_name)
     else:
-        flash("Nom personnalisé supprimé pour l'écran par défaut.", 'success')
+        _flash('flash_default_screen_name_cleared', 'success')
     return redirect(url_for('users.admin_superadmin_page'))
 
 

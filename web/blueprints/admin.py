@@ -1,3 +1,6 @@
+# MIT License - Copyright (c) 2026 Woofix
+# See LICENSE file for details
+
 from flask import Blueprint, render_template, session
 
 from services.users_svc import load_users

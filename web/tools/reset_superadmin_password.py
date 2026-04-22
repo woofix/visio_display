@@ -1,3 +1,6 @@
+# MIT License - Copyright (c) 2026 Woofix
+# See LICENSE file for details
+
 #!/usr/bin/env python3
 """Reset the password of an existing super-admin account."""
 

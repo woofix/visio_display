@@ -1,5 +1,13 @@
-from flask import session, flash
+# MIT License - Copyright (c) 2026 Woofix
+# See LICENSE file for details
+
+import logging
+
+from flask import flash, session
 from translations import TRANSLATIONS
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 def get_language(users_svc=None):
@@ -15,7 +23,7 @@ def get_language(users_svc=None):
                 return entry['language']
         cfg = load_config()
         return cfg.get('language', 'fr')
-    except Exception:
+    except RuntimeError:
         return 'fr'
 
 
@@ -32,7 +40,7 @@ def _t(key, lang=None, **kwargs):
         try:
             val = val.format(**kwargs)
         except (KeyError, ValueError):
-            pass
+            LOGGER.debug("Unable to format translation key: %s", key, exc_info=True)
     return val
 
 

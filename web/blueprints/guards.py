@@ -1,4 +1,7 @@
-from flask import redirect, url_for, jsonify
+# MIT License - Copyright (c) 2026 Woofix
+# See LICENSE file for details
+
+from flask import jsonify, redirect, url_for
 from services.users_svc import is_admin, is_superadmin, has_permission
 from services.i18n import _flash
 
@@ -18,6 +21,16 @@ def superadmin_guard():
         _flash('flash_superadmin_only', 'error')
         return redirect(url_for('admin.admin_page'))
     return None
+
+
+def permission_redirect_guard(perm, endpoint, **values):
+    redir = admin_guard()
+    if redir:
+        return redir
+    if has_permission(perm):
+        return None
+    _flash('flash_no_perm', 'error')
+    return redirect(url_for(endpoint, **values))
 
 
 def perm_guard(perm):

@@ -1,9 +1,27 @@
+# MIT License - Copyright (c) 2026 Woofix
+# See LICENSE file for details
+
 services:
   redis:
     image: redis:7-alpine
     restart: always
     volumes:
       - redis_data:/data
+
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      - POSTGRES_DB=visio
+      - POSTGRES_USER=visio
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-visio}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U visio -d visio"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   app:
     build: .
@@ -12,15 +30,19 @@ services:
     environment:
       - REDIS_URL=redis://redis:6379
       - VISIO_DATA_DIR=/app/data
+      - DATABASE_URL=postgresql://visio:${POSTGRES_PASSWORD:-visio}@postgres:5432/visio
     volumes:
-      - ./.env:/app/.env
-      - ${MEDIA_DIR:-./.data/media}:/app/static/data
-      - ${PRIVATE_DIR:-./.data/private}:/app/data
+      - ./.env:/app/.env:ro
+      - ${MEDIA_DIR:-visio_media}:/app/static/data
+      - ${PRIVATE_DIR:-visio_private}:/app/data
     ports:
       - "${PORT:-8081}:8080"
     restart: always
     depends_on:
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/')"]
       interval: 30s
@@ -33,14 +55,21 @@ services:
     environment:
       - REDIS_URL=redis://redis:6379
       - VISIO_DATA_DIR=/app/data
+      - DATABASE_URL=postgresql://visio:${POSTGRES_PASSWORD:-visio}@postgres:5432/visio
     volumes:
-      - ./.env:/app/.env
-      - ${MEDIA_DIR:-./.data/media}:/app/static/data
-      - ${PRIVATE_DIR:-./.data/private}:/app/data
+      - ./.env:/app/.env:ro
+      - ${MEDIA_DIR:-visio_media}:/app/static/data
+      - ${PRIVATE_DIR:-visio_private}:/app/data
     command: rq worker --url redis://redis:6379 visio-display:upload visio-display:compress
     restart: always
     depends_on:
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
 volumes:
   redis_data:
+  postgres_data:
+  visio_media:
+  visio_private:

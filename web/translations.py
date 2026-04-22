@@ -457,6 +457,11 @@ TRANSLATIONS = {
         'flash_no_perm': 'Permission insuffisante.',
         'flash_label_date_required': 'Intitulé et date requis.',
         'flash_invalid_date': 'Format de date invalide.',
+        'flash_screen_name_invalid': "Nom d'écran invalide (lettres minuscules, chiffres, tirets, underscores, 1-32 caractères).",
+        'flash_screen_exists': 'L’écran « {name} » existe déjà.',
+        'flash_screen_deleted': 'Écran « {name} » supprimé.',
+        'flash_default_screen_name_updated': 'Nom de l’écran par défaut mis à jour : « {name} ».',
+        'flash_default_screen_name_cleared': 'Nom personnalisé supprimé pour l’écran par défaut.',
         'flash_event_added': "Événement \u00ab\u00a0{label}\u00a0\u00bb ajouté.",
         'flash_event_deleted': "Événement \u00ab\u00a0{label}\u00a0\u00bb supprimé.",
         'flash_wrong_credentials': 'Identifiants incorrects.',
@@ -523,7 +528,7 @@ TRANSLATIONS = {
         'superadmin_default_screen_placeholder': 'Nom de l’écran par défaut',
         'superadmin_default_screen_save': 'Enregistrer le nom',
 
-        # ── Fonctionnalités ──
+        # ── Features ──
         'features_title': 'Fonctionnalités',
         'features_topbar_sub': "Activer ou désactiver les modules de l'application",
         'features_h1': 'Fonctionnalités',
@@ -553,7 +558,7 @@ TRANSLATIONS = {
         'flash_feature_updated': 'Fonctionnalité mise à jour.',
         'flash_feature_disabled_access': 'Cette fonctionnalité est désactivée.',
 
-        # ── Météo localisation (super-admin) ──
+        # ── Weather location (super-admin) ──
         'settings_meteo_title':       'Localisation météo',
         'settings_meteo_subtitle':    "Définissez la ville utilisée pour les données météo de l'éphéméride. Seul le super-administrateur peut modifier ce paramètre.",
         'settings_meteo_city_label':  'Ville',
@@ -809,7 +814,7 @@ TRANSLATIONS = {
         'wiki_perm_schedule': 'Définir des planifications horaires et de dates',
         'wiki_s12_superadmin': 'Le super-admin dispose de toutes les permissions et peut en plus : créer/supprimer des comptes, créer/supprimer des écrans, personnaliser le nom de l\'application, configurer la localisation météo, publier une alerte prioritaire et forcer l\'encodage hors fenêtre nocturne.',
         'wiki_s12_note': 'Les permissions peuvent être combinées librement. Donnez seulement les droits nécessaires à la tâche de l’utilisateur.',
-        # §13 Groupes
+        # §13 Groups
         'wiki_s13_title': 'Groupes de médias',
         'wiki_s13_desc': 'Les groupes (ou tags) permettent d\'organiser les médias par thème et d\'activer ou désactiver un ensemble de médias d\'un seul clic.',
         'wiki_s13_assign_title': 'Attribuer des groupes à un média',
@@ -822,7 +827,7 @@ TRANSLATIONS = {
         'wiki_s13_note': 'Un média désactivé individuellement reste désactivé même si son groupe est activé.',
         'wiki_s13_screens_title': 'Lier un groupe à des écrans',
         'wiki_s13_screens_desc': 'Par défaut, un groupe est global et s\'affiche sur tous les écrans. Cliquez sur l\'icône 🔗 dans le chip de groupe pour ouvrir le sélecteur d\'écrans et restreindre ce groupe à un ou plusieurs écrans spécifiques (y compris l\'écran Défaut). Aucune sélection = groupe global visible partout.',
-        # §14 Alerte prioritaire
+        # §14 Priority alert
         'wiki_s14_title': 'Alerte prioritaire',
         'wiki_s14_desc': 'La fonctionnalité d\'alerte prioritaire permet au super-admin de diffuser immédiatement un message en bannière sur l\'écran d\'affichage, sans interrompre le diaporama.',
         'wiki_s14_access': 'Accessible depuis Super-Admin → Alerte prioritaire.',
@@ -832,7 +837,7 @@ TRANSLATIONS = {
         'wiki_s14_how3': 'Pour retirer la bannière, cliquez sur Effacer la bannière.',
         'wiki_s14_warning': 'La bannière reste affichée jusqu\'à suppression manuelle. Elle est visible sur tous les écrans, indépendamment du paramètre ?screen=.',
         'wiki_s14_superadmin_only': 'Droit requis : super-admin uniquement.',
-        # §15 Journal d'activité
+        # §15 Activity log
         'wiki_s15_title': "Journal d'activité",
         'wiki_s15_desc': "Le journal retrace toutes les actions effectuées par les utilisateurs : imports, suppressions, connexions, déconnexions, activations/désactivations et compressions vidéo.",
         'wiki_s15_access': "Accessible depuis Journal d'activité dans le menu de navigation. Réservé aux administrateurs connectés.",
@@ -847,7 +852,7 @@ TRANSLATIONS = {
         'wiki_s15_filters_desc': "Filtrez les entrées par type d'action, par utilisateur, ou effectuez une recherche libre sur le nom de fichier et les détails.",
         'wiki_s15_who': "Chaque entrée indique l'utilisateur responsable de l'action. Les compressions automatiques sont enregistrées sous l'utilisateur system.",
 
-        # ── Journal d'activité ──
+        # ── Activity log ──
         'nav_activity': "Journal d'activité",
         'activity_title': "Journal d'activité",
         'activity_topbar_sub': 'Historique des actions des utilisateurs',
@@ -1325,6 +1330,11 @@ TRANSLATIONS = {
         'flash_no_perm': 'Insufficient permission.',
         'flash_label_date_required': 'Label and date required.',
         'flash_invalid_date': 'Invalid date format.',
+        'flash_screen_name_invalid': 'Invalid screen name (lowercase letters, digits, hyphens, underscores, 1-32 characters).',
+        'flash_screen_exists': 'Screen "{name}" already exists.',
+        'flash_screen_deleted': 'Screen "{name}" deleted.',
+        'flash_default_screen_name_updated': 'Default screen name updated: "{name}".',
+        'flash_default_screen_name_cleared': 'Custom name removed for the default screen.',
         'flash_event_added': 'Event "{label}" added.',
         'flash_event_deleted': 'Event "{label}" deleted.',
         'flash_wrong_credentials': 'Incorrect credentials.',

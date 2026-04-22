@@ -1,8 +1,14 @@
+# MIT License - Copyright (c) 2026 Woofix
+# See LICENSE file for details
+
+import json
 import os
 import re
+
 from flask import session
 from werkzeug.security import generate_password_hash, check_password_hash
-from db import db, User
+
+from db import User, db
 from services.queue_svc import get_redis
 
 USERNAME_RE = re.compile(r'^[a-zA-Z0-9_.-]{3,64}$')
@@ -21,6 +27,14 @@ def is_valid_username(value):
 
 def is_valid_password(value):
     return isinstance(value, str) and len(value.strip()) >= MIN_PASSWORD_LENGTH
+
+
+def _json_list(raw_value):
+    try:
+        parsed = json.loads(raw_value or '[]')
+    except json.JSONDecodeError:
+        return []
+    return parsed if isinstance(parsed, list) else []
 
 
 def _password_key(username):
@@ -49,6 +63,85 @@ def delete_user_password(username):
 def verify_user_password(username, password):
     password_hash = get_password_hash(username)
     return bool(password_hash) and check_password_hash(password_hash, password)
+
+
+def get_user(username):
+    normalized = normalize_username(username)
+    if not normalized:
+        return None
+    return db.session.get(User, normalized)
+
+
+def user_exists(username):
+    return get_user(username) is not None
+
+
+def create_user(username, password, *, superadmin=False, permissions=None, screens=None, theme='violet', language='fr'):
+    normalized = normalize_username(username)
+    if not normalized:
+        raise ValueError('username is required')
+    if user_exists(normalized):
+        raise ValueError('user already exists')
+
+    user = User(
+        username=normalized,
+        password_hash=PASSWORD_HASH_PLACEHOLDER,
+        superadmin=bool(superadmin),
+        permissions=json.dumps(list(permissions or [])),
+        screens=json.dumps(list(screens)) if screens is not None else None,
+        theme=theme,
+        language=language,
+    )
+    db.session.add(user)
+    db.session.commit()
+    set_user_password(normalized, password)
+    return user
+
+
+def delete_user_account(username):
+    user = get_user(username)
+    if user is None:
+        return False
+    db.session.delete(user)
+    db.session.commit()
+    delete_user_password(user.username)
+    return True
+
+
+def update_user_theme(username, theme):
+    user = get_user(username)
+    if user is None:
+        return False
+    user.theme = theme
+    db.session.commit()
+    return True
+
+
+def update_user_language(username, language):
+    user = get_user(username)
+    if user is None:
+        return False
+    user.language = language
+    db.session.commit()
+    return True
+
+
+def update_user_permissions(username, permissions):
+    user = get_user(username)
+    if user is None:
+        return False
+    user.permissions = json.dumps(list(permissions or []))
+    db.session.commit()
+    return True
+
+
+def update_user_screens(username, screens):
+    user = get_user(username)
+    if user is None:
+        return False
+    user.screens = json.dumps(list(screens)) if screens is not None else None
+    db.session.commit()
+    return True
 
 
 def _migrate_password_hashes_to_redis():
@@ -104,7 +197,7 @@ def init_users():
 
 
 def is_admin():
-    return session.get('user') in {u.username for u in User.query.all()}
+    return get_user(session.get('user')) is not None
 
 
 def is_superadmin():
@@ -124,8 +217,7 @@ def has_permission(perm):
     u = db.session.get(User, username)
     if u is None:
         return False
-    import json
-    return perm in json.loads(u.permissions or '[]')
+    return perm in _json_list(u.permissions)
 
 
 def has_screen_access(screen_name):
@@ -139,5 +231,4 @@ def has_screen_access(screen_name):
         return False
     if u.screens is None:
         return True
-    import json
-    return screen_name in json.loads(u.screens)
+    return screen_name in _json_list(u.screens)

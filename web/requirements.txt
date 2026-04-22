@@ -1,5 +1,9 @@
+# MIT License - Copyright (c) 2026 Woofix
+# See LICENSE file for details
+
 Flask
 Flask-SQLAlchemy
+psycopg2-binary
 gunicorn
 Pillow
 pdf2image

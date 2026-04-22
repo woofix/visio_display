@@ -1,3 +1,5 @@
+<!-- MIT License - Copyright (c) 2026 Woofix - See LICENSE file for details -->
+
 # Visio-Display — Diaporama numérique · Digital Signage
 
 [🇫🇷 Français](#français) · [🇺🇸 English](#english)
@@ -94,18 +96,17 @@ Application web légère de signalétique numérique. Elle affiche un diaporama 
 git clone <url-du-dépôt>
 cd Visio-Display
 cp .env.example .env
-# Éditer .env : renseigner ADMIN_USER et ADMIN_PASSWORD
+# Éditer .env : renseigner ADMIN_USER, ADMIN_PASSWORD et SECRET_KEY
 docker compose up -d --build
 ```
 
 L'application est disponible sur `http://<hôte>:8081`.
 
-**SECRET_KEY du serveur :**
+**SECRET_KEY du serveur (obligatoire) :**
 
 Cette clé sert à signer les sessions Flask du serveur. Elle reste nécessaire même si les clients sont ensuite installés à distance via SSH.
-Si `SECRET_KEY` est absente ou laissée à la valeur d'exemple, elle est générée automatiquement et enregistrée dans `.env` au premier démarrage uniquement.
 
-**Générer une valeur aléatoire sécurisée manuellement (optionnel) :**
+**Générer une valeur aléatoire sécurisée :**
 
 ```bash
 python3 -c "import secrets; print(secrets.token_hex(32))"
@@ -124,7 +125,8 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 |------------------|--------------------------------------------------------------------|
 | `ADMIN_USER`     | Nom du compte super-admin (créé au premier démarrage uniquement)   |
 | `ADMIN_PASSWORD` | Mot de passe du super-admin (10 caractères minimum)                |
-| `SECRET_KEY`     | Clé de signature des sessions Flask (auto-générée au premier démarrage si absente ou laissée à la valeur d'exemple) |
+| `SECRET_KEY`     | Clé de signature des sessions Flask (obligatoire)                  |
+| `POSTGRES_PASSWORD` | Mot de passe du rôle PostgreSQL `visio` utilisé par la stack Docker |
 | `SESSION_COOKIE_SECURE` | Force le cookie de session en mode `Secure` (recommandé derrière HTTPS) |
 | `SESSION_COOKIE_NAME` | Nom du cookie de session Flask (défaut : `visio_session`) |
 | `SESSION_LIFETIME_MINUTES` | Durée de vie maximale d’une session connectée (défaut : `480`) |
@@ -132,6 +134,14 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 | `TRUST_PROXY_COUNT` | Nombre de proxies inverse de confiance pour interpréter `X-Forwarded-*` |
 
 > Ces variables ne sont lues qu'une seule fois, lors du premier démarrage (base de données absente).
+>
+> `POSTGRES_PASSWORD` ne recrée pas automatiquement l'utilisateur PostgreSQL si le volume `postgres_data` existe déjà. Si vous voyez `password authentication failed for user "visio"`, le mot de passe stocké dans le volume Postgres ne correspond plus à celui de votre `.env`.
+
+**Dépannage PostgreSQL**
+
+- Vérifier d'abord que `POSTGRES_PASSWORD` a la même valeur dans `.env` que celle utilisée au tout premier démarrage de `postgres`.
+- Si les données PostgreSQL peuvent être supprimées en toute sécurité, recréez le volume puis relancez la stack : `docker compose down -v` puis `docker compose up -d --build`.
+- Si vous devez conserver les données, changez le mot de passe du rôle `visio` dans le conteneur Postgres pour le réaligner avec `.env`, ou remettez temporairement l'ancienne valeur dans `.env`.
 
 **Durcissement HTTP / session**
 
@@ -578,18 +588,17 @@ A lightweight web-based digital signage. It displays a fullscreen slideshow of i
 git clone <repository-url>
 cd Visio-Display
 cp .env.example .env
-# Edit .env: set ADMIN_USER and ADMIN_PASSWORD
+# Edit .env: set ADMIN_USER, ADMIN_PASSWORD and SECRET_KEY
 docker compose up -d --build
 ```
 
 The application will be available at `http://<host>:8081`.
 
-**Server SECRET_KEY:**
+**Server SECRET_KEY (required):**
 
 This key signs the Flask sessions used by the server. It is still required even if display clients are later installed remotely over SSH.
-If `SECRET_KEY` is missing or left with the example placeholder value, it is generated automatically and written back to `.env` on the first startup only.
 
-**Generate a secure random value manually (optional):**
+**Generate a secure random value:**
 
 ```bash
 python3 -c "import secrets; print(secrets.token_hex(32))"
@@ -608,7 +617,8 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 |------------------|-------------------------------------------------------------------|
 | `ADMIN_USER`     | Super-admin username (read only on first boot)                    |
 | `ADMIN_PASSWORD` | Super-admin password (minimum 8 characters)                       |
-| `SECRET_KEY`     | Flask session signing key (auto-generated on first startup if missing or left as the example placeholder) |
+| `SECRET_KEY`     | Flask session signing key (required)                              |
+| `POSTGRES_PASSWORD` | Password for the PostgreSQL `visio` role used by the Docker stack |
 | `SESSION_COOKIE_SECURE` | Forces the session cookie to use `Secure` (recommended behind HTTPS) |
 | `SESSION_COOKIE_NAME` | Flask session cookie name (default: `visio_session`) |
 | `SESSION_LIFETIME_MINUTES` | Maximum lifetime of an authenticated session (default: `480`) |
@@ -616,6 +626,14 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 | `TRUST_PROXY_COUNT` | Number of trusted reverse proxies for `X-Forwarded-*` headers |
 
 > These variables are only read once, on first boot (when the database does not yet exist).
+>
+> `POSTGRES_PASSWORD` does not recreate the PostgreSQL user automatically when the `postgres_data` volume already exists. If you see `password authentication failed for user "visio"`, the password stored in the existing Postgres volume no longer matches your `.env` file.
+
+**PostgreSQL troubleshooting**
+
+- First, verify that `POSTGRES_PASSWORD` in `.env` still matches the value used when the `postgres` service was initialized for the first time.
+- If the PostgreSQL data can be safely discarded, recreate the volume and start the stack again: `docker compose down -v` then `docker compose up -d --build`.
+- If you must keep the data, update the `visio` role password inside the Postgres container so it matches `.env`, or temporarily restore the old password in `.env`.
 
 **HTTP / session hardening**
 

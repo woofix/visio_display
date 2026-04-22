@@ -1,0 +1,270 @@
+<!-- MIT License - Copyright (c) 2026 Woofix -->
+{% extends 'admin_layout.html' %}
+
+{% block title %}{{ t('campaigns_title') }}{% endblock %}
+{% block topbar_icon %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7V3m8 4V3"/><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 11h18"/><path d="M8 15h3"/><path d="M13 15h3"/><path d="M8 18h8"/></svg>{% endblock %}
+{% block topbar_breadcrumbs %}<div class="topbar-breadcrumbs">
+    <a href="/admin" class="bc-link">{{ app_name }}</a>
+    <svg class="bc-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    <span class="bc-current">{% block topbar_title %}{{ t('campaigns_title') }}{% endblock %}</span>
+</div>{% endblock %}
+{% block topbar_sub %}{{ t('campaigns_topbar_sub') }}{% endblock %}
+
+{% block styles %}
+.campaign-layout { display:grid; grid-template-columns:minmax(320px, 420px) minmax(0, 1fr); gap:20px; align-items:start; }
+.campaign-card, .campaign-panel { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow-sm); }
+.campaign-panel { padding:18px; position:sticky; top:82px; }
+.campaign-list { display:flex; flex-direction:column; gap:14px; }
+.campaign-card { padding:18px; }
+.campaign-header { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; margin-bottom:12px; }
+.campaign-title { font-size:1rem; font-weight:800; color:var(--text); }
+.campaign-meta { font-size:.75rem; color:var(--text-3); margin-top:4px; }
+.campaign-badges { display:flex; flex-wrap:wrap; gap:6px; }
+.campaign-badge { border-radius:999px; padding:4px 10px; font-size:.7rem; font-weight:700; }
+.campaign-badge.active { background:#dcfce7; color:#166534; }
+.campaign-badge.disabled { background:#fee2e2; color:#b91c1c; }
+.campaign-badge.archived { background:#e5e7eb; color:#4b5563; }
+.campaign-badge.priority { background:var(--primary-bg); color:var(--primary); }
+.campaign-stats { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+.campaign-stat { background:var(--surface-alt); border-radius:10px; padding:8px 10px; min-width:92px; }
+.campaign-stat strong { display:block; font-size:.96rem; color:var(--text); }
+.campaign-stat span { font-size:.7rem; color:var(--text-3); text-transform:uppercase; letter-spacing:.05em; }
+.campaign-actions { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+.campaign-actions form { margin:0; }
+.campaign-form { display:grid; gap:14px; }
+.campaign-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px; }
+.campaign-field { display:flex; flex-direction:column; gap:6px; }
+.campaign-field label, .campaign-section-title { font-size:.72rem; font-weight:700; color:var(--text-2); text-transform:uppercase; letter-spacing:.06em; }
+.campaign-field input, .campaign-field select, .campaign-field textarea { border:1.5px solid var(--border); border-radius:10px; padding:10px 12px; font:inherit; color:var(--text); background:var(--surface); }
+.campaign-field input:focus, .campaign-field select:focus, .campaign-field textarea:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px rgba(124,58,237,.09); }
+.campaign-checks { display:flex; flex-wrap:wrap; gap:8px; }
+.campaign-check { display:inline-flex; align-items:center; gap:8px; border:1px solid var(--border); border-radius:999px; padding:7px 12px; background:var(--surface-alt); font-size:.78rem; color:var(--text-2); }
+.campaign-check input { accent-color:var(--primary); }
+.campaign-select { min-height:150px; }
+.campaign-tags { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.campaign-tag { display:inline-flex; align-items:center; gap:6px; background:var(--primary-bg); color:var(--primary); border-radius:999px; padding:5px 10px; font-size:.72rem; font-weight:700; }
+.campaign-tag.muted { background:#f3f4f6; color:#6b7280; }
+.campaign-empty { padding:36px 20px; text-align:center; color:var(--text-3); background:var(--surface); border:1px dashed var(--border); border-radius:var(--radius); }
+.campaign-help { font-size:.78rem; color:var(--text-3); line-height:1.6; }
+.campaign-divider { height:1px; background:var(--border); margin:14px 0; }
+.campaign-card.highlight { box-shadow:0 0 0 2px rgba(124,58,237,.18), var(--shadow); }
+@media (max-width: 980px) {
+    .campaign-layout { grid-template-columns:1fr; }
+    .campaign-panel { position:static; }
+}
+@media (max-width: 640px) {
+    .campaign-grid { grid-template-columns:1fr; }
+}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{{ t('campaigns_h1') }}</h1>
+        <p>{{ t('campaigns_sub') }}</p>
+    </div>
+</div>
+
+<div class="campaign-layout">
+    <aside class="campaign-panel">
+        <h2 style="font-size:1rem;margin-bottom:6px">{{ t('campaigns_create_title') }}</h2>
+        <p class="campaign-help">{{ t('campaigns_create_desc') }}</p>
+        <div class="campaign-divider"></div>
+
+        {% if can_manage_campaigns %}
+        <form action="/admin/campaigns/create" method="post" class="campaign-form">
+            <div class="campaign-field">
+                <label for="new-campaign-name">{{ t('campaigns_name_label') }}</label>
+                <input id="new-campaign-name" type="text" name="name" maxlength="80" required>
+            </div>
+            <div class="campaign-grid">
+                <div class="campaign-field">
+                    <label for="new-campaign-start">{{ t('campaigns_start_label') }}</label>
+                    <input id="new-campaign-start" type="date" name="start_date">
+                </div>
+                <div class="campaign-field">
+                    <label for="new-campaign-end">{{ t('campaigns_end_label') }}</label>
+                    <input id="new-campaign-end" type="date" name="end_date">
+                </div>
+            </div>
+            <div class="campaign-grid">
+                <div class="campaign-field">
+                    <label for="new-campaign-priority">{{ t('campaigns_priority_label') }}</label>
+                    <input id="new-campaign-priority" type="number" name="priority" min="1" max="999" value="100">
+                </div>
+                <label class="campaign-check" style="align-self:end">
+                    <input type="checkbox" name="enabled" checked>
+                    {{ t('campaigns_enabled_label') }}
+                </label>
+            </div>
+            <div>
+                <div class="campaign-section-title">{{ t('campaigns_screens_label') }}</div>
+                <div class="campaign-checks" style="margin-top:8px">
+                    {% for screen_value, screen_label in available_screen_choices %}
+                    <label class="campaign-check">
+                        <input type="checkbox" name="screens" value="{{ screen_value }}">
+                        {{ screen_label or default_screen_name }}
+                    </label>
+                    {% endfor %}
+                    {% if not available_screen_choices %}
+                    <span class="campaign-tag muted">{{ t('campaigns_no_screens') }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="campaign-field">
+                <label for="new-campaign-groups">{{ t('campaigns_groups_label') }}</label>
+                <input id="new-campaign-groups" type="text" name="groups" placeholder="{{ t('campaigns_groups_placeholder') }}">
+                {% if group_choices %}
+                <div class="campaign-tags">
+                    {% for group in group_choices %}
+                    <span class="campaign-tag">{{ group }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            <div class="campaign-field">
+                <label for="new-campaign-media">{{ t('campaigns_media_label') }}</label>
+                <select id="new-campaign-media" name="media" class="campaign-select" multiple>
+                    {% for filename in media_choices %}
+                    <option value="{{ filename }}">{{ filename }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <p class="campaign-help">{{ t('campaigns_priority_help') }}</p>
+            <button type="submit" class="btn">{{ t('campaigns_create_cta') }}</button>
+        </form>
+        {% else %}
+        <p class="campaign-help">{{ t('campaigns_readonly') }}</p>
+        {% endif %}
+    </aside>
+
+    <section class="campaign-list">
+        {% if campaigns %}
+            {% for campaign in campaigns %}
+            <article class="campaign-card {% if current_campaign == campaign.id %}highlight{% endif %}" id="campaign-{{ campaign.id }}">
+                <div class="campaign-header">
+                    <div>
+                        <div class="campaign-title">{{ campaign.name }}</div>
+                        <div class="campaign-meta">
+                            {{ t('campaigns_updated_at', updated_at=campaign.updated_at or '—') }}
+                        </div>
+                    </div>
+                    <div class="campaign-badges">
+                        <span class="campaign-badge priority">{{ t('campaigns_priority_badge', priority=campaign.priority) }}</span>
+                        {% if campaign.archived %}
+                        <span class="campaign-badge archived">{{ t('campaigns_archived_badge') }}</span>
+                        {% elif campaign.is_active %}
+                        <span class="campaign-badge active">{{ t('campaigns_active_badge') }}</span>
+                        {% else %}
+                        <span class="campaign-badge disabled">{{ t('campaigns_inactive_badge') }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="campaign-stats">
+                    <div class="campaign-stat"><strong>{{ campaign.target_counts.resolved_media }}</strong><span>{{ t('campaigns_stat_resolved_media') }}</span></div>
+                    <div class="campaign-stat"><strong>{{ campaign.target_counts.media }}</strong><span>{{ t('campaigns_stat_selected_media') }}</span></div>
+                    <div class="campaign-stat"><strong>{{ campaign.target_counts.groups }}</strong><span>{{ t('campaigns_stat_groups') }}</span></div>
+                    <div class="campaign-stat"><strong>{{ campaign.target_counts.screens if campaign.target_counts.screens else '∞' }}</strong><span>{{ t('campaigns_stat_screens') }}</span></div>
+                </div>
+
+                <div class="campaign-tags">
+                    <span class="campaign-tag muted">
+                        {{ t('campaigns_period_label') }}:
+                        {{ campaign.start_date or '—' }} → {{ campaign.end_date or '—' }}
+                    </span>
+                    {% if campaign.screens %}
+                        {% for screen in campaign.screens %}
+                        <span class="campaign-tag">{{ screen or default_screen_name }}</span>
+                        {% endfor %}
+                    {% else %}
+                    <span class="campaign-tag muted">{{ t('campaigns_all_screens') }}</span>
+                    {% endif %}
+                    {% for group in campaign.groups %}
+                    <span class="campaign-tag">{{ group }}</span>
+                    {% endfor %}
+                </div>
+
+                <div class="campaign-actions">
+                    {% if can_manage_campaigns %}
+                    {% if not campaign.archived %}
+                    <form action="/admin/campaigns/{{ campaign.id }}/toggle" method="post">
+                        <button type="submit" class="btn sm {% if campaign.enabled and not campaign.archived %}warning{% else %}success{% endif %}">
+                            {% if campaign.enabled and not campaign.archived %}{{ t('campaigns_disable_cta') }}{% else %}{{ t('campaigns_enable_cta') }}{% endif %}
+                        </button>
+                    </form>
+                    {% endif %}
+                    <form action="/admin/campaigns/{{ campaign.id }}/duplicate" method="post">
+                        <button type="submit" class="btn sm secondary">{{ t('campaigns_duplicate_cta') }}</button>
+                    </form>
+                    <form action="/admin/campaigns/{{ campaign.id }}/archive" method="post">
+                        <button type="submit" class="btn sm ghost">
+                            {% if campaign.archived %}{{ t('campaigns_restore_cta') }}{% else %}{{ t('campaigns_archive_cta') }}{% endif %}
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+
+                {% if can_manage_campaigns %}
+                <form action="/admin/campaigns/{{ campaign.id }}/update" method="post" class="campaign-form">
+                    <input type="hidden" name="archived" value="{{ '1' if campaign.archived else '0' }}">
+                    <div class="campaign-field">
+                        <label for="campaign-name-{{ campaign.id }}">{{ t('campaigns_name_label') }}</label>
+                        <input id="campaign-name-{{ campaign.id }}" type="text" name="name" value="{{ campaign.name }}" maxlength="80" required>
+                    </div>
+                    <div class="campaign-grid">
+                        <div class="campaign-field">
+                            <label for="campaign-start-{{ campaign.id }}">{{ t('campaigns_start_label') }}</label>
+                            <input id="campaign-start-{{ campaign.id }}" type="date" name="start_date" value="{{ campaign.start_date }}">
+                        </div>
+                        <div class="campaign-field">
+                            <label for="campaign-end-{{ campaign.id }}">{{ t('campaigns_end_label') }}</label>
+                            <input id="campaign-end-{{ campaign.id }}" type="date" name="end_date" value="{{ campaign.end_date }}">
+                        </div>
+                    </div>
+                    <div class="campaign-grid">
+                        <div class="campaign-field">
+                            <label for="campaign-priority-{{ campaign.id }}">{{ t('campaigns_priority_label') }}</label>
+                            <input id="campaign-priority-{{ campaign.id }}" type="number" name="priority" min="1" max="999" value="{{ campaign.priority }}">
+                        </div>
+                        <label class="campaign-check" style="align-self:end">
+                            <input type="checkbox" name="enabled" value="1" {% if campaign.enabled %}checked{% endif %}>
+                            {{ t('campaigns_enabled_label') }}
+                        </label>
+                    </div>
+                    <div>
+                        <div class="campaign-section-title">{{ t('campaigns_screens_label') }}</div>
+                        <div class="campaign-checks" style="margin-top:8px">
+                            {% for screen_value, screen_label in available_screen_choices %}
+                            <label class="campaign-check">
+                                <input type="checkbox" name="screens" value="{{ screen_value }}" {% if screen_label in campaign.screens %}checked{% endif %}>
+                                {{ screen_label or default_screen_name }}
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="campaign-field">
+                        <label for="campaign-groups-{{ campaign.id }}">{{ t('campaigns_groups_label') }}</label>
+                        <input id="campaign-groups-{{ campaign.id }}" type="text" name="groups" value="{{ campaign.groups|join(', ') }}" placeholder="{{ t('campaigns_groups_placeholder') }}">
+                    </div>
+                    <div class="campaign-field">
+                        <label for="campaign-media-{{ campaign.id }}">{{ t('campaigns_media_label') }}</label>
+                        <select id="campaign-media-{{ campaign.id }}" name="media" class="campaign-select" multiple>
+                            {% for filename in media_choices %}
+                            <option value="{{ filename }}" {% if filename in campaign.media %}selected{% endif %}>{{ filename }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn">{{ t('campaigns_save_cta') }}</button>
+                </form>
+                {% endif %}
+            </article>
+            {% endfor %}
+        {% else %}
+        <div class="campaign-empty">
+            <p>{{ t('campaigns_empty') }}</p>
+        </div>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

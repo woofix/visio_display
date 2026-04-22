@@ -145,11 +145,10 @@ def _build_settings_context(tab='logo', install_defaults=None, install_result=No
         },
         client_control_result=client_control_result,
         client_watchdog={
-            'enabled': bool(client_watchdog.get('enabled', True)),
             'check_interval_seconds': int(client_watchdog.get('check_interval_seconds', 30) or 30),
-            'grace_period_seconds': int(client_watchdog.get('grace_period_seconds', 180) or 180),
+            'grace_period_seconds': int(client_watchdog.get('grace_period_seconds', 90) or 90),
             'consecutive_failures_before_reboot': int(
-                client_watchdog.get('consecutive_failures_before_reboot', 4) or 4
+                client_watchdog.get('consecutive_failures_before_reboot', 1) or 1
             ),
         },
         known_clients=list_known_clients() if is_sa else [],
@@ -187,7 +186,6 @@ def set_client_watchdog():
     cfg = load_config()
     current = cfg.get('client_watchdog', {})
     cfg['client_watchdog'] = {
-        'enabled': request.form.get('enabled') == 'on',
         'check_interval_seconds': _normalize_positive_int(
             request.form.get('check_interval_seconds'),
             int(current.get('check_interval_seconds', 30) or 30),
@@ -196,14 +194,14 @@ def set_client_watchdog():
         ),
         'grace_period_seconds': _normalize_positive_int(
             request.form.get('grace_period_seconds'),
-            int(current.get('grace_period_seconds', 180) or 180),
+            int(current.get('grace_period_seconds', 90) or 90),
             30,
             3600,
         ),
         'consecutive_failures_before_reboot': _normalize_positive_int(
             request.form.get('consecutive_failures_before_reboot'),
-            int(current.get('consecutive_failures_before_reboot', 4) or 4),
-            2,
+            int(current.get('consecutive_failures_before_reboot', 1) or 1),
+            1,
             20,
         ),
     }

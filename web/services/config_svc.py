@@ -43,10 +43,9 @@ def _default_features():
 
 def _default_client_watchdog():
     return {
-        "enabled": True,
         "check_interval_seconds": 30,
-        "grace_period_seconds": 180,
-        "consecutive_failures_before_reboot": 4,
+        "grace_period_seconds": 90,
+        "consecutive_failures_before_reboot": 1,
     }
 
 
@@ -94,11 +93,10 @@ def normalize_config(cfg):
         **_default_client_watchdog(),
         **(stored_watchdog if isinstance(stored_watchdog, dict) else {}),
     }
-    merged["client_watchdog"]["enabled"] = bool(merged["client_watchdog"].get("enabled", True))
     for key, minimum in (
         ("check_interval_seconds", 15),
         ("grace_period_seconds", 30),
-        ("consecutive_failures_before_reboot", 2),
+        ("consecutive_failures_before_reboot", 1),
     ):
         try:
             merged["client_watchdog"][key] = max(minimum, int(merged["client_watchdog"].get(key)))

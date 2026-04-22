@@ -89,22 +89,33 @@
 .lang-card input[type=radio] { position:absolute; opacity:0; pointer-events:none; }
 .lang-flag { font-size:1.6rem; }
 .lang-name { font-size:.9rem; font-weight:700; color:var(--text); }
-.install-grid { display:grid; grid-template-columns:minmax(320px, 560px) minmax(280px, 1fr); gap:20px; align-items:start; }
-.install-panels { display:grid; grid-template-columns:repeat(2, minmax(280px, 1fr)); gap:20px; align-items:start; }
-.install-form { display:flex; flex-direction:column; gap:14px; }
-.install-form input { width:100%; padding:9px 11px; border:1.5px solid var(--border); border-radius:var(--radius-sm); font-size:.85rem; background:var(--surface); color:var(--text); }
+.install-grid { display:grid; grid-template-columns:minmax(340px, 1.05fr) minmax(320px, .95fr); gap:18px; align-items:start; }
+.install-admin-stack { display:grid; gap:18px; align-items:start; }
+.install-form { display:flex; flex-direction:column; gap:12px; }
+.install-form input,
+.install-form select { width:100%; padding:9px 11px; border:1.5px solid var(--border); border-radius:var(--radius-sm); font-size:.85rem; background:var(--surface); color:var(--text); }
 .install-form input[type=password] { letter-spacing:.03em; }
-.install-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:20px 22px; box-shadow:var(--shadow-sm); }
+.install-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px 18px; box-shadow:var(--shadow-sm); }
 .install-card-title { font-size:.82rem; font-weight:700; color:var(--primary); text-transform:uppercase; letter-spacing:.07em; margin-bottom:8px; }
 .install-help { font-size:.76rem; color:var(--text-3); line-height:1.6; }
 .install-note { background:var(--surface-alt); border:1px solid var(--border); border-radius:12px; padding:14px 16px; }
+.install-card-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:14px; }
+.install-card-head p { margin:0; font-size:.8rem; color:var(--text-3); line-height:1.5; max-width:56ch; }
+.install-compact-form { gap:10px; }
+.install-field label { font-size:.72rem; color:var(--text-3); font-weight:700; display:block; margin-bottom:5px; }
+.install-form-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px 12px; }
+.install-form-grid .full { grid-column:1 / -1; }
+.install-actions-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; }
+.install-actions-grid .btn { justify-content:center; min-height:40px; }
+.install-inline-note { display:flex; align-items:center; gap:8px; padding:10px 12px; background:var(--surface-alt); border:1px solid var(--border); border-radius:12px; font-size:.76rem; color:var(--text-3); }
+.install-inline-note strong { color:var(--text-2); }
 .known-clients-card { margin-bottom:20px; }
-.known-clients-list { display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 340px)); gap:12px; align-items:start; }
-.known-client-item { border:1px solid var(--border); border-radius:14px; padding:12px; background:var(--surface); display:flex; flex-direction:column; gap:10px; width:100%; }
+.known-clients-list { display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:10px; align-items:start; }
+.known-client-item { border:1px solid var(--border); border-radius:14px; padding:11px; background:var(--surface); display:flex; flex-direction:column; gap:9px; width:100%; }
 .known-client-head { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
-.known-client-name { font-size:.9rem; font-weight:700; color:var(--text); }
-.known-client-meta { font-size:.74rem; color:var(--text-3); line-height:1.5; }
-.known-client-ip { font:600 .86rem/1.2 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; color:var(--primary); }
+.known-client-name { font-size:.88rem; font-weight:700; color:var(--text); }
+.known-client-meta { font-size:.72rem; color:var(--text-3); line-height:1.45; }
+.known-client-ip { font:600 .82rem/1.2 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; color:var(--primary); }
 .known-client-badges { display:flex; flex-wrap:wrap; gap:6px; }
 .known-client-badge { font-size:.66rem; font-weight:700; padding:4px 8px; border-radius:999px; background:var(--surface-alt); color:var(--text-2); border:1px solid var(--border); }
 .known-client-badge.online { background:#ecfdf5; color:#166534; border-color:#bbf7d0; }
@@ -113,10 +124,10 @@
 .known-client-badge.attention { background:#fffbeb; color:#b45309; border-color:#fde68a; }
 .known-client-badge.critical { background:#fef2f2; color:#991b1b; border-color:#fecaca; }
 .known-client-health { display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
-.known-client-overview { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px; }
+.known-client-overview { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:7px; }
 .known-client-overview-item { border:1px solid var(--border); border-radius:10px; padding:8px 9px; background:var(--surface-alt); min-width:0; }
 .known-client-overview-label { font-size:.62rem; font-weight:700; color:var(--text-3); text-transform:uppercase; letter-spacing:.05em; }
-.known-client-overview-value { margin-top:3px; font-size:.78rem; font-weight:700; color:var(--text); line-height:1.3; word-break:break-word; }
+.known-client-overview-value { margin-top:3px; font-size:.76rem; font-weight:700; color:var(--text); line-height:1.3; word-break:break-word; }
 .known-client-details { display:none; flex-direction:column; gap:10px; }
 .known-client-item[data-expanded="true"] .known-client-details { display:flex; }
 .known-client-metrics { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; }
@@ -128,6 +139,7 @@
 .known-client-toggle { align-self:flex-start; padding:0; border:none; background:none; color:var(--primary); font-size:.78rem; font-weight:700; cursor:pointer; }
 .known-client-toggle:hover { text-decoration:underline; }
 .known-client-actions { display:flex; gap:8px; flex-wrap:wrap; }
+.known-client-actions .btn { flex:1 1 140px; justify-content:center; }
 .known-clients-empty { font-size:.82rem; color:var(--text-3); }
 .install-status { border-radius:12px; padding:14px 16px; margin-bottom:14px; border:1px solid var(--border); }
 .install-status.ok { background:#f0fdf4; border-color:#bbf7d0; color:#166534; }
@@ -145,7 +157,8 @@
 @media(max-width:700px) {
     .lang-grid { grid-template-columns:1fr; max-width:none; }
     .install-grid { grid-template-columns:1fr; }
-    .install-panels { grid-template-columns:1fr; }
+    .install-form-grid,
+    .install-actions-grid { grid-template-columns:1fr; }
     .known-clients-list { grid-template-columns:1fr; }
     .settings-two-col { grid-template-columns:1fr; }
     .event-list li,
@@ -407,130 +420,119 @@
         </div>
 
         <div class="install-grid">
-            <div class="install-panels" style="grid-column:1 / -1">
-                <div class="install-card">
-                    <div class="install-card-title">{{ t('install_title') }}</div>
-                    <p style="font-size:.82rem;color:var(--text-3);margin-bottom:20px">{{ t('install_subtitle') }}</p>
-                    <form action="/admin/settings/install-client" method="post" class="install-form" id="install-client-form">
-                        <div>
-                            <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('install_host_label') }}</label>
+            <div class="install-card">
+                <div class="install-card-head">
+                    <div>
+                        <div class="install-card-title">{{ t('install_title') }}</div>
+                        <p>{{ t('install_subtitle') }}</p>
+                    </div>
+                </div>
+                <form action="/admin/settings/install-client" method="post" class="install-form install-compact-form" id="install-client-form">
+                    <div class="install-form-grid">
+                        <div class="install-field full">
+                            <label>{{ t('install_host_label') }}</label>
                             <input type="text" name="host" value="{{ install_defaults.host }}" placeholder="{{ t('install_host_placeholder') }}" required>
                         </div>
-                        <div class="settings-two-col">
-                            <div>
-                                <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('install_port_label') }}</label>
-                                <input type="number" name="port" value="{{ install_defaults.port }}" min="1" max="65535" required>
-                            </div>
-                            <div>
-                                <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('install_ssh_user_label') }}</label>
-                                <input type="text" name="ssh_user" value="{{ install_defaults.ssh_user }}" placeholder="debian" required>
-                            </div>
+                        <div class="install-field">
+                            <label>{{ t('install_port_label') }}</label>
+                            <input type="number" name="port" value="{{ install_defaults.port }}" min="1" max="65535" required>
                         </div>
-                        <div>
-                            <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('install_kiosk_user_label') }}</label>
+                        <div class="install-field">
+                            <label>{{ t('install_ssh_user_label') }}</label>
+                            <input type="text" name="ssh_user" value="{{ install_defaults.ssh_user }}" placeholder="debian" required>
+                        </div>
+                        <div class="install-field">
+                            <label>{{ t('install_kiosk_user_label') }}</label>
                             <input type="text" name="kiosk_user" value="{{ install_defaults.kiosk_user }}" placeholder="eleve" required>
                         </div>
-                        <div>
-                            <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('install_server_url_label') }}</label>
-                            <input type="url" id="install-server-url" name="server_url" value="{{ install_defaults.server_url }}" placeholder="{{ t('install_server_url_placeholder') }}" required>
-                        </div>
-                        <div>
-                            <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('install_screen_name_label') }}</label>
-                            <input type="text" name="screen_name" value="{{ install_defaults.screen_name }}" placeholder="{{ t('install_screen_name_placeholder') }}" maxlength="32">
-                        </div>
-                        <div>
-                            <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('install_machine_name_label') }}</label>
+                        <div class="install-field">
+                            <label>{{ t('install_machine_name_label') }}</label>
                             <input type="text" name="machine_name" value="{{ install_defaults.machine_name }}" placeholder="{{ t('install_machine_name_placeholder') }}" maxlength="63" required>
                         </div>
-                        <div>
-                            <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('install_ssh_password_label') }}</label>
+                        <div class="install-field full">
+                            <label>{{ t('install_server_url_label') }}</label>
+                            <input type="url" id="install-server-url" name="server_url" value="{{ install_defaults.server_url }}" placeholder="{{ t('install_server_url_placeholder') }}" required>
+                        </div>
+                        <div class="install-field">
+                            <label>{{ t('install_screen_name_label') }}</label>
+                            <input type="text" name="screen_name" value="{{ install_defaults.screen_name }}" placeholder="{{ t('install_screen_name_placeholder') }}" maxlength="32">
+                        </div>
+                        <div class="install-field">
+                            <label>{{ t('install_ssh_password_label') }}</label>
                             <input type="password" name="ssh_password" autocomplete="new-password" required>
                         </div>
-                        <label class="install-checkbox">
-                            <input type="checkbox" name="sudo_same_as_ssh" {% if install_defaults.sudo_same_as_ssh %}checked{% endif %}>
-                            <span>{{ t('install_sudo_same_as_ssh') }}</span>
-                        </label>
-                        <div>
-                            <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('install_sudo_password_label') }}</label>
+                        <div class="install-field full">
+                            <label class="install-checkbox">
+                                <input type="checkbox" name="sudo_same_as_ssh" {% if install_defaults.sudo_same_as_ssh %}checked{% endif %}>
+                                <span>{{ t('install_sudo_same_as_ssh') }}</span>
+                            </label>
+                        </div>
+                        <div class="install-field full">
+                            <label>{{ t('install_sudo_password_label') }}</label>
                             <input type="password" name="sudo_password" autocomplete="new-password" placeholder="{{ t('install_sudo_password_placeholder') }}">
                         </div>
-                        <div class="install-help">{{ t('install_help') }}</div>
-                        <div>
-                            <button type="submit" class="btn sm" id="install-submit-btn">
-                                <span id="install-submit-label">{{ t('install_submit') }}</span>
-                            </button>
-                        </div>
-                    </form>
-                </div>
+                    </div>
+                    <div class="install-inline-note">
+                        <strong>SSH</strong>
+                        <span>{{ t('install_help') }}</span>
+                    </div>
+                    <div>
+                        <button type="submit" class="btn sm" id="install-submit-btn">
+                            <span id="install-submit-label">{{ t('install_submit') }}</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
 
+            <div class="install-admin-stack">
                 <div class="install-card">
-                    <div class="install-card-title">{{ t('client_watchdog_title') }}</div>
-                    <p style="font-size:.82rem;color:var(--text-3);margin-bottom:20px">{{ t('client_watchdog_subtitle') }}</p>
-                    <form action="/admin/settings/client-watchdog" method="post" class="install-form">
-                        <label class="install-checkbox">
-                            <input type="checkbox" name="enabled" {% if client_watchdog.enabled %}checked{% endif %}>
-                            <span>{{ t('client_watchdog_enabled') }}</span>
-                        </label>
-                        <div class="settings-two-col">
-                            <div>
-                                <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('client_watchdog_failures_label') }}</label>
-                                <input type="number" name="consecutive_failures_before_reboot" value="{{ client_watchdog.consecutive_failures_before_reboot }}" min="2" max="20" required>
-                            </div>
-                            <div>
-                                <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('client_watchdog_interval_label') }}</label>
-                                <input type="number" name="check_interval_seconds" value="{{ client_watchdog.check_interval_seconds }}" min="15" max="600" required>
-                            </div>
-                        </div>
+                    <div class="install-card-head">
                         <div>
-                            <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('client_watchdog_grace_label') }}</label>
-                            <input type="number" name="grace_period_seconds" value="{{ client_watchdog.grace_period_seconds }}" min="30" max="3600" required>
+                            <div class="install-card-title">{{ t('client_control_title') }}</div>
+                            <p>{{ t('client_control_subtitle') }}</p>
                         </div>
-                        <div class="install-help">{{ t('client_watchdog_help') }}</div>
-                        <div>
-                            <button type="submit" class="btn sm">{{ t('client_watchdog_submit') }}</button>
-                        </div>
-                    </form>
-                </div>
-
-                <div class="install-card">
-                    <div class="install-card-title">{{ t('client_control_title') }}</div>
-                    <p style="font-size:.82rem;color:var(--text-3);margin-bottom:20px">{{ t('client_control_subtitle') }}</p>
-                    <form action="/admin/settings/client-power" method="post" class="install-form" id="client-control-form">
+                    </div>
+                    <form action="/admin/settings/client-power" method="post" class="install-form install-compact-form" id="client-control-form">
                         <input type="hidden" name="action" id="client-action-input" value="">
-                        <div>
-                            <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('install_host_label') }}</label>
-                            <select name="host" required {% if not known_clients %}disabled{% endif %}>
-                                {% for client in known_clients if client.ip_address %}
-                                <option value="{{ client.ip_address }}" {% if client_control_defaults.host == client.ip_address or (not client_control_defaults.host and loop.first) %}selected{% endif %}>
-                                    {{ client.ip_address }}{% if client.display_name %} - {{ client.display_name }}{% endif %}{% if client.hostname %} ({{ client.hostname }}){% endif %}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="settings-two-col">
-                            <div>
-                                <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('install_port_label') }}</label>
+                        <div class="install-form-grid">
+                            <div class="install-field full">
+                                <label>{{ t('install_host_label') }}</label>
+                                <select name="host" required {% if not known_clients %}disabled{% endif %}>
+                                    {% for client in known_clients if client.ip_address %}
+                                    <option value="{{ client.ip_address }}" {% if client_control_defaults.host == client.ip_address or (not client_control_defaults.host and loop.first) %}selected{% endif %}>
+                                        {{ client.ip_address }}{% if client.display_name %} - {{ client.display_name }}{% endif %}{% if client.hostname %} ({{ client.hostname }}){% endif %}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="install-field">
+                                <label>{{ t('install_port_label') }}</label>
                                 <input type="number" name="port" value="{{ client_control_defaults.port }}" min="1" max="65535" required>
                             </div>
-                            <div>
-                                <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('install_ssh_user_label') }}</label>
+                            <div class="install-field">
+                                <label>{{ t('install_ssh_user_label') }}</label>
                                 <input type="text" name="ssh_user" value="{{ client_control_defaults.ssh_user }}" placeholder="debian" required>
                             </div>
+                            <div class="install-field full">
+                                <label>{{ t('install_ssh_password_label') }}</label>
+                                <input type="password" name="ssh_password" autocomplete="new-password" required>
+                            </div>
+                            <div class="install-field full">
+                                <label class="install-checkbox">
+                                    <input type="checkbox" name="sudo_same_as_ssh" {% if client_control_defaults.sudo_same_as_ssh %}checked{% endif %}>
+                                    <span>{{ t('install_sudo_same_as_ssh') }}</span>
+                                </label>
+                            </div>
+                            <div class="install-field full">
+                                <label>{{ t('install_sudo_password_label') }}</label>
+                                <input type="password" name="sudo_password" autocomplete="new-password" placeholder="{{ t('install_sudo_password_placeholder') }}">
+                            </div>
                         </div>
-                        <div>
-                            <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('install_ssh_password_label') }}</label>
-                            <input type="password" name="ssh_password" autocomplete="new-password" required>
+                        <div class="install-inline-note">
+                            <strong>Admin</strong>
+                            <span>{{ t('client_control_help') }}</span>
                         </div>
-                        <label class="install-checkbox">
-                            <input type="checkbox" name="sudo_same_as_ssh" {% if client_control_defaults.sudo_same_as_ssh %}checked{% endif %}>
-                            <span>{{ t('install_sudo_same_as_ssh') }}</span>
-                        </label>
-                        <div>
-                            <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('install_sudo_password_label') }}</label>
-                            <input type="password" name="sudo_password" autocomplete="new-password" placeholder="{{ t('install_sudo_password_placeholder') }}">
-                        </div>
-                        <div class="install-help">{{ t('client_control_help') }}</div>
-                        <div style="display:flex;gap:10px;flex-wrap:wrap">
+                        <div class="install-actions-grid">
                             <button type="submit" class="btn sm danger" data-action-value="shutdown" id="client-shutdown-btn">
                                 <span id="client-shutdown-label">{{ t('client_control_shutdown') }}</span>
                             </button>
@@ -543,6 +545,38 @@
                             <button type="submit" class="btn sm" data-action-value="os-update" id="client-os-update-btn">
                                 <span id="client-os-update-label">{{ t('client_control_os_update') }}</span>
                             </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="install-card">
+                    <div class="install-card-head">
+                        <div>
+                            <div class="install-card-title">{{ t('client_watchdog_title') }}</div>
+                            <p>{{ t('client_watchdog_subtitle') }}</p>
+                        </div>
+                    </div>
+                    <form action="/admin/settings/client-watchdog" method="post" class="install-form install-compact-form">
+                        <div class="install-form-grid">
+                            <div class="install-field">
+                                <label>{{ t('client_watchdog_failures_label') }}</label>
+                                <input type="number" name="consecutive_failures_before_reboot" value="{{ client_watchdog.consecutive_failures_before_reboot }}" min="1" max="20" required>
+                            </div>
+                            <div class="install-field">
+                                <label>{{ t('client_watchdog_interval_label') }}</label>
+                                <input type="number" name="check_interval_seconds" value="{{ client_watchdog.check_interval_seconds }}" min="15" max="600" required>
+                            </div>
+                            <div class="install-field full">
+                                <label>{{ t('client_watchdog_grace_label') }}</label>
+                                <input type="number" name="grace_period_seconds" value="{{ client_watchdog.grace_period_seconds }}" min="30" max="3600" required>
+                            </div>
+                        </div>
+                        <div class="install-inline-note">
+                            <strong>Kiosk</strong>
+                            <span>{{ t('client_watchdog_help') }}</span>
+                        </div>
+                        <div>
+                            <button type="submit" class="btn sm">{{ t('client_watchdog_submit') }}</button>
                         </div>
                     </form>
                 </div>
@@ -831,14 +865,32 @@
 })();
 
 (function() {
+    const fillHostField = (form, host) => {
+        if (!form) return;
+        const hostInput = form.querySelector('input[name="host"]');
+        const hostSelect = form.querySelector('select[name="host"]');
+        if (hostInput) {
+            hostInput.value = host || '';
+            hostInput.focus();
+            hostInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
+        }
+        if (hostSelect) {
+            const desired = host || '';
+            const existing = Array.from(hostSelect.options).find(option => option.value === desired);
+            if (existing) {
+                hostSelect.value = desired;
+            }
+            hostSelect.focus();
+            hostSelect.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    };
+
     document.querySelectorAll('.btn-use-client').forEach(btn => {
         btn.addEventListener('click', () => {
             const form = document.getElementById(btn.dataset.targetForm || '');
-            const hostInput = form?.querySelector('input[name="host"]');
-            if (!form || !hostInput) return;
-            hostInput.value = btn.dataset.host || '';
-            hostInput.focus();
-            hostInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if (!form) return;
+            fillHostField(form, btn.dataset.host || '');
         });
     });
 })();
@@ -915,11 +967,24 @@
         root.querySelectorAll('.btn-use-client').forEach(btn => {
             btn.addEventListener('click', () => {
                 const form = document.getElementById(btn.dataset.targetForm || '');
-                const hostInput = form?.querySelector('input[name="host"]');
-                if (!form || !hostInput) return;
-                hostInput.value = btn.dataset.host || '';
-                hostInput.focus();
-                hostInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                if (!form) return;
+                const hostInput = form.querySelector('input[name="host"]');
+                const hostSelect = form.querySelector('select[name="host"]');
+                if (hostInput) {
+                    hostInput.value = btn.dataset.host || '';
+                    hostInput.focus();
+                    hostInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    return;
+                }
+                if (hostSelect) {
+                    const desired = btn.dataset.host || '';
+                    const existing = Array.from(hostSelect.options).find(option => option.value === desired);
+                    if (existing) {
+                        hostSelect.value = desired;
+                    }
+                    hostSelect.focus();
+                    hostSelect.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
             });
         });
     };

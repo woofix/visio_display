@@ -155,10 +155,9 @@ if [ -n "$SERVER_URL_INPUT" ]; then
     cat > "$CONFIG_FILE" <<EOC
 SERVER_URL=$SERVER_URL_INPUT
 SCREEN_NAME=$SCREEN_NAME_INPUT
-WATCHDOG_ENABLED=1
 WATCHDOG_CHECK_INTERVAL=30
-WATCHDOG_GRACE_PERIOD=180
-WATCHDOG_FAILURES_BEFORE_REBOOT=4
+WATCHDOG_GRACE_PERIOD=90
+WATCHDOG_FAILURES_BEFORE_REBOOT=1
 EOC
 fi
 
@@ -212,10 +211,9 @@ rm -f "$TMP_URL" "$TMP_NAME"
 cat > "$CONFIG" <<EOC
 SERVER_URL=$URL
 SCREEN_NAME=$NAME
-WATCHDOG_ENABLED=1
 WATCHDOG_CHECK_INTERVAL=30
-WATCHDOG_GRACE_PERIOD=180
-WATCHDOG_FAILURES_BEFORE_REBOOT=4
+WATCHDOG_GRACE_PERIOD=90
+WATCHDOG_FAILURES_BEFORE_REBOOT=1
 EOC
 EOF
 
@@ -597,7 +595,7 @@ DEFAULT_INTERVAL="$(read_conf WATCHDOG_CHECK_INTERVAL)"
 DEFAULT_GRACE="$(read_conf WATCHDOG_GRACE_PERIOD)"
 DEFAULT_FAILURES="$(read_conf WATCHDOG_FAILURES_BEFORE_REBOOT)"
 
-export DEFAULT_ENABLED DEFAULT_INTERVAL DEFAULT_GRACE DEFAULT_FAILURES
+export DEFAULT_INTERVAL DEFAULT_GRACE DEFAULT_FAILURES
 
 POLICY_RESPONSE=""
 if [ -n "$POLICY_JSON" ]; then
@@ -623,10 +621,9 @@ def as_int(value, default, minimum):
     except (TypeError, ValueError):
         return default
 
-default_enabled = as_bool(os.environ.get('DEFAULT_ENABLED', '1'), True)
 default_interval = as_int(os.environ.get('DEFAULT_INTERVAL', '30'), 30, 15)
-default_grace = as_int(os.environ.get('DEFAULT_GRACE', '180'), 180, 30)
-default_failures = as_int(os.environ.get('DEFAULT_FAILURES', '4'), 4, 2)
+default_grace = as_int(os.environ.get('DEFAULT_GRACE', '90'), 90, 30)
+default_failures = as_int(os.environ.get('DEFAULT_FAILURES', '1'), 1, 1)
 
 payload = {}
 try:
@@ -636,12 +633,10 @@ try:
 except Exception:
     payload = {}
 
-enabled = as_bool(payload.get('enabled'), default_enabled)
 interval = as_int(payload.get('check_interval_seconds'), default_interval, 15)
 grace = as_int(payload.get('grace_period_seconds'), default_grace, 30)
-failures = as_int(payload.get('consecutive_failures_before_reboot'), default_failures, 2)
+failures = as_int(payload.get('consecutive_failures_before_reboot'), default_failures, 1)
 
-print(f"ENABLED={'1' if enabled else '0'}")
 print(f"CHECK_INTERVAL={interval}")
 print(f"GRACE_PERIOD={grace}")
 print(f"FAILURES_BEFORE_REBOOT={failures}")
@@ -662,9 +657,8 @@ fi
 
 NOW_TS="$(date +%s)"
 CHECK_INTERVAL="${CHECK_INTERVAL:-30}"
-GRACE_PERIOD="${GRACE_PERIOD:-180}"
-FAILURES_BEFORE_REBOOT="${FAILURES_BEFORE_REBOOT:-4}"
-ENABLED="${ENABLED:-1}"
+GRACE_PERIOD="${GRACE_PERIOD:-90}"
+FAILURES_BEFORE_REBOOT="${FAILURES_BEFORE_REBOOT:-1}"
 
 if [ $((NOW_TS - LAST_CHECK_TS)) -lt "$CHECK_INTERVAL" ]; then
     exit 0
@@ -698,7 +692,6 @@ FAILURES=$FAILURES
 EOC
 printf '%s' "$MESSAGE" > "$LAST_ERROR_FILE"
 
-[ "$ENABLED" = "1" ] || exit 0
 [ "$FAILURES" -lt "$FAILURES_BEFORE_REBOOT" ] || {
     printf '%s - reboot scheduled' "$MESSAGE" > "$LAST_ERROR_FILE"
     sync || true

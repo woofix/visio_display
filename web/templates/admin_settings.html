@@ -464,6 +464,35 @@
                 </div>
 
                 <div class="install-card">
+                    <div class="install-card-title">{{ t('client_watchdog_title') }}</div>
+                    <p style="font-size:.82rem;color:var(--text-3);margin-bottom:20px">{{ t('client_watchdog_subtitle') }}</p>
+                    <form action="/admin/settings/client-watchdog" method="post" class="install-form">
+                        <label class="install-checkbox">
+                            <input type="checkbox" name="enabled" {% if client_watchdog.enabled %}checked{% endif %}>
+                            <span>{{ t('client_watchdog_enabled') }}</span>
+                        </label>
+                        <div class="settings-two-col">
+                            <div>
+                                <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('client_watchdog_failures_label') }}</label>
+                                <input type="number" name="consecutive_failures_before_reboot" value="{{ client_watchdog.consecutive_failures_before_reboot }}" min="2" max="20" required>
+                            </div>
+                            <div>
+                                <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('client_watchdog_interval_label') }}</label>
+                                <input type="number" name="check_interval_seconds" value="{{ client_watchdog.check_interval_seconds }}" min="15" max="600" required>
+                            </div>
+                        </div>
+                        <div>
+                            <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:5px">{{ t('client_watchdog_grace_label') }}</label>
+                            <input type="number" name="grace_period_seconds" value="{{ client_watchdog.grace_period_seconds }}" min="30" max="3600" required>
+                        </div>
+                        <div class="install-help">{{ t('client_watchdog_help') }}</div>
+                        <div>
+                            <button type="submit" class="btn sm">{{ t('client_watchdog_submit') }}</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="install-card">
                     <div class="install-card-title">{{ t('client_control_title') }}</div>
                     <p style="font-size:.82rem;color:var(--text-3);margin-bottom:20px">{{ t('client_control_subtitle') }}</p>
                     <form action="/admin/settings/client-power" method="post" class="install-form" id="client-control-form">

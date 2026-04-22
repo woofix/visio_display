@@ -41,6 +41,15 @@ def _default_features():
     }
 
 
+def _default_client_watchdog():
+    return {
+        "enabled": True,
+        "check_interval_seconds": 30,
+        "grace_period_seconds": 180,
+        "consecutive_failures_before_reboot": 4,
+    }
+
+
 def _default_config():
     return {
         "order": [],
@@ -54,6 +63,7 @@ def _default_config():
         "default_screen_name": "",
         "screens": {},
         "campaigns": [],
+        "client_watchdog": _default_client_watchdog(),
         "priority_alert": {
             "message": "",
             "updated_at": None,
@@ -79,6 +89,21 @@ def normalize_config(cfg):
     merged["default_screen_name"] = normalize_default_screen_name(cfg.get("default_screen_name", ""))
     stored_features = cfg.get("features", {})
     merged["features"] = {**_default_features(), **(stored_features if isinstance(stored_features, dict) else {})}
+    stored_watchdog = cfg.get("client_watchdog", {})
+    merged["client_watchdog"] = {
+        **_default_client_watchdog(),
+        **(stored_watchdog if isinstance(stored_watchdog, dict) else {}),
+    }
+    merged["client_watchdog"]["enabled"] = bool(merged["client_watchdog"].get("enabled", True))
+    for key, minimum in (
+        ("check_interval_seconds", 15),
+        ("grace_period_seconds", 30),
+        ("consecutive_failures_before_reboot", 2),
+    ):
+        try:
+            merged["client_watchdog"][key] = max(minimum, int(merged["client_watchdog"].get(key)))
+        except (TypeError, ValueError):
+            merged["client_watchdog"][key] = _default_client_watchdog()[key]
     screens = cfg.get("screens", {})
     normalized_screens = {}
     if isinstance(screens, dict):

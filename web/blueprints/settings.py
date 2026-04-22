@@ -86,6 +86,7 @@ def _settings_topbar_subtitle(active_tab, is_sa):
 def _build_settings_context(tab='logo', install_defaults=None, install_result=None,
                             client_control_defaults=None, client_control_result=None):
     cfg = load_config()
+    client_watchdog = cfg.get('client_watchdog', {})
     users = load_users()
     today = date.today()
     raw_events = cfg.get("events", [])
@@ -143,12 +144,28 @@ def _build_settings_context(tab='logo', install_defaults=None, install_result=No
             'sudo_same_as_ssh': True,
         },
         client_control_result=client_control_result,
+        client_watchdog={
+            'enabled': bool(client_watchdog.get('enabled', True)),
+            'check_interval_seconds': int(client_watchdog.get('check_interval_seconds', 30) or 30),
+            'grace_period_seconds': int(client_watchdog.get('grace_period_seconds', 180) or 180),
+            'consecutive_failures_before_reboot': int(
+                client_watchdog.get('consecutive_failures_before_reboot', 4) or 4
+            ),
+        },
         known_clients=list_known_clients() if is_sa else [],
         all_permissions=[(k, _t(lbl_key)) for k, lbl_key in ALL_PERMISSIONS] if is_sa else [],
         all_screens=list(cfg.get('screens', {}).keys()) if is_sa else [],
         priority_alert=cfg.get('priority_alert', {}) if is_sa else {},
         tab=active_tab,
     )
+
+
+def _normalize_positive_int(raw_value, default_value, minimum, maximum):
+    try:
+        value = int(str(raw_value or '').strip())
+    except (TypeError, ValueError):
+        return default_value
+    return max(minimum, min(maximum, value))
 
 
 @bp.route('/admin/settings')
@@ -159,6 +176,40 @@ def admin_settings_page():
         'admin_settings.html',
         **_build_settings_context(tab=request.args.get('tab', 'logo'))
     )
+
+
+@bp.route('/admin/settings/client-watchdog', methods=['POST'])
+def set_client_watchdog():
+    redir = superadmin_guard()
+    if redir:
+        return redir
+
+    cfg = load_config()
+    current = cfg.get('client_watchdog', {})
+    cfg['client_watchdog'] = {
+        'enabled': request.form.get('enabled') == 'on',
+        'check_interval_seconds': _normalize_positive_int(
+            request.form.get('check_interval_seconds'),
+            int(current.get('check_interval_seconds', 30) or 30),
+            15,
+            600,
+        ),
+        'grace_period_seconds': _normalize_positive_int(
+            request.form.get('grace_period_seconds'),
+            int(current.get('grace_period_seconds', 180) or 180),
+            30,
+            3600,
+        ),
+        'consecutive_failures_before_reboot': _normalize_positive_int(
+            request.form.get('consecutive_failures_before_reboot'),
+            int(current.get('consecutive_failures_before_reboot', 4) or 4),
+            2,
+            20,
+        ),
+    }
+    save_config(cfg)
+    _flash('flash_client_watchdog_updated', 'success')
+    return redirect(url_for('settings.admin_settings_page') + '?tab=installation')
 
 
 @bp.route('/admin/settings/known-clients')

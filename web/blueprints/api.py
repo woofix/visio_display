@@ -52,6 +52,21 @@ def api_priority_alert():
     })
 
 
+@bp.route('/api/client-policy')
+def api_client_policy():
+    watchdog = load_config().get('client_watchdog', {})
+    return jsonify({
+        'watchdog': {
+            'enabled': bool(watchdog.get('enabled', True)),
+            'check_interval_seconds': int(watchdog.get('check_interval_seconds', 30) or 30),
+            'grace_period_seconds': int(watchdog.get('grace_period_seconds', 180) or 180),
+            'consecutive_failures_before_reboot': int(
+                watchdog.get('consecutive_failures_before_reboot', 4) or 4
+            ),
+        }
+    })
+
+
 @bp.route('/api/images')
 def get_images():
     generate_ephemeride_image()

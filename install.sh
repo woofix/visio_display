@@ -155,6 +155,10 @@ if [ -n "$SERVER_URL_INPUT" ]; then
     cat > "$CONFIG_FILE" <<EOC
 SERVER_URL=$SERVER_URL_INPUT
 SCREEN_NAME=$SCREEN_NAME_INPUT
+WATCHDOG_ENABLED=1
+WATCHDOG_CHECK_INTERVAL=30
+WATCHDOG_GRACE_PERIOD=180
+WATCHDOG_FAILURES_BEFORE_REBOOT=4
 EOC
 fi
 
@@ -208,6 +212,10 @@ rm -f "$TMP_URL" "$TMP_NAME"
 cat > "$CONFIG" <<EOC
 SERVER_URL=$URL
 SCREEN_NAME=$NAME
+WATCHDOG_ENABLED=1
+WATCHDOG_CHECK_INTERVAL=30
+WATCHDOG_GRACE_PERIOD=180
+WATCHDOG_FAILURES_BEFORE_REBOOT=4
 EOC
 EOF
 
@@ -487,6 +495,15 @@ def read_resolution():
 
 
 def detect_last_error():
+    status_path = '/run/visio/watchdog.last_error'
+    try:
+        with open(status_path, encoding='utf-8') as handle:
+            persisted = handle.read().strip()
+        if persisted:
+            return persisted
+    except Exception:
+        pass
+
     try:
         result = subprocess.run(
             ['pgrep', '-f', 'firefox-esr.*--kiosk'],
@@ -531,6 +548,165 @@ curl -fsS --max-time 10 \
 EOF
 
 chmod +x "$VISIO_DIR/client-heartbeat.sh"
+
+echo "==> Création client-watchdog.sh"
+cat > "$VISIO_DIR/client-watchdog.sh" <<'EOF'
+#!/bin/bash
+
+set -euo pipefail
+
+CONFIG="/etc/visio/client.conf"
+STATE_DIR="/run/visio"
+STATE_FILE="$STATE_DIR/watchdog.state"
+LAST_ERROR_FILE="$STATE_DIR/watchdog.last_error"
+
+mkdir -p "$STATE_DIR"
+
+read_conf() {
+    local key="$1"
+    grep "^${key}=" "$CONFIG" 2>/dev/null | head -n1 | cut -d '=' -f2-
+}
+
+read_uptime_seconds() {
+    python3 - <<'PY'
+try:
+    with open('/proc/uptime', encoding='utf-8') as handle:
+        print(int(float(handle.read().split()[0])))
+except Exception:
+    print(0)
+PY
+}
+
+SERVER_URL="$(read_conf SERVER_URL)"
+[ -n "$SERVER_URL" ] || exit 0
+
+POLICY_JSON="$(
+python3 - <<'PY' "$SERVER_URL"
+from urllib.parse import urlsplit, urlunsplit
+import sys
+
+raw = (sys.argv[1] or '').strip()
+parts = urlsplit(raw)
+base = urlunsplit((parts.scheme, parts.netloc, '', '', '')).rstrip('/')
+print(f"{base}/api/client-policy" if base else '')
+PY
+)"
+
+DEFAULT_ENABLED="$(read_conf WATCHDOG_ENABLED)"
+DEFAULT_INTERVAL="$(read_conf WATCHDOG_CHECK_INTERVAL)"
+DEFAULT_GRACE="$(read_conf WATCHDOG_GRACE_PERIOD)"
+DEFAULT_FAILURES="$(read_conf WATCHDOG_FAILURES_BEFORE_REBOOT)"
+
+export DEFAULT_ENABLED DEFAULT_INTERVAL DEFAULT_GRACE DEFAULT_FAILURES
+
+POLICY_RESPONSE=""
+if [ -n "$POLICY_JSON" ]; then
+    POLICY_RESPONSE="$(curl -fsS --max-time 8 "$POLICY_JSON" 2>/dev/null || true)"
+fi
+
+POLICY_VARS="$(
+python3 - <<'PY' "$POLICY_RESPONSE"
+import json
+import os
+import sys
+
+def as_bool(value, default):
+    if isinstance(value, bool):
+        return value
+    if value in (None, ''):
+        return default
+    return str(value).strip().lower() not in {'0', 'false', 'no', 'off'}
+
+def as_int(value, default, minimum):
+    try:
+        return max(minimum, int(value))
+    except (TypeError, ValueError):
+        return default
+
+default_enabled = as_bool(os.environ.get('DEFAULT_ENABLED', '1'), True)
+default_interval = as_int(os.environ.get('DEFAULT_INTERVAL', '30'), 30, 15)
+default_grace = as_int(os.environ.get('DEFAULT_GRACE', '180'), 180, 30)
+default_failures = as_int(os.environ.get('DEFAULT_FAILURES', '4'), 4, 2)
+
+payload = {}
+try:
+    raw = (sys.argv[1] or '').strip()
+    if raw:
+        payload = json.loads(raw).get('watchdog', {})
+except Exception:
+    payload = {}
+
+enabled = as_bool(payload.get('enabled'), default_enabled)
+interval = as_int(payload.get('check_interval_seconds'), default_interval, 15)
+grace = as_int(payload.get('grace_period_seconds'), default_grace, 30)
+failures = as_int(payload.get('consecutive_failures_before_reboot'), default_failures, 2)
+
+print(f"ENABLED={'1' if enabled else '0'}")
+print(f"CHECK_INTERVAL={interval}")
+print(f"GRACE_PERIOD={grace}")
+print(f"FAILURES_BEFORE_REBOOT={failures}")
+PY
+)"
+
+eval "$POLICY_VARS"
+
+mkdir -p "$STATE_DIR"
+touch "$STATE_FILE"
+
+LAST_CHECK_TS=0
+FAILURES=0
+if [ -f "$STATE_FILE" ]; then
+    # shellcheck disable=SC1090
+    . "$STATE_FILE" || true
+fi
+
+NOW_TS="$(date +%s)"
+CHECK_INTERVAL="${CHECK_INTERVAL:-30}"
+GRACE_PERIOD="${GRACE_PERIOD:-180}"
+FAILURES_BEFORE_REBOOT="${FAILURES_BEFORE_REBOOT:-4}"
+ENABLED="${ENABLED:-1}"
+
+if [ $((NOW_TS - LAST_CHECK_TS)) -lt "$CHECK_INTERVAL" ]; then
+    exit 0
+fi
+
+UPTIME_SECONDS="$(read_uptime_seconds)"
+if [ "$UPTIME_SECONDS" -lt "$GRACE_PERIOD" ]; then
+    cat > "$STATE_FILE" <<EOC
+LAST_CHECK_TS=$NOW_TS
+FAILURES=0
+EOC
+    : > "$LAST_ERROR_FILE"
+    exit 0
+fi
+
+if pgrep -f 'firefox-esr.*--kiosk' >/dev/null 2>&1; then
+    cat > "$STATE_FILE" <<EOC
+LAST_CHECK_TS=$NOW_TS
+FAILURES=0
+EOC
+    : > "$LAST_ERROR_FILE"
+    exit 0
+fi
+
+FAILURES=$((FAILURES + 1))
+MESSAGE="Kiosk browser not running (${FAILURES}/${FAILURES_BEFORE_REBOOT})"
+
+cat > "$STATE_FILE" <<EOC
+LAST_CHECK_TS=$NOW_TS
+FAILURES=$FAILURES
+EOC
+printf '%s' "$MESSAGE" > "$LAST_ERROR_FILE"
+
+[ "$ENABLED" = "1" ] || exit 0
+[ "$FAILURES" -lt "$FAILURES_BEFORE_REBOOT" ] || {
+    printf '%s - reboot scheduled' "$MESSAGE" > "$LAST_ERROR_FILE"
+    sync || true
+    systemctl reboot
+}
+EOF
+
+chmod +x "$VISIO_DIR/client-watchdog.sh"
 
 echo "==> Création .xinitrc"
 cat > "$USER_HOME/.xinitrc" <<'EOF'
@@ -595,10 +771,37 @@ Unit=visio-client-heartbeat.service
 WantedBy=timers.target
 EOF
 
+echo "==> Service watchdog client"
+cat > /etc/systemd/system/visio-client-watchdog.service <<'EOF'
+[Unit]
+Description=Surveillance du kiosque Visio
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/visio/client-watchdog.sh
+EOF
+
+cat > /etc/systemd/system/visio-client-watchdog.timer <<'EOF'
+[Unit]
+Description=Verification periodique du kiosque Visio
+
+[Timer]
+OnBootSec=45
+OnUnitActiveSec=30
+Unit=visio-client-watchdog.service
+
+[Install]
+WantedBy=timers.target
+EOF
+
 /bin/systemctl daemon-reload
 /bin/systemctl enable visio-firstboot.service
 /bin/systemctl enable --now visio-client-heartbeat.timer
 /bin/systemctl start visio-client-heartbeat.service || true
+/bin/systemctl enable --now visio-client-watchdog.timer
+/bin/systemctl start visio-client-watchdog.service || true
 
 echo "Installation terminée."
 echo "Utilisateur configuré : $USER_NAME"

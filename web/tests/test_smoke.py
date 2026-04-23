@@ -160,10 +160,12 @@ class AppSmokeTests(unittest.TestCase):
 
             self.assertIn("disabled", cfg)
             self.assertIn("campaigns", cfg)
+            self.assertIn("activity_log", cfg)
             self.assertIn("hall", cfg["screens"])
             self.assertIn("disabled", cfg["screens"]["hall"])
             self.assertFalse(cfg["features"]["upload"])
             self.assertTrue(cfg["features"]["videos"])
+            self.assertTrue(cfg["activity_log"]["auto_delete_enabled"])
 
     def test_get_all_media_hides_videos_when_feature_disabled(self):
         with self.app.app_context():
@@ -230,12 +232,12 @@ class AppSmokeTests(unittest.TestCase):
 
         queue_svc._rq_compress_job("job-123")
 
-    def test_mp4_upload_is_enqueued_for_background_encoding(self):
+    def test_mp4_upload_is_saved_and_queued_for_nightly_encoding(self):
         with self.client.session_transaction() as session:
             session["user"] = "admin"
             session["_csrf_token"] = "upload-token"
 
-        with patch("blueprints.media.enqueue_upload_job", return_value="job-123") as enqueue_job:
+        with patch("blueprints.media.enqueue_compress_job", return_value="job-123") as enqueue_job:
             response = self.client.post(
                 "/upload",
                 data={"file": (BytesIO(b"fake-video"), "clip.mp4")},
@@ -245,8 +247,17 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.get_json()
         self.assertTrue(payload["ok"])
-        self.assertEqual(payload["jobs"], [{"id": "job-123", "filename": "clip.mp4"}])
+        self.assertEqual(payload["jobs"], [])
+        self.assertEqual(payload["queued_files"], ["clip.mp4"])
         enqueue_job.assert_called_once()
+
+        with self.app.app_context():
+            from constants import UPLOAD_FOLDER
+            from services.config_svc import load_config
+
+            self.assertTrue(os.path.exists(os.path.join(UPLOAD_FOLDER, "clip.mp4")))
+            cfg = load_config()
+            self.assertIn("clip.mp4", cfg.get("disabled", []))
 
     def test_client_heartbeat_schema_contains_extended_columns(self):
         with self.app.app_context():
@@ -631,6 +642,58 @@ class AppSmokeTests(unittest.TestCase):
             self.assertEqual(logs[0]["timestamp"], "2026-01-15T12:30:00")
             self.assertEqual(logs[0]["timestamp_display"], "2026-01-15 13:30:00")
 
+    def test_superadmin_can_update_activity_log_settings_from_single_page(self):
+        self._login()
+        with self.client.session_transaction() as session:
+            token = session["_csrf_token"]
+
+        response = self.client.post(
+            "/admin/activity/settings",
+            data={
+                "_csrf_token": token,
+                "auto_delete_enabled": "1",
+                "retention_days": "45",
+                "max_rows": "3000",
+            },
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.headers["Location"].endswith("/admin/activity"))
+
+        with self.app.app_context():
+            from services.config_svc import load_config
+            from services.activity_svc import get_activity_log
+
+            cfg = load_config()
+            self.assertEqual(cfg["activity_log"]["retention_days"], 45)
+            self.assertEqual(cfg["activity_log"]["max_rows"], 3000)
+            self.assertTrue(cfg["activity_log"]["auto_delete_enabled"])
+
+            logs = get_activity_log(limit=5)
+            self.assertTrue(any(
+                entry["action"] == "config" and "journal activité:" in (entry["details"] or "")
+                for entry in logs
+            ))
+
+    def test_activity_page_hides_sensitive_controls_for_non_superadmin(self):
+        with self.app.app_context():
+            from services.users_svc import create_user
+
+            create_user("manager", "managerpass123", superadmin=False, permissions=["upload"])
+
+        with self.client.session_transaction() as session:
+            session["user"] = "manager"
+            session["_csrf_token"] = "activity-token"
+
+        response = self.client.get("/admin/activity")
+
+        self.assertEqual(response.status_code, 200)
+        body = response.get_data(as_text=True)
+        self.assertIn("Historique détaillé", body)
+        self.assertNotIn("Gestion des logs", body)
+        self.assertNotIn("Actions sensibles", body)
+
     def test_superadmin_can_create_and_restore_backup_from_admin(self):
         media_dir = os.path.join(self.temp_dir.name, "media")
         backup_dir = os.path.join(self.temp_dir.name, "private", "backups-test")
@@ -781,6 +844,72 @@ class AppSmokeTests(unittest.TestCase):
 
                 self.assertEqual(response.status_code, 302)
                 self.assertFalse(os.path.exists(backup_path))
+
+    def test_superadmin_can_save_backup_smb_destination(self):
+        with self.app.app_context():
+            from services.config_svc import load_config
+
+            self._login()
+            with self.client.session_transaction() as session:
+                token = session["_csrf_token"]
+
+            response = self.client.post(
+                "/admin/settings/backups/remote",
+                data={
+                    "_csrf_token": token,
+                    "enabled": "on",
+                    "url": "smb://nas/backup/visio",
+                    "username": "DOMAIN\\backupuser",
+                    "password": "secret123",
+                },
+                follow_redirects=False,
+            )
+
+            self.assertEqual(response.status_code, 302)
+            cfg = load_config()
+            self.assertEqual(cfg["backup_remote"]["url"], "smb://nas/backup/visio")
+            self.assertEqual(cfg["backup_remote"]["username"], "DOMAIN\\backupuser")
+            self.assertEqual(cfg["backup_remote"]["password"], "secret123")
+            self.assertTrue(cfg["backup_remote"]["enabled"])
+
+    def test_superadmin_can_copy_backup_to_smb_from_admin(self):
+        backup_dir = os.path.join(self.temp_dir.name, "private", "backups-test")
+        os.makedirs(backup_dir, exist_ok=True)
+
+        with self.app.app_context():
+            from services import backup_svc
+            from services.config_svc import load_config, save_config
+
+            with patch.object(backup_svc, "BACKUP_DIR", backup_dir), \
+                 patch.object(backup_svc, "copy_backup_to_smb") as copy_mock:
+                backup_path = os.path.join(backup_dir, "visio-backup-20260101-010203.tar.gz")
+                with open(backup_path, "wb") as handle:
+                    handle.write(b"backup")
+
+                cfg = load_config()
+                cfg["backup_remote"] = {
+                    "enabled": True,
+                    "url": "smb://nas/backup/visio",
+                    "username": "backupuser",
+                    "password": "secret123",
+                }
+                save_config(cfg)
+
+                self._login()
+                with self.client.session_transaction() as session:
+                    token = session["_csrf_token"]
+
+                response = self.client.post(
+                    "/admin/settings/backups/copy/visio-backup-20260101-010203.tar.gz",
+                    data={"_csrf_token": token},
+                    follow_redirects=False,
+                )
+
+                self.assertEqual(response.status_code, 302)
+                copy_mock.assert_called_once()
+                args = copy_mock.call_args[0]
+                self.assertEqual(args[0], backup_path)
+                self.assertEqual(args[1], "visio-backup-20260101-010203.tar.gz")
 
 
 if __name__ == "__main__":

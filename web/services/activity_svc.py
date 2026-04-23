@@ -34,21 +34,49 @@ def _format_activity_timestamp(timestamp):
     return utc_dt.astimezone(_get_activity_timezone()).strftime('%Y-%m-%d %H:%M:%S')
 
 
+def _normalize_activity_settings(raw_settings):
+    if not isinstance(raw_settings, dict):
+        raw_settings = {}
+
+    try:
+        retention_days = max(1, int(raw_settings.get('retention_days', C.ACTIVITY_LOG_RETENTION_DAYS)))
+    except (TypeError, ValueError):
+        retention_days = C.ACTIVITY_LOG_RETENTION_DAYS
+
+    try:
+        max_rows = max(1000, int(raw_settings.get('max_rows', C.ACTIVITY_LOG_MAX_ROWS)))
+    except (TypeError, ValueError):
+        max_rows = C.ACTIVITY_LOG_MAX_ROWS
+
+    return {
+        'auto_delete_enabled': bool(raw_settings.get('auto_delete_enabled', True)),
+        'retention_days': retention_days,
+        'max_rows': max_rows,
+    }
+
+
+def get_activity_settings(cfg=None):
+    cfg = cfg or load_config()
+    return _normalize_activity_settings(cfg.get('activity_log'))
+
+
 def log_config_change(username, details, *, filename=None):
     log_activity(username, 'config', filename=filename, details=details)
 
 
-def _trim_activity_log(now_utc):
+def _trim_activity_log(now_utc, settings=None):
+    settings = settings or get_activity_settings()
     deleted = 0
-    cutoff = (now_utc - timedelta(days=C.ACTIVITY_LOG_RETENTION_DAYS)).strftime('%Y-%m-%dT%H:%M:%S')
-    deleted += (
-        ActivityLog.query
-        .filter(ActivityLog.timestamp < cutoff)
-        .delete(synchronize_session=False)
-    )
+    if settings.get('auto_delete_enabled', True):
+        cutoff = (now_utc - timedelta(days=settings['retention_days'])).strftime('%Y-%m-%dT%H:%M:%S')
+        deleted += (
+            ActivityLog.query
+            .filter(ActivityLog.timestamp < cutoff)
+            .delete(synchronize_session=False)
+        )
 
     remaining = ActivityLog.query.count()
-    overflow = remaining - C.ACTIVITY_LOG_MAX_ROWS
+    overflow = remaining - settings['max_rows']
     if overflow > 0:
         oldest_ids = [
             row.id
@@ -135,3 +163,40 @@ def get_activity_log(limit=200):
         entry['timestamp_display'] = _format_activity_timestamp(entry.get('timestamp'))
         entries.append(entry)
     return entries
+
+
+def get_activity_summary():
+    total_entries = ActivityLog.query.count()
+    oldest = ActivityLog.query.order_by(ActivityLog.id.asc()).first()
+    newest = ActivityLog.query.order_by(ActivityLog.id.desc()).first()
+    user_count = db.session.query(ActivityLog.username).distinct().count()
+    settings = get_activity_settings()
+    return {
+        'total_entries': total_entries,
+        'user_count': user_count,
+        'oldest_timestamp_display': _format_activity_timestamp(oldest.timestamp) if oldest else None,
+        'newest_timestamp_display': _format_activity_timestamp(newest.timestamp) if newest else None,
+        'settings': settings,
+    }
+
+
+def apply_activity_retention_now():
+    try:
+        deleted = _trim_activity_log(datetime.now(timezone.utc), settings=get_activity_settings())
+    except Exception:
+        db.session.rollback()
+        LOGGER.exception("Unable to apply activity retention immediately")
+        return 0
+    return deleted
+
+
+def purge_activity_log(*, older_than_days=None):
+    query = ActivityLog.query
+    if older_than_days is not None:
+        cutoff = (
+            datetime.now(timezone.utc) - timedelta(days=max(1, int(older_than_days)))
+        ).strftime('%Y-%m-%dT%H:%M:%S')
+        query = query.filter(ActivityLog.timestamp < cutoff)
+    deleted = query.delete(synchronize_session=False)
+    db.session.commit()
+    return deleted

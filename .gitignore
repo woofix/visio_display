@@ -1,10 +1,11 @@
-k# Secrets
+# Secrets
 .env
 .env.*
 
 # Runtime data
 data/
 private/
+web/data/private/
 
 # Databases
 *.db
@@ -14,7 +15,9 @@ private/
 
 # Python
 __pycache__/
+.pytest_cache/
 *.py[cod]
+web/.pytest_cache/
 
 # Virtual env
 .venv/

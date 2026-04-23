@@ -508,15 +508,15 @@
             <div class="access-grid">
                 <div class="access-card">
                     <div class="access-card-label">{{ t('wiki_s1_public_label') }}</div>
-                    <div class="access-card-url">http://&lt;serveur&gt;:8081</div>
+                    <div class="access-card-url">{{ t('wiki_s1_public_url') }}</div>
                 </div>
                 <div class="access-card">
                     <div class="access-card-label">{{ t('wiki_s1_screen_label') }}</div>
-                    <div class="access-card-url">http://&lt;serveur&gt;:8081?screen=nom</div>
+                    <div class="access-card-url">{{ t('wiki_s1_screen_url') }}</div>
                 </div>
                 <div class="access-card">
                     <div class="access-card-label">{{ t('wiki_s1_admin_label') }}</div>
-                    <div class="access-card-url">http://&lt;serveur&gt;:8081/admin</div>
+                    <div class="access-card-url">{{ t('wiki_s1_admin_url') }}</div>
                 </div>
             </div>
             <p>{{ t('wiki_s1_hint') }}</p>
@@ -658,8 +658,8 @@
                 <tbody>
                     <tr><td>{{ t('wiki_s6_start_time') }}</td><td>HH:MM</td><td><code>11:00</code></td></tr>
                     <tr><td>{{ t('wiki_s6_end_time') }}</td><td>HH:MM</td><td><code>13:30</code></td></tr>
-                    <tr><td>{{ t('wiki_s6_start_date') }}</td><td>AAAA-MM-JJ</td><td><code>2026-06-02</code></td></tr>
-                    <tr><td>{{ t('wiki_s6_end_date') }}</td><td>AAAA-MM-JJ</td><td><code>2026-06-15</code></td></tr>
+                    <tr><td>{{ t('wiki_s6_start_date') }}</td><td>{{ t('wiki_date_format') }}</td><td><code>2026-06-02</code></td></tr>
+                    <tr><td>{{ t('wiki_s6_end_date') }}</td><td>{{ t('wiki_date_format') }}</td><td><code>2026-06-15</code></td></tr>
                 </tbody>
             </table>
             <h3>{{ t('wiki_s6_rules_title') }}</h3>
@@ -711,7 +711,17 @@
                 <li>{{ t('wiki_s7_rule2') }}</li>
                 <li>{{ t('wiki_s7_rule3') }}</li>
             </ul>
+            <h3>{{ t('wiki_s7_install_title') }}</h3>
+            <ol class="wiki-steps">
+                <li>{{ t('wiki_s7_install1') }}</li>
+                <li>{{ t('wiki_s7_install2') }}</li>
+                <li>{{ t('wiki_s7_install3') }}</li>
+                <li>{{ t('wiki_s7_install4') }}</li>
+                <li>{{ t('wiki_s7_install5') }}</li>
+            </ol>
             <div class="wiki-callout">{{ t('wiki_s7_install_note') }}</div>
+            <h3>{{ t('wiki_s7_detected_title') }}</h3>
+            <p>{{ t('wiki_s7_detected_desc') }}</p>
             <h3>{{ t('wiki_s7_control_title') }}</h3>
             <div class="wiki-callout">
                 <strong>{{ t('wiki_perm_required') }}</strong> {{ t('wiki_superadmin') }}
@@ -721,7 +731,10 @@
                 <li>{{ t('wiki_s7_control2') }}</li>
                 <li>{{ t('wiki_s7_control3') }}</li>
                 <li>{{ t('wiki_s7_control4') }}</li>
+                <li>{{ t('wiki_s7_control5') }}</li>
+                <li>{{ t('wiki_s7_control6') }}</li>
             </ul>
+            <div class="wiki-callout warning">{{ t('wiki_s7_control_warning') }}</div>
         </section>
 
         <!-- §8 Ephemeris -->

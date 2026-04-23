@@ -100,7 +100,7 @@ Pour vous déconnecter, cliquez sur votre nom en haut à droite puis **Déconnex
 Les vidéos qui ne sont pas déjà au format H.264/MP4 sont **automatiquement réencodées** en arrière-plan. Pendant ce temps :
 - Une barre de progression par fichier indique l'avancement.
 - Le média est utilisable dès que l'encodage à la volée est terminé.
-- Une compression supplémentaire peut être planifiée la nuit (22h–6h) pour réduire la taille sur le disque.
+- Une compression supplémentaire peut être planifiée la nuit (20h–6h) pour réduire la taille sur le disque.
 
 Une fois l'import terminé, le bouton **Voir les médias** vous redirige vers la médiathèque.
 
@@ -411,7 +411,7 @@ Accessible depuis **File d'encodage** dans le menu.
 
 ### Fenêtre d'encodage automatique
 
-Par défaut, la compression des vidéos est planifiée la nuit entre **22h et 6h** pour limiter l'impact sur les performances.
+Par défaut, la compression des vidéos est planifiée la nuit entre **20h et 6h** pour limiter l'impact sur les performances.
 
 ### Suivi des tâches
 
@@ -520,6 +520,16 @@ Ces valeurs peuvent être ajustées via les variables d'environnement `ACTIVITY_
 
 ## 16. Wiki — aide intégrée
 
+Accessible depuis **Wiki** dans le menu de navigation.
+
+La page Wiki est une documentation interactive intégrée directement à l'interface d'administration. Elle couvre l'ensemble des fonctionnalités de Visio-Display : gestion des médias, planification, écrans multiples, encodage vidéo, permissions, etc.
+
+Elle reflète aussi les règles de sécurité de l'interface : session administrateur, formulaires protégés par jeton CSRF et déconnexion via bouton sécurisé.
+
+- Disponible à tout moment depuis n'importe quelle page de l'administration.
+- Organisée par sections avec une table des matières latérale pour naviguer rapidement.
+- Aucune connexion externe requise — le contenu est embarqué dans l'application.
+
 ## 17. Sauvegarder et restaurer le serveur
 
 Si vous devez recréer le serveur sur une autre machine ou repartir sur une nouvelle stack Docker, utilisez les scripts fournis à la racine du projet.
@@ -578,7 +588,7 @@ Le **super-admin** peut aussi faire la sauvegarde sans ligne de commande :
 1. ouvrez **Paramètres > Sauvegardes** ;
 2. cliquez sur **Créer une sauvegarde** ;
 3. attendez la fin de l’animation de progression affichée pendant la préparation ;
-4. téléchargez ensuite l’archive depuis la liste.
+4. téléchargez ensuite l’archive depuis la liste, ou configurez un lien `smb://...` puis utilisez **Copier vers SMB** pour l’envoyer vers un serveur Windows ou un NAS.
 
 À savoir :
 
@@ -594,16 +604,6 @@ Pour restaurer sur une autre instance déjà démarrée :
 4. cliquez sur **Restaurer maintenant**.
 
 > La restauration réinjecte les données de l'application, les médias et les données privées. Le fichier `.env` sauvegardé reste fourni comme copie de référence, mais n'est pas réécrit automatiquement par l'interface.
-
-Accessible depuis **Wiki** dans le menu de navigation.
-
-La page Wiki est une documentation interactive intégrée directement à l'interface d'administration. Elle couvre l'ensemble des fonctionnalités de Visio-Display : gestion des médias, planification, écrans multiples, encodage vidéo, permissions, etc.
-
-Elle reflète aussi les règles de sécurité de l'interface: session administrateur, formulaires protégés par jeton CSRF et déconnexion via bouton sécurisé.
-
-- Disponible à tout moment depuis n'importe quelle page de l'administration.
-- Organisée par sections avec une table des matières latérale pour naviguer rapidement.
-- Aucune connexion externe requise — le contenu est embarqué dans l'application.
 
 ---
 

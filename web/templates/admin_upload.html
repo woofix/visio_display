@@ -10,7 +10,7 @@
     <svg class="bc-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
     <span class="bc-current">{% block topbar_title %}{{ t('upload_title') }}{% endblock %}</span>
 </div>{% endblock %}
-{% block topbar_sub %}{{ t('upload_topbar_sub') }}{% endblock %}
+{% block topbar_sub %}{% if is_feature_enabled('videos') %}{{ t('upload_topbar_sub') }}{% else %}Importez images et PDF dans le diaporama{% endif %}{% endblock %}
 
 {% block styles %}
 .upload-grid { display: grid; grid-template-columns: 1fr 380px; gap: 20px; align-items: start; }
@@ -215,7 +215,7 @@
 {% block content %}
 <div class="page-header">
     <h1>{{ t('upload_h1') }}</h1>
-    <p>{{ t('upload_sub') }}</p>
+    <p>{% if is_feature_enabled('videos') %}{{ t('upload_sub') }}{% else %}Les images et PDF sont importés immédiatement dans la médiathèque.{% endif %}</p>
 </div>
 
 <div class="upload-grid">
@@ -309,12 +309,15 @@
                 <div class="info-row-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
                 <div class="info-row-text"><strong>{{ t('upload_pdf_title') }}</strong><span>{{ t('upload_pdf_desc') }}</span></div>
             </div>
+            {% if is_feature_enabled('videos') %}
             <div class="info-row">
                 <div class="info-row-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>
                 <div class="info-row-text"><strong>{{ t('upload_video_title') }}</strong><span>{{ t('upload_video_desc') }}</span></div>
             </div>
+            {% endif %}
         </div>
 
+        {% if is_feature_enabled('videos') and is_feature_enabled('compress') %}
         <div class="info-card">
             <h3>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -326,6 +329,7 @@
                 {{ t('upload_see_queue') }}
             </a>
         </div>
+        {% endif %}
 
         <div class="info-card">
             <h3>
@@ -387,8 +391,14 @@ const MSG_NAME_DUPLICATE      = "Chaque nouveau nom doit être unique.";
 const MSG_NAME_EXISTS         = "Le nom choisi existe déjà. Choisissez-en un autre.";
 const MSG_NAME_RETRY          = "Le nom choisi existe déjà. Modifiez-le et réessayez.";
 const MSG_NAME_MISSING        = "Nom manquant pour un fichier en conflit.";
-const ACCEPTED_EXTS = new Set(['.jpg','.jpeg','.png','.pdf','.mp4','.webm','.mov','.avi','.mkv']);
-const ACCEPTED_LABELS = ['JPG','PNG','PDF','MP4','MOV','WebM','AVI','MKV'];
+const ACCEPTED_EXTS = new Set([
+    '.jpg','.jpeg','.png','.pdf'
+    {% if is_feature_enabled('videos') %},'.mp4','.webm','.mov','.avi','.mkv'{% endif %}
+]);
+const ACCEPTED_LABELS = [
+    'JPG','PNG','PDF'
+    {% if is_feature_enabled('videos') %},'MP4','MOV','WebM','AVI','MKV'{% endif %}
+];
 
 const uploadArea    = document.getElementById('upload-area');
 const fileInput     = document.getElementById('file-input');
@@ -478,7 +488,7 @@ function setUploadingState(active, pct, n) {
     }
 }
 
-const MAX_FILE_SIZE = 16 * 1024 * 1024;
+const MAX_FILE_SIZE = 150 * 1024 * 1024;
 const MAX_BATCH_SIZE = 256 * 1024 * 1024;
 function checkSizes(files) {
     const big = [...files].filter(f => f.size > MAX_FILE_SIZE);
@@ -732,12 +742,18 @@ function submitUploadFiles(files, strategy = '', renameMap = null) {
     xhr.addEventListener('load', async () => {
         setUploadingState(false);
         progressWrap.style.display = 'none';
-        if (xhr.status === 413) { showFlash(MSG_BATCH_TOO_LARGE, 'error'); return; }
         let data = {};
         try {
             data = JSON.parse(xhr.responseText || '{}');
         } catch {
             data = {};
+        }
+        if (xhr.status === 413) {
+            const message = data.error === 'file too large'
+                ? MSG_FILE_TOO_LARGE
+                : MSG_BATCH_TOO_LARGE;
+            showFlash(message, 'error');
+            return;
         }
         if (xhr.status === 409 && data.error === 'name conflict') {
             const retryMessage = data.message || '';
@@ -761,7 +777,7 @@ function submitUploadFiles(files, strategy = '', renameMap = null) {
                         ? MSG_NAME_EXT_MISMATCH
                     : data.error === 'target exists'
                         ? MSG_NAME_EXISTS
-                    : (data.error || MSG_UPLOAD_FAILED);
+                    : (data.error || `${MSG_UPLOAD_FAILED} (HTTP ${xhr.status})`);
             showFlash(message, 'error');
             return;
         }
@@ -773,6 +789,7 @@ function submitUploadFiles(files, strategy = '', renameMap = null) {
     });
     xhr.addEventListener('error', () => { setUploadingState(false); progressWrap.style.display = 'none'; showFlash(MSG_NETWORK_ERROR, 'error'); });
     xhr.open('POST', '/upload');
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
     xhr.setRequestHeader('X-CSRF-Token', window.CSRF_TOKEN);
     xhr.send(fd);
 }

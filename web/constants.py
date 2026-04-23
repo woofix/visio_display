@@ -60,7 +60,7 @@ LOGO_EXTS     = {'.svg', '.png', '.jpg', '.jpeg'}
 
 MAX_WIDTH  = 1920
 MAX_HEIGHT = 1080
-MAX_FILE_UPLOAD_SIZE = 16 * 1024 * 1024
+MAX_FILE_UPLOAD_SIZE = 150 * 1024 * 1024
 MAX_BATCH_UPLOAD_SIZE = 256 * 1024 * 1024
 ACTIVITY_LOG_RETENTION_DAYS = max(1, _env_int('ACTIVITY_LOG_RETENTION_DAYS', 90))
 ACTIVITY_LOG_MAX_ROWS = max(1000, _env_int('ACTIVITY_LOG_MAX_ROWS', 20000))
@@ -110,6 +110,7 @@ ALL_PERMISSIONS = [
 
 ALL_FEATURES = [
     ("upload",         "feature_upload",         "feature_upload_desc"),
+    ("videos",         "feature_videos",         "feature_videos_desc"),
     ("delete",         "feature_delete",          "feature_delete_desc"),
     ("compress",       "feature_compress",        "feature_compress_desc"),
     ("ephemeris",      "feature_ephemeris",       "feature_ephemeris_desc"),

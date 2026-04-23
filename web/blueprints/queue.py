@@ -19,7 +19,7 @@ from services.queue_svc import (
 )
 from services.media_svc import get_logo_path
 from services.i18n import _flash
-from blueprints.guards import admin_guard, superadmin_guard, perm_guard, feature_guard_json
+from blueprints.guards import admin_guard, superadmin_guard, perm_guard, feature_guard, feature_guard_json
 
 bp = Blueprint('queue', __name__)
 
@@ -28,6 +28,10 @@ bp = Blueprint('queue', __name__)
 def admin_queue_view():
     redir = admin_guard()
     if redir: return redir
+    g = feature_guard('videos')
+    if g: return g
+    g = feature_guard('compress')
+    if g: return g
     users = load_users()
     return render_template('admin_queue.html',
         users=list(users.keys()), current_user=session.get('user'),
@@ -36,6 +40,8 @@ def admin_queue_view():
 
 @bp.route('/compress/<filename>', methods=['POST'])
 def compress_video(filename):
+    g = feature_guard_json('videos')
+    if g: return g
     g = perm_guard('compress')
     if g: return g
     g = feature_guard_json('compress')
@@ -65,6 +71,8 @@ def compress_video(filename):
 
 @bp.route('/queue/cancel/<job_id>', methods=['POST'])
 def cancel_job(job_id):
+    g = feature_guard_json('videos')
+    if g: return g
     g = perm_guard('compress')
     if g: return g
     q   = load_queue()
@@ -92,6 +100,10 @@ def cancel_job(job_id):
 def force_encode():
     g = superadmin_guard()
     if g: return g
+    g = feature_guard('videos')
+    if g: return g
+    g = feature_guard('compress')
+    if g: return g
     q       = load_queue()
     pending = [j for j in q if j['status'] == 'pending']
     for job in pending:
@@ -108,6 +120,10 @@ def force_encode():
 
 @bp.route('/admin/compress/<filename>/force', methods=['POST'])
 def force_compress_single(filename):
+    g = feature_guard_json('videos')
+    if g: return g
+    g = feature_guard_json('compress')
+    if g: return g
     if not is_admin():
         return jsonify({"error": "unauthorized"}), 401
     if not is_superadmin():
@@ -148,6 +164,10 @@ def force_compress_single(filename):
 
 @bp.route('/api/queue')
 def api_queue():
+    g = feature_guard_json('videos')
+    if g: return g
+    g = feature_guard_json('compress')
+    if g: return g
     if not is_admin():
         return jsonify({"error": "unauthorized"}), 401
     q = load_queue()

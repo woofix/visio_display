@@ -338,7 +338,9 @@
         <option value="active"   {% if request.args.get('filter') == 'active'   %}selected{% endif %}>{{ t('filter_active') }}</option>
         <option value="disabled" {% if request.args.get('filter') == 'disabled' %}selected{% endif %}>{{ t('filter_disabled') }}</option>
         <option value="image"    {% if request.args.get('filter') == 'image'    %}selected{% endif %}>{{ t('filter_images') }}</option>
+        {% if is_feature_enabled('videos') %}
         <option value="video"    {% if request.args.get('filter') == 'video'    %}selected{% endif %}>{{ t('filter_videos') }}</option>
+        {% endif %}
     </select>
     <div class="view-toggle">
         <button id="btn-grid" class="active">{{ t('view_grid') }}</button>

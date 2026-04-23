@@ -549,15 +549,7 @@ def _eligible_image_profiles(filename):
 
 
 def _eligible_video_profiles(filename):
-    width, height = get_video_dimensions(filename)
-    if width <= 0 or height <= 0:
-        return ['v720']
-    eligible = []
-    longest_edge = max(width, height)
-    for profile_name, profile in VIDEO_RENDITION_PROFILES.items():
-        if longest_edge >= min(profile['width'], profile['height']):
-            eligible.append(profile_name)
-    return eligible or ['v720']
+    return ['v1080']
 
 
 def generate_standard_image_renditions(filename, *, force=False):
@@ -667,11 +659,9 @@ def get_media_url(filename, *, context='admin', bounds=None, allow_original=Fals
                 legacy_thumb = ensure_video_thumbnail(filename) if generate_missing else get_existing_thumbnail_url(filename)
                 return legacy_thumb or ('/static/images/logo.svg' if not allow_original else get_original_media_url(filename))
             video_profile = _pick_video_profile(context=context, bounds=bounds)
-            video_url = (
-                ensure_video_variant(filename, video_profile)
-                if generate_missing else
-                get_existing_video_variant_url(filename, video_profile)
-            )
+            # Video transcoding is intentionally left to the background worker.
+            # HTTP requests should never block on generating a missing rendition.
+            video_url = get_existing_video_variant_url(filename, video_profile)
             if video_url:
                 return video_url
             if allow_original:
@@ -711,10 +701,23 @@ def is_safe_svg_file(path):
     return '<svg' in lowered and not any(token in lowered for token in forbidden)
 
 
-def get_all_media():
-    cfg   = load_config()
+def are_videos_enabled(cfg=None):
+    cfg = cfg or load_config()
+    return bool(cfg.get("features", {}).get("videos", True))
+
+
+def is_media_allowed_by_features(filename, cfg=None):
+    media_type = get_media_type(filename)
+    if media_type == 'video' and not are_videos_enabled(cfg):
+        return False
+    return True
+
+
+def get_all_media(cfg=None):
+    cfg   = cfg or load_config()
     files = [f for f in os.listdir(UPLOAD_FOLDER)
              if f.lower().endswith(MEDIA_EXTS)]
+    files = [f for f in files if is_media_allowed_by_features(f, cfg)]
     order     = cfg.get("order", [])
     ordered   = [f for f in order if f in files]
     unordered = [f for f in files if f not in ordered]

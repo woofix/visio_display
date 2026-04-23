@@ -49,6 +49,7 @@ def _default_screen_config(halo_color=DEFAULT_HALO_COLOR):
 def _default_features():
     return {
         "upload":         True,
+        "videos":         True,
         "delete":         True,
         "compress":       True,
         "ephemeris":      True,

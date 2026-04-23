@@ -1040,7 +1040,7 @@
                             <strong>Glissez vos fichiers ici</strong>
                             <p>ou cliquez pour sélectionner<br>
                                JPG · PNG · PDF · MP4 · MOV · WebM<br>
-                               <strong style="color:var(--primary)">16 Mo max par fichier</strong></p>
+                               <strong style="color:var(--primary)">150 Mo max par fichier</strong></p>
                             <input type="file" name="file" id="file-input" multiple
                                    accept=".jpg,.jpeg,.png,.pdf,.mp4,.webm,.mov,.avi,.mkv"
                                    style="display:none">
@@ -1777,7 +1777,7 @@ function showPreviews(files) {
     });
 }
 
-const MAX_FILE_SIZE = 16 * 1024 * 1024;
+const MAX_FILE_SIZE = 150 * 1024 * 1024;
 const MAX_BATCH_SIZE = 256 * 1024 * 1024;
 const NAME_CONFLICT_LABEL = 'Ces fichiers existent déjà :';
 const NAME_CONFLICT_OVERWRITE = 'OK = écraser les fichiers existants';
@@ -1785,7 +1785,7 @@ const NAME_CONFLICT_RENAME = 'Annuler = renommer automatiquement';
 function checkFileSizes(files) {
     const oversized = [...files].filter(f => f.size > MAX_FILE_SIZE);
     if (oversized.length) {
-        showFlash(`Fichier(s) trop volumineux (max 16 Mo) : ${oversized.map(f=>`${f.name} (${(f.size/1024/1024).toFixed(1)} Mo)`).join(', ')}`, 'error');
+        showFlash(`Fichier(s) trop volumineux (max 150 Mo) : ${oversized.map(f=>`${f.name} (${(f.size/1024/1024).toFixed(1)} Mo)`).join(', ')}`, 'error');
         return false;
     }
     const totalSize = [...files].reduce((sum, f) => sum + f.size, 0);
@@ -1831,7 +1831,12 @@ function submitDashboardUpload(filesToUpload, strategy = '') {
         }
         if (xhr.status === 413) {
             progressWrap.style.display = 'none';
-            showFlash('Lot trop volumineux : la taille cumulée maximale autorisée est de 256 Mo.', 'error');
+            showFlash(
+                data.error === 'file too large'
+                    ? 'Fichier trop volumineux : la taille maximale autorisée est de 150 Mo par fichier.'
+                    : 'Lot trop volumineux : la taille cumulée maximale autorisée est de 256 Mo.',
+                'error'
+            );
             return;
         }
         if (xhr.status === 409 && data.error === 'name conflict') {
@@ -1848,6 +1853,7 @@ function submitDashboardUpload(filesToUpload, strategy = '') {
     });
     xhr.addEventListener('error', () => { progressWrap.style.display = 'none'; showFlash('Erreur réseau lors de l\'upload.', 'error'); });
     xhr.open('POST', '/upload');
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
     xhr.send(formData);
 }
 

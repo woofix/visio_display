@@ -6,15 +6,17 @@ import subprocess
 import threading
 import time
 import uuid
+from contextlib import nullcontext
 from datetime import datetime
 
+from flask import has_app_context
 from redis import Redis
 from rq import Queue, get_current_job
 from rq.job import Job
 from rq.registry import StartedJobRegistry
 
 from constants import UPLOAD_FOLDER
-from services.config_svc import load_config, save_config
+from services.config_svc import is_feature_enabled, load_config, save_config
 from services.i18n import _t
 from services.media_svc import (
     delete_media_thumbnail,
@@ -52,6 +54,39 @@ def _get_worker_app():
     from app import create_app
     _flask_app = create_app(start_scheduler=False)
     return _flask_app
+
+
+def _app_context_for_background_work():
+    if has_app_context():
+        return nullcontext()
+    return _get_worker_app().app_context()
+
+
+def _is_feature_enabled(feature_name):
+    with _app_context_for_background_work():
+        return is_feature_enabled(feature_name)
+
+
+def enqueue_compress_job(filename):
+    with _app_context_for_background_work():
+        q = load_queue()
+        existing = next(
+            (job for job in q if job['filename'] == filename and job['status'] in ('pending', 'processing')),
+            None,
+        )
+        if existing:
+            return existing['id']
+        job = {
+            "id": str(uuid.uuid4())[:8],
+            "filename": filename,
+            "status": "pending",
+            "added": datetime.now().isoformat(),
+            "started": None,
+            "finished": None,
+        }
+        q.append(job)
+        save_queue(q)
+        return job["id"]
 
 
 def load_queue():
@@ -107,7 +142,10 @@ def _get_video_duration_ms(path):
 def _reencode_with_progress(src, dst, compress, job_id):
     crf    = '28' if compress else '26'
     preset = 'veryfast' if compress else 'ultrafast'
-    vf     = 'scale=trunc(iw/2)*2:trunc(ih/2)*2'
+    vf     = (
+        'scale=1920:1080:force_original_aspect_ratio=decrease,'
+        'scale=trunc(iw/2)*2:trunc(ih/2)*2'
+    )
     audio  = '96k' if compress else '128k'
     duration_ms = _get_video_duration_ms(src)
     cmd = [
@@ -160,6 +198,21 @@ def _rq_upload_encode(job_id, src_tmp, dest, final_name):
         rq_job.meta.update({'filename': final_name, 'status': 'processing', 'progress': 0})
         rq_job.save_meta()
 
+    if not _is_feature_enabled('videos'):
+        try:
+            os.remove(src_tmp)
+        except Exception:
+            pass
+        try:
+            os.remove(dest)
+        except Exception:
+            pass
+        if rq_job:
+            rq_job.meta['status'] = 'error'
+            rq_job.meta['progress'] = -1
+            rq_job.save_meta()
+        return
+
     ok = _reencode_with_progress(src_tmp, dest, compress=False, job_id=job_id)
     try:
         os.remove(src_tmp)
@@ -193,6 +246,8 @@ def _rq_upload_encode(job_id, src_tmp, dest, final_name):
 
 def _rq_compress_job(encode_job_id):
     """RQ task: compress a queued video file."""
+    if not _is_feature_enabled('videos'):
+        return
     with _get_worker_app().app_context():
         q   = load_queue()
         job = next((j for j in q if j['id'] == encode_job_id), None)
@@ -281,13 +336,15 @@ def _scheduler_loop():
     time.sleep(10)
     while True:
         time.sleep(60)
-        if not is_encoding_window():
-            continue
-        # Redis NX lock prevents multiple gunicorn workers from scheduling simultaneously
-        if not get_redis().set('visio-display:scheduler_lock', 1, nx=True, ex=90):
-            continue
         try:
-            with _flask_app.app_context():
+            with _app_context_for_background_work():
+                if not is_feature_enabled('videos'):
+                    continue
+                if not is_encoding_window():
+                    continue
+                # Redis NX lock prevents multiple gunicorn workers from scheduling simultaneously
+                if not get_redis().set('visio-display:scheduler_lock', 1, nx=True, ex=90):
+                    continue
                 q   = load_queue()
                 job = next((j for j in q if j['status'] == 'pending'), None)
                 if not job:
@@ -322,6 +379,8 @@ def enqueue_upload_job(src_tmp, dest, final_name):
 
 def get_upload_jobs():
     """Returns a list of in-progress/queued upload encode jobs with their progress."""
+    if not _is_feature_enabled('videos'):
+        return []
     q      = _upload_q()
     result = []
 

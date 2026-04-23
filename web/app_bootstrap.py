@@ -7,7 +7,7 @@ import secrets
 import shutil
 from datetime import timedelta
 
-from flask import abort, redirect, render_template, request, session, url_for
+from flask import abort, jsonify, redirect, render_template, request, session, url_for
 from sqlalchemy import inspect, text
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -412,12 +412,21 @@ def register_error_handlers(app, *, max_file_upload_size, max_batch_upload_size)
     @app.errorhandler(413)
     def too_large(_error):
         content_length = request.content_length or 0
+        error_code = "upload too large"
         if content_length > max_batch_upload_size:
             _flash("flash_batch_too_large", "error")
+            error_code = "batch too large"
         elif content_length > max_file_upload_size:
             _flash("flash_file_too_large", "error")
+            error_code = "file too large"
         else:
             _flash("flash_upload_too_large", "error")
+        wants_json = (
+            request.headers.get("X-Requested-With") == "XMLHttpRequest"
+            or request.accept_mimetypes.best == "application/json"
+        )
+        if wants_json:
+            return jsonify({"error": error_code}), 413
         return redirect(url_for("media.admin_upload_page")), 413
 
 

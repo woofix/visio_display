@@ -162,6 +162,90 @@ class AppSmokeTests(unittest.TestCase):
             self.assertIn("hall", cfg["screens"])
             self.assertIn("disabled", cfg["screens"]["hall"])
             self.assertFalse(cfg["features"]["upload"])
+            self.assertTrue(cfg["features"]["videos"])
+
+    def test_get_all_media_hides_videos_when_feature_disabled(self):
+        with self.app.app_context():
+            from constants import UPLOAD_FOLDER
+            from services.config_svc import save_config
+            from services.media_svc import get_all_media
+
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            with open(os.path.join(UPLOAD_FOLDER, "poster.jpg"), "wb") as handle:
+                handle.write(b"jpg")
+            with open(os.path.join(UPLOAD_FOLDER, "clip.mp4"), "wb") as handle:
+                handle.write(b"mp4")
+
+            save_config({"features": {"videos": False}, "order": ["clip.mp4", "poster.jpg"]})
+            self.assertEqual(get_all_media(), ["poster.jpg"])
+
+    def test_upload_rejects_video_when_video_feature_disabled(self):
+        with self.app.app_context():
+            from services.config_svc import save_config
+
+            save_config({"features": {"videos": False}})
+
+        with self.client.session_transaction() as session:
+            session["user"] = "admin"
+            session["_csrf_token"] = "upload-token"
+
+        response = self.client.post(
+            "/upload",
+            data={"file": (BytesIO(b"fake-video"), "clip.mp4")},
+            content_type="multipart/form-data",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json()["error"], "unsupported file type")
+
+    def test_api_images_omits_videos_when_video_feature_disabled(self):
+        with self.app.app_context():
+            from constants import UPLOAD_FOLDER
+            from services.config_svc import save_config
+
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            image_path = os.path.join(UPLOAD_FOLDER, "poster.jpg")
+            with open(image_path, "wb") as handle:
+                handle.write(b"jpg")
+            with open(os.path.join(UPLOAD_FOLDER, "clip.mp4"), "wb") as handle:
+                handle.write(b"mp4")
+
+            save_config({"features": {"videos": False}, "order": ["clip.mp4", "poster.jpg"]})
+
+        response = self.client.get("/api/images")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(len(payload), 1)
+        self.assertEqual(payload[0]["type"], "image")
+
+    def test_queue_worker_can_check_video_feature_outside_app_context(self):
+        with self.app.app_context():
+            from services.config_svc import save_config
+
+            save_config({"features": {"videos": False}})
+
+        queue_svc = import_module("services.queue_svc")
+
+        queue_svc._rq_compress_job("job-123")
+
+    def test_mp4_upload_is_enqueued_for_background_encoding(self):
+        with self.client.session_transaction() as session:
+            session["user"] = "admin"
+            session["_csrf_token"] = "upload-token"
+
+        with patch("blueprints.media.enqueue_upload_job", return_value="job-123") as enqueue_job:
+            response = self.client.post(
+                "/upload",
+                data={"file": (BytesIO(b"fake-video"), "clip.mp4")},
+                content_type="multipart/form-data",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["jobs"], [{"id": "job-123", "filename": "clip.mp4"}])
+        enqueue_job.assert_called_once()
 
     def test_client_heartbeat_schema_contains_extended_columns(self):
         with self.app.app_context():

@@ -18,7 +18,7 @@ from app_bootstrap import (
 )
 from services.queue_svc import start_encoder_thread
 
-MAX_FILE_UPLOAD_SIZE = getattr(C, 'MAX_FILE_UPLOAD_SIZE', 16 * 1024 * 1024)
+MAX_FILE_UPLOAD_SIZE = getattr(C, 'MAX_FILE_UPLOAD_SIZE', 150 * 1024 * 1024)
 MAX_BATCH_UPLOAD_SIZE = getattr(C, 'MAX_BATCH_UPLOAD_SIZE', 256 * 1024 * 1024)
 def create_app(start_scheduler=True, test_config=None):
     migrate_legacy_storage()

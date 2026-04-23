@@ -13,12 +13,12 @@ from services.config_svc import load_config, save_config, get_default_screen_nam
 from services.users_svc import load_users, has_permission, has_screen_access, is_superadmin
 from services.media_svc import (
     get_all_media, get_file_info, get_logo_path,
-    clean_filename, is_h264_mp4, get_media_groups,
+    clean_filename, get_media_groups,
     collect_group_states, is_media_disabled, normalize_group_name,
     ensure_unique_filename, is_valid_uploaded_image,
     build_media_preview_map, delete_image_variants, delete_media_thumbnail, delete_video_variants,
     generate_standard_renditions,
-    get_media_url, get_original_media_url,
+    get_media_url, get_original_media_url, are_videos_enabled,
 )
 from services.queue_svc import load_queue, save_queue, enqueue_upload_job
 from services.i18n import _flash, _t
@@ -38,7 +38,7 @@ from blueprints.guards import (
 
 bp = Blueprint('media', __name__)
 
-MAX_FILE_UPLOAD_SIZE = getattr(C, 'MAX_FILE_UPLOAD_SIZE', 16 * 1024 * 1024)
+MAX_FILE_UPLOAD_SIZE = getattr(C, 'MAX_FILE_UPLOAD_SIZE', 150 * 1024 * 1024)
 MAX_BATCH_UPLOAD_SIZE = getattr(C, 'MAX_BATCH_UPLOAD_SIZE', 256 * 1024 * 1024)
 
 
@@ -360,6 +360,7 @@ def upload_file():
         return redirect(url_for('admin.admin_page'))
     conflict_strategy = _normalize_conflict_strategy(request.form.get('conflict_strategy'))
     rename_map = _load_rename_map()
+    videos_enabled = are_videos_enabled()
     if not conflict_strategy:
         conflicts = _collect_upload_name_conflicts(files)
         if conflicts:
@@ -382,6 +383,8 @@ def upload_file():
         ext      = os.path.splitext(filename)[1].lower()
         allowed_exts = VIDEO_EXTS + ('.pdf', '.jpg', '.jpeg', '.png')
         if ext not in allowed_exts:
+            return jsonify({"error": "unsupported file type"}), 400
+        if ext in VIDEO_EXTS and not videos_enabled:
             return jsonify({"error": "unsupported file type"}), 400
 
         path_exists = os.path.exists(os.path.join(UPLOAD_FOLDER, filename))
@@ -434,16 +437,11 @@ def upload_file():
         elif ext in VIDEO_EXTS:
             tmp = dest + '.tmp' + ext
             file.save(tmp)
-            if ext == '.mp4' and is_h264_mp4(tmp):
-                os.replace(tmp, dest)
-                generate_standard_renditions(filename)
-                log_activity(session.get('user'), 'upload', filename=filename)
-            else:
-                final_name = os.path.basename(os.path.splitext(dest)[0] + '.mp4')
-                out        = os.path.join(UPLOAD_FOLDER, final_name)
-                job_id     = enqueue_upload_job(tmp, out, final_name)
-                upload_job_ids.append({"id": job_id, "filename": final_name})
-                log_activity(session.get('user'), 'upload', filename=final_name, details='encoding')
+            final_name = os.path.basename(os.path.splitext(dest)[0] + '.mp4')
+            out        = os.path.join(UPLOAD_FOLDER, final_name)
+            job_id     = enqueue_upload_job(tmp, out, final_name)
+            upload_job_ids.append({"id": job_id, "filename": final_name})
+            log_activity(session.get('user'), 'upload', filename=final_name, details='encoding')
 
         else:
             file.save(dest)

@@ -19,7 +19,7 @@ from services.media_svc import (
 )
 from services.campaign_svc import resolve_campaign_override
 from services.ephemeris_svc import generate_ephemeride_image
-from constants import UPLOAD_FOLDER, MEDIA_EXTS
+from constants import UPLOAD_FOLDER
 
 bp = Blueprint('api', __name__)
 
@@ -111,7 +111,7 @@ def get_images():
         if campaign_override:
             files = campaign_override.get('files', [])
         else:
-            all_files = {f for f in os.listdir(UPLOAD_FOLDER) if f.lower().endswith(MEDIA_EXTS)}
+            all_files = set(get_all_media(cfg))
             files = [f for f in scfg.get('order', []) if f in all_files]
         return jsonify([
             {"path": _media_path(f, get_file_info(f)["type"], bounds), "type": get_file_info(f)["type"],

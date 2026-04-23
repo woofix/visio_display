@@ -7,16 +7,20 @@ data/
 private/
 web/data/private/
 
+# Generated media / uploads
+web/static/data/
+
 # Databases
 *.db
 
 # Logs
 *.log
 
-# Python
+# Python cache
 __pycache__/
 .pytest_cache/
 *.py[cod]
+.pytest_cache/
 web/.pytest_cache/
 
 # Virtual env
@@ -37,5 +41,5 @@ web/.venv/
 *.avi
 *.mkv
 
-# Docker override (local only)
+# Local Docker override
 docker-compose.override.yml

@@ -114,6 +114,18 @@
     padding: 14px 20px; border-top: 1px solid var(--border); background: var(--surface-alt);
     display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap;
 }
+.queue-force-form { margin-top:10px; }
+.info-row { display:flex; gap:10px; align-items:flex-start; }
+.info-row + .info-row { margin-top:10px; }
+.info-row-icon { width:18px; display:flex; justify-content:center; color:var(--primary); flex:0 0 auto; margin-top:2px; }
+.info-row-icon svg { width:16px; height:16px; }
+.info-row-text { display:grid; gap:2px; }
+.info-row-text strong { font-size:.79rem; color:var(--text); }
+.info-row-text span { font-size:.75rem; color:var(--text-3); line-height:1.55; }
+.info-card-copy { font-size:.8rem; color:var(--text-3); line-height:1.6; margin-bottom:12px; }
+.empty-queue.compact { padding:20px; }
+.job-icon.result { font-size:1.2rem; }
+.job-dismiss { background:none; border:none; cursor:pointer; color:var(--text-3); font-size:1rem; padding:4px; }
 
 @media(max-width:800px) { .queue-layout { grid-template-columns: 1fr; } }
 @media(max-width:640px) {
@@ -133,9 +145,9 @@
     <h1>{{ t('queue_h1') }}</h1>
     <p>{{ t('queue_sub') }}</p>
     {% if current_user_is_superadmin %}
-    <form method="post" action="/admin/queue/force" style="margin-top:10px" class="queue-force-form">
-        <button type="submit" class="btn primary sm">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+    <form method="post" action="/admin/queue/force" class="queue-force-form">
+        <button type="submit" class="btn sm">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-14"><polygon points="5 3 19 12 5 21 5 3"/></svg>
             {{ t('queue_force_btn') }}
         </button>
     </form>
@@ -165,7 +177,7 @@
         <div class="queue-section">
             <div class="queue-section-title">{{ t('queue_recent_section') }}</div>
             <div id="recent-jobs">
-                <div class="empty-queue" style="padding:20px">
+                <div class="empty-queue compact">
                     <p>{{ t('queue_empty_recent') }}</p>
                 </div>
             </div>
@@ -176,7 +188,7 @@
     <div>
         <div class="info-card">
             <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>{{ t('queue_window_title') }}</h3>
-            <p style="font-size:.8rem; color:var(--text-3); line-height:1.6; margin-bottom:12px;">{{ t('queue_window_desc') }}</p>
+            <p class="info-card-copy">{{ t('queue_window_desc') }}</p>
             <div class="info-row">
                 <div class="info-row-icon"><span class="tl-dot on"></span></div>
                 <div class="info-row-text"><strong>{{ t('queue_tl1_label') }}</strong><span>{{ t('queue_tl1_note') }}</span></div>
@@ -226,8 +238,8 @@
         </div>
         <div class="queue-force-actions">
             <button type="button" class="btn secondary sm" id="queue-force-cancel">Annuler</button>
-            <button type="button" class="btn primary sm" id="queue-force-confirm">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px">
+            <button type="button" class="btn sm" id="queue-force-confirm">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-14">
                     <polygon points="5 3 19 12 5 21 5 3"></polygon>
                 </svg>
                 {{ t('queue_force_btn') }}
@@ -348,17 +360,17 @@ async function refreshQueue() {
                     ? `<span class="job-result">${j.before} Mo → ${j.after} Mo (÷${j.ratio})</span>`
                     : `<span class="job-result error">${j.message || 'ffmpeg failed'}</span>`;
                 return `<div class="job-card">
-                    <div class="job-icon" style="font-size:1.2rem">${isDone ? '✅' : '❌'}</div>
+                    <div class="job-icon result">${isDone ? '✅' : '❌'}</div>
                     <div class="job-info">
                         <div class="job-name">${j.filename}</div>
                         <div class="job-meta">${result} — ${(j.finished||'').slice(0,16).replace('T',' ')}</div>
                     </div>
                     <span class="job-status ${j.status}">${isDone ? JS_DONE : JS_ERROR}</span>
-                    <button onclick="cancelJob('${j.id}')" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:1rem;padding:4px;" title="✕">✕</button>
+                    <button onclick="cancelJob('${j.id}')" class="job-dismiss" title="✕">✕</button>
                 </div>`;
             }).join('');
         } else {
-            recentEl.innerHTML = `<div class="empty-queue" style="padding:20px"><p>${JS_EMPTY_RECENT}</p></div>`;
+            recentEl.innerHTML = `<div class="empty-queue compact"><p>${JS_EMPTY_RECENT}</p></div>`;
         }
 
         /* Sidebar badge */

@@ -3,7 +3,6 @@
 
 import os
 import uuid
-from datetime import datetime
 
 from flask import Blueprint, redirect, jsonify, session
 
@@ -14,7 +13,7 @@ from services.config_svc import load_config, save_config
 from services.queue_svc import (
     load_queue, save_queue,
     _rq_compress_job, _compress_q,
-    is_encoding_window, get_upload_jobs,
+    is_encoding_window, get_queue_now, get_upload_jobs,
     get_redis,
 )
 from services.i18n import _flash
@@ -185,5 +184,5 @@ def api_queue():
         "recent":      recent,
         "upload_jobs": get_upload_jobs(),
         "window":      is_encoding_window(),
-        "now_hour":    datetime.now().hour,
+        "now_hour":    get_queue_now().hour,
     })

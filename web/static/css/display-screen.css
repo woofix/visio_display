@@ -1,0 +1,192 @@
+/* Public display screen */
+
+*,
+*::before,
+*::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --display-font-base: "Manrope", "Inter", sans-serif;
+    --display-font-display: "Space Grotesk", "Manrope", sans-serif;
+    --media-halo-rgb: 138, 43, 226;
+    --ui-surface: rgba(15, 23, 42, .68);
+    --ui-border: rgba(255, 255, 255, .12);
+    --ui-text: rgba(255, 255, 255, .88);
+    --ui-text-soft: rgba(255, 255, 255, .54);
+}
+
+html,
+body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+    cursor: none;
+    font-family: var(--display-font-base);
+}
+
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background:
+        radial-gradient(circle at top left, rgba(var(--media-halo-rgb), .18), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(14, 165, 233, .12), transparent 24%);
+    z-index: 0;
+}
+
+.slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 1.5s ease-in-out;
+}
+
+.slide.active {
+    opacity: 1;
+}
+
+.slide.leaving {
+    opacity: 0;
+}
+
+.slide img,
+.slide video {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    box-shadow:
+        0 0 22px 10px rgba(var(--media-halo-rgb), .56),
+        0 0 60px 28px rgba(var(--media-halo-rgb), .24),
+        0 26px 70px rgba(0, 0, 0, .34);
+    border-radius: 18px;
+}
+
+.priority-alert {
+    position: fixed;
+    top: 22px;
+    left: 50%;
+    transform: translate(-50%, -18px);
+    width: min(92vw, 1520px);
+    padding: 18px 24px;
+    border-radius: 22px;
+    background: linear-gradient(135deg, rgba(127, 29, 29, .96), rgba(220, 38, 38, .94));
+    color: #fff;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, .45);
+    border: 1px solid rgba(255, 255, 255, .18);
+    backdrop-filter: blur(16px);
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .25s ease, transform .25s ease;
+}
+
+.priority-alert.visible {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
+.priority-alert-label {
+    font: 800 .88rem/1.1 var(--display-font-base);
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    opacity: .82;
+    margin-bottom: 8px;
+}
+
+.priority-alert-message {
+    font: 700 clamp(1.35rem, 2vw, 2.45rem)/1.18 var(--display-font-display);
+    white-space: pre-wrap;
+    word-break: break-word;
+    text-wrap: balance;
+}
+
+.screen-switcher {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    background: var(--ui-surface);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--ui-border);
+    border-radius: 40px;
+    padding: 8px 14px;
+    z-index: 999;
+    opacity: 0;
+    transition: opacity .6s ease;
+    pointer-events: none;
+}
+
+.screen-switcher.sw-visible {
+    opacity: .35;
+    pointer-events: auto;
+}
+
+.screen-switcher.sw-visible:hover {
+    opacity: 1;
+}
+
+.screen-switcher-label {
+    font: 700 .65rem/1 var(--display-font-base);
+    text-transform: uppercase;
+    letter-spacing: .09em;
+    color: var(--ui-text-soft);
+    padding-right: 6px;
+    border-right: 1px solid rgba(255, 255, 255, .15);
+    margin-right: 2px;
+    white-space: nowrap;
+}
+
+.screen-btn {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, .18);
+    border-radius: 20px;
+    color: rgba(255, 255, 255, .72);
+    padding: 5px 15px;
+    font: 700 .78rem/1 var(--display-font-base);
+    cursor: pointer;
+    transition: background .15s, color .15s, border-color .15s;
+    white-space: nowrap;
+}
+
+.screen-btn:hover {
+    background: rgba(var(--media-halo-rgb), .5);
+    border-color: rgba(var(--media-halo-rgb), .8);
+    color: #fff;
+}
+
+.screen-btn.active {
+    background: rgba(var(--media-halo-rgb), .75);
+    border-color: rgba(var(--media-halo-rgb), 1);
+    color: #fff;
+}
+
+@media (max-width: 640px) {
+    .priority-alert {
+        top: 14px;
+        padding: 14px 16px;
+        border-radius: 18px;
+    }
+
+    .screen-switcher {
+        bottom: 14px;
+        width: calc(100vw - 20px);
+        justify-content: flex-start;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    .screen-switcher::-webkit-scrollbar {
+        display: none;
+    }
+}

@@ -5,11 +5,11 @@ import os
 import uuid
 from datetime import datetime
 
-from flask import Blueprint, render_template, redirect, url_for, jsonify, session
+from flask import Blueprint, redirect, jsonify, session
 
 from constants import UPLOAD_FOLDER, VIDEO_EXTS
 from services.activity_svc import log_activity, log_config_change
-from services.users_svc import load_users, is_admin, is_superadmin
+from services.users_svc import is_admin, is_superadmin
 from services.config_svc import load_config, save_config
 from services.queue_svc import (
     load_queue, save_queue,
@@ -17,7 +17,6 @@ from services.queue_svc import (
     is_encoding_window, get_upload_jobs,
     get_redis,
 )
-from services.media_svc import get_logo_path
 from services.i18n import _flash
 from blueprints.guards import admin_guard, superadmin_guard, perm_guard, feature_guard, feature_guard_json
 
@@ -32,10 +31,7 @@ def admin_queue_view():
     if g: return g
     g = feature_guard('compress')
     if g: return g
-    users = load_users()
-    return render_template('admin_queue.html',
-        users=list(users.keys()), current_user=session.get('user'),
-        logo_path=get_logo_path())
+    return redirect('/admin/upload#encoding-queue')
 
 
 @bp.route('/compress/<filename>', methods=['POST'])
@@ -115,7 +111,7 @@ def force_encode():
             _compress_q().enqueue(_rq_compress_job, job['id'], job_timeout=3600)
         log_activity(session.get('user'), 'compress', details=f'lancement forcé de {len(pending)} tâche(s)')
     _flash('flash_force_encode_started', 'success')
-    return redirect(url_for('queue.admin_queue_view'))
+    return redirect('/admin/upload#encoding-queue')
 
 
 @bp.route('/admin/compress/<filename>/force', methods=['POST'])

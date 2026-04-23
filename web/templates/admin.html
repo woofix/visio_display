@@ -1039,10 +1039,10 @@
                             </div>
                             <strong>Glissez vos fichiers ici</strong>
                             <p>ou cliquez pour sélectionner<br>
-                               JPG · PNG · PDF · MP4 · MOV · WebM<br>
+                               JPG · PNG · PDF{% if is_feature_enabled('videos') %} · MP4 · MOV · WebM · AVI · MKV{% endif %}<br>
                                <strong style="color:var(--primary)">150 Mo max par fichier</strong></p>
                             <input type="file" name="file" id="file-input" multiple
-                                   accept=".jpg,.jpeg,.png,.pdf,.mp4,.webm,.mov,.avi,.mkv"
+                                   accept=".jpg,.jpeg,.png,.pdf{% if is_feature_enabled('videos') %},.mp4,.webm,.mov,.avi,.mkv{% endif %}"
                                    style="display:none">
                         </div>
                         <div id="file-preview"></div>

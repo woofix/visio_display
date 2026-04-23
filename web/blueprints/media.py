@@ -303,7 +303,8 @@ def admin_upload_page():
     users = load_users()
     return render_template('admin_upload.html',
         users=list(users.keys()), current_user=session.get('user'),
-        logo_path=get_logo_path())
+        logo_path=get_logo_path(),
+        current_user_is_superadmin=is_superadmin())
 
 
 @bp.route('/delete/<filename>', methods=['POST'])

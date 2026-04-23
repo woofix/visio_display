@@ -715,6 +715,7 @@ def is_media_allowed_by_features(filename, cfg=None):
 
 def get_all_media(cfg=None):
     cfg   = cfg or load_config()
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     files = [f for f in os.listdir(UPLOAD_FOLDER)
              if f.lower().endswith(MEDIA_EXTS)]
     files = [f for f in files if is_media_allowed_by_features(f, cfg)]

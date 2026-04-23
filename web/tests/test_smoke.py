@@ -1,4 +1,5 @@
 import os
+import shutil
 import sys
 import tempfile
 import types
@@ -640,7 +641,20 @@ class AppSmokeTests(unittest.TestCase):
             from services import backup_svc
             from services.config_svc import save_config, load_config
 
-            with patch.object(backup_svc.C, "UPLOAD_FOLDER", media_dir), patch.object(backup_svc, "BACKUP_DIR", backup_dir):
+            def fake_dump(output_path):
+                with open(output_path, "w", encoding="utf-8") as handle:
+                    handle.write("pg-dump-before")
+
+            def fake_restore(input_path):
+                with open(input_path, "r", encoding="utf-8") as handle:
+                    restored = handle.read()
+                self.assertEqual(restored, "pg-dump-before")
+                save_config({"app_name": "Before restore"})
+
+            with patch.object(backup_svc.C, "STATIC_MEDIA_DIR", media_dir), \
+                 patch.object(backup_svc, "BACKUP_DIR", backup_dir), \
+                 patch.object(backup_svc, "_dump_postgres_database", side_effect=fake_dump), \
+                 patch.object(backup_svc, "_restore_postgres_database", side_effect=fake_restore):
                 with open(os.path.join(media_dir, "hello.txt"), "w", encoding="utf-8") as handle:
                     handle.write("before")
                 with open(os.path.join(os.environ["VISIO_DATA_DIR"], "note.txt"), "w", encoding="utf-8") as handle:
@@ -660,6 +674,12 @@ class AppSmokeTests(unittest.TestCase):
                 backups = backup_svc.list_backups()
                 self.assertEqual(len(backups), 1)
                 archive_path = os.path.join(backup_dir, backups[0]["filename"])
+                with tempfile.TemporaryDirectory() as archive_dir:
+                    shutil.unpack_archive(archive_path, archive_dir)
+                    self.assertTrue(os.path.isfile(os.path.join(archive_dir, "postgres.dump")))
+                    self.assertTrue(os.path.isfile(os.path.join(archive_dir, "media.tar.gz")))
+                    self.assertTrue(os.path.isfile(os.path.join(archive_dir, "private.tar.gz")))
+                    self.assertTrue(os.path.isfile(os.path.join(archive_dir, "manifest.json")))
 
                 with open(os.path.join(media_dir, "hello.txt"), "w", encoding="utf-8") as handle:
                     handle.write("after")

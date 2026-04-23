@@ -9,7 +9,7 @@ services:
       - redis_data:/data
 
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16.13-alpine
     restart: always
     environment:
       - POSTGRES_DB=visio

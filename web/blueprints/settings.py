@@ -7,7 +7,7 @@ import queue
 import threading
 from datetime import date
 
-from flask import Blueprint, request, redirect, url_for, session, render_template, jsonify, send_file, Response, stream_with_context, current_app
+from flask import Blueprint, request, redirect, url_for, session, render_template, jsonify, send_file, Response, stream_with_context, current_app, flash
 
 from constants import (
     VALID_THEMES, LOGO_EXTS, IMAGES_FOLDER, DEFAULT_LOGO, LAT, LNG,
@@ -271,8 +271,8 @@ def create_backup_stream():
 
     def worker():
         try:
-            backup = create_backup_archive(progress_callback=lambda message: emit('log', message=message))
             with app.app_context():
+                backup = create_backup_archive(progress_callback=lambda message: emit('log', message=message))
                 log_config_change(username, f"sauvegarde créée: {backup['filename']}")
             emit('done', backup=serialize_backup(backup))
         except Exception as exc:
@@ -334,8 +334,8 @@ def restore_backup():
 
     try:
         restore_backup_archive(uploaded)
-    except Exception:
-        _flash('flash_backup_restore_failed', 'error')
+    except Exception as exc:
+        flash(str(exc) or _t('flash_backup_restore_failed'), 'error')
         return redirect(url_for('settings.admin_settings_page') + '?tab=sauvegardes')
 
     log_config_change(session.get('user'), f"sauvegarde restaurée: {uploaded.filename}")

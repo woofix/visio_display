@@ -60,7 +60,7 @@ Application web légère de signalétique numérique. Elle affiche un diaporama 
 - Programmation horaire et/ou par dates par média
 - Assignation des médias aux écrans nommés par bouton — l'item devient immédiatement actif sur l'écran cible
 - Encodage vidéo asynchrone à l'import — barre de progression en temps réel
-- File de compression vidéo nocturne (fenêtre 22h–6h) — progression visible, forçable par le super-admin
+- File de compression vidéo nocturne (fenêtre 20h–6h) — progression visible, forçable par le super-admin
 - Statistiques d'utilisation du disque
 - Visionneuse plein écran au clic
 - Nom de l'application personnalisable
@@ -301,6 +301,7 @@ Le super-admin peut aussi gérer les sauvegardes directement depuis l'interface,
 - cliquer sur **Créer une sauvegarde** pour générer une archive téléchargeable
 - attendre la fin de l'animation de progression pendant la préparation
 - télécharger l'archive depuis la liste
+- si besoin, configurer un partage `smb://...` puis cliquer sur **Copier vers SMB** pour envoyer une archive vers un serveur Windows ou un NAS
 - sur une autre instance déjà démarrée, réimporter l'archive avec **Restaurer maintenant**
 
 Cette restauration remet :
@@ -368,7 +369,7 @@ Pour retirer un média de l'écran courant, cliquer sur **« Retirer de l'écran
 
 À l'import, les vidéos non conformes (hors H.264/MP4) sont **encodées en arrière-plan** : la page répond immédiatement et affiche une barre de progression par fichier. Un bouton « Voir les médias » apparaît une fois l'encodage terminé.
 
-Une fois l'encodage initial effectué, la vidéo est ajoutée en file de compression nocturne (22h–6h) pour réduction de taille. La progression de cette étape est visible sur la page `/admin/queue`.
+Une fois l'encodage initial effectué, la vidéo est ajoutée en file de compression nocturne (20h–6h) pour réduction de taille. La progression de cette étape est visible sur la page `/admin/queue`.
 
 ### Structure du projet
 
@@ -660,7 +661,7 @@ A lightweight web-based digital signage. It displays a fullscreen slideshow of i
 - Time and/or date scheduling per media item
 - Media assignment to named screens via button — item is immediately active on the target screen
 - Asynchronous video encoding on upload — real-time per-file progress bar
-- Overnight video compression queue (window: 10 PM–6 AM) — progress visible, force-startable by super-admin
+- Overnight video compression queue (window: 8 PM–6 AM) — progress visible, force-startable by super-admin
 - Disk usage statistics
 - Fullscreen media viewer on click
 - Customizable application name
@@ -886,7 +887,7 @@ To remove a media item from the current screen, click **"Remove from screen"** i
 
 On upload, non-conformant videos (not H.264/MP4) are **encoded in the background**: the page responds immediately and shows a per-file progress bar. A "View media" button appears once encoding is complete.
 
-After initial encoding, the video is queued for overnight compression (10 PM–6 AM) to reduce file size. The progress of that step is visible on `/admin/queue`.
+After initial encoding, the video is queued for overnight compression (8 PM–6 AM) to reduce file size. The progress of that step is visible on `/admin/queue`.
 
 ### Project structure
 

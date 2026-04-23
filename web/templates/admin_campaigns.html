@@ -49,6 +49,9 @@
 .campaign-help { font-size:.78rem; color:var(--text-3); line-height:1.6; }
 .campaign-divider { height:1px; background:var(--border); margin:14px 0; }
 .campaign-card.highlight { box-shadow:0 0 0 2px rgba(124,58,237,.18), var(--shadow); }
+.campaign-panel h2 { font-family:var(--font-family-display); font-size:1rem; margin-bottom:6px; }
+.campaign-check.align-end { align-self:end; }
+.campaign-checks.spaced { margin-top:8px; }
 .campaign-library { padding:16px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow-sm); }
 .campaign-library-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
 .campaign-library-title { font-size:.95rem; font-weight:800; color:var(--text); }
@@ -100,7 +103,7 @@
 
 <div class="campaign-layout">
     <aside class="campaign-panel">
-        <h2 style="font-size:1rem;margin-bottom:6px">{{ t('campaigns_create_title') }}</h2>
+        <h2>{{ t('campaigns_create_title') }}</h2>
         <p class="campaign-help">{{ t('campaigns_create_desc') }}</p>
         <div class="campaign-divider"></div>
 
@@ -126,14 +129,14 @@
                     <input id="new-campaign-priority" type="number" name="priority" min="1" max="999" value="100">
                     <div class="campaign-inline-help">{{ t('campaigns_priority_field_help') }}</div>
                 </div>
-                <label class="campaign-check" style="align-self:end">
+                <label class="campaign-check align-end">
                     <input type="checkbox" name="enabled" checked>
                     {{ t('campaigns_enabled_label') }}
                 </label>
             </div>
             <div>
                 <div class="campaign-section-title">{{ t('campaigns_screens_label') }}</div>
-                <div class="campaign-checks" style="margin-top:8px">
+                <div class="campaign-checks spaced">
                     {% for screen_value, screen_label in available_screen_choices %}
                     <label class="campaign-check">
                         <input type="checkbox" name="screens" value="{{ screen_value }}">
@@ -326,14 +329,14 @@
                             <input id="campaign-priority-{{ campaign.id }}" type="number" name="priority" min="1" max="999" value="{{ campaign.priority }}">
                             <div class="campaign-inline-help">{{ t('campaigns_priority_field_help') }}</div>
                         </div>
-                        <label class="campaign-check" style="align-self:end">
+                        <label class="campaign-check align-end">
                             <input type="checkbox" name="enabled" value="1" {% if campaign.enabled %}checked{% endif %}>
                             {{ t('campaigns_enabled_label') }}
                         </label>
                     </div>
                     <div>
                         <div class="campaign-section-title">{{ t('campaigns_screens_label') }}</div>
-                        <div class="campaign-checks" style="margin-top:8px">
+                        <div class="campaign-checks spaced">
                             {% for screen_value, screen_label in available_screen_choices %}
                             <label class="campaign-check">
                                 <input type="checkbox" name="screens" value="{{ screen_value }}" {% if screen_label in campaign.screens %}checked{% endif %}>

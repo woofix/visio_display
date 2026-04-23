@@ -16,11 +16,11 @@ from services.media_svc import (
     clean_filename, get_media_groups,
     collect_group_states, is_media_disabled, normalize_group_name,
     ensure_unique_filename, is_valid_uploaded_image,
-    build_media_preview_map, delete_image_variants, delete_media_thumbnail, delete_video_variants,
+    delete_image_variants, delete_media_thumbnail, delete_video_variants,
     generate_standard_renditions,
     get_media_url, get_original_media_url, are_videos_enabled,
 )
-from services.queue_svc import load_queue, save_queue, enqueue_upload_job
+from services.queue_svc import load_queue, save_queue, enqueue_compress_job
 from services.i18n import _flash, _t
 from services.activity_svc import log_activity
 from services.schedule_svc import (
@@ -197,16 +197,22 @@ def admin_media():
         schedules  = cfg.get('schedules', {})
 
     media_groups = {f: get_media_groups(f, cfg) for f in all_media}
-    preview_urls = build_media_preview_map(all_media, context='admin')
-    preview_media_urls = {
-        filename: get_media_url(
+    preview_urls = {}
+    preview_media_urls = {}
+    for filename in all_media:
+        is_queued = filename in queued
+        preview_urls[filename] = get_media_url(
+            filename,
+            context='admin',
+            allow_original=not is_queued,
+            generate_missing=not is_queued,
+        ) or get_original_media_url(filename)
+        preview_media_urls[filename] = get_media_url(
             filename,
             context='preview',
             allow_original=True,
-            generate_missing=True,
+            generate_missing=not is_queued,
         ) or get_original_media_url(filename)
-        for filename in all_media
-    }
     effective_cfg = dict(view_cfg)
     effective_cfg['groups'] = cfg.get('groups', {})
     effective_cfg['group_pools'] = cfg.get('group_pools', {})
@@ -371,7 +377,7 @@ def upload_file():
     if total_size > MAX_BATCH_UPLOAD_SIZE:
         return jsonify({"error": "batch too large"}), 400
 
-    upload_job_ids = []
+    queued_video_files = []
     planned_filenames = set()
     for file_index, file in enumerate(files):
         if not file or file.filename == '':
@@ -436,13 +442,15 @@ def upload_file():
                     os.remove(dest)
 
         elif ext in VIDEO_EXTS:
-            tmp = dest + '.tmp' + ext
-            file.save(tmp)
-            final_name = os.path.basename(os.path.splitext(dest)[0] + '.mp4')
-            out        = os.path.join(UPLOAD_FOLDER, final_name)
-            job_id     = enqueue_upload_job(tmp, out, final_name)
-            upload_job_ids.append({"id": job_id, "filename": final_name})
-            log_activity(session.get('user'), 'upload', filename=final_name, details='encoding')
+            file.save(dest)
+            cfg = load_config()
+            disabled = cfg.setdefault('disabled', [])
+            if filename not in disabled:
+                disabled.append(filename)
+                save_config(cfg)
+            enqueue_compress_job(filename)
+            queued_video_files.append(filename)
+            log_activity(session.get('user'), 'upload', filename=filename, details='queued for nightly encoding')
 
         else:
             file.save(dest)
@@ -452,7 +460,7 @@ def upload_file():
             generate_standard_renditions(filename)
             log_activity(session.get('user'), 'upload', filename=filename)
 
-    return jsonify({"ok": True, "jobs": upload_job_ids, "redirect": "/admin/media"})
+    return jsonify({"ok": True, "jobs": [], "queued_files": queued_video_files, "redirect": "/admin/media"})
 
 
 @bp.route('/toggle/<filename>', methods=['POST'])

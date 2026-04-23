@@ -1,10 +1,14 @@
-k# Secrets
+# Secrets
 .env
 .env.*
 
 # Runtime data
 data/
 private/
+web/data/private/
+
+# Generated media / uploads
+web/static/data/
 
 # Databases
 *.db
@@ -12,9 +16,11 @@ private/
 # Logs
 *.log
 
-# Python
+# Python cache
 __pycache__/
 *.py[cod]
+.pytest_cache/
+web/.pytest_cache/
 
 # Virtual env
 .venv/
@@ -34,5 +40,5 @@ web/.venv/
 *.avi
 *.mkv
 
-# Docker override (local only)
+# Local Docker override
 docker-compose.override.yml

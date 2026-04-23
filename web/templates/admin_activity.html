@@ -23,40 +23,315 @@
 {% block topbar_sub %}{{ t('activity_topbar_sub') }}{% endblock %}
 
 {% block styles %}
-.activity-toolbar {
-    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
-    margin-bottom: 18px;
+.activity-shell { display: grid; gap: 20px; }
+.activity-hero {
+    background:
+        linear-gradient(135deg, color-mix(in srgb, var(--sidebar-bg) 92%, transparent), color-mix(in srgb, var(--primary-dark) 68%, var(--sidebar-bg))),
+        radial-gradient(circle at top right, color-mix(in srgb, var(--primary-light) 22%, transparent), transparent 42%);
+    border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+    border-radius: calc(var(--radius) + 6px);
+    padding: 22px 24px;
+    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
 }
-.activity-toolbar input, .activity-toolbar select {
-    padding: 7px 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
-    font-size: .82rem; font-family: inherit; color: var(--text); background: var(--surface);
-    transition: border-color .15s;
+.activity-hero::after {
+    content: "";
+    position: absolute;
+    inset: auto -40px -46px auto;
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--primary) 18%, transparent);
+    filter: blur(6px);
+    pointer-events: none;
 }
-.activity-toolbar input:focus, .activity-toolbar select:focus {
-    outline: none; border-color: var(--primary);
+.activity-hero h1 {
+    color: #fff;
+    margin-bottom: 6px;
 }
-.activity-toolbar input { flex: 1; min-width: 180px; }
-
+.activity-hero p {
+    color: color-mix(in srgb, white 76%, var(--primary-bg));
+    max-width: 72ch;
+}
+.activity-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+}
+.summary-card {
+    background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 92%, transparent), color-mix(in srgb, var(--surface-alt) 88%, transparent));
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    box-shadow: var(--shadow-sm);
+}
+.summary-label {
+    font-size: .7rem;
+    font-weight: 700;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    margin-bottom: 8px;
+}
+.summary-value {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: var(--text);
+    letter-spacing: -.03em;
+}
+.summary-meta {
+    margin-top: 6px;
+    font-size: .78rem;
+    color: var(--text-3);
+    line-height: 1.5;
+}
+.activity-main { display: grid; gap: 18px; }
+.activity-filters {
+    display: grid;
+    grid-template-columns: minmax(220px, 1.6fr) repeat(5, minmax(120px, 1fr));
+    gap: 12px;
+    align-items: end;
+}
+.filter-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.filter-card label {
+    font-size: .7rem;
+    font-weight: 700;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+}
+.filter-card input,
+.filter-card select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+}
+.filter-card input:focus,
+.filter-card select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--ring);
+}
+.filter-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+}
+.filter-hint {
+    font-size: .78rem;
+    color: var(--text-3);
+}
+.management-card {
+    display: grid;
+    gap: 16px;
+}
+.management-card h3 {
+    font-size: .88rem;
+    font-weight: 800;
+    color: var(--text);
+}
+.management-copy {
+    font-size: .79rem;
+    color: var(--text-3);
+    line-height: 1.6;
+}
+.settings-form,
+.purge-form {
+    display: grid;
+    gap: 12px;
+}
+.settings-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+.checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface-alt);
+}
+.checkbox-row input { width: 16px; height: 16px; accent-color: var(--primary); }
+.checkbox-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.checkbox-copy strong {
+    font-size: .8rem;
+    color: var(--text);
+}
+.checkbox-copy span {
+    font-size: .74rem;
+    color: var(--text-3);
+}
+.danger-panel {
+    border: 1px solid rgba(220, 38, 38, .18);
+    background: color-mix(in srgb, var(--surface) 88%, #fee2e2 12%);
+    border-radius: 14px;
+    padding: 16px;
+    display: grid;
+    gap: 12px;
+}
+.danger-panel h4 {
+    font-size: .8rem;
+    font-weight: 800;
+    color: var(--red);
+}
+.danger-row {
+    display: flex;
+    gap: 10px;
+    align-items: end;
+}
+.danger-row .filter-card { flex: 1; }
+.danger-help {
+    font-size: .74rem;
+    color: var(--text-3);
+    line-height: 1.5;
+}
+.admin-disclosure {
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) + 2px);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 94%, transparent), color-mix(in srgb, var(--surface-alt) 92%, transparent));
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
+.admin-disclosure[open] {
+    box-shadow: var(--shadow);
+}
+.admin-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+    list-style: none;
+    cursor: pointer;
+    padding: 18px 22px;
+}
+.admin-summary::-webkit-details-marker { display: none; }
+.admin-summary-copy {
+    display: grid;
+    gap: 4px;
+}
+.admin-kicker {
+    font-size: .72rem;
+    font-weight: 800;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+}
+.admin-summary-title {
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--text);
+}
+.admin-summary-text {
+    font-size: .79rem;
+    color: var(--text-3);
+    max-width: 76ch;
+    line-height: 1.55;
+}
+.admin-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-2);
+    font-size: .76rem;
+    font-weight: 700;
+}
+.admin-pill svg {
+    width: 14px;
+    height: 14px;
+    color: var(--primary);
+}
+.admin-shell {
+    padding: 0 22px 22px;
+    display: grid;
+    gap: 16px;
+}
+.admin-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr);
+    gap: 18px;
+}
+.management-card.soft {
+    padding: 18px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--surface) 88%, transparent);
+}
+.table-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+}
+.table-title {
+    font-size: .92rem;
+    font-weight: 800;
+    color: var(--text);
+}
+.table-meta {
+    font-size: .78rem;
+    color: var(--text-3);
+}
+.table-card {
+    padding-top: 18px;
+}
 .log-table-wrap { overflow-x: auto; }
 .log-table {
-    width: 100%; border-collapse: collapse; font-size: .83rem;
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .83rem;
 }
 .log-table th {
-    text-align: left; font-size: .68rem; font-weight: 700; color: var(--text-3);
-    text-transform: uppercase; letter-spacing: .08em;
-    padding: 10px 14px; border-bottom: 2px solid var(--border);
+    text-align: left;
+    font-size: .68rem;
+    font-weight: 700;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    padding: 10px 14px;
+    border-bottom: 2px solid var(--border);
     white-space: nowrap;
 }
 .log-table td {
-    padding: 10px 14px; border-bottom: 1px solid var(--border);
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
     vertical-align: middle;
 }
 .log-table tr:last-child td { border-bottom: none; }
 .log-table tr:hover td { background: var(--surface-alt); }
-
 .action-badge {
-    display: inline-flex; align-items: center; gap: 5px;
-    font-size: .72rem; font-weight: 700; padding: 3px 9px; border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: .72rem;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 8px;
     white-space: nowrap;
 }
 .action-upload   { background: #dbeafe; color: #1d4ed8; }
@@ -68,135 +343,344 @@
 .action-config   { background: #d1fae5; color: #047857; }
 .action-campaign { background: #e0f2fe; color: #0369a1; }
 .action-default  { background: var(--surface-alt); color: var(--text-3); }
-
-.log-filename { font-family: 'Inter', monospace; color: var(--text-2); font-size: .8rem; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.log-filename {
+    font-family: 'Inter', monospace;
+    color: var(--text-2);
+    font-size: .8rem;
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 .log-ts { color: var(--text-3); font-size: .78rem; white-space: nowrap; }
-.log-user { font-weight: 600; color: var(--text); }
-.log-details { color: var(--text-3); font-size: .78rem; }
-
-.empty-log { text-align: center; padding: 48px 20px; color: var(--text-3); }
-.empty-log svg { width: 44px; height: 44px; color: #ddd6fe; display: block; margin: 0 auto 12px; }
-
-#log-count { font-size: .78rem; color: var(--text-3); margin-left: auto; }
+.log-user { font-weight: 700; color: var(--text); }
+.log-details { color: var(--text-3); font-size: .78rem; line-height: 1.45; }
+.empty-log {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--text-3);
+}
+.empty-log svg {
+    width: 44px;
+    height: 44px;
+    color: color-mix(in srgb, var(--primary) 45%, var(--border));
+    display: block;
+    margin: 0 auto 12px;
+}
+@media(max-width: 1180px) {
+    .admin-grid { grid-template-columns: 1fr; }
+}
+@media(max-width: 960px) {
+    .activity-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .activity-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 @media(max-width: 640px) {
-    .activity-toolbar input,
-    .activity-toolbar select,
-    #log-count {
-        width: 100%;
+    .activity-summary,
+    .activity-filters,
+    .settings-grid {
+        grid-template-columns: 1fr;
     }
-    #log-count {
-        margin-left: 0;
+    .danger-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .filter-actions {
+        align-items: stretch;
+        flex-direction: column;
     }
 }
 {% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <div>
+<div class="activity-shell">
+    <section class="activity-hero">
         <h1>{{ t('activity_h1') }}</h1>
         <p>{{ t('activity_sub') }}</p>
-    </div>
-</div>
+    </section>
 
-<div class="card">
-    <div class="activity-toolbar">
-        <input type="text" id="filter-search" placeholder="{{ t('activity_search_placeholder') }}" oninput="applyFilters()">
-        <select id="filter-action" onchange="applyFilters()">
-            <option value="">{{ t('activity_filter_all_actions') }}</option>
-            <option value="upload">{{ t('activity_action_upload') }}</option>
-            <option value="delete">{{ t('activity_action_delete') }}</option>
-            <option value="login">{{ t('activity_action_login') }}</option>
-            <option value="logout">{{ t('activity_action_logout') }}</option>
-            <option value="toggle">{{ t('activity_action_toggle') }}</option>
-            <option value="compress">{{ t('activity_action_compress') }}</option>
-            <option value="config">{{ t('activity_action_config') }}</option>
-            <option value="campaign">{{ t('activity_action_campaign') }}</option>
-        </select>
-        <select id="filter-user" onchange="applyFilters()">
-            <option value="">{{ t('activity_filter_all_users') }}</option>
-            {% for u in users %}
-            <option value="{{ u }}">{{ u }}</option>
-            {% endfor %}
-        </select>
-        <span id="log-count"></span>
-    </div>
+    <section class="activity-summary">
+        <article class="summary-card">
+            <div class="summary-label">{{ t('activity_summary_total') }}</div>
+            <div class="summary-value">{{ activity_summary.total_entries }}</div>
+            <div class="summary-meta">{{ t('activity_summary_total_hint') }}</div>
+        </article>
+        <article class="summary-card">
+            <div class="summary-label">{{ t('activity_summary_users') }}</div>
+            <div class="summary-value">{{ activity_summary.user_count }}</div>
+            <div class="summary-meta">{{ t('activity_summary_users_hint') }}</div>
+        </article>
+        <article class="summary-card">
+            <div class="summary-label">{{ t('activity_summary_oldest') }}</div>
+            <div class="summary-value" style="font-size:1rem">{{ activity_summary.oldest_timestamp_display or '—' }}</div>
+            <div class="summary-meta">{{ t('activity_summary_oldest_hint') }}</div>
+        </article>
+        <article class="summary-card">
+            <div class="summary-label">{{ t('activity_summary_retention') }}</div>
+            <div class="summary-value">{{ activity_settings.retention_days }}j</div>
+            <div class="summary-meta">{{ t('activity_summary_retention_hint', max_rows=activity_settings.max_rows) }}</div>
+        </article>
+    </section>
 
-    <div class="log-table-wrap">
-        <table class="log-table">
-            <thead>
-                <tr>
-                    <th>{{ t('activity_col_date') }}</th>
-                    <th>{{ t('activity_col_user') }}</th>
-                    <th>{{ t('activity_col_action') }}</th>
-                    <th>{{ t('activity_col_file') }}</th>
-                    <th>{{ t('activity_col_details') }}</th>
-                </tr>
-            </thead>
-            <tbody id="log-body">
-                {% for entry in logs %}
-                <tr
-                    data-action="{{ entry.action }}"
-                    data-user="{{ entry.username }}"
-                    data-search="{{ (entry.username ~ ' ' ~ (entry.filename or '') ~ ' ' ~ (entry.details or '')) | lower }}"
-                >
-                    <td class="log-ts">{{ entry.timestamp_display or (entry.timestamp | replace('T', ' ')) }}</td>
-                    <td class="log-user">{{ entry.username }}</td>
-                    <td>
-                        <span class="action-badge action-{{ entry.action if entry.action in ('upload','delete','login','logout','toggle','compress','config','campaign') else 'default' }}">
-                            {% if entry.action == 'upload' %}
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:11px;height:11px"><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                            {% elif entry.action == 'delete' %}
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:11px;height:11px"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
-                            {% elif entry.action == 'login' %}
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:11px;height:11px"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-                            {% elif entry.action == 'logout' %}
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:11px;height:11px"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                            {% elif entry.action == 'toggle' %}
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:11px;height:11px"><circle cx="12" cy="12" r="10"/></svg>
-                            {% elif entry.action == 'compress' %}
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:11px;height:11px"><polyline points="8 6 2 12 8 18"/><polyline points="16 6 22 12 16 18"/></svg>
-                            {% elif entry.action == 'config' %}
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:11px;height:11px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.54V21a2 2 0 0 1-4 0v-.09a1.7 1.7 0 0 0-1-1.54 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.54-1H3a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87L4.2 7.07a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.17.54.7.91 1.27.91H21a2 2 0 0 1 0 4h-.33c-.57 0-1.1.37-1.27 1.09Z"/></svg>
-                            {% elif entry.action == 'campaign' %}
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:11px;height:11px"><path d="M5 5h11l-1 5 1 5H5z"/><path d="M5 22V5"/></svg>
-                            {% endif %}
-                            {{ t('activity_action_' ~ entry.action) if ('activity_action_' ~ entry.action) in ['activity_action_upload','activity_action_delete','activity_action_login','activity_action_logout','activity_action_toggle','activity_action_compress','activity_action_config','activity_action_campaign'] else entry.action }}
-                        </span>
-                    </td>
-                    <td><div class="log-filename" title="{{ entry.filename or '' }}">{{ entry.filename or '—' }}</div></td>
-                    <td class="log-details">{{ entry.details or '' }}</td>
-                </tr>
-                {% else %}
-                <tr><td colspan="5" class="empty-log">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                    <p>{{ t('activity_empty') }}</p>
-                </td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+    {% if is_superadmin %}
+    <details class="admin-disclosure">
+        <summary class="admin-summary">
+            <div class="admin-summary-copy">
+                <div class="admin-kicker">Super Admin</div>
+                <div class="admin-summary-title">{{ t('activity_sensitive_title') }}</div>
+                <div class="admin-summary-text">{{ t('activity_management_sub') }}</div>
+            </div>
+            <span class="admin-pill">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                {{ t('activity_settings_save') }}
+            </span>
+        </summary>
+
+        <div class="admin-shell">
+            <div class="admin-grid">
+                <div class="management-card soft">
+                    <div>
+                        <h3>{{ t('activity_management_title') }}</h3>
+                        <p class="management-copy">{{ t('activity_sensitive_sub') }}</p>
+                    </div>
+
+                    <form method="post" action="/admin/activity/settings" class="settings-form">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                        <label class="checkbox-row">
+                            <input type="checkbox" name="auto_delete_enabled" value="1" {% if activity_settings.auto_delete_enabled %}checked{% endif %}>
+                            <span class="checkbox-copy">
+                                <strong>{{ t('activity_setting_auto_delete') }}</strong>
+                                <span>{{ t('activity_setting_auto_delete_help') }}</span>
+                            </span>
+                        </label>
+                        <div class="settings-grid">
+                            <div class="filter-card">
+                                <label for="retention_days">{{ t('activity_setting_retention_days') }}</label>
+                                <input type="number" min="1" step="1" id="retention_days" name="retention_days" value="{{ activity_settings.retention_days }}" required>
+                            </div>
+                            <div class="filter-card">
+                                <label for="max_rows">{{ t('activity_setting_max_rows') }}</label>
+                                <input type="number" min="1000" step="100" id="max_rows" name="max_rows" value="{{ activity_settings.max_rows }}" required>
+                            </div>
+                        </div>
+                        <div>
+                            <button type="submit" class="btn success sm">{{ t('activity_settings_save') }}</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="management-card soft">
+                    <div>
+                        <h3>{{ t('activity_sensitive_title') }}</h3>
+                        <p class="management-copy">{{ t('activity_sensitive_sub') }}</p>
+                    </div>
+
+                    <form method="post" action="/admin/activity/purge" class="purge-form">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="purge_scope" value="older_than">
+                        <div class="danger-panel">
+                            <h4>{{ t('activity_purge_old_title') }}</h4>
+                            <div class="danger-row">
+                                <div class="filter-card">
+                                    <label for="older_than_days">{{ t('activity_purge_old_days') }}</label>
+                                    <input type="number" min="1" step="1" id="older_than_days" name="older_than_days" value="{{ activity_settings.retention_days }}">
+                                </div>
+                                <button type="submit" class="btn warning sm" onclick="return confirm('{{ t('activity_purge_old_confirm') }}')">{{ t('activity_purge_old_submit') }}</button>
+                            </div>
+                            <div class="danger-help">{{ t('activity_purge_old_help') }}</div>
+                        </div>
+                    </form>
+
+                    <form method="post" action="/admin/activity/purge" class="purge-form">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="purge_scope" value="all">
+                        <div class="danger-panel">
+                            <h4>{{ t('activity_purge_all_title') }}</h4>
+                            <div class="danger-help">{{ t('activity_purge_all_help') }}</div>
+                            <div>
+                                <button type="submit" class="btn danger sm" onclick="return confirm('{{ t('activity_purge_all_confirm') }}')">{{ t('activity_purge_all_submit') }}</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </details>
+    {% endif %}
+
+    <section class="activity-main">
+        <div class="card">
+            <div class="activity-filters">
+                <div class="filter-card">
+                    <label for="filter-search">{{ t('activity_filter_search_label') }}</label>
+                    <input type="text" id="filter-search" placeholder="{{ t('activity_search_placeholder') }}" oninput="applyFilters()">
+                </div>
+                <div class="filter-card">
+                    <label for="filter-user">{{ t('activity_filter_user_label') }}</label>
+                    <select id="filter-user" onchange="applyFilters()">
+                        <option value="">{{ t('activity_filter_all_users') }}</option>
+                        {% for u in users %}
+                        <option value="{{ u }}">{{ u }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-card">
+                    <label for="filter-action">{{ t('activity_filter_action_label') }}</label>
+                    <select id="filter-action" onchange="applyFilters()">
+                        <option value="">{{ t('activity_filter_all_actions') }}</option>
+                        <option value="upload">{{ t('activity_action_upload') }}</option>
+                        <option value="delete">{{ t('activity_action_delete') }}</option>
+                        <option value="login">{{ t('activity_action_login') }}</option>
+                        <option value="logout">{{ t('activity_action_logout') }}</option>
+                        <option value="toggle">{{ t('activity_action_toggle') }}</option>
+                        <option value="compress">{{ t('activity_action_compress') }}</option>
+                        <option value="config">{{ t('activity_action_config') }}</option>
+                        <option value="campaign">{{ t('activity_action_campaign') }}</option>
+                    </select>
+                </div>
+                <div class="filter-card">
+                    <label for="filter-date-from">{{ t('activity_filter_from_label') }}</label>
+                    <input type="date" id="filter-date-from" onchange="applyFilters()">
+                </div>
+                <div class="filter-card">
+                    <label for="filter-date-to">{{ t('activity_filter_to_label') }}</label>
+                    <input type="date" id="filter-date-to" onchange="applyFilters()">
+                </div>
+                <div class="filter-card">
+                    <label for="filter-sort">{{ t('activity_sort_label') }}</label>
+                    <select id="filter-sort" onchange="applyFilters()">
+                        <option value="date_desc">{{ t('activity_sort_date_desc') }}</option>
+                        <option value="date_asc">{{ t('activity_sort_date_asc') }}</option>
+                        <option value="user_asc">{{ t('activity_sort_user_asc') }}</option>
+                        <option value="user_desc">{{ t('activity_sort_user_desc') }}</option>
+                        <option value="action_asc">{{ t('activity_sort_action_asc') }}</option>
+                        <option value="action_desc">{{ t('activity_sort_action_desc') }}</option>
+                    </select>
+                </div>
+            </div>
+            <div class="filter-actions">
+                <div class="filter-hint" id="log-count"></div>
+                <button type="button" class="btn secondary sm" onclick="resetActivityFilters()">{{ t('activity_reset_filters') }}</button>
+            </div>
+        </div>
+
+        <div class="card table-card">
+            <div class="table-head">
+                <div class="table-title">{{ t('activity_table_title') }}</div>
+                <div class="table-meta">{{ t('activity_table_meta') }}</div>
+            </div>
+            <div class="log-table-wrap">
+                <table class="log-table">
+                    <thead>
+                        <tr>
+                            <th>{{ t('activity_col_date') }}</th>
+                            <th>{{ t('activity_col_user') }}</th>
+                            <th>{{ t('activity_col_action') }}</th>
+                            <th>{{ t('activity_col_file') }}</th>
+                            <th>{{ t('activity_col_details') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody id="log-body">
+                        {% for entry in logs %}
+                        <tr
+                            data-action="{{ entry.action }}"
+                            data-user="{{ entry.username }}"
+                            data-timestamp="{{ entry.timestamp }}"
+                            data-date="{{ (entry.timestamp or '')[:10] }}"
+                            data-search="{{ (entry.username ~ ' ' ~ entry.action ~ ' ' ~ (entry.filename or '') ~ ' ' ~ (entry.details or '')) | lower }}"
+                        >
+                            <td class="log-ts">{{ entry.timestamp_display or (entry.timestamp | replace('T', ' ')) }}</td>
+                            <td class="log-user">{{ entry.username }}</td>
+                            <td>
+                                <span class="action-badge action-{{ entry.action if entry.action in ('upload','delete','login','logout','toggle','compress','config','campaign') else 'default' }}">
+                                    {% if entry.action == 'upload' %}
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:11px;height:11px"><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                    {% elif entry.action == 'delete' %}
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:11px;height:11px"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+                                    {% elif entry.action == 'login' %}
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:11px;height:11px"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                                    {% elif entry.action == 'logout' %}
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:11px;height:11px"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                                    {% elif entry.action == 'toggle' %}
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:11px;height:11px"><circle cx="12" cy="12" r="10"/></svg>
+                                    {% elif entry.action == 'compress' %}
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:11px;height:11px"><polyline points="8 6 2 12 8 18"/><polyline points="16 6 22 12 16 18"/></svg>
+                                    {% elif entry.action == 'config' %}
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:11px;height:11px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.54V21a2 2 0 0 1-4 0v-.09a1.7 1.7 0 0 0-1-1.54 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.54-1H3a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87L4.2 7.07a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.17.54.7.91 1.27.91H21a2 2 0 0 1 0 4h-.33c-.57 0-1.1.37-1.27 1.09Z"/></svg>
+                                    {% elif entry.action == 'campaign' %}
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:11px;height:11px"><path d="M5 5h11l-1 5 1 5H5z"/><path d="M5 22V5"/></svg>
+                                    {% endif %}
+                                    {{ t('activity_action_' ~ entry.action) if ('activity_action_' ~ entry.action) in ['activity_action_upload','activity_action_delete','activity_action_login','activity_action_logout','activity_action_toggle','activity_action_compress','activity_action_config','activity_action_campaign'] else entry.action }}
+                                </span>
+                            </td>
+                            <td><div class="log-filename" title="{{ entry.filename or '' }}">{{ entry.filename or '—' }}</div></td>
+                            <td class="log-details">{{ entry.details or '' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="5" class="empty-log">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                            <p>{{ t('activity_empty') }}</p>
+                        </td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </section>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
+function resetActivityFilters() {
+    document.getElementById('filter-search').value = '';
+    document.getElementById('filter-user').value = '';
+    document.getElementById('filter-action').value = '';
+    document.getElementById('filter-date-from').value = '';
+    document.getElementById('filter-date-to').value = '';
+    document.getElementById('filter-sort').value = 'date_desc';
+    applyFilters();
+}
+
 function applyFilters() {
-    const search = document.getElementById('filter-search').value.toLowerCase();
+    const search = document.getElementById('filter-search').value.toLowerCase().trim();
     const action = document.getElementById('filter-action').value;
-    const user   = document.getElementById('filter-user').value;
-    const rows   = document.querySelectorAll('#log-body tr[data-action]');
-    let visible  = 0;
-    rows.forEach(row => {
+    const user = document.getElementById('filter-user').value;
+    const dateFrom = document.getElementById('filter-date-from').value;
+    const dateTo = document.getElementById('filter-date-to').value;
+    const sort = document.getElementById('filter-sort').value;
+    const tbody = document.getElementById('log-body');
+    const rows = Array.from(tbody.querySelectorAll('tr[data-action]'));
+
+    let visible = 0;
+    rows.forEach((row) => {
+        const rowDate = row.dataset.date || '';
         const matchSearch = !search || row.dataset.search.includes(search);
         const matchAction = !action || row.dataset.action === action;
-        const matchUser   = !user   || row.dataset.user   === user;
-        const show = matchSearch && matchAction && matchUser;
+        const matchUser = !user || row.dataset.user === user;
+        const matchFrom = !dateFrom || rowDate >= dateFrom;
+        const matchTo = !dateTo || rowDate <= dateTo;
+        const show = matchSearch && matchAction && matchUser && matchFrom && matchTo;
         row.style.display = show ? '' : 'none';
-        if (show) visible++;
+        if (show) visible += 1;
     });
+
+    const collator = new Intl.Collator('fr', { sensitivity: 'base' });
+    rows.sort((a, b) => {
+        if (sort === 'date_asc') return a.dataset.timestamp.localeCompare(b.dataset.timestamp);
+        if (sort === 'date_desc') return b.dataset.timestamp.localeCompare(a.dataset.timestamp);
+        if (sort === 'user_asc') return collator.compare(a.dataset.user, b.dataset.user) || b.dataset.timestamp.localeCompare(a.dataset.timestamp);
+        if (sort === 'user_desc') return collator.compare(b.dataset.user, a.dataset.user) || b.dataset.timestamp.localeCompare(a.dataset.timestamp);
+        if (sort === 'action_asc') return collator.compare(a.dataset.action, b.dataset.action) || b.dataset.timestamp.localeCompare(a.dataset.timestamp);
+        if (sort === 'action_desc') return collator.compare(b.dataset.action, a.dataset.action) || b.dataset.timestamp.localeCompare(a.dataset.timestamp);
+        return 0;
+    });
+    rows.forEach((row) => tbody.appendChild(row));
+
     const countEl = document.getElementById('log-count');
-    if (countEl) countEl.textContent = visible + ' / ' + rows.length;
+    if (countEl) countEl.textContent = `${visible} / ${rows.length} {{ t('activity_visible_count_suffix') }}`;
 }
+
 applyFilters();
 </script>
 {% endblock %}

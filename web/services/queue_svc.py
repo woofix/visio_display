@@ -7,7 +7,8 @@ import threading
 import time
 import uuid
 from contextlib import nullcontext
-from datetime import datetime
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 from flask import has_app_context
 from redis import Redis
@@ -121,8 +122,31 @@ def save_queue(q):
     db.session.commit()
 
 
+def _get_queue_timezone():
+    try:
+        with _app_context_for_background_work():
+            cfg = load_config()
+            tz_name = str(cfg.get('meteo_tz') or '').strip()
+    except Exception:
+        tz_name = ''
+    if not tz_name:
+        try:
+            from constants import DEFAULT_METEO_TZ
+            tz_name = DEFAULT_METEO_TZ
+        except Exception:
+            tz_name = 'Europe/Paris'
+    try:
+        return ZoneInfo(tz_name)
+    except Exception:
+        return timezone.utc
+
+
+def get_queue_now():
+    return datetime.now(timezone.utc).astimezone(_get_queue_timezone())
+
+
 def is_encoding_window():
-    h = datetime.now().hour
+    h = get_queue_now().hour
     return h >= 20 or h < 6
 
 
@@ -331,30 +355,56 @@ def _rq_compress_job(encode_job_id):
 
 # ── Scheduler thread (replaces _encoder_loop) ────────────────────────────────
 
+def _scheduler_tick():
+    with _app_context_for_background_work():
+        if not is_feature_enabled('videos'):
+            print('[SCHEDULER] video feature disabled')
+            return
+        if not is_encoding_window():
+            now = get_queue_now().strftime('%Y-%m-%d %H:%M:%S %Z')
+            print(f'[SCHEDULER] outside encoding window at {now}')
+            return
+        # Redis NX lock prevents multiple gunicorn workers from scheduling simultaneously
+        if not get_redis().set('visio-display:scheduler_lock', 1, nx=True, ex=90):
+            print('[SCHEDULER] lock busy')
+            return
+
+        q = load_queue()
+        pending = [j for j in q if j['status'] == 'pending']
+        processing = [j for j in q if j['status'] == 'processing']
+        if not pending:
+            print(f'[SCHEDULER] no pending job (processing={len(processing)})')
+            return
+
+        job = pending[0]
+        job['status'] = 'processing'
+        job['started'] = datetime.now().isoformat()
+        save_queue(q)
+
+        try:
+            rq_job = _compress_q().enqueue(_rq_compress_job, job['id'], job_timeout=3600)
+            print(
+                f"[SCHEDULER] enqueued encode_job={job['id']} "
+                f"filename={job['filename']} rq_job={rq_job.id}"
+            )
+        except Exception as exc:
+            job['status'] = 'pending'
+            job['started'] = None
+            job['message'] = f'RQ enqueue failed: {exc}'
+            save_queue(q)
+            print(f"[SCHEDULER] enqueue failed for {job['id']}: {exc}")
+            raise
+
+
 def _scheduler_loop():
     """Thread: enqueues one pending compress job per cycle during the time window."""
     time.sleep(10)
     while True:
-        time.sleep(60)
         try:
-            with _app_context_for_background_work():
-                if not is_feature_enabled('videos'):
-                    continue
-                if not is_encoding_window():
-                    continue
-                # Redis NX lock prevents multiple gunicorn workers from scheduling simultaneously
-                if not get_redis().set('visio-display:scheduler_lock', 1, nx=True, ex=90):
-                    continue
-                q   = load_queue()
-                job = next((j for j in q if j['status'] == 'pending'), None)
-                if not job:
-                    continue
-                job['status']  = 'processing'
-                job['started'] = datetime.now().isoformat()
-                save_queue(q)
-                _compress_q().enqueue(_rq_compress_job, job['id'], job_timeout=3600)
+            _scheduler_tick()
         except Exception as e:
             print(f"[SCHEDULER] {e}")
+        time.sleep(60)
 
 
 def start_encoder_thread(app):

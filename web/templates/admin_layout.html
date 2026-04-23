@@ -5,476 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Administration{% endblock %} — {{ app_name }}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --font-family-base: 'Inter', sans-serif;
-            --primary:          #4f46e5;
-            --primary-light:    #818cf8;
-            --primary-dark:     #3730a3;
-            --primary-bg:       #e0e7ff;
-            --sidebar-bg:       #0f172a;
-            --sidebar-border:   rgba(255,255,255,.06);
-            --surface:          #ffffff;
-            --surface-alt:      #f5f7ff;
-            --bg:               #eef2ff;
-            --border:           #dbe3f4;
-            --text:             #172033;
-            --text-2:           #42506b;
-            --text-3:           #7b89a3;
-            --surface-soft:     rgba(255,255,255,.72);
-            --surface-strong:   rgba(255,255,255,.92);
-            --page-glow-1:      rgba(79,70,229,.16);
-            --page-glow-2:      rgba(14,165,233,.12);
-            --ring:             rgba(79,70,229,.14);
-            --green:            #16a34a;
-            --blue:             #2563eb;
-            --orange:           #ea580c;
-            --red:              #dc2626;
-            --radius:           14px;
-            --radius-sm:        8px;
-            --shadow-sm:        0 10px 30px rgba(15,23,42,.06), 0 2px 8px rgba(15,23,42,.04);
-            --shadow:           0 18px 48px rgba(15,23,42,.08), 0 4px 16px rgba(15,23,42,.05);
-            --shadow-lg:        0 26px 60px rgba(15,23,42,.16), 0 6px 20px rgba(15,23,42,.08);
-            /* Sidebar */
-            --sidebar-text:     #95a4c7;
-            --sidebar-label:    #617197;
-            --sidebar-sub:      #54627f;
-            --nav-hover-bg:     rgba(129,140,248,.12);
-            --nav-hover-color:  #dbe4ff;
-            --nav-active-bg:    rgba(99,102,241,.22);
-            --nav-active-color: #ffffff;
-            --nav-badge-bg:     rgba(129,140,248,.24);
-            --nav-badge-color:  #dbe4ff;
-            --nav-user-name:    #eef2ff;
-            --topbar-bg:        rgba(255,255,255,.72);
-            --hero-gradient:    linear-gradient(135deg, #172554 0%, #312e81 45%, #0f766e 100%);
-        }
-
-        [data-theme="bleu"] {
-            --primary:          #2563eb;
-            --primary-light:    #3b82f6;
-            --primary-dark:     #1d4ed8;
-            --primary-bg:       #dbeafe;
-            --sidebar-bg:       #0f2744;
-            --sidebar-border:   rgba(255,255,255,.08);
-            --surface:          #ffffff;
-            --surface-alt:      #e8f0fe;
-            --bg:               #f0f7ff;
-            --border:           #bfdbfe;
-            --text:             #0f172a;
-            --text-2:           #374151;
-            --text-3:           #6b7280;
-            --surface-soft:     rgba(255,255,255,.76);
-            --surface-strong:   rgba(255,255,255,.92);
-            --page-glow-1:      rgba(37,99,235,.14);
-            --page-glow-2:      rgba(14,165,233,.1);
-            --ring:             rgba(37,99,235,.14);
-            --sidebar-text:     #7cb3f4;
-            --sidebar-label:    #3d6a98;
-            --sidebar-sub:      #2d5a8e;
-            --nav-hover-bg:     rgba(37,99,235,.15);
-            --nav-hover-color:  #93c5fd;
-            --nav-active-bg:    rgba(37,99,235,.25);
-            --nav-active-color: #bfdbfe;
-            --nav-badge-bg:     rgba(37,99,235,.25);
-            --nav-badge-color:  #93c5fd;
-            --nav-user-name:    #93c5fd;
-            --topbar-bg:        rgba(255,255,255,.95);
-            --hero-gradient:    linear-gradient(135deg, #0f2744 0%, #1d4ed8 45%, #2563eb 100%);
-        }
-
-        [data-theme="sombre"] {
-            --primary:          #06b6d4;
-            --primary-light:    #22d3ee;
-            --primary-dark:     #0891b2;
-            --primary-bg:       #0c2a33;
-            --sidebar-bg:       #070d14;
-            --sidebar-border:   rgba(255,255,255,.07);
-            --surface:          #111827;
-            --surface-alt:      #1f2937;
-            --bg:               #0f172a;
-            --border:           #1f2937;
-            --text:             #f1f5f9;
-            --text-2:           #94a3b8;
-            --text-3:           #475569;
-            --green:            #34d399;
-            --blue:             #38bdf8;
-            --orange:           #fb923c;
-            --red:              #f87171;
-            --surface-soft:     rgba(17,24,39,.88);
-            --surface-strong:   rgba(15,23,42,.94);
-            --page-glow-1:      rgba(34,211,238,.11);
-            --page-glow-2:      rgba(59,130,246,.1);
-            --ring:             rgba(34,211,238,.16);
-            --shadow-sm:        0 1px 4px rgba(0,0,0,.35), 0 1px 2px rgba(0,0,0,.25);
-            --shadow:           0 4px 16px rgba(0,0,0,.45), 0 1px 4px rgba(0,0,0,.3);
-            --shadow-lg:        0 8px 32px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.35);
-            --sidebar-text:     #4fc3d4;
-            --sidebar-label:    #2a7080;
-            --sidebar-sub:      #2a5a6a;
-            --nav-hover-bg:     rgba(6,182,212,.12);
-            --nav-hover-color:  #67e8f9;
-            --nav-active-bg:    rgba(6,182,212,.2);
-            --nav-active-color: #a5f3fc;
-            --nav-badge-bg:     rgba(6,182,212,.25);
-            --nav-badge-color:  #67e8f9;
-            --nav-user-name:    #67e8f9;
-            --topbar-bg:        rgba(17,24,39,.97);
-            --hero-gradient:    linear-gradient(135deg, #070d14 0%, #0c2a33 50%, #0e4d5e 100%);
-        }
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        html { font-size: 15px; scroll-behavior: smooth; }
-        body {
-            font-family: var(--font-family-base);
-            background:
-                radial-gradient(circle at top left, var(--page-glow-1), transparent 28%),
-                radial-gradient(circle at top right, var(--page-glow-2), transparent 26%),
-                linear-gradient(180deg, color-mix(in srgb, var(--bg) 84%, white) 0%, var(--bg) 100%);
-            color: var(--text);
-            display: flex;
-            min-height: 100vh;
-        }
-        button, input, select, textarea { font-family: inherit; }
-        body.sidebar-open { overflow: hidden; }
-
-        /* ── SIDEBAR ── */
-        .sidebar {
-            width: 240px; background: color-mix(in srgb, var(--sidebar-bg) 92%, black);
-            display: flex; flex-direction: column;
-            position: fixed; top: 0; left: 0; height: 100vh;
-            z-index: 200; border-right: 1px solid var(--sidebar-border);
-            box-shadow: 14px 0 40px rgba(15,23,42,.16);
-            backdrop-filter: blur(18px);
-        }
-        .sidebar-brand { padding: 18px 16px 14px; border-bottom: 1px solid var(--sidebar-border); flex-shrink: 0; }
-        .brand-logo { display: flex; align-items: center; gap: 10px; }
-        .brand-icon {
-            width: 34px; height: 34px;
-            background: linear-gradient(135deg, var(--primary), var(--primary-light));
-            border-radius: 9px; display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 4px 12px rgba(124,58,237,.4); flex-shrink: 0;
-        }
-        .brand-icon svg { width: 17px; height: 17px; color: #fff; }
-        .brand-name { font-size: 1rem; font-weight: 800; color: #fff; }
-        .brand-sub  { font-size: .6rem; color: var(--sidebar-sub); margin-top: 1px; text-transform: uppercase; letter-spacing: .1em; font-weight: 600; }
-
-        .sidebar-nav { flex: 1; padding: 10px 8px; overflow-y: auto; }
-        .nav-label { font-size: .6rem; color: var(--sidebar-label); text-transform: uppercase; letter-spacing: .12em; font-weight: 700; padding: 12px 10px 4px; }
-
-        .nav-item {
-            display: flex; align-items: center; gap: 9px;
-            padding: 8px 10px; border-radius: 9px;
-            color: var(--sidebar-text); text-decoration: none; font-size: .82rem; font-weight: 500;
-            transition: all .15s; cursor: pointer; border: none; background: none;
-            width: 100%; text-align: left; margin-bottom: 1px; position: relative;
-        }
-        .nav-item:hover { background: var(--nav-hover-bg); color: var(--nav-hover-color); }
-        .nav-item.active { background: var(--nav-active-bg); color: var(--nav-active-color); box-shadow: inset 3px 0 0 var(--primary); }
-        .nav-item svg { width: 15px; height: 15px; flex-shrink: 0; }
-        .nav-badge { margin-left: auto; background: var(--nav-badge-bg); color: var(--nav-badge-color); font-size: .62rem; padding: 1px 7px; border-radius: 10px; font-weight: 700; }
-
-        /* Subnav */
-        .nav-subnav { overflow: hidden; max-height: 0; transition: max-height .25s ease; }
-        .nav-subnav.open { max-height: 400px; }
-        .nav-subitem { padding-left: 34px !important; font-size: .78rem !important; color: var(--sidebar-sub) !important; }
-        .nav-subitem.active, .nav-subitem:hover { color: var(--nav-hover-color) !important; }
-        .nav-item-parent .chevron { margin-left: auto; width: 12px; height: 12px; transition: transform .22s; flex-shrink: 0; }
-        .nav-item-parent.open .chevron { transform: rotate(90deg); }
-
-        .sidebar-status { padding: 8px 16px 10px; border-top: 1px solid var(--sidebar-border); flex-shrink: 0; }
-        .status-row { display: flex; align-items: center; gap: 7px; font-size: .72rem; color: var(--sidebar-sub); font-weight: 500; }
-        .status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: #22c55e; box-shadow: 0 0 0 2px rgba(34,197,94,.25); }
-
-        .sidebar-footer { padding: 10px 8px; border-top: 1px solid var(--sidebar-border); flex-shrink: 0; }
-        .user-chip { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 9px; background: rgba(255,255,255,.05); margin-bottom: 7px; }
-        .user-avatar { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--primary-light)); display: flex; align-items: center; justify-content: center; font-size: .72rem; font-weight: 700; color: #fff; flex-shrink: 0; }
-        .user-name { font-size: .8rem; font-weight: 600; color: var(--nav-user-name); }
-        .user-role { font-size: .66rem; color: var(--sidebar-sub); font-weight: 500; }
-
-        /* ── MAIN ── */
-        .main { margin-left: 240px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; position: relative; }
-        .main::before {
-            content: "";
-            position: fixed;
-            inset: 0 0 auto 240px;
-            height: 300px;
-            pointer-events: none;
-            background: linear-gradient(180deg, rgba(255,255,255,.2), transparent 85%);
-            z-index: 0;
-        }
-        .mobile-sidebar-backdrop {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(7, 13, 20, .55);
-            backdrop-filter: blur(4px);
-            z-index: 190;
-            opacity: 0;
-            transition: opacity .2s ease;
-        }
-        .mobile-sidebar-backdrop.open {
-            display: block;
-            opacity: 1;
-        }
-
-        /* ── TOPBAR ── */
-        .topbar {
-            position: sticky; top: 0; z-index: 100;
-            background: var(--topbar-bg); backdrop-filter: blur(12px);
-            border-bottom: 1px solid var(--border);
-            padding: 0 26px; min-height: 64px;
-            display: flex; align-items: center; justify-content: space-between;
-            box-shadow: var(--shadow-sm);
-        }
-        .topbar-left { display: flex; align-items: center; gap: 10px; }
-        .topbar-icon { width: 30px; height: 30px; background: var(--primary-bg); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--primary); }
-        .topbar-icon svg { width: 14px; height: 14px; }
-        .topbar-title { font-size: .92rem; font-weight: 700; color: var(--text); }
-        .topbar-sub   { font-size: .7rem; color: var(--text-3); font-weight: 400; }
-        .topbar-right { display: flex; align-items: center; gap: 8px; }
-        .topbar-text { min-width: 0; }
-        .mobile-nav-toggle { display: none; }
-
-        /* ── BUTTONS ── */
-        .btn { background: var(--primary); color: #fff; border: none; padding: 8px 16px; border-radius: var(--radius-sm); font-size: .83rem; font-weight: 600; cursor: pointer; transition: all .15s; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; font-family: inherit; }
-        .btn:hover { background: var(--primary-dark); transform: translateY(-1px); box-shadow: 0 10px 24px var(--ring); }
-        .btn:active { transform: none; box-shadow: none; }
-        .btn.danger  { background: var(--red); }
-        .btn.danger:hover  { background: #b91c1c; box-shadow: 0 4px 12px rgba(220,38,38,.28); }
-        .btn.success { background: var(--green); }
-        .btn.success:hover { background: #15803d; box-shadow: 0 4px 12px rgba(22,163,74,.28); }
-        .btn.warning { background: var(--orange); }
-        .btn.warning:hover { background: #c2410c; }
-        .btn.secondary { background: var(--surface-alt); color: var(--text-2); border: 1px solid var(--border); box-shadow: none; }
-        .btn.secondary:hover { background: var(--primary-bg); color: var(--primary); transform: none; box-shadow: none; }
-        .btn.ghost { background: none; color: var(--text-3); box-shadow: none; border: 1px solid var(--border); }
-        .btn.ghost:hover { background: var(--bg); color: var(--text); transform: none; box-shadow: none; }
-        .btn.sm { padding: 5px 11px; font-size: .75rem; border-radius: 6px; }
-
-        /* ── CONTENT ── */
-        .content { padding: 28px 26px 60px; flex: 1; position: relative; z-index: 1; }
-        .content-shell { width: min(1480px, 100%); margin: 0 auto; }
-
-        /* ── FLASH ── */
-        .flash-list { list-style: none; margin-bottom: 20px; }
-        .flash-list li { padding: 11px 16px; border-radius: 9px; margin-bottom: 8px; font-size: .87rem; font-weight: 500; display:flex; align-items:center; gap:10px; }
-        .flash-list li.success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
-        .flash-list li.error   { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
-
-        /* ── PAGE HEADER ── */
-        .page-header {
-            margin-bottom: 22px;
-            background: color-mix(in srgb, var(--surface-strong) 88%, transparent);
-            border: 1px solid color-mix(in srgb, var(--border) 88%, white 12%);
-            border-radius: calc(var(--radius) + 4px);
-            box-shadow: var(--shadow-sm);
-            backdrop-filter: blur(18px);
-        }
-        .page-header h1 { font-size: 1.35rem; font-weight: 800; color: var(--text); letter-spacing: -.02em; }
-        .page-header p  { font-size: .82rem; color: var(--text-2); margin-top: 4px; line-height: 1.5; }
-
-        /* ── CARD ── */
-        .card {
-            background: var(--surface-strong);
-            border-radius: var(--radius);
-            padding: 22px 24px;
-            box-shadow: var(--shadow-sm);
-            border: 1px solid var(--border);
-            backdrop-filter: blur(18px);
-        }
-
-        /* ── DROPDOWN ── */
-        .dropdown { position: relative; }
-        .dropdown-menu {
-            position: absolute; bottom: calc(100% + 6px); right: 0;
-            min-width: 185px; background: var(--surface);
-            border: 1px solid var(--border); border-radius: 10px;
-            box-shadow: var(--shadow-lg); z-index: 500;
-            display: none; overflow: hidden; padding: 4px;
-        }
-        .dropdown-menu.open { display: block; }
-        .dropdown-menu.drop-down { bottom: auto; top: calc(100% + 6px); }
-        .dropdown-item { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 12px; border: none; background: none; font-family: inherit; font-size: .81rem; font-weight: 500; color: var(--text-2); cursor: pointer; border-radius: 7px; text-align: left; transition: background .12s, color .12s; text-decoration: none; }
-        .dropdown-item:hover { background: var(--bg); color: var(--text); }
-        .dropdown-item.danger  { color: var(--red); }
-        .dropdown-item.danger:hover  { background: #fef2f2; }
-        .dropdown-item.success-item  { color: var(--green); }
-        .dropdown-item.success-item:hover { background: #f0fdf4; }
-        .dropdown-item.warning-item  { color: var(--orange); }
-        .dropdown-item.warning-item:hover { background: #fff7ed; }
-        .dropdown-item svg { width: 14px; height: 14px; flex-shrink: 0; }
-        .dropdown-separator { height: 1px; background: var(--border); margin: 4px 0; }
-        .dropdown-label { font-size: .66rem; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .09em; padding: 6px 12px 2px; }
-
-        /* User menu */
-        .user-menu-wrap { position: relative; }
-        .user-menu-btn { display: flex; align-items: center; gap: 8px; padding: 5px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; font-family: inherit; font-size: .81rem; font-weight: 600; color: var(--text-2); transition: all .15s; }
-        .user-menu-btn:hover { border-color: var(--primary); color: var(--primary); }
-        .user-menu-btn .avatar { width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--primary-light)); display: flex; align-items: center; justify-content: center; font-size: .68rem; font-weight: 700; color: #fff; }
-
-        /* ── FORM ELEMENTS ── */
-        .form-group { display: flex; flex-direction: column; gap: 8px; }
-        .form-group label { font-size: .72rem; font-weight: 700; color: var(--text-2); text-transform: uppercase; letter-spacing: .06em; }
-        .form-group input { padding: 9px 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: .84rem; font-family: inherit; color: var(--text); background: var(--surface); transition: border-color .15s, box-shadow .15s; }
-        .form-group input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--ring); }
-        .form-group input::placeholder { color: var(--text-3); }
-
-        /* ── DIVIDER ── */
-        .divider { height: 1px; background: var(--border); margin: 16px 0; }
-
-        /* ── MODAL ── */
-        #modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.93); z-index: 999; justify-content: center; align-items: center; }
-        #modal.open { display: flex; }
-        #modal img, #modal video { max-width: 95vw; max-height: 95vh; object-fit: contain; border-radius: 10px; box-shadow: 0 0 60px rgba(124,58,237,.4); }
-        #modal-close { position: absolute; top: 16px; right: 20px; color: #fff; cursor: pointer; opacity: .75; transition: opacity .15s; background: rgba(255,255,255,.1); width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; }
-        #modal-close:hover { opacity: 1; background: rgba(255,255,255,.2); }
-
-        /* ── DARK MODE overrides ── */
-        [data-theme="bleu"] .dropdown-menu { background: var(--surface); }
-
-        /* ── RESPONSIVE ── */
-        /* ── BREADCRUMBS ── */
-        .topbar-breadcrumbs { display:flex; align-items:center; gap:5px; }
-        .bc-link { font-size:.78rem; color:var(--text-3); text-decoration:none; font-weight:500; transition:color .12s; white-space:nowrap; }
-        .bc-link:hover { color:var(--primary); }
-        .bc-sep { width:11px; height:11px; color:var(--text-3); flex-shrink:0; opacity:.45; }
-        .bc-current { font-size:.9rem; font-weight:700; color:var(--text); line-height:1.2; }
-
-        /* ── ICON BUTTON ── */
-        .btn-icon { width:32px; height:32px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text-3); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; transition:all .15s; flex-shrink:0; }
-        .btn-icon:hover { border-color:var(--primary); color:var(--primary); background:var(--primary-bg); }
-        .btn-icon svg { width:14px; height:14px; }
-        .btn-icon.btn-warn:hover { border-color:var(--orange); color:var(--orange); background:rgba(234,88,12,.07); }
-
-        /* ── TOPBAR VERTICAL SEPARATOR ── */
-        .topbar-vsep { width:1px; height:20px; background:var(--border); flex-shrink:0; }
-
-        /* ── PAGE HEADER (flex variant) ── */
-        .page-header {
-            margin-bottom:22px;
-            display:flex;
-            align-items:flex-start;
-            justify-content:space-between;
-            gap:16px;
-            flex-wrap:wrap;
-            padding: 18px 20px;
-        }
-        .page-header h1 { font-size:1.35rem; font-weight:800; color:var(--text); letter-spacing:-.02em; }
-        .page-header p  { font-size:.82rem; color:var(--text-2); margin-top:4px; line-height:1.5; }
-        .page-header-actions { display:flex; gap:8px; align-items:center; flex-shrink:0; padding-top:4px; }
-
-        @media (max-width: 1100px) {
-            .topbar {
-                height: auto;
-                min-height: 58px;
-                padding: 10px 18px;
-                gap: 12px;
-                flex-wrap: wrap;
-                align-items: center;
-            }
-            .topbar-left, .topbar-right {
-                min-width: 0;
-            }
-            .topbar-right {
-                margin-left: auto;
-                flex-wrap: wrap;
-                justify-content: flex-end;
-            }
-            .topbar-breadcrumbs {
-                max-width: 100%;
-                overflow-x: auto;
-                scrollbar-width: none;
-            }
-            .topbar-breadcrumbs::-webkit-scrollbar { display: none; }
-            .bc-current, .topbar-sub {
-                overflow-wrap: anywhere;
-            }
-        }
-
-        @media (max-width: 900px) {
-            .sidebar {
-                left: 0;
-                transform: translateX(-100%);
-                transition: transform .22s ease;
-                display: flex;
-                max-width: min(86vw, 320px);
-                width: min(86vw, 320px);
-                box-shadow: var(--shadow-lg);
-            }
-            .sidebar.mobile-open { transform: translateX(0); }
-            .main { margin-left: 0; min-width: 0; width: 100%; }
-            .main::before { inset: 0 0 auto 0; }
-            .content { padding: 16px 16px 40px; }
-            .mobile-nav-toggle { display: inline-flex; }
-            .topbar-left {
-                flex: 1 1 100%;
-                min-width: 0;
-            }
-            .topbar-right {
-                width: 100%;
-                justify-content: space-between;
-            }
-            .user-menu-wrap {
-                margin-left: auto;
-            }
-            .dropdown-menu {
-                max-width: min(88vw, 320px);
-            }
-        }
-
-        @media (max-width: 640px) {
-            html { font-size: 14px; }
-            .content { padding-inline: 12px; }
-            .card { padding: 18px 16px; }
-            .topbar {
-                padding: 10px 12px;
-            }
-            .topbar-left {
-                gap: 8px;
-            }
-            .topbar-icon {
-                width: 28px;
-                height: 28px;
-            }
-            .topbar-right {
-                gap: 6px;
-            }
-            .topbar-sub {
-                margin-top: 4px;
-                line-height: 1.4;
-            }
-            .page-header {
-                margin-bottom: 18px;
-                padding: 16px;
-            }
-            .page-header-actions {
-                width: 100%;
-                flex-wrap: wrap;
-            }
-            .btn, .btn.sm, .btn-icon, .user-menu-btn {
-                min-height: 40px;
-            }
-            .user-menu-btn {
-                max-width: 100%;
-            }
-            .user-menu-btn svg:last-child,
-            .topbar-vsep,
-            .bc-link,
-            .bc-sep {
-                display: none;
-            }
-            .topbar-breadcrumbs {
-                display: block;
-            }
-            .bc-current {
-                display: block;
-                font-size: .98rem;
-            }
-        }
-
-        {% block styles %}{% endblock %}
-    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-foundation.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-pages.css') }}">
+    <style>{% block styles %}{% endblock %}</style>
 </head>
 <body>
 <script>
@@ -537,6 +71,10 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
             {{ t('nav_overview') }}
         </a>
+        <a href="/admin/activity" class="nav-item {% if path == '/admin/activity' %}active{% endif %}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            {{ t('nav_activity') }}
+        </a>
         <a href="/admin/media" class="nav-item {% if path == '/admin/media' %}active{% endif %}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
             {{ t('nav_media') }}
@@ -555,15 +93,10 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
         <a href="/admin/upload" class="nav-item {% if path == '/admin/upload' or path == '/admin/queue' %}active{% endif %}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
             {{ t('nav_upload') }}
-            <span class="nav-badge" id="nav-queue-badge" style="display:none">0</span>
+            <span class="nav-badge u-hidden" id="nav-queue-badge">0</span>
         </a>
         {% endif %}
-        <a href="/admin/activity" class="nav-item {% if path == '/admin/activity' %}active{% endif %}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-            {{ t('nav_activity') }}
-        </a>
-
-        <div class="nav-label" style="margin-top:8px">{{ t('nav_label_settings') }}</div>
+        <div class="nav-label u-mt-2">{{ t('nav_label_settings') }}</div>
         <button class="nav-item nav-item-parent {% if path.startswith('/admin/settings') or path == '/admin/superadmin' %}open{% endif %}" data-nav-toggle="nav-settings-sub">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
             {{ t('nav_settings') }}
@@ -571,54 +104,54 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
         </button>
         <div class="nav-subnav {% if path.startswith('/admin/settings') or path == '/admin/superadmin' %}open{% endif %}" id="nav-settings-sub">
             <a href="/admin/settings?tab=logo" class="nav-item nav-subitem {% if path == '/admin/settings' and (tab|default('logo')) == 'logo' %}active{% endif %}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
                 {{ t('nav_logo') }}
             </a>
             <a href="/admin/settings?tab=admins" class="nav-item nav-subitem {% if path == '/admin/settings' and (tab|default('logo')) == 'admins' %}active{% endif %}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
                 {{ t('nav_admins') }}
             </a>
             <a href="/admin/settings?tab=theme" class="nav-item nav-subitem {% if path == '/admin/settings' and (tab|default('logo')) == 'theme' %}active{% endif %}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20"/><path d="M2 12h10"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20"/><path d="M2 12h10"/></svg>
                 {{ t('nav_theme') }}
             </a>
             <a href="/admin/settings?tab=application" class="nav-item nav-subitem {% if path == '/admin/settings' and (tab|default('logo')) == 'application' %}active{% endif %}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
                 {{ t('nav_application') }}
             </a>
             {% if current_user_is_superadmin %}
             <a href="/admin/settings?tab=installation" class="nav-item nav-subitem {% if path == '/admin/settings' and (tab|default('logo')) == 'installation' %}active{% endif %}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 {{ t('nav_installation') }}
             </a>
             <a href="/admin/settings?tab=sauvegardes" class="nav-item nav-subitem {% if path == '/admin/settings' and (tab|default('logo')) == 'sauvegardes' %}active{% endif %}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="3" x2="12" y2="15"/><path d="M5 7h14"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="3" x2="12" y2="15"/><path d="M5 7h14"/></svg>
                 {{ t('nav_backups') }}
             </a>
             <a href="/admin/settings?tab=meteo" class="nav-item nav-subitem {% if path == '/admin/settings' and (tab|default('logo')) == 'meteo' %}active{% endif %}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/></svg>
                 {{ t('tab_meteo') }}
             </a>
-            <a href="/admin/superadmin" class="nav-item nav-subitem {% if path == '/admin/superadmin' %}active{% endif %}" style="color:#f59e0b">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <a href="/admin/superadmin" class="nav-item nav-subitem u-text-warning {% if path == '/admin/superadmin' %}active{% endif %}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
                 {{ t('nav_superadmin') }}
             </a>
             {% endif %}
             <a href="/admin/settings?tab=language" class="nav-item nav-subitem {% if path == '/admin/settings' and (tab|default('logo')) == 'language' %}active{% endif %}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
                 {{ t('tab_language') }}
             </a>
         </div>
 
         {% if current_user_is_superadmin %}
-        <div class="nav-label" style="margin-top:8px">{{ t('nav_label_advanced') }}</div>
+        <div class="nav-label u-mt-2">{{ t('nav_label_advanced') }}</div>
         <a href="/admin/features" class="nav-item {% if path == '/admin/features' %}active{% endif %}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
             {{ t('nav_features') }}
         </a>
         {% endif %}
 
-        <div class="nav-label" style="margin-top:8px">{{ t('nav_label_help') }}</div>
+        <div class="nav-label u-mt-2">{{ t('nav_label_help') }}</div>
         <a href="/admin/wiki" class="nav-item {% if path == '/admin/wiki' %}active{% endif %}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
             {{ t('nav_wiki') }}
@@ -635,13 +168,13 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
             <div class="user-avatar">{{ current_user[0].upper() }}</div>
             <div>
                 <div class="user-name">{{ current_user }}</div>
-                <div class="user-role">{% if current_user_is_superadmin %}<span style="color:#f59e0b;font-weight:700">{{ t('role_superadmin') }}</span>{% else %}{{ t('role_admin') }}{% endif %}</div>
+                <div class="user-role">{% if current_user_is_superadmin %}<span class="u-text-warning">{{ t('role_superadmin') }}</span>{% else %}{{ t('role_admin') }}{% endif %}</div>
             </div>
         </div>
         <form method="post" action="/logout">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn secondary" style="width:100%;justify-content:center;font-size:.79rem">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            <button type="submit" class="btn secondary sm u-w-full u-justify-center">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                 {{ t('btn_logout') }}
             </button>
         </form>
@@ -658,7 +191,7 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
             <div class="topbar-icon">{% block topbar_icon %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>{% endblock %}</div>
             <div class="topbar-text">
                 {% block topbar_breadcrumbs %}<div class="topbar-breadcrumbs"><span class="bc-current">{% block topbar_title %}{{ t('topbar_default_title') }}{% endblock %}</span></div>{% endblock %}
-                <div class="topbar-sub" style="margin-top:2px">{% block topbar_sub %}{{ app_name }} — {{ t('topbar_default_sub') }}{% endblock %}</div>
+                <div class="topbar-sub u-mt-2">{% block topbar_sub %}{{ app_name }} — {{ t('topbar_default_sub') }}{% endblock %}</div>
             </div>
         </div>
         <div class="topbar-right">
@@ -668,9 +201,9 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
                 <button class="user-menu-btn" id="user-menu-btn">
                     <div class="avatar">{{ current_user[0].upper() }}</div>
                     {{ current_user }}
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:11px;height:11px;color:var(--text-3)"><polyline points="6 9 12 15 18 9"/></svg>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="u-icon-11"><polyline points="6 9 12 15 18 9"/></svg>
                 </button>
-                <div class="dropdown-menu drop-down" id="user-dropdown" style="right:0;min-width:195px">
+                <div class="dropdown-menu drop-down u-right-0 u-minw-195" id="user-dropdown">
                     <div class="dropdown-label">{{ current_user }}</div>
                     <a class="dropdown-item" href="/admin/settings?tab=admins">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -685,7 +218,7 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
                     <div class="dropdown-separator"></div>
                     <form method="post" action="/logout">
                         <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="dropdown-item danger" style="width:100%">
+                        <button type="submit" class="dropdown-item danger u-w-full">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                             {{ t('btn_logout') }}
                         </button>
@@ -702,8 +235,8 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
         <ul class="flash-list">
             {% for cat, msg in messages %}
             <li class="{{ cat }}">
-                {% if cat == 'success' %}<svg style="width:15px;height:15px;flex-shrink:0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                {% elif cat == 'error' %}<svg style="width:15px;height:15px;flex-shrink:0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                {% if cat == 'success' %}<svg class="u-icon-15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                {% elif cat == 'error' %}<svg class="u-icon-15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                 {% endif %}{{ msg }}
             </li>
             {% endfor %}
@@ -719,8 +252,8 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
 <!-- Modal visionneuse -->
 <div id="modal">
     <span id="modal-close">&times;</span>
-    <img id="modal-img" src="" alt="" style="display:none">
-    <video id="modal-video" controls style="display:none"></video>
+    <img id="modal-img" src="" alt="" class="u-hidden">
+    <video id="modal-video" controls class="u-hidden"></video>
 </div>
 
 <script>

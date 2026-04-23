@@ -172,6 +172,11 @@
 .backup-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px; box-shadow:var(--shadow-sm); }
 .backup-card h3 { font-size:.82rem; font-weight:700; color:var(--primary); text-transform:uppercase; letter-spacing:.07em; margin-bottom:10px; }
 .backup-help { font-size:.8rem; color:var(--text-3); line-height:1.6; margin-bottom:14px; }
+.backup-remote-form { display:flex; flex-direction:column; gap:12px; margin-bottom:16px; }
+.backup-remote-check { display:flex; align-items:center; gap:10px; font-size:.82rem; color:var(--text); }
+.backup-remote-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px; }
+.backup-remote-grid .full { grid-column:1 / -1; }
+.backup-remote-note { font-size:.74rem; color:var(--text-3); line-height:1.55; margin-top:-2px; }
 .backup-list { display:flex; flex-direction:column; gap:10px; }
 .backup-item { border:1px solid var(--border); border-radius:12px; padding:12px; background:var(--surface-alt); display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
 .backup-item-main { min-width:0; }
@@ -223,6 +228,7 @@
     .install-form-grid,
     .install-actions-grid { grid-template-columns:1fr; }
     .backup-grid { grid-template-columns:1fr; }
+    .backup-remote-grid { grid-template-columns:1fr; }
     .known-clients-list { grid-template-columns:1fr; }
     .settings-two-col { grid-template-columns:1fr; }
     .event-list li,
@@ -725,6 +731,30 @@
             <div class="backup-card">
                 <h3>{{ t('backup_create_title') }}</h3>
                 <p class="backup-help">{{ t('backup_create_desc') }}</p>
+                <form action="/admin/settings/backups/remote" method="post" class="backup-remote-form">
+                    <label class="backup-remote-check">
+                        <input type="checkbox" name="enabled" {% if backup_remote.enabled %}checked{% endif %}>
+                        <span>{{ t('backup_remote_enable') }}</span>
+                    </label>
+                    <div class="backup-remote-grid">
+                        <div class="full">
+                            <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:6px">{{ t('backup_remote_url_label') }}</label>
+                            <input type="text" name="url" value="{{ backup_remote.url or '' }}" placeholder="smb://serveur/partage/dossier" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;background:var(--surface);color:var(--text)">
+                        </div>
+                        <div>
+                            <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:6px">{{ t('backup_remote_username_label') }}</label>
+                            <input type="text" name="username" value="{{ backup_remote.username or '' }}" placeholder="{{ t('backup_remote_username_ph') }}" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;background:var(--surface);color:var(--text)">
+                        </div>
+                        <div>
+                            <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:6px">{{ t('backup_remote_password_label') }}</label>
+                            <input type="password" name="password" value="{{ backup_remote.password or '' }}" placeholder="{{ t('backup_remote_password_ph') }}" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;background:var(--surface);color:var(--text)">
+                        </div>
+                    </div>
+                    <p class="backup-remote-note">{{ t('backup_remote_help') }}</p>
+                    <div>
+                        <button type="submit" class="btn secondary sm">{{ t('backup_remote_save_btn') }}</button>
+                    </div>
+                </form>
                 <form action="/admin/settings/backups/create" method="post" id="backup-create-form">
                     <button type="submit" class="btn sm" id="backup-create-btn">
                         <span id="backup-create-label">{{ t('backup_create_btn') }}</span>
@@ -772,6 +802,13 @@
                             <a class="btn sm secondary" href="/admin/settings/backups/download/{{ backup.filename }}">
                                 {{ t('backup_download_btn') }}
                             </a>
+                            {% if backup_remote.enabled and backup_remote.url %}
+                            <form method="post" action="/admin/settings/backups/copy/{{ backup.filename }}">
+                                <button type="submit" class="btn sm secondary">
+                                    {{ t('backup_copy_btn') }}
+                                </button>
+                            </form>
+                            {% endif %}
                             <form method="post" action="/admin/settings/backups/delete/{{ backup.filename }}" class="backup-delete-form" data-backup-filename="{{ backup.filename }}">
                                 <button type="submit" class="btn sm danger">
                                     {{ t('backup_delete_btn') }}
@@ -1302,6 +1339,7 @@ document.querySelectorAll('.theme-card input[type=radio]').forEach(radio => {
 });
 
 (function() {
+    const remoteCopyEnabled = {{ (backup_remote.enabled and backup_remote.url) | tojson }};
     const form = document.getElementById('backup-create-form');
     const button = document.getElementById('backup-create-btn');
     const label = document.getElementById('backup-create-label');
@@ -1342,6 +1380,12 @@ document.querySelectorAll('.theme-card input[type=radio]').forEach(radio => {
                 </div>
                 <div class="backup-item-actions">
                     <a class="btn sm secondary" href="/admin/settings/backups/download/${encodeURIComponent(backup.filename)}">{{ t('backup_download_btn') }}</a>
+                    ${remoteCopyEnabled ? `
+                    <form method="post" action="/admin/settings/backups/copy/${encodeURIComponent(backup.filename)}">
+                        <input type="hidden" name="_csrf_token" value="${escapeHtml(window.CSRF_TOKEN || '')}">
+                        <button type="submit" class="btn sm secondary">{{ t('backup_copy_btn') }}</button>
+                    </form>
+                    ` : ''}
                     <form method="post" action="/admin/settings/backups/delete/${encodeURIComponent(backup.filename)}" class="backup-delete-form" data-backup-filename="${escapeHtml(backup.filename)}">
                         <input type="hidden" name="_csrf_token" value="${escapeHtml(window.CSRF_TOKEN || '')}">
                         <button type="submit" class="btn sm danger">{{ t('backup_delete_btn') }}</button>

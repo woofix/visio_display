@@ -3,6 +3,7 @@
 
 import json
 
+import constants as C
 from db import AppConfig, db
 
 DEFAULT_HALO_COLOR = "#8a2be2"
@@ -69,6 +70,23 @@ def _default_client_watchdog():
     }
 
 
+def _default_activity_log():
+    return {
+        "auto_delete_enabled": True,
+        "retention_days": C.ACTIVITY_LOG_RETENTION_DAYS,
+        "max_rows": C.ACTIVITY_LOG_MAX_ROWS,
+    }
+
+
+def _default_backup_remote():
+    return {
+        "enabled": False,
+        "url": "",
+        "username": "",
+        "password": "",
+    }
+
+
 def _default_config():
     return {
         "order": [],
@@ -84,6 +102,8 @@ def _default_config():
         "screens": {},
         "campaigns": [],
         "client_watchdog": _default_client_watchdog(),
+        "activity_log": _default_activity_log(),
+        "backup_remote": _default_backup_remote(),
         "priority_alert": {
             "message": "",
             "updated_at": None,
@@ -116,6 +136,19 @@ def normalize_config(cfg):
         **_default_client_watchdog(),
         **(stored_watchdog if isinstance(stored_watchdog, dict) else {}),
     }
+    stored_activity_log = cfg.get("activity_log", {})
+    merged["activity_log"] = {
+        **_default_activity_log(),
+        **(stored_activity_log if isinstance(stored_activity_log, dict) else {}),
+    }
+    stored_backup_remote = cfg.get("backup_remote", {})
+    merged["backup_remote"] = {
+        **_default_backup_remote(),
+        **(stored_backup_remote if isinstance(stored_backup_remote, dict) else {}),
+    }
+    merged["backup_remote"]["enabled"] = bool(merged["backup_remote"].get("enabled", False))
+    for key in ("url", "username", "password"):
+        merged["backup_remote"][key] = str(merged["backup_remote"].get(key, "") or "").strip()
     for key, minimum in (
         ("check_interval_seconds", 15),
         ("grace_period_seconds", 30),
@@ -125,6 +158,17 @@ def normalize_config(cfg):
             merged["client_watchdog"][key] = max(minimum, int(merged["client_watchdog"].get(key)))
         except (TypeError, ValueError):
             merged["client_watchdog"][key] = _default_client_watchdog()[key]
+    merged["activity_log"]["auto_delete_enabled"] = bool(
+        merged["activity_log"].get("auto_delete_enabled", True)
+    )
+    for key, minimum, fallback in (
+        ("retention_days", 1, _default_activity_log()["retention_days"]),
+        ("max_rows", 1000, _default_activity_log()["max_rows"]),
+    ):
+        try:
+            merged["activity_log"][key] = max(minimum, int(merged["activity_log"].get(key)))
+        except (TypeError, ValueError):
+            merged["activity_log"][key] = fallback
     screens = cfg.get("screens", {})
     normalized_screens = {}
     if isinstance(screens, dict):

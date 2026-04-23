@@ -15,7 +15,14 @@ from constants import (
     ALL_PERMISSIONS,
 )
 from services.activity_svc import log_config_change
-from services.backup_svc import backup_path, create_backup_archive, delete_backup_archive, list_backups, restore_backup_archive
+from services.backup_svc import (
+    backup_path,
+    copy_backup_to_smb,
+    create_backup_archive,
+    delete_backup_archive,
+    list_backups,
+    restore_backup_archive,
+)
 from services.clients_svc import list_known_clients
 from services.config_svc import load_config, save_config
 from services.users_svc import (
@@ -132,6 +139,7 @@ def _build_settings_context(tab='logo', install_defaults=None, install_result=No
         logo_path=get_logo_path(),
         events=events,
         current_user_is_superadmin=is_sa,
+        backup_remote=(cfg.get('backup_remote', {}) if is_sa else {}),
         theme=user_theme,
         settings_topbar_subtitle=_settings_topbar_subtitle(active_tab, is_sa),
         can_ephemeris=has_permission('ephemeris'),
@@ -178,6 +186,17 @@ def _normalize_positive_int(raw_value, default_value, minimum, maximum):
     except (TypeError, ValueError):
         return default_value
     return max(minimum, min(maximum, value))
+
+
+def _build_backup_remote_settings_from_form(current_settings=None):
+    current_settings = current_settings or {}
+    password = str(request.form.get('password', '') or '').strip()
+    return {
+        'enabled': request.form.get('enabled') == 'on',
+        'url': str(request.form.get('url', '') or '').strip(),
+        'username': str(request.form.get('username', '') or '').strip(),
+        'password': password if password else str(current_settings.get('password', '') or '').strip(),
+    }
 
 
 @bp.route('/admin/settings')
@@ -247,6 +266,31 @@ def create_backup():
     return redirect(url_for('settings.admin_settings_page') + '?tab=sauvegardes')
 
 
+@bp.route('/admin/settings/backups/remote', methods=['POST'])
+def save_backup_remote():
+    redir = superadmin_guard()
+    if redir:
+        return redir
+
+    cfg = load_config()
+    remote_settings = _build_backup_remote_settings_from_form(cfg.get('backup_remote', {}))
+    if remote_settings['enabled'] and not remote_settings['url']:
+        _flash('flash_backup_remote_missing_url', 'error')
+        return redirect(url_for('settings.admin_settings_page') + '?tab=sauvegardes')
+    if remote_settings['url'] and not remote_settings['url'].lower().startswith('smb://'):
+        _flash('flash_backup_remote_invalid_url', 'error')
+        return redirect(url_for('settings.admin_settings_page') + '?tab=sauvegardes')
+
+    cfg['backup_remote'] = remote_settings
+    save_config(cfg)
+    log_config_change(
+        session.get('user'),
+        f"destination SMB des sauvegardes mise à jour: active={'oui' if remote_settings['enabled'] else 'non'}, url={remote_settings['url'] or '-'}",
+    )
+    _flash('flash_backup_remote_saved', 'success')
+    return redirect(url_for('settings.admin_settings_page') + '?tab=sauvegardes')
+
+
 @bp.route('/admin/settings/backups/create-stream', methods=['POST'])
 def create_backup_stream():
     redir = superadmin_guard()
@@ -303,6 +347,31 @@ def download_backup(filename):
         return redir
     path = backup_path(filename)
     return send_file(path, as_attachment=True, download_name=filename)
+
+
+@bp.route('/admin/settings/backups/copy/<filename>', methods=['POST'])
+def copy_backup(filename):
+    redir = superadmin_guard()
+    if redir:
+        return redir
+
+    cfg = load_config()
+    remote_settings = cfg.get('backup_remote', {})
+    if not remote_settings.get('enabled') or not remote_settings.get('url'):
+        _flash('flash_backup_remote_not_configured', 'error')
+        return redirect(url_for('settings.admin_settings_page') + '?tab=sauvegardes')
+
+    try:
+        path = backup_path(filename)
+        copy_backup_to_smb(path, filename, remote_settings)
+    except FileNotFoundError:
+        _flash('flash_backup_delete_missing', 'error')
+    except Exception as exc:
+        flash(str(exc) or _t('backup_stream_error'), 'error')
+    else:
+        log_config_change(session.get('user'), f"sauvegarde copiée vers SMB: {filename}")
+        _flash('flash_backup_copied', 'success', filename=filename)
+    return redirect(url_for('settings.admin_settings_page') + '?tab=sauvegardes')
 
 
 @bp.route('/admin/settings/backups/delete/<filename>', methods=['POST'])

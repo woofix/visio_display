@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import tarfile
 import tempfile
+from urllib.parse import unquote, urlparse
 from datetime import datetime, timezone
 
 import constants as C
@@ -97,20 +98,22 @@ def _prune_old_backups():
             continue
 
 
-def _run_command(command, *, env=None):
+def _run_command(command, *, env=None, missing_binary_message=None, failure_message=None):
     try:
         subprocess.run(command, check=True, env=env)
     except FileNotFoundError as exc:
         binary = command[0] if command else "commande inconnue"
         raise RuntimeError(
-            f"Outil système introuvable: {binary}. "
-            "Reconstruisez les conteneurs Docker pour installer les outils PostgreSQL "
-            "puis relancez la sauvegarde/restauration."
+            missing_binary_message or (
+                f"Outil système introuvable: {binary}. "
+                "Reconstruisez les conteneurs Docker pour installer les outils PostgreSQL "
+                "puis relancez la sauvegarde/restauration."
+            )
         ) from exc
     except subprocess.CalledProcessError as exc:
         binary = command[0] if command else "commande inconnue"
         raise RuntimeError(
-            f"La commande {binary} a échoué avec le code {exc.returncode}."
+            failure_message or f"La commande {binary} a échoué avec le code {exc.returncode}."
         ) from exc
 
 
@@ -373,6 +376,82 @@ def create_backup_archive(progress_callback=None):
     backup["path"] = archive_file
     _emit_progress(progress_callback, "Sauvegarde finalisée.")
     return backup
+
+
+def _parse_smb_url(raw_url):
+    parsed = urlparse(str(raw_url or "").strip())
+    if parsed.scheme.lower() != "smb":
+        raise RuntimeError("Lien SMB invalide: utilisez une adresse de type smb://serveur/partage/dossier.")
+    if not parsed.hostname:
+        raise RuntimeError("Lien SMB invalide: le nom du serveur est requis.")
+
+    path_parts = [unquote(part) for part in parsed.path.split("/") if part]
+    if not path_parts:
+        raise RuntimeError("Lien SMB invalide: le nom du partage est requis.")
+
+    return {
+        "server": parsed.hostname,
+        "port": parsed.port,
+        "share": path_parts[0],
+        "remote_dir": "/".join(path_parts[1:]).strip("/"),
+        "url_username": unquote(parsed.username or ""),
+        "url_password": unquote(parsed.password or ""),
+    }
+
+
+def _split_smb_username(raw_username):
+    value = str(raw_username or "").strip()
+    if "\\" in value:
+        domain, username = value.split("\\", 1)
+        return domain.strip(), username.strip()
+    if "/" in value:
+        domain, username = value.split("/", 1)
+        return domain.strip(), username.strip()
+    return "", value
+
+
+def copy_backup_to_smb(source_path, backup_filename, remote_settings, progress_callback=None):
+    smb = _parse_smb_url((remote_settings or {}).get("url", ""))
+    username = str((remote_settings or {}).get("username", "") or smb["url_username"]).strip()
+    password = str((remote_settings or {}).get("password", "") or smb["url_password"]).strip()
+
+    _emit_progress(progress_callback, f"Copie SMB vers //{smb['server']}/{smb['share']}...")
+
+    with tempfile.TemporaryDirectory(prefix="visio-backup-smb-") as tmp_dir:
+        command = ["smbclient", f"//{smb['server']}/{smb['share']}"]
+        if smb["port"]:
+            command.extend(["-p", str(smb["port"])])
+
+        if username or password:
+            domain, smb_username = _split_smb_username(username)
+            auth_path = os.path.join(tmp_dir, "smb-credentials")
+            with open(auth_path, "w", encoding="utf-8") as handle:
+                handle.write(f"username = {smb_username}\n")
+                handle.write(f"password = {password}\n")
+                if domain:
+                    handle.write(f"domain = {domain}\n")
+            os.chmod(auth_path, 0o600)
+            command.extend(["-A", auth_path])
+        else:
+            command.append("-N")
+
+        if smb["remote_dir"]:
+            command.extend(["-D", smb["remote_dir"]])
+
+        command.extend(["-c", f'put "{source_path}" "{backup_filename}"'])
+        _run_command(
+            command,
+            missing_binary_message=(
+                "Outil système introuvable: smbclient. "
+                "Installez le client SMB/CIFS dans le conteneur puis relancez la copie de sauvegarde."
+            ),
+            failure_message=(
+                "La copie SMB de la sauvegarde a échoué. "
+                "Vérifiez le lien smb://, les identifiants et que le dossier distant existe."
+            ),
+        )
+
+    _emit_progress(progress_callback, f"Copie SMB terminée: {backup_filename}")
 
 
 def delete_backup_archive(filename):

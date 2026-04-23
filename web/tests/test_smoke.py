@@ -260,6 +260,23 @@ class AppSmokeTests(unittest.TestCase):
             "rgb": "171, 205, 239",
         })
 
+    def test_server_stats_service_parses_cpu_and_memory(self):
+        from services.server_stats_svc import get_server_stats
+
+        meminfo = (
+            "MemTotal:       2097152 kB\n"
+            "MemAvailable:   1048576 kB\n"
+        )
+        with patch("services.server_stats_svc.os.getloadavg", return_value=(1.0, 0.5, 0.25)):
+            with patch("services.server_stats_svc.os.cpu_count", return_value=2):
+                with patch("builtins.open", unittest.mock.mock_open(read_data=meminfo)):
+                    stats = get_server_stats()
+
+        self.assertEqual(stats["cpu_percent"], 50.0)
+        self.assertEqual(stats["memory_percent"], 50.0)
+        self.assertEqual(stats["memory_used_gb"], 1.0)
+        self.assertEqual(stats["memory_total_gb"], 2.0)
+
     def test_api_halo_falls_back_to_configured_default_for_screen_without_custom_color(self):
         with self.app.app_context():
             from services.config_svc import save_config

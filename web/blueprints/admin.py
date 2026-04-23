@@ -7,6 +7,7 @@ from services.users_svc import load_users
 from services.config_svc import load_config
 from services.media_svc import get_all_media, get_disk_usage, get_logo_path, is_media_disabled
 from services.campaign_svc import get_campaigns, serialize_campaign_for_view
+from services.server_stats_svc import get_server_stats
 from blueprints.guards import admin_guard
 
 bp = Blueprint('admin', __name__)
@@ -20,6 +21,7 @@ def admin_page():
     files   = get_all_media()
     nb_active = sum(1 for filename in files if not is_media_disabled(filename, cfg))
     disk    = get_disk_usage()
+    server_stats = get_server_stats()
     users   = load_users()
     screens = list(cfg.get('screens', {}).keys())
     active_campaigns = []
@@ -29,6 +31,7 @@ def admin_page():
             active_campaigns.append(serialized)
     return render_template('admin_dashboard.html',
         files=files, cfg=cfg, disk=disk, screens=screens, nb_active=nb_active,
+        server_stats=server_stats,
         active_campaigns=active_campaigns,
         users=list(users.keys()), current_user=session.get('user'),
         logo_path=get_logo_path())

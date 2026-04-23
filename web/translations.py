@@ -97,6 +97,13 @@ TRANSLATIONS = {
         'dashboard_campaigns_title': 'Campagnes actives',
         'dashboard_campaigns_sub': 'Les campagnes prioritaires actuellement en diffusion apparaissent ici.',
         'dashboard_campaigns_cta': 'Gérer les campagnes',
+        'dashboard_server_perf_title': 'Performance du serveur',
+        'dashboard_server_perf_sub': 'Visualisation simple de la charge processeur et de la mémoire.',
+        'dashboard_server_cpu': 'Processeur',
+        'dashboard_server_cpu_hint': 'Charge moyenne instantanée',
+        'dashboard_server_memory': 'Mémoire',
+        'dashboard_server_memory_hint': '{used} Go utilisés sur {total} Go',
+        'dashboard_server_unavailable': 'Mesure indisponible',
 
         # ── Campaigns ──
         'campaigns_title': 'Campagnes temporaires',
@@ -1073,6 +1080,13 @@ TRANSLATIONS = {
         'dashboard_campaigns_title': 'Active campaigns',
         'dashboard_campaigns_sub': 'Priority campaigns currently overriding the regular rotation appear here.',
         'dashboard_campaigns_cta': 'Manage campaigns',
+        'dashboard_server_perf_title': 'Server performance',
+        'dashboard_server_perf_sub': 'Simple view of CPU and memory usage.',
+        'dashboard_server_cpu': 'CPU',
+        'dashboard_server_cpu_hint': 'Current average load',
+        'dashboard_server_memory': 'Memory',
+        'dashboard_server_memory_hint': '{used} GB used out of {total} GB',
+        'dashboard_server_unavailable': 'Metric unavailable',
 
         # ── Campaigns ──
         'campaigns_title': 'Temporary Campaigns',

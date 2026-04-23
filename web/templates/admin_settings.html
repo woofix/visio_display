@@ -186,6 +186,21 @@
 .backup-progress-text { margin-top:6px; font-size:.78rem; color:#334155; line-height:1.55; position:relative; z-index:1; }
 .backup-progress-bar { margin-top:14px; height:8px; border-radius:999px; background:rgba(148,163,184,.22); overflow:hidden; position:relative; z-index:1; }
 .backup-progress-bar::before { content:""; display:block; width:42%; height:100%; border-radius:inherit; background:linear-gradient(90deg, #2563eb, #38bdf8, #60a5fa); animation:backup-progress-slide 1.1s ease-in-out infinite; }
+.backup-log { margin-top:14px; border:1px solid rgba(37,99,235,.16); border-radius:14px; background:#0f172a; color:#dbeafe; padding:12px 14px; min-height:160px; max-height:260px; overflow:auto; font:500 .74rem/1.55 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; display:none; }
+.backup-log-line + .backup-log-line { margin-top:6px; }
+.backup-log-line.is-error { color:#fca5a5; }
+.backup-item-actions { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+.backup-delete-form { margin:0; }
+.backup-delete-modal { position:fixed; inset:0; display:none; align-items:center; justify-content:center; padding:24px; background:rgba(15,23,42,.48); backdrop-filter:blur(5px); z-index:350; }
+.backup-delete-modal[aria-hidden="false"] { display:flex; }
+.backup-delete-dialog { width:min(100%, 460px); background:var(--surface); border:1px solid var(--border); border-radius:20px; box-shadow:var(--shadow-lg); padding:22px; }
+.backup-delete-head { display:flex; gap:14px; align-items:flex-start; }
+.backup-delete-icon { width:42px; height:42px; border-radius:14px; display:flex; align-items:center; justify-content:center; flex:0 0 auto; background:rgba(220,38,38,.12); color:var(--red); }
+.backup-delete-icon svg { width:20px; height:20px; }
+.backup-delete-head h3 { margin:0; font-size:1rem; font-weight:800; color:var(--text); }
+.backup-delete-head p { margin-top:6px; font-size:.82rem; color:var(--text-3); line-height:1.55; }
+.backup-delete-file { margin-top:14px; padding:12px 14px; border:1px solid var(--border); border-radius:12px; background:var(--surface-alt); font:.78rem/1.5 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; color:var(--text-2); word-break:break-word; }
+.backup-delete-actions { margin-top:18px; display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap; }
 @keyframes backup-pulse {
     0%, 100% { transform:scale(1); box-shadow:0 0 0 0 rgba(37,99,235,.18); }
     50% { transform:scale(1.08); box-shadow:0 0 0 10px rgba(37,99,235,.05); }
@@ -723,6 +738,7 @@
                     <div class="backup-progress-text">{{ t('backup_loading_desc') }}</div>
                     <div class="backup-progress-bar" aria-hidden="true"></div>
                 </div>
+                <div class="backup-log" id="backup-create-log" aria-live="polite"></div>
                 <div class="divider"></div>
                 <h3>{{ t('backup_restore_title') }}</h3>
                 <p class="backup-help">{{ t('backup_restore_desc') }}</p>
@@ -744,18 +760,55 @@
                         <div class="backup-item-main">
                             <div class="backup-item-name">{{ backup.filename }}</div>
                             <div class="backup-item-meta">
-                                {{ backup.created_at.strftime('%Y-%m-%d %H:%M:%S') }} UTC · {{ (backup.size_bytes / 1048576) | round(1) }} Mo
+                                {% if backup.created_at is string %}
+                                {{ backup.created_at[:19] | replace('T', ' ') }} UTC
+                                {% else %}
+                                {{ backup.created_at.strftime('%Y-%m-%d %H:%M:%S') }} UTC
+                                {% endif %}
+                                · {{ ((backup.size_bytes | default(backup.size, true)) / 1048576) | round(1) }} Mo
                             </div>
                         </div>
-                        <a class="btn sm secondary" href="/admin/settings/backups/download/{{ backup.filename }}">
-                            {{ t('backup_download_btn') }}
-                        </a>
+                        <div class="backup-item-actions">
+                            <a class="btn sm secondary" href="/admin/settings/backups/download/{{ backup.filename }}">
+                                {{ t('backup_download_btn') }}
+                            </a>
+                            <form method="post" action="/admin/settings/backups/delete/{{ backup.filename }}" class="backup-delete-form" data-backup-filename="{{ backup.filename }}">
+                                <button type="submit" class="btn sm danger">
+                                    {{ t('backup_delete_btn') }}
+                                </button>
+                            </form>
+                        </div>
                     </div>
                     {% endfor %}
                 </div>
                 {% else %}
                 <p class="backup-empty">{{ t('backup_empty') }}</p>
                 {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="backup-delete-modal" id="backup-delete-modal" aria-hidden="true">
+        <div class="backup-delete-dialog" role="dialog" aria-modal="true" aria-labelledby="backup-delete-title">
+            <div class="backup-delete-head">
+                <div class="backup-delete-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 6h18"></path>
+                        <path d="M8 6V4h8v2"></path>
+                        <path d="M19 6l-1 14H6L5 6"></path>
+                        <path d="M10 11v6"></path>
+                        <path d="M14 11v6"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 id="backup-delete-title">{{ t('backup_delete_btn') }}</h3>
+                    <p>{{ t('backup_delete_confirm') }}</p>
+                </div>
+            </div>
+            <div class="backup-delete-file" id="backup-delete-file"></div>
+            <div class="backup-delete-actions">
+                <button type="button" class="btn secondary sm" id="backup-delete-cancel">{{ t('js_queue_cancel_btn') }}</button>
+                <button type="button" class="btn danger sm" id="backup-delete-confirm">{{ t('backup_delete_btn') }}</button>
             </div>
         </div>
     </div>
@@ -892,49 +945,6 @@
             </div>
             <div>
                 <button type="submit" class="btn sm">{{ t('settings_meteo_apply_btn') }}</button>
-            </div>
-        </form>
-    </div>
-    {% endif %}
-
-    {% if can_ephemeris %}
-    <!-- ── COUNTDOWN TAB ── -->
-    <div id="tab-evenements" class="tab-pane {% if active_tab == 'evenements' %}active{% endif %}">
-        <p style="font-size:.82rem;color:var(--text-3);margin-bottom:20px">{{ t('events_subtitle') }}</p>
-
-        {% if events %}
-        <ul class="event-list">
-            {% for ev in events %}
-            <li>
-                <span class="event-countdown {% if ev.delta == 0 %}today{% endif %}">
-                    {% if ev.delta == 0 %}{{ t('events_today_short') }}{% elif ev.delta is not none and ev.delta > 0 %}J-{{ ev.delta }}{% else %}{{ t('events_past') }}{% endif %}
-                </span>
-                <span class="event-label">{{ ev.label }}</span>
-                <span class="event-date">{{ ev.date }}</span>
-                <form action="/admin/events/delete/{{ loop.index0 }}" method="post"
-                      onsubmit="return confirm('{{ t('events_delete_confirm', label=ev.label) }}')">
-                    <button class="btn sm danger">{{ t('events_delete') }}</button>
-                </form>
-            </li>
-            {% endfor %}
-        </ul>
-        {% else %}
-        <p class="event-empty">{{ t('events_empty') }}</p>
-        {% endif %}
-
-        <div class="divider"></div>
-        <div class="logo-section-label" style="margin-bottom:12px">{{ t('events_add_label') }}</div>
-        <form action="/admin/events/add" method="post" class="event-add-form">
-            <div>
-                <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:4px">{{ t('events_label_field') }}</label>
-                <input type="text" name="label" placeholder="{{ t('events_label_placeholder') }}" required maxlength="60">
-            </div>
-            <div>
-                <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:4px">{{ t('events_date_field') }}</label>
-                <input type="date" name="date" required>
-            </div>
-            <div style="padding-bottom:1px">
-                <button type="submit" class="btn sm">{{ t('events_add_btn') }}</button>
             </div>
         </form>
     </div>
@@ -1296,13 +1306,164 @@ document.querySelectorAll('.theme-card input[type=radio]').forEach(radio => {
     const button = document.getElementById('backup-create-btn');
     const label = document.getElementById('backup-create-label');
     const loadingBox = document.getElementById('backup-create-loading-box');
-    if (!form || !button || !label || !loadingBox) return;
+    const logBox = document.getElementById('backup-create-log');
+    const list = document.querySelector('#tab-sauvegardes .backup-list');
+    const emptyState = document.querySelector('#tab-sauvegardes .backup-empty');
+    if (!form || !button || !label || !loadingBox || !logBox) return;
 
-    form.addEventListener('submit', () => {
+    const escapeHtml = (value) => String(value || '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+
+    const appendLog = (message, isError = false) => {
+        const line = document.createElement('div');
+        line.className = `backup-log-line${isError ? ' is-error' : ''}`;
+        const now = new Date();
+        const hh = String(now.getHours()).padStart(2, '0');
+        const mm = String(now.getMinutes()).padStart(2, '0');
+        const ss = String(now.getSeconds()).padStart(2, '0');
+        line.textContent = `[${hh}:${mm}:${ss}] ${message}`;
+        logBox.appendChild(line);
+        logBox.scrollTop = logBox.scrollHeight;
+    };
+
+    const renderBackupItem = (backup) => {
+        const createdAt = String(backup.created_at_iso || '').replace('T', ' ').slice(0, 19);
+        const sizeBytes = Number(backup.size_bytes || backup.size || 0);
+        const sizeMo = (sizeBytes / 1048576).toFixed(1);
+        return `
+            <div class="backup-item">
+                <div class="backup-item-main">
+                    <div class="backup-item-name">${escapeHtml(backup.filename)}</div>
+                    <div class="backup-item-meta">${escapeHtml(createdAt)} UTC · ${escapeHtml(sizeMo)} Mo</div>
+                </div>
+                <div class="backup-item-actions">
+                    <a class="btn sm secondary" href="/admin/settings/backups/download/${encodeURIComponent(backup.filename)}">{{ t('backup_download_btn') }}</a>
+                    <form method="post" action="/admin/settings/backups/delete/${encodeURIComponent(backup.filename)}" class="backup-delete-form" data-backup-filename="${escapeHtml(backup.filename)}">
+                        <input type="hidden" name="_csrf_token" value="${escapeHtml(window.CSRF_TOKEN || '')}">
+                        <button type="submit" class="btn sm danger">{{ t('backup_delete_btn') }}</button>
+                    </form>
+                </div>
+            </div>
+        `;
+    };
+
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
         button.disabled = true;
         button.classList.add('loading');
         label.innerHTML = `<span class="btn-spinner"></span> {{ t('backup_loading_button') }}`;
         loadingBox.style.display = 'block';
+        logBox.style.display = 'block';
+        logBox.innerHTML = '';
+        appendLog('{{ t('backup_stream_start') }}');
+
+        try {
+            const response = await fetch('/admin/settings/backups/create-stream', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-Token': window.CSRF_TOKEN,
+                    'Accept': 'application/x-ndjson',
+                },
+            });
+            if (!response.ok || !response.body) {
+                throw new Error('{{ t('backup_stream_error') }}');
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            let createdBackup = null;
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+                for (const line of lines) {
+                    if (!line.trim()) continue;
+                    const payload = JSON.parse(line);
+                    if (payload.type === 'log') {
+                        appendLog(payload.message || '');
+                    } else if (payload.type === 'error') {
+                        appendLog(payload.message || '{{ t('backup_stream_error') }}', true);
+                    } else if (payload.type === 'done' && payload.backup) {
+                        createdBackup = payload.backup;
+                        appendLog('{{ t('backup_stream_success') }}');
+                    }
+                }
+            }
+
+            if (createdBackup) {
+                if (emptyState) emptyState.remove();
+                if (list) {
+                    list.insertAdjacentHTML('afterbegin', renderBackupItem(createdBackup));
+                } else {
+                    window.location.reload();
+                    return;
+                }
+            }
+        } catch (error) {
+            appendLog(error?.message || '{{ t('backup_stream_error') }}', true);
+        } finally {
+            button.disabled = false;
+            button.classList.remove('loading');
+            label.textContent = '{{ t('backup_create_btn') }}';
+            loadingBox.style.display = 'none';
+        }
+    });
+})();
+
+(function() {
+    const modal = document.getElementById('backup-delete-modal');
+    const fileBox = document.getElementById('backup-delete-file');
+    const cancelBtn = document.getElementById('backup-delete-cancel');
+    const confirmBtn = document.getElementById('backup-delete-confirm');
+    if (!modal || !fileBox || !cancelBtn || !confirmBtn) return;
+
+    let pendingForm = null;
+
+    const closeModal = () => {
+        modal.setAttribute('aria-hidden', 'true');
+        pendingForm = null;
+    };
+
+    const openModal = (form) => {
+        pendingForm = form;
+        fileBox.textContent = form?.dataset?.backupFilename || '';
+        modal.setAttribute('aria-hidden', 'false');
+    };
+
+    document.addEventListener('submit', (event) => {
+        const form = event.target;
+        if (!(form instanceof HTMLFormElement) || !form.classList.contains('backup-delete-form')) return;
+        if (form.dataset.confirmed === 'true') {
+            delete form.dataset.confirmed;
+            return;
+        }
+        event.preventDefault();
+        openModal(form);
+    });
+
+    cancelBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (event) => {
+        if (event.target === modal) closeModal();
+    });
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && modal.getAttribute('aria-hidden') === 'false') {
+            closeModal();
+        }
+    });
+
+    confirmBtn.addEventListener('click', () => {
+        if (!pendingForm) return;
+        pendingForm.dataset.confirmed = 'true';
+        pendingForm.requestSubmit();
+        closeModal();
     });
 })();
 

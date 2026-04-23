@@ -1,10 +1,13 @@
 # MIT License - Copyright (c) 2026 Woofix
 # See LICENSE file for details
 
+import json
 import os
+import queue
+import threading
 from datetime import date
 
-from flask import Blueprint, request, redirect, url_for, session, render_template, jsonify, send_file
+from flask import Blueprint, request, redirect, url_for, session, render_template, jsonify, send_file, Response, stream_with_context, current_app
 
 from constants import (
     VALID_THEMES, LOGO_EXTS, IMAGES_FOLDER, DEFAULT_LOGO, LAT, LNG,
@@ -12,7 +15,7 @@ from constants import (
     ALL_PERMISSIONS,
 )
 from services.activity_svc import log_config_change
-from services.backup_svc import backup_path, create_backup_archive, list_backups, restore_backup_archive
+from services.backup_svc import backup_path, create_backup_archive, delete_backup_archive, list_backups, restore_backup_archive
 from services.clients_svc import list_known_clients
 from services.config_svc import load_config, save_config
 from services.users_svc import (
@@ -62,8 +65,9 @@ def _normalize_machine_name(raw_value):
 def _normalize_settings_tab(raw_tab):
     tab = (raw_tab or 'logo').strip().lower()
     aliases = {
-        'events': 'evenements',
-        'event': 'evenements',
+        'events': 'meteo',
+        'event': 'meteo',
+        'evenements': 'meteo',
         'install': 'installation',
         'installer': 'installation',
         'superadmin': 'administration',
@@ -81,7 +85,6 @@ def _settings_topbar_subtitle(active_tab, is_sa):
         'theme': _t('theme_subtitle'),
         'application': _t('app_subtitle'),
         'meteo': _t('settings_meteo_subtitle'),
-        'evenements': _t('events_subtitle'),
         'language': _t('language_subtitle'),
         'installation': _t('install_subtitle'),
         'sauvegardes': _t('backup_subtitle'),
@@ -244,6 +247,55 @@ def create_backup():
     return redirect(url_for('settings.admin_settings_page') + '?tab=sauvegardes')
 
 
+@bp.route('/admin/settings/backups/create-stream', methods=['POST'])
+def create_backup_stream():
+    redir = superadmin_guard()
+    if redir:
+        return jsonify({'ok': False, 'error': 'forbidden'}), 403
+
+    app = current_app._get_current_object()
+    username = session.get('user')
+    events = queue.Queue()
+    done = threading.Event()
+
+    def emit(event_type, **payload):
+        events.put({'type': event_type, **payload})
+
+    def serialize_backup(backup):
+        return {
+            'filename': backup.get('filename'),
+            'size': backup.get('size'),
+            'size_bytes': backup.get('size_bytes'),
+            'created_at_iso': backup.get('created_at_iso'),
+        }
+
+    def worker():
+        try:
+            backup = create_backup_archive(progress_callback=lambda message: emit('log', message=message))
+            with app.app_context():
+                log_config_change(username, f"sauvegarde créée: {backup['filename']}")
+            emit('done', backup=serialize_backup(backup))
+        except Exception as exc:
+            emit('error', message=str(exc) or exc.__class__.__name__)
+        finally:
+            done.set()
+
+    thread = threading.Thread(target=worker, daemon=True)
+    thread.start()
+
+    @stream_with_context
+    def generate():
+        yield json.dumps({'type': 'log', 'message': 'Connexion au moteur de sauvegarde...'}) + '\n'
+        while not done.is_set() or not events.empty():
+            try:
+                payload = events.get(timeout=0.2)
+            except queue.Empty:
+                continue
+            yield json.dumps(payload) + '\n'
+
+    return Response(generate(), mimetype='application/x-ndjson')
+
+
 @bp.route('/admin/settings/backups/download/<filename>')
 def download_backup(filename):
     redir = superadmin_guard()
@@ -251,6 +303,22 @@ def download_backup(filename):
         return redir
     path = backup_path(filename)
     return send_file(path, as_attachment=True, download_name=filename)
+
+
+@bp.route('/admin/settings/backups/delete/<filename>', methods=['POST'])
+def delete_backup(filename):
+    redir = superadmin_guard()
+    if redir:
+        return redir
+
+    try:
+        delete_backup_archive(filename)
+    except FileNotFoundError:
+        _flash('flash_backup_delete_missing', 'error')
+    else:
+        log_config_change(session.get('user'), f"sauvegarde supprimée: {filename}")
+        _flash('flash_backup_deleted', 'success', filename=filename)
+    return redirect(url_for('settings.admin_settings_page') + '?tab=sauvegardes')
 
 
 @bp.route('/admin/settings/backups/restore', methods=['POST'])

@@ -123,7 +123,7 @@ def save_queue(q):
 
 def is_encoding_window():
     h = datetime.now().hour
-    return h >= 22 or h < 6
+    return h >= 20 or h < 6
 
 
 def _get_video_duration_ms(path):

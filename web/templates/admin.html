@@ -1074,7 +1074,7 @@
                             </svg>
                             File d'encodage
                         </div>
-                        <div class="section-desc">Fenêtre active : 22h – 06h</div>
+                        <div class="section-desc">Fenêtre active : 20h – 06h</div>
                     </div>
                 </div>
                 <div class="card">
@@ -1634,7 +1634,7 @@ document.querySelectorAll('.btn-compress').forEach(btn => {
         e.stopPropagation();
         btn.closest('.dropdown-menu')?.classList.remove('open');
         const file = btn.dataset.file;
-        if (!confirm(`Ajouter « ${file} » à la file d'encodage ?\nL'encodage démarrera cette nuit entre 22h00 et 06h00.`)) return;
+        if (!confirm(`Ajouter « ${file} » à la file d'encodage ?\nL'encodage démarrera cette nuit entre 20h00 et 06h00.`)) return;
         btn.disabled = true; btn.textContent = '⏳ Ajout…';
         try {
             const res  = await fetch(`/compress/${encodeURIComponent(file)}`, { method: 'POST' });
@@ -1677,11 +1677,11 @@ async function refreshQueue() {
         navBadge.textContent = (data.active||[]).length;
 
         const h = new Date().getHours();
-        const inWindow = h >= 22 || h < 6;
+        const inWindow = h >= 20 || h < 6;
         if (inWindow) {
             info.innerHTML = '<span class="queue-pill on"><span class="queue-dot on"></span>Fenêtre active — encodage en cours</span>';
         } else {
-            const next = h < 22 ? 'ce soir à 22h00' : 'demain à 06h00';
+            const next = h < 20 ? 'ce soir à 20h00' : 'demain à 06h00';
             info.innerHTML = `<span class="queue-pill off"><span class="queue-dot off"></span>Hors fenêtre — démarrage <strong>${next}</strong></span>`;
         }
 

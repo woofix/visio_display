@@ -713,6 +713,55 @@ class AppSmokeTests(unittest.TestCase):
                 remaining = [item["filename"] for item in backup_svc.list_backups()]
                 self.assertEqual(remaining, list(reversed(filenames[-5:])))
 
+    def test_superadmin_settings_backups_tab_renders_existing_backups(self):
+        backup_dir = os.path.join(self.temp_dir.name, "private", "backups-test")
+        os.makedirs(backup_dir, exist_ok=True)
+
+        with self.app.app_context():
+            from services import backup_svc
+
+            with patch.object(backup_svc, "BACKUP_DIR", backup_dir):
+                backup_path = os.path.join(backup_dir, "visio-backup-20260101-010203.tar.gz")
+                with open(backup_path, "wb") as handle:
+                    handle.write(b"backup")
+
+                fixed_dt = datetime(2026, 1, 1, 1, 2, 3, tzinfo=timezone.utc)
+                ts = fixed_dt.timestamp()
+                os.utime(backup_path, (ts, ts))
+
+                self._login()
+                response = self.client.get("/admin/settings?tab=sauvegardes")
+
+                self.assertEqual(response.status_code, 200)
+                body = response.get_data(as_text=True)
+                self.assertIn("visio-backup-20260101-010203.tar.gz", body)
+                self.assertIn("2026-01-01 01:02:03", body)
+
+    def test_superadmin_can_delete_backup_from_admin(self):
+        backup_dir = os.path.join(self.temp_dir.name, "private", "backups-test")
+        os.makedirs(backup_dir, exist_ok=True)
+
+        with self.app.app_context():
+            from services import backup_svc
+
+            with patch.object(backup_svc, "BACKUP_DIR", backup_dir):
+                backup_path = os.path.join(backup_dir, "visio-backup-20260101-010203.tar.gz")
+                with open(backup_path, "wb") as handle:
+                    handle.write(b"backup")
+
+                self._login()
+                with self.client.session_transaction() as session:
+                    token = session["_csrf_token"]
+
+                response = self.client.post(
+                    "/admin/settings/backups/delete/visio-backup-20260101-010203.tar.gz",
+                    data={"_csrf_token": token},
+                    follow_redirects=False,
+                )
+
+                self.assertEqual(response.status_code, 302)
+                self.assertFalse(os.path.exists(backup_path))
+
 
 if __name__ == "__main__":
     unittest.main()

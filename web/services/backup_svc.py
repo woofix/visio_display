@@ -44,6 +44,22 @@ def backup_path(filename):
     return path
 
 
+def _backup_metadata(filename, stat_result):
+    created_at = datetime.fromtimestamp(stat_result.st_mtime, tz=timezone.utc)
+    return {
+        "filename": filename,
+        "size": stat_result.st_size,
+        "size_bytes": stat_result.st_size,
+        "created_at": created_at,
+        "created_at_iso": created_at.isoformat(),
+    }
+
+
+def _emit_progress(progress_callback, message):
+    if progress_callback is not None:
+        progress_callback(message)
+
+
 def list_backups():
     _ensure_backup_dir()
     items = []
@@ -51,14 +67,7 @@ def list_backups():
         path = os.path.join(BACKUP_DIR, entry)
         if not os.path.isfile(path) or not _is_allowed_backup_name(entry):
             continue
-        stat = os.stat(path)
-        items.append(
-            {
-                "filename": entry,
-                "size": stat.st_size,
-                "created_at": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
-            }
-        )
+        items.append(_backup_metadata(entry, os.stat(path)))
     items.sort(key=lambda item: item["created_at"], reverse=True)
     return items
 
@@ -73,29 +82,38 @@ def _prune_old_backups():
             continue
 
 
-def _add_tree_to_archive(archive, source_dir, archive_root):
+def _add_tree_to_archive(archive, source_dir, archive_root, progress_callback=None):
     if not os.path.isdir(source_dir):
+        _emit_progress(progress_callback, f"Source absente, section ignorée: {archive_root}")
         return
+    _emit_progress(progress_callback, f"Ajout de {archive_root} à l'archive...")
     archive.add(source_dir, arcname=archive_root)
+    _emit_progress(progress_callback, f"Section archivée: {archive_root}")
 
 
-def create_backup_archive():
+def create_backup_archive(progress_callback=None):
     _ensure_backup_dir()
     filename = _timestamped_backup_name()
     archive_file = os.path.join(BACKUP_DIR, filename)
+    _emit_progress(progress_callback, "Initialisation de la sauvegarde...")
+    _emit_progress(progress_callback, f"Archive cible: {filename}")
 
     with tarfile.open(archive_file, "w:gz") as archive:
-        _add_tree_to_archive(archive, C.STATIC_MEDIA_DIR, "media")
-        _add_tree_to_archive(archive, C.PRIVATE_DATA_DIR, "private")
+        _add_tree_to_archive(archive, C.STATIC_MEDIA_DIR, "media", progress_callback=progress_callback)
+        _add_tree_to_archive(archive, C.PRIVATE_DATA_DIR, "private", progress_callback=progress_callback)
 
+    _emit_progress(progress_callback, "Nettoyage des anciennes sauvegardes...")
     _prune_old_backups()
     stat = os.stat(archive_file)
-    return {
-        "filename": filename,
-        "path": archive_file,
-        "size": stat.st_size,
-        "created_at": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
-    }
+    backup = _backup_metadata(filename, stat)
+    backup["path"] = archive_file
+    _emit_progress(progress_callback, "Sauvegarde finalisée.")
+    return backup
+
+
+def delete_backup_archive(filename):
+    path = backup_path(filename)
+    os.remove(path)
 
 
 def _safe_extract_tar(archive, target_dir):

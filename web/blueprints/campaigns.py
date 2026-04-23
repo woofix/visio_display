@@ -15,7 +15,14 @@ from services.campaign_svc import (
 )
 from services.config_svc import load_config, save_config
 from services.i18n import _flash
-from services.media_svc import get_all_media, get_logo_path, normalize_group_name
+from services.media_svc import (
+    build_media_preview_map,
+    get_all_media,
+    get_file_info,
+    get_logo_path,
+    get_media_url,
+    normalize_group_name,
+)
 from services.users_svc import has_permission, has_screen_access, is_superadmin, load_users
 from blueprints.guards import admin_guard
 
@@ -47,6 +54,30 @@ def _get_visible_campaigns(cfg):
         if campaign_allowed_for_user(campaign, allowed_screens, is_superadmin=is_superadmin()):
             visible.append(serialize_campaign_for_view(campaign, cfg))
     return visible
+
+
+def _build_media_items():
+    files = get_all_media()
+    preview_map = build_media_preview_map(files, context='campaign')
+    items = []
+    for filename in files:
+        info = get_file_info(filename)
+        items.append(
+            {
+                "filename": filename,
+                "type": info.get("type", "unknown"),
+                "size": info.get("size", "--"),
+                "dims": info.get("dims", "--"),
+                "preview_url": preview_map.get(filename),
+                "playback_url": get_media_url(
+                    filename,
+                    context='preview',
+                    allow_original=True,
+                    generate_missing=True,
+                ),
+            }
+        )
+    return items
 
 
 def _parse_campaign_form(cfg, raw_data):
@@ -122,11 +153,14 @@ def admin_campaigns_page():
         },
         key=str.casefold,
     )
+    media_items = _build_media_items()
 
     return render_template(
         "admin_campaigns.html",
         campaigns=_get_visible_campaigns(cfg),
-        media_choices=get_all_media(),
+        media_choices=[item["filename"] for item in media_items],
+        media_items=media_items,
+        media_map={item["filename"]: item for item in media_items},
         group_choices=group_choices,
         available_screen_choices=_screen_choices(cfg),
         current_campaign=request.args.get("campaign", "").strip(),

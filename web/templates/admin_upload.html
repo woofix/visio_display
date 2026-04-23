@@ -110,6 +110,57 @@
 }
 .rejected-accepted .fmt-badge { font-size: .63rem; padding: 2px 7px; }
 
+.upload-conflict-modal {
+    position: fixed; inset: 0; display: none; place-items: center;
+    background: rgba(15, 23, 42, .58); z-index: 1000; padding: 20px;
+}
+.upload-conflict-modal.open { display: grid; }
+.upload-conflict-dialog {
+    width: min(560px, 100%); background: var(--surface); color: var(--text);
+    border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--shadow);
+    overflow: hidden;
+}
+.upload-conflict-head {
+    padding: 18px 20px; border-bottom: 1px solid var(--border);
+    background: var(--surface-alt);
+}
+.upload-conflict-head h3 { font-size: .95rem; font-weight: 800; margin-bottom: 4px; }
+.upload-conflict-head p { font-size: .78rem; color: var(--text-3); line-height: 1.5; }
+.upload-conflict-body { padding: 18px 20px; display: grid; gap: 12px; }
+.upload-conflict-summary {
+    padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px;
+    background: var(--primary-bg); color: var(--text-2); font-size: .78rem; line-height: 1.55;
+}
+.upload-conflict-row label { display: block; font-size: .74rem; font-weight: 700; color: var(--text-2); margin-bottom: 6px; }
+.upload-conflict-label-line {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+}
+.upload-conflict-current {
+    font-size: .68rem; font-weight: 700; color: var(--primary);
+    background: var(--primary-bg); border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent);
+    border-radius: 999px; padding: 3px 8px;
+}
+.upload-conflict-row input {
+    width: 100%; border: 1px solid var(--border); border-radius: 10px;
+    background: var(--surface-alt); color: var(--text); padding: 10px 12px;
+    font: inherit; font-size: .82rem; outline: none;
+}
+.upload-conflict-row input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent); }
+.upload-conflict-help {
+    display: block; margin-top: 5px; font-size: .7rem; color: var(--text-3);
+}
+.upload-conflict-error {
+    display: none; padding: 11px 13px; border-radius: 10px;
+    background: color-mix(in srgb, var(--red) 10%, var(--surface));
+    border: 1px solid color-mix(in srgb, var(--red) 35%, transparent);
+    color: var(--red); font-size: .76rem; line-height: 1.45; font-weight: 600;
+}
+.upload-conflict-error.open { display: block; }
+.upload-conflict-actions {
+    padding: 14px 20px; border-top: 1px solid var(--border); background: var(--surface-alt);
+    display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap;
+}
+
 #file-preview { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
 #file-preview .prev-item { width: 80px; height: 80px; border-radius: 9px; overflow: hidden; background: var(--surface-alt); position: relative; border: 1px solid var(--border); }
 #file-preview .prev-item img, #file-preview .prev-item video { width: 100%; height: 100%; object-fit: cover; }
@@ -289,6 +340,21 @@
         </div>
     </div>
 </div>
+
+<div class="upload-conflict-modal" id="upload-conflict-modal" aria-hidden="true">
+    <div class="upload-conflict-dialog" role="dialog" aria-modal="true" aria-labelledby="upload-conflict-title">
+        <div class="upload-conflict-head">
+            <h3 id="upload-conflict-title">Fichier déjà existant</h3>
+            <p>Choisissez un nouveau nom, ou écrasez le fichier existant.</p>
+        </div>
+        <div class="upload-conflict-body" id="upload-conflict-body"></div>
+        <div class="upload-conflict-actions">
+            <button type="button" class="btn secondary sm" id="upload-conflict-cancel">Annuler</button>
+            <button type="button" class="btn warning sm" id="upload-conflict-overwrite">Écraser</button>
+            <button type="button" class="btn success sm" id="upload-conflict-rename">Renommer</button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -308,6 +374,19 @@ const MSG_UNSUPPORTED_TYPE = 'Type de fichier non pris en charge.';
 const MSG_INVALID_IMAGE    = 'Le fichier image est invalide ou corrompu.';
 const MSG_FILE_TOO_LARGE   = {{ t('js_upload_too_large_single') | tojson }};
 const MSG_UPLOAD_FAILED    = "L'envoi a échoué. Vérifiez le format du fichier et réessayez.";
+const MSG_NAME_CONFLICT_TITLE = "Fichier déjà existant";
+const MSG_NAME_CONFLICT_TEXT  = "Choisissez le nom exact à utiliser pour chaque fichier en conflit, ou écrasez les fichiers déjà présents.";
+const MSG_NAME_CONFLICT_LIST  = "Fichiers déjà présents";
+const MSG_NAME_INPUT_LABEL    = "Nouveau nom";
+const MSG_NAME_CURRENT_LABEL  = "Nom actuel";
+const MSG_NAME_OCCURRENCE     = "Occurrence";
+const MSG_NAME_INPUT_HELP     = "Gardez la même extension.";
+const MSG_NAME_REQUIRED       = "Veuillez saisir un nom pour chaque fichier.";
+const MSG_NAME_EXT_MISMATCH   = "L’extension doit rester identique au fichier d’origine.";
+const MSG_NAME_DUPLICATE      = "Chaque nouveau nom doit être unique.";
+const MSG_NAME_EXISTS         = "Le nom choisi existe déjà. Choisissez-en un autre.";
+const MSG_NAME_RETRY          = "Le nom choisi existe déjà. Modifiez-le et réessayez.";
+const MSG_NAME_MISSING        = "Nom manquant pour un fichier en conflit.";
 const ACCEPTED_EXTS = new Set(['.jpg','.jpeg','.png','.pdf','.mp4','.webm','.mov','.avi','.mkv']);
 const ACCEPTED_LABELS = ['JPG','PNG','PDF','MP4','MOV','WebM','AVI','MKV'];
 
@@ -322,8 +401,16 @@ const rejectedBanner = document.getElementById('rejected-banner');
 const overlayPct    = document.getElementById('overlay-pct');
 const overlayTitle  = document.getElementById('overlay-title');
 const overlaySub    = document.getElementById('overlay-sub');
+const conflictModal = document.getElementById('upload-conflict-modal');
+const conflictTitle = document.getElementById('upload-conflict-title');
+const conflictHeadText = conflictModal.querySelector('.upload-conflict-head p');
+const conflictBody = document.getElementById('upload-conflict-body');
+const conflictCancelBtn = document.getElementById('upload-conflict-cancel');
+const conflictOverwriteBtn = document.getElementById('upload-conflict-overwrite');
+const conflictRenameBtn = document.getElementById('upload-conflict-rename');
 let droppedFiles    = [];
 let _pollTimer      = null;
+let conflictDialogState = null;
 
 function getExt(name) { return name.slice(name.lastIndexOf('.')).toLowerCase(); }
 
@@ -454,13 +541,184 @@ function startProgressPolling(jobs) {
     poll();
 }
 
-document.getElementById('upload-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const files = droppedFiles.length ? droppedFiles : [...fileInput.files];
-    if (!files.length) return;
-    if (!checkSizes(files)) return;
+function splitFilename(filename) {
+    const dot = filename.lastIndexOf('.');
+    if (dot <= 0) return { base: filename, ext: '' };
+    return { base: filename.slice(0, dot), ext: filename.slice(dot) };
+}
+
+function normalizeConflictEntries(conflicts) {
+    const entries = (conflicts || []).map((entry, index) => {
+        if (typeof entry === 'string') {
+            return { uploadIndex: index, filename: entry };
+        }
+        return {
+            uploadIndex: Number.isInteger(entry?.upload_index) ? entry.upload_index : index,
+            filename: String(entry?.filename || ''),
+        };
+    }).filter(entry => entry.filename);
+
+    const occurrences = new Map();
+    return entries.map(entry => {
+        const count = (occurrences.get(entry.filename) || 0) + 1;
+        occurrences.set(entry.filename, count);
+        return { ...entry, occurrence: count };
+    });
+}
+
+function openConflictDialog(conflicts, message = '') {
+    const entries = normalizeConflictEntries(conflicts);
+    return new Promise(resolve => {
+        conflictDialogState = { resolve, entries };
+        conflictTitle.textContent = MSG_NAME_CONFLICT_TITLE;
+        conflictHeadText.textContent = MSG_NAME_CONFLICT_TEXT;
+
+        const summary = entries.map(entry => `<strong>${escapeHtml(entry.filename)}</strong>`).join(', ');
+        conflictBody.innerHTML = `
+            <div class="upload-conflict-summary">${MSG_NAME_CONFLICT_LIST} : ${summary}</div>
+            <div class="upload-conflict-error${message ? ' open' : ''}" id="upload-conflict-error">${escapeHtml(message || '')}</div>
+            ${entries.map((entry, index) => {
+                const { base, ext } = splitFilename(entry.filename);
+                const occurrenceBadge = entry.occurrence > 1
+                    ? `<span class="upload-conflict-current">${MSG_NAME_OCCURRENCE} ${entry.occurrence}</span>`
+                    : '';
+                return `
+                    <div class="upload-conflict-row">
+                        <label for="upload-conflict-input-${index}">
+                            <span class="upload-conflict-label-line">
+                                <span>${MSG_NAME_INPUT_LABEL}</span>
+                                <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                                    <span class="upload-conflict-current">${MSG_NAME_CURRENT_LABEL} : ${escapeHtml(entry.filename)}</span>
+                                    ${occurrenceBadge}
+                                </span>
+                            </span>
+                        </label>
+                        <input
+                            id="upload-conflict-input-${index}"
+                            type="text"
+                            data-upload-index="${entry.uploadIndex}"
+                            data-original-name="${escapeHtmlAttr(entry.filename)}"
+                            data-original-ext="${escapeHtmlAttr(ext)}"
+                            value="${escapeHtmlAttr(base)}"
+                            autocomplete="off"
+                            spellcheck="false"
+                        >
+                        <small class="upload-conflict-help">${MSG_NAME_INPUT_HELP} ${escapeHtml(ext)}</small>
+                    </div>
+                `;
+            }).join('')}
+        `;
+
+        conflictModal.classList.add('open');
+        conflictModal.setAttribute('aria-hidden', 'false');
+        const firstInput = conflictBody.querySelector('input');
+        if (firstInput) {
+            requestAnimationFrame(() => {
+                firstInput.focus();
+                firstInput.select();
+            });
+        }
+    });
+}
+
+function closeConflictDialog(result) {
+    if (!conflictDialogState) return;
+    const { resolve } = conflictDialogState;
+    conflictDialogState = null;
+    conflictModal.classList.remove('open');
+    conflictModal.setAttribute('aria-hidden', 'true');
+    conflictBody.innerHTML = '';
+    resolve(result);
+}
+
+function setConflictError(message) {
+    const box = document.getElementById('upload-conflict-error');
+    if (!box) return;
+    box.textContent = message;
+    box.classList.add('open');
+}
+
+function collectRenameMap() {
+    const inputs = [...conflictBody.querySelectorAll('input[data-upload-index]')];
+    const renameMap = {};
+    const targets = new Set();
+
+    for (const input of inputs) {
+        const uploadIndex = input.dataset.uploadIndex || '';
+        const originalName = input.dataset.originalName || '';
+        const originalExt = (input.dataset.originalExt || '').toLowerCase();
+        const rawValue = input.value.trim();
+
+        if (!rawValue) {
+            input.focus();
+            input.select();
+            setConflictError(MSG_NAME_REQUIRED);
+            return null;
+        }
+
+        const hasExt = rawValue.includes('.');
+        const proposed = hasExt ? rawValue : `${rawValue}${originalExt}`;
+        const proposedExt = getExt(proposed);
+
+        if (proposedExt !== originalExt) {
+            input.focus();
+            input.select();
+            setConflictError(MSG_NAME_EXT_MISMATCH);
+            return null;
+        }
+        if (targets.has(proposed.toLowerCase())) {
+            input.focus();
+            input.select();
+            setConflictError(MSG_NAME_DUPLICATE);
+            return null;
+        }
+
+        targets.add(proposed.toLowerCase());
+        renameMap[uploadIndex] = proposed;
+    }
+
+    return renameMap;
+}
+
+function escapeHtml(value) {
+    return String(value)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+}
+
+function escapeHtmlAttr(value) {
+    return escapeHtml(value);
+}
+
+conflictCancelBtn.addEventListener('click', () => closeConflictDialog(null));
+conflictOverwriteBtn.addEventListener('click', () => closeConflictDialog({ strategy: 'overwrite' }));
+conflictRenameBtn.addEventListener('click', () => {
+    const renameMap = collectRenameMap();
+    if (!renameMap) return;
+    closeConflictDialog({ strategy: 'rename_custom', renameMap });
+});
+conflictModal.addEventListener('click', event => {
+    if (event.target === conflictModal) closeConflictDialog(null);
+});
+document.addEventListener('keydown', event => {
+    if (!conflictDialogState) return;
+    if (event.key === 'Escape') {
+        event.preventDefault();
+        closeConflictDialog(null);
+    } else if (event.key === 'Enter' && event.target instanceof HTMLInputElement) {
+        event.preventDefault();
+        conflictRenameBtn.click();
+    }
+});
+
+function submitUploadFiles(files, strategy = '', renameMap = null) {
     const fd = new FormData();
     files.forEach(f => fd.append('file', f));
+    if (strategy) fd.append('conflict_strategy', strategy);
+    if (renameMap) fd.append('rename_map', JSON.stringify(renameMap));
     const xhr = new XMLHttpRequest();
     progressWrap.style.display = 'block'; progressFill.style.width = '0';
     setUploadingState(true, 0, files.length);
@@ -471,38 +729,60 @@ document.getElementById('upload-form').addEventListener('submit', function(e) {
             overlayPct.textContent = pct + '%';
         }
     });
-    xhr.addEventListener('load', () => {
+    xhr.addEventListener('load', async () => {
         setUploadingState(false);
         progressWrap.style.display = 'none';
         if (xhr.status === 413) { showFlash(MSG_BATCH_TOO_LARGE, 'error'); return; }
+        let data = {};
         try {
-            const data = JSON.parse(xhr.responseText);
-            if (xhr.status >= 400) {
-                const message = data.error === 'unsupported file type'
-                    ? MSG_UNSUPPORTED_TYPE
-                    : data.error === 'invalid image file'
-                        ? MSG_INVALID_IMAGE
-                        : data.error === 'batch too large'
-                            ? MSG_BATCH_TOO_LARGE
-                        : data.error === 'file too large'
-                            ? MSG_FILE_TOO_LARGE
-                        : (data.error || MSG_UPLOAD_FAILED);
-                showFlash(message, 'error');
-                return;
-            }
-            if (data.jobs && data.jobs.length > 0) {
-                startProgressPolling(data.jobs);
-            } else {
-                window.location.href = data.redirect || '/admin/media';
-            }
+            data = JSON.parse(xhr.responseText || '{}');
         } catch {
-            showFlash(MSG_UPLOAD_FAILED, 'error');
+            data = {};
+        }
+        if (xhr.status === 409 && data.error === 'name conflict') {
+            const retryMessage = data.message || '';
+            const choice = await openConflictDialog(data.conflicts || [], retryMessage);
+            if (!choice) return;
+            submitUploadFiles(files, choice.strategy, choice.renameMap || null);
+            return;
+        }
+        if (xhr.status >= 400) {
+            const message = data.error === 'unsupported file type'
+                ? MSG_UNSUPPORTED_TYPE
+                : data.error === 'invalid image file'
+                    ? MSG_INVALID_IMAGE
+                    : data.error === 'batch too large'
+                        ? MSG_BATCH_TOO_LARGE
+                    : data.error === 'file too large'
+                        ? MSG_FILE_TOO_LARGE
+                    : data.error === 'missing rename'
+                        ? MSG_NAME_MISSING
+                    : data.error === 'extension mismatch'
+                        ? MSG_NAME_EXT_MISMATCH
+                    : data.error === 'target exists'
+                        ? MSG_NAME_EXISTS
+                    : (data.error || MSG_UPLOAD_FAILED);
+            showFlash(message, 'error');
+            return;
+        }
+        if (data.jobs && data.jobs.length > 0) {
+            startProgressPolling(data.jobs);
+        } else {
+            window.location.href = data.redirect || '/admin/media';
         }
     });
     xhr.addEventListener('error', () => { setUploadingState(false); progressWrap.style.display = 'none'; showFlash(MSG_NETWORK_ERROR, 'error'); });
     xhr.open('POST', '/upload');
     xhr.setRequestHeader('X-CSRF-Token', window.CSRF_TOKEN);
     xhr.send(fd);
+}
+
+document.getElementById('upload-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const files = droppedFiles.length ? droppedFiles : [...fileInput.files];
+    if (!files.length) return;
+    if (!checkSizes(files)) return;
+    submitUploadFiles(files);
 });
 
 function showFlash(msg, type) {

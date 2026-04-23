@@ -4,12 +4,18 @@
 from flask import Blueprint, jsonify, redirect, request, session, url_for
 
 from services.activity_svc import log_config_change
-from services.config_svc import load_config, save_config, normalize_default_screen_name
+from services.config_svc import (
+    load_config,
+    save_config,
+    normalize_default_screen_name,
+    normalize_halo_color,
+    DEFAULT_HALO_COLOR,
+)
 from services.campaign_svc import cleanup_campaigns_for_deleted_screen, get_campaigns, save_campaigns_to_config
 from services.users_svc import has_screen_access
 from services.media_svc import valid_screen_name
 from services.i18n import _flash
-from blueprints.guards import superadmin_guard, perm_guard, feature_guard
+from blueprints.guards import admin_guard, superadmin_guard, perm_guard, feature_guard
 
 bp = Blueprint('screens', __name__)
 
@@ -29,7 +35,15 @@ def add_screen():
     if name in screens:
         _flash('flash_screen_exists', 'error', name=name)
         return redirect(url_for('media.admin_media'))
-    screens[name] = {"order": [], "disabled": [], "disabled_groups": [], "durations": {}, "schedules": {}}
+    default_halo_color = normalize_halo_color(cfg.get('default_halo_color', DEFAULT_HALO_COLOR))
+    screens[name] = {
+        "order": [],
+        "disabled": [],
+        "disabled_groups": [],
+        "durations": {},
+        "schedules": {},
+        "halo_color": default_halo_color,
+    }
     save_config(cfg)
     log_config_change(session.get('user'), f'écran ajouté:{name}')
     return redirect(url_for('media.admin_media') + f'?screen={name}')
@@ -74,6 +88,35 @@ def update_default_screen_name():
         _flash('flash_default_screen_name_cleared', 'success')
     return redirect(url_for('users.admin_superadmin_page'))
 
+
+@bp.route('/admin/screens/halo', methods=['POST'])
+def update_screen_halo():
+    redir = admin_guard()
+    if redir: return redir
+    redir = feature_guard('screens')
+    if redir: return redir
+
+    cfg = load_config()
+    screen_name = request.form.get('screen_name', '').strip().lower()
+    halo_color = normalize_halo_color(request.form.get('halo_color', ''))
+
+    if screen_name:
+        if screen_name not in cfg.get('screens', {}):
+            _flash('flash_screen_not_found', 'error')
+            return redirect(url_for('settings.admin_settings_page') + '?tab=application')
+        if not has_screen_access(screen_name):
+            _flash('flash_no_perm', 'error')
+            return redirect(url_for('settings.admin_settings_page') + '?tab=application')
+        cfg['screens'][screen_name]['halo_color'] = halo_color
+        log_config_change(session.get('user'), f'halo écran {screen_name}:{halo_color}')
+        _flash('flash_screen_halo_updated', 'success', name=screen_name, color=halo_color)
+    else:
+        cfg['default_halo_color'] = halo_color
+        log_config_change(session.get('user'), f'halo écran par défaut:{halo_color}')
+        _flash('flash_default_screen_halo_updated', 'success', color=halo_color)
+
+    save_config(cfg)
+    return redirect(url_for('settings.admin_settings_page') + '?tab=application')
 
 @bp.route('/screen_assign/<path:filename>', methods=['POST'])
 def screen_assign(filename):

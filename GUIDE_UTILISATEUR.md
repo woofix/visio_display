@@ -24,6 +24,7 @@ Visio-Display est une application d'**affichage dynamique** (digital signage) qu
 14. [Permissions disponibles](#14-permissions-disponibles)
 15. [Journal d'activité](#15-journal-dactivité)
 16. [Wiki — aide intégrée](#16-wiki--aide-intégrée)
+17. [Sauvegarder et restaurer le serveur](#17-sauvegarder-et-restaurer-le-serveur)
 
 ---
 
@@ -307,7 +308,8 @@ La carte éphéméride est une image générée automatiquement qui s'intègre d
 ### Mise à jour
 
 - La carte se **régénère toutes les 2 heures** et automatiquement à minuit.
-- Un bouton **Forcer la régénération** est disponible dans les paramètres (permission `ephemeris`).
+- Si le fichier de l'éphéméride est absent, il est **régénéré automatiquement** au prochain rafraîchissement du diaporama.
+- Quand l'éphéméride est recréée ou mise à jour, elle s'affiche automatiquement dans le diaporama sans recharger la page.
 
 ### Gérer les événements datés
 
@@ -517,6 +519,81 @@ Ces valeurs peuvent être ajustées via les variables d'environnement `ACTIVITY_
 ---
 
 ## 16. Wiki — aide intégrée
+
+## 17. Sauvegarder et restaurer le serveur
+
+Si vous devez recréer le serveur sur une autre machine ou repartir sur une nouvelle stack Docker, utilisez les scripts fournis à la racine du projet.
+
+### Créer une sauvegarde
+
+Depuis le dossier du projet :
+
+```bash
+scripts/docker_backup.sh
+```
+
+Le script crée un dossier dans `backups/` contenant :
+
+- `postgres.dump` : la base PostgreSQL
+- `media.tar.gz` : les médias importés
+- `private.tar.gz` : les données privées de l’application
+- `env.backup` : une copie du `.env` si présent
+
+Vous pouvez aussi choisir le dossier de destination :
+
+```bash
+scripts/docker_backup.sh /chemin/vers/sauvegarde-visio
+```
+
+### Restaurer à l’identique
+
+1. recopiez le projet et votre dossier de sauvegarde sur la nouvelle machine ;
+2. placez-vous dans le dossier du projet ;
+3. lancez :
+
+```bash
+scripts/docker_restore.sh backups/visio-backup-YYYYMMDD-HHMMSS
+```
+
+La restauration :
+
+- arrête temporairement l’application ;
+- démarre PostgreSQL et Redis ;
+- remet les médias et les données privées ;
+- restaure la base PostgreSQL ;
+- relance la stack complète.
+
+Si vous souhaitez aussi réappliquer le `.env` sauvegardé même si un `.env` existe déjà :
+
+```bash
+scripts/docker_restore.sh --force-env backups/visio-backup-YYYYMMDD-HHMMSS
+```
+
+> Conseil : effectuez la sauvegarde quand aucun import massif ou traitement vidéo n’est en cours, pour figer un état propre.
+
+### Sauvegarde depuis l'administration
+
+Le **super-admin** peut aussi faire la sauvegarde sans ligne de commande :
+
+1. ouvrez **Paramètres > Sauvegardes** ;
+2. cliquez sur **Créer une sauvegarde** ;
+3. attendez la fin de l’animation de progression affichée pendant la préparation ;
+4. téléchargez ensuite l’archive depuis la liste.
+
+À savoir :
+
+- l’interface archive la base applicative, les médias et les données privées ;
+- une copie du `.env` est ajoutée à l’archive si elle est disponible ;
+- seules les **5 sauvegardes les plus récentes** sont conservées automatiquement ; les plus anciennes sont supprimées lors d’une nouvelle création.
+
+Pour restaurer sur une autre instance déjà démarrée :
+
+1. connectez-vous en super-admin ;
+2. ouvrez **Paramètres > Sauvegardes** ;
+3. sélectionnez le fichier de sauvegarde ;
+4. cliquez sur **Restaurer maintenant**.
+
+> La restauration réinjecte les données de l'application, les médias et les données privées. Le fichier `.env` sauvegardé reste fourni comme copie de référence, mais n'est pas réécrit automatiquement par l'interface.
 
 Accessible depuis **Wiki** dans le menu de navigation.
 

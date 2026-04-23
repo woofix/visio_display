@@ -16,6 +16,11 @@ from rq.registry import StartedJobRegistry
 from constants import UPLOAD_FOLDER
 from services.config_svc import load_config, save_config
 from services.i18n import _t
+from services.media_svc import (
+    delete_media_thumbnail,
+    delete_video_variants,
+    generate_standard_renditions,
+)
 
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379')
 
@@ -163,6 +168,7 @@ def _rq_upload_encode(job_id, src_tmp, dest, final_name):
 
     with _get_worker_app().app_context():
         if ok:
+            generate_standard_renditions(final_name)
             cfg = load_config()
             if final_name not in cfg.get('disabled', []):
                 cfg.setdefault('disabled', []).append(final_name)
@@ -215,6 +221,9 @@ def _rq_compress_job(encode_job_id):
                     os.remove(src)
                 except Exception:
                     pass
+                delete_media_thumbnail(job['filename'])
+                delete_video_variants(job['filename'])
+            generate_standard_renditions(os.path.basename(out), force=True)
             size_after = os.path.getsize(out)
             new_name   = os.path.basename(out)
             job['status']   = 'done'

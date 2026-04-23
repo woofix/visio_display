@@ -4,7 +4,7 @@
 import os
 from datetime import date
 
-from flask import Blueprint, request, redirect, url_for, session, render_template, jsonify
+from flask import Blueprint, request, redirect, url_for, session, render_template, jsonify, send_file
 
 from constants import (
     VALID_THEMES, LOGO_EXTS, IMAGES_FOLDER, DEFAULT_LOGO, LAT, LNG,
@@ -12,10 +12,12 @@ from constants import (
     ALL_PERMISSIONS,
 )
 from services.activity_svc import log_config_change
+from services.backup_svc import backup_path, create_backup_archive, list_backups, restore_backup_archive
 from services.clients_svc import list_known_clients
 from services.config_svc import load_config, save_config
 from services.users_svc import (
     has_permission,
+    has_screen_access,
     is_superadmin,
     load_users,
     update_user_language,
@@ -65,6 +67,8 @@ def _normalize_settings_tab(raw_tab):
         'install': 'installation',
         'installer': 'installation',
         'superadmin': 'administration',
+        'backup': 'sauvegardes',
+        'backups': 'sauvegardes',
     }
     return aliases.get(tab, tab)
 
@@ -80,6 +84,7 @@ def _settings_topbar_subtitle(active_tab, is_sa):
         'evenements': _t('events_subtitle'),
         'language': _t('language_subtitle'),
         'installation': _t('install_subtitle'),
+        'sauvegardes': _t('backup_subtitle'),
     }
     return subtitles.get(active_tab, _t('settings_topbar_sub'))
 
@@ -112,6 +117,8 @@ def _build_settings_context(tab='logo', install_defaults=None, install_result=No
         "school_zone_label": dict(SCHOOL_ZONES).get(cfg.get("school_zone", "auto"), "Auto"),
     }
     is_sa = is_superadmin()
+    screen_names = list(cfg.get('screens', {}).keys())
+    manageable_screens = screen_names if is_sa else [name for name in screen_names if has_screen_access(name)]
     active_tab = _normalize_settings_tab(tab)
     if active_tab in {'installation', 'administration'} and not is_sa:
         active_tab = 'logo'
@@ -153,8 +160,10 @@ def _build_settings_context(tab='logo', install_defaults=None, install_result=No
             ),
         },
         known_clients=list_known_clients() if is_sa else [],
+        available_backups=list_backups() if is_sa else [],
         all_permissions=[(k, _t(lbl_key)) for k, lbl_key in ALL_PERMISSIONS] if is_sa else [],
         all_screens=list(cfg.get('screens', {}).keys()) if is_sa else [],
+        manageable_screens=manageable_screens,
         priority_alert=cfg.get('priority_alert', {}) if is_sa else {},
         tab=active_tab,
     )
@@ -221,6 +230,49 @@ def known_clients_json():
         'ok': True,
         'clients': list_known_clients(),
     })
+
+
+@bp.route('/admin/settings/backups/create', methods=['POST'])
+def create_backup():
+    redir = superadmin_guard()
+    if redir:
+        return redir
+
+    backup = create_backup_archive()
+    log_config_change(session.get('user'), f"sauvegarde créée: {backup['filename']}")
+    _flash('flash_backup_created', 'success', filename=backup['filename'])
+    return redirect(url_for('settings.admin_settings_page') + '?tab=sauvegardes')
+
+
+@bp.route('/admin/settings/backups/download/<filename>')
+def download_backup(filename):
+    redir = superadmin_guard()
+    if redir:
+        return redir
+    path = backup_path(filename)
+    return send_file(path, as_attachment=True, download_name=filename)
+
+
+@bp.route('/admin/settings/backups/restore', methods=['POST'])
+def restore_backup():
+    redir = superadmin_guard()
+    if redir:
+        return redir
+
+    uploaded = request.files.get('backup_file')
+    if uploaded is None or not uploaded.filename:
+        _flash('flash_backup_file_missing', 'error')
+        return redirect(url_for('settings.admin_settings_page') + '?tab=sauvegardes')
+
+    try:
+        restore_backup_archive(uploaded)
+    except Exception:
+        _flash('flash_backup_restore_failed', 'error')
+        return redirect(url_for('settings.admin_settings_page') + '?tab=sauvegardes')
+
+    log_config_change(session.get('user'), f"sauvegarde restaurée: {uploaded.filename}")
+    _flash('flash_backup_restored', 'success', filename=uploaded.filename)
+    return redirect(url_for('settings.admin_settings_page') + '?tab=sauvegardes')
 
 
 @bp.route('/admin/settings/install-client', methods=['POST'])

@@ -139,7 +139,7 @@
                     data-user="{{ entry.username }}"
                     data-search="{{ (entry.username ~ ' ' ~ (entry.filename or '') ~ ' ' ~ (entry.details or '')) | lower }}"
                 >
-                    <td class="log-ts">{{ entry.timestamp | replace('T', ' ') }}</td>
+                    <td class="log-ts">{{ entry.timestamp_display or (entry.timestamp | replace('T', ' ')) }}</td>
                     <td class="log-user">{{ entry.username }}</td>
                     <td>
                         <span class="action-badge action-{{ entry.action if entry.action in ('upload','delete','login','logout','toggle','compress','config','campaign') else 'default' }}">

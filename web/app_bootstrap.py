@@ -1,7 +1,6 @@
 # MIT License - Copyright (c) 2026 Woofix
 # See LICENSE file for details
 
-import json
 import logging
 import os
 import secrets
@@ -15,17 +14,25 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 import constants as C
 from constants import (
     ALL_PERMISSIONS,
-    CONFIG_FILE,
-    DB_FILE,
-    LEGACY_CONFIG_FILE,
-    LEGACY_DB_FILE,
-    LEGACY_QUEUE_FILE,
-    LEGACY_USERS_FILE,
-    QUEUE_FILE,
-    USERS_FILE,
+    IMAGE_VARIANT_FOLDER,
+    LEGACY_STATIC_MEDIA_DIR,
+    LEGACY_IMAGE_VARIANT_FOLDER,
+    LEGACY_VIDEO_POSTER_FOLDER,
+    LEGACY_VIDEO_THUMB_FOLDER,
+    LEGACY_VIDEO_VARIANT_FOLDER,
+    VIDEO_POSTER_FOLDER,
+    VIDEO_THUMB_FOLDER,
+    VIDEO_VARIANT_FOLDER,
+    UPLOAD_FOLDER,
 )
-from db import AppConfig, EncodeJob, User, db
-from services.config_svc import get_default_screen_name, is_feature_enabled, load_config
+from db import db
+from services.config_svc import (
+    get_default_screen_name,
+    get_screen_halo_color,
+    halo_color_to_rgb,
+    is_feature_enabled,
+    load_config,
+)
 from services.i18n import _flash, _trans, get_language
 from services.users_svc import has_permission, init_users, is_superadmin, load_users
 from translations import TRANSLATIONS
@@ -71,94 +78,141 @@ def env_csv(name):
 
 
 def migrate_legacy_storage():
-    for legacy, current in (
-        (LEGACY_DB_FILE, DB_FILE),
-        (LEGACY_CONFIG_FILE, CONFIG_FILE),
-        (LEGACY_QUEUE_FILE, QUEUE_FILE),
-        (LEGACY_USERS_FILE, USERS_FILE),
+    _migrate_legacy_media_root(LEGACY_STATIC_MEDIA_DIR)
+    _migrate_current_media_root_to_original()
+
+    for legacy_dir, current_dir in (
+        (LEGACY_VIDEO_THUMB_FOLDER, VIDEO_THUMB_FOLDER),
+        (LEGACY_IMAGE_VARIANT_FOLDER, IMAGE_VARIANT_FOLDER),
+        (LEGACY_VIDEO_POSTER_FOLDER, VIDEO_POSTER_FOLDER),
+        (LEGACY_VIDEO_VARIANT_FOLDER, VIDEO_VARIANT_FOLDER),
     ):
-        if os.path.exists(current) or not os.path.exists(legacy):
+        _migrate_legacy_rendition_dir(legacy_dir, current_dir)
+
+
+def _migrate_legacy_media_root(legacy_root):
+    if not os.path.isdir(legacy_root) or os.path.abspath(legacy_root) == os.path.abspath(UPLOAD_FOLDER):
+        return
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+    skipped_names = {
+        "visio-display.db",
+        "config.json",
+        "queue.json",
+        "users.json",
+        os.path.basename(LEGACY_VIDEO_THUMB_FOLDER),
+        os.path.basename(LEGACY_IMAGE_VARIANT_FOLDER),
+        os.path.basename(LEGACY_VIDEO_POSTER_FOLDER),
+        os.path.basename(LEGACY_VIDEO_VARIANT_FOLDER),
+    }
+
+    for entry in os.listdir(legacy_root):
+        if entry in skipped_names:
             continue
-        os.makedirs(os.path.dirname(current), exist_ok=True)
-        shutil.move(legacy, current)
+        legacy_path = os.path.join(legacy_root, entry)
+        current_path = os.path.join(UPLOAD_FOLDER, entry)
+        if os.path.exists(current_path):
+            continue
+        try:
+            shutil.move(legacy_path, current_path)
+        except OSError:
+            LOGGER.debug(
+                "Unable to migrate legacy media entry from %s to %s",
+                legacy_path,
+                current_path,
+                exc_info=True,
+            )
+
+
+def _migrate_legacy_rendition_dir(legacy_dir, current_dir):
+    if not os.path.isdir(legacy_dir):
+        return
+    os.makedirs(current_dir, exist_ok=True)
+
+    for entry in os.listdir(legacy_dir):
+        legacy_path = os.path.join(legacy_dir, entry)
+        current_path = os.path.join(current_dir, entry)
+
+        if not os.path.isfile(legacy_path):
+            continue
+        if os.path.exists(current_path):
+            try:
+                os.remove(legacy_path)
+            except OSError:
+                LOGGER.debug("Unable to remove migrated legacy rendition: %s", legacy_path, exc_info=True)
+            continue
+        try:
+            shutil.move(legacy_path, current_path)
+        except OSError:
+            LOGGER.debug(
+                "Unable to migrate legacy rendition from %s to %s",
+                legacy_path,
+                current_path,
+                exc_info=True,
+            )
+
+    try:
+        if not os.listdir(legacy_dir):
+            os.rmdir(legacy_dir)
+    except OSError:
+        LOGGER.debug("Unable to remove legacy rendition directory: %s", legacy_dir, exc_info=True)
+
+
+def _migrate_current_media_root_to_original():
+    media_root = C.STATIC_MEDIA_DIR
+    if not os.path.isdir(media_root):
+        return
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+    skipped_names = {
+        os.path.basename(UPLOAD_FOLDER),
+        os.path.basename(VIDEO_THUMB_FOLDER),
+        os.path.basename(IMAGE_VARIANT_FOLDER),
+        os.path.basename(VIDEO_POSTER_FOLDER),
+        os.path.basename(VIDEO_VARIANT_FOLDER),
+        "visio-display.db",
+        "config.json",
+        "queue.json",
+        "users.json",
+    }
+
+    for entry in os.listdir(media_root):
+        if entry in skipped_names:
+            continue
+        source_path = os.path.join(media_root, entry)
+        if not os.path.isfile(source_path):
+            continue
+        target_path = os.path.join(UPLOAD_FOLDER, entry)
+        if os.path.exists(target_path):
+            continue
+        try:
+            shutil.move(source_path, target_path)
+        except OSError:
+            LOGGER.debug(
+                "Unable to migrate media root entry from %s to %s",
+                source_path,
+                target_path,
+                exc_info=True,
+            )
 
 
 def harden_private_storage_permissions():
-    private_dir = os.path.dirname(DB_FILE)
+    private_dir = C.PRIVATE_DATA_DIR
     try:
         os.makedirs(private_dir, mode=0o700, exist_ok=True)
         os.chmod(private_dir, 0o700)
     except OSError:
         LOGGER.debug("Unable to harden private directory permissions: %s", private_dir, exc_info=True)
 
-    for path in (DB_FILE, CONFIG_FILE, QUEUE_FILE, USERS_FILE):
-        if not os.path.exists(path):
-            continue
-        try:
-            os.chmod(path, 0o600)
-        except OSError:
-            LOGGER.debug("Unable to harden file permissions: %s", path, exc_info=True)
 
-
-def migrate_from_json():
-    try:
-        if AppConfig.query.count() == 0:
-            if os.path.exists(CONFIG_FILE):
-                with open(CONFIG_FILE, encoding="utf-8") as handle:
-                    data = handle.read()
-            else:
-                data = json.dumps({"order": [], "durations": {}, "disabled": []})
-            db.session.add(AppConfig(id=1, data=data))
-            db.session.commit()
-    except Exception:
-        db.session.rollback()
-        LOGGER.exception("Unable to migrate config.json into database")
-
-    try:
-        if User.query.count() == 0 and os.path.exists(USERS_FILE):
-            with open(USERS_FILE, encoding="utf-8") as handle:
-                users_dict = json.load(handle)
-            from services.users_svc import PASSWORD_HASH_PLACEHOLDER, set_user_password_hash
-
-            for username, entry in users_dict.items():
-                row = User.from_dict(username, entry)
-                merged = db.session.merge(row)
-                if isinstance(entry, dict):
-                    password_hash = entry.get("password", "")
-                else:
-                    password_hash = entry
-                if password_hash:
-                    set_user_password_hash(username, password_hash)
-                merged.password_hash = PASSWORD_HASH_PLACEHOLDER
-            db.session.commit()
-    except Exception:
-        db.session.rollback()
-        LOGGER.exception("Unable to migrate users.json into database")
-
-    try:
-        if EncodeJob.query.count() == 0 and os.path.exists(QUEUE_FILE):
-            with open(QUEUE_FILE, encoding="utf-8") as handle:
-                jobs = json.load(handle)
-            for job in jobs:
-                db.session.merge(
-                    EncodeJob(
-                        id=job["id"],
-                        filename=job["filename"],
-                        status=job["status"],
-                        added=job["added"],
-                        started=job.get("started"),
-                        finished=job.get("finished"),
-                        new_name=job.get("new_name"),
-                        before_mb=job.get("before"),
-                        after_mb=job.get("after"),
-                        ratio=job.get("ratio"),
-                        message=job.get("message"),
-                    )
-                )
-            db.session.commit()
-    except Exception:
-        db.session.rollback()
-        LOGGER.exception("Unable to migrate queue.json into database")
+def require_database_url():
+    database_url = os.environ.get("DATABASE_URL", "").strip()
+    if database_url:
+        return database_url
+    raise RuntimeError(
+        "DATABASE_URL is required. This project now runs in PostgreSQL-only mode "
+        "and no longer falls back to SQLite."
+    )
 
 
 def migrate_client_heartbeats_schema():
@@ -230,10 +284,7 @@ def configure_app(app, *, max_batch_upload_size):
     if trusted_hosts:
         app.config["TRUSTED_HOSTS"] = trusted_hosts
 
-    app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
-        "DATABASE_URL",
-        f"sqlite:///{os.path.abspath(DB_FILE)}",
-    )
+    app.config["SQLALCHEMY_DATABASE_URI"] = require_database_url()
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"pool_pre_ping": True}
 
@@ -257,7 +308,6 @@ def initialize_database(app):
     with app.app_context():
         db.create_all()
         migrate_client_heartbeats_schema()
-        migrate_from_json()
         init_users()
         harden_private_storage_permissions()
 
@@ -411,4 +461,11 @@ def register_template_context(app):
 def register_public_routes(app):
     @app.route("/")
     def index():
-        return render_template("index.html")
+        cfg = load_config()
+        screen = request.args.get("screen", "").strip().lower()
+        halo_color = get_screen_halo_color(screen, cfg)
+        return render_template(
+            "index.html",
+            display_halo_color=halo_color,
+            display_halo_rgb=halo_color_to_rgb(halo_color),
+        )

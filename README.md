@@ -221,6 +221,98 @@ python3 tools/reset_superadmin_password.py --user <nom-super-admin>
 Le script demande le nouveau mot de passe de façon masquée et met à jour uniquement le hash en base. Si un seul super-admin existe, l'option `--user` est facultative.
 Le mot de passe du super-admin ne peut pas être réinitialisé depuis l'interface d'administration.
 
+**Commande en une seule ligne :**
+
+```bash
+cd web && printf '%s\n' '<nouveau-mot-de-passe>' | python3 tools/reset_superadmin_password.py --user <nom-super-admin> --password-stdin
+```
+
+Si un seul compte super-admin existe, vous pouvez omettre `--user <nom-super-admin>`.
+
+**Depuis Docker Compose :**
+
+```bash
+docker compose exec app python3 /app/tools/reset_superadmin_password.py --list
+docker compose exec app python3 /app/tools/reset_superadmin_password.py --user <nom-super-admin>
+```
+
+Le script détecte automatiquement `DATABASE_URL` dans le conteneur `app`. Le projet fonctionne désormais uniquement avec PostgreSQL.
+
+```bash
+printf '%s\n' '<nouveau-mot-de-passe>' | docker compose exec -T app python3 /app/tools/reset_superadmin_password.py --user <nom-super-admin> --password-stdin
+```
+
+### Sauvegarde et restauration Docker
+
+Pour pouvoir repartir sur un nouveau serveur Docker sans reconfiguration manuelle, deux scripts sont fournis :
+
+- `scripts/docker_backup.sh` crée une sauvegarde complète de l’instance
+- `scripts/docker_restore.sh` restaure cette sauvegarde sur une nouvelle stack
+
+La sauvegarde contient :
+
+- un dump PostgreSQL (`postgres.dump`)
+- les médias (`media.tar.gz`)
+- les données privées de l’application (`private.tar.gz`)
+- une copie du `.env` (`env.backup`) si le fichier existe
+
+**Créer une sauvegarde :**
+
+```bash
+scripts/docker_backup.sh
+```
+
+Par défaut, une archive horodatée est créée dans `backups/`. Vous pouvez aussi fournir un dossier cible :
+
+```bash
+scripts/docker_backup.sh /chemin/vers/ma-sauvegarde
+```
+
+**Restaurer sur une nouvelle machine ou un nouveau Docker :**
+
+1. recopier le dépôt et le dossier de sauvegarde ;
+2. exécuter la restauration :
+
+```bash
+scripts/docker_restore.sh backups/visio-backup-YYYYMMDD-HHMMSS
+```
+
+Le script :
+
+- restaure le `.env` s’il est absent ;
+- démarre `postgres` et `redis` ;
+- réinjecte les médias et les données privées ;
+- restaure PostgreSQL ;
+- redémarre la stack complète.
+
+Si vous voulez écraser le `.env` local avec celui de la sauvegarde :
+
+```bash
+scripts/docker_restore.sh --force-env backups/visio-backup-YYYYMMDD-HHMMSS
+```
+
+> Pendant une restauration, `app` et `worker` sont arrêtés pour éviter toute écriture concurrente.
+
+### Sauvegarde et restauration depuis l'administration
+
+Le super-admin peut aussi gérer les sauvegardes directement depuis l'interface, sans accès au shell :
+
+- aller dans `Paramètres > Sauvegardes`
+- cliquer sur **Créer une sauvegarde** pour générer une archive téléchargeable
+- attendre la fin de l'animation de progression pendant la préparation
+- télécharger l'archive depuis la liste
+- sur une autre instance déjà démarrée, réimporter l'archive avec **Restaurer maintenant**
+
+Cette restauration remet :
+
+- la base de données applicative
+- la médiathèque
+- les données privées de l'application
+
+La copie du `.env` est incluse dans l'archive quand elle est disponible, mais elle n'est pas réécrite automatiquement depuis l'interface web.
+
+L'interface conserve automatiquement uniquement les **5 sauvegardes les plus récentes**. Lorsqu'une nouvelle archive est créée, les plus anciennes sont supprimées.
+
 ### Rôles et permissions
 
 **Super-admin**
@@ -244,7 +336,7 @@ Le mot de passe du super-admin ne peut pas être réinitialisé depuis l'interfa
 | `duration`    | Modifier la durée d'affichage par média                                  |
 | `compress`    | Mettre des vidéos en file de compression                                 |
 | `logo`        | Changer ou réinitialiser le logo                                         |
-| `ephemeris`   | Forcer la régénération de l'éphéméride et gérer les comptes à rebours    |
+| `ephemeris`   | Gérer les comptes à rebours de l'éphéméride et sa régénération automatique |
 | `schedule`    | Programmer l'affichage des médias (horaires / dates)                     |
 
 ### Restrictions d'écrans par utilisateur
@@ -316,7 +408,7 @@ Visio-Display/
     │   ├── queue_svc.py         # File d'encodage + tâches RQ
     │   └── users_svc.py         # CRUD utilisateurs + permissions
     ├── static/
-    │   ├── data/                # Médias + base SQLite visio-display.db (non versionné)
+    │   ├── data/                # Médias et rendus générés (non versionné)
     │   └── images/              # Logo et ressources statiques
     └── templates/               # Templates Jinja2
         ├── index.html           # Diaporama plein écran
@@ -354,7 +446,7 @@ Visio-Display/
 | `/set_group_screens/<group_name>`         | POST    | `toggle`           | Lier un groupe à des écrans spécifiques (liste vide = global) |
 | `/compress/<filename>`                    | POST    | `compress`         | Mettre une vidéo en file de compression              |
 | `/queue/cancel/<job_id>`                  | POST    | `compress`         | Annuler un job en attente                            |
-| `/regen_ephemeride`                       | POST    | `ephemeris`        | Forcer la régénération de l'éphéméride               |
+| `/regen_ephemeride`                       | POST    | `ephemeris`        | Déclencher manuellement la régénération de l'éphéméride (compatibilité / usage interne) |
 | `/schedule/<filename>`                    | POST    | `schedule`         | Définir la programmation horaire/date d'un média     |
 | `/screen_assign/<filename>`               | POST    | `toggle`           | Assigner / retirer un média d'un écran nommé         |
 | `/admin/screens/add`                      | POST    | Connecté           | Créer un écran nommé                                 |
@@ -469,7 +561,7 @@ Chaque média peut appartenir à zéro, un ou plusieurs groupes. `disabled_group
 
 ### Stockage des données
 
-La configuration et les utilisateurs sont stockés dans une base SQLite (`web/static/data/visio-display.db`), persistée via le volume Docker. La structure des utilisateurs est la suivante :
+Les médias uploadés et leurs rendus sont stockés dans `web/static/data/` en local, ou dans le volume Docker défini par `MEDIA_DIR`. Les données privées d’exécution (config, secrets, base locale éventuelle) vivent dans `data/private/` ou dans le volume `PRIVATE_DIR`.
 
 ```json
 {
@@ -506,7 +598,7 @@ Valeurs par défaut :
 
 ### Migration depuis une version antérieure
 
-Si un fichier `users.json` au format ancien existe dans le volume, il est migré automatiquement vers la base SQLite au premier démarrage : le premier compte devient super-admin, les suivants deviennent des utilisateurs sans permissions.
+Les anciennes migrations automatiques depuis `users.json`, `config.json`, `queue.json` ou `visio-display.db` ont été retirées. Pour une installation propre, configurez `DATABASE_URL`, importez si besoin vos données vers PostgreSQL, puis supprimez les anciens fichiers locaux.
 
 ### Licence
 
@@ -673,6 +765,8 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 | School zone  | French education zone (`A`, `B`, `C`) — auto-detected if left blank | auto |
 
 Saving regenerates the ephemeris card automatically.
+If the ephemeris file is missing, it is regenerated automatically on the next slideshow refresh.
+When the ephemeris is regenerated, the slideshow reloads it automatically without a full page refresh.
 
 **Image resolution** — edit in `web/constants.py`:
 
@@ -729,6 +823,14 @@ python3 tools/reset_superadmin_password.py --user <super-admin-name>
 The script prompts for the new password securely and only updates the password hash in the database. If there is only one super-admin account, the `--user` option is optional.
 The super-admin password cannot be reset from the admin interface.
 
+**One-line command:**
+
+```bash
+cd web && printf '%s\n' '<new-password>' | python3 tools/reset_superadmin_password.py --user <super-admin-name> --password-stdin
+```
+
+If there is only one super-admin account, you can omit `--user <super-admin-name>`.
+
 ### Roles & Permissions
 
 **Super-admin**
@@ -752,7 +854,7 @@ The super-admin password cannot be reset from the admin interface.
 | `duration`    | Set custom display duration per item                                  |
 | `compress`    | Queue videos for compression                                          |
 | `logo`        | Change or reset the application logo                                  |
-| `ephemeris`   | Force ephemeris regeneration and manage countdown events              |
+| `ephemeris`   | Manage ephemeris countdown events and its automatic regeneration      |
 | `schedule`    | Schedule media display by time of day and/or date range               |
 
 ### Per-screen access restrictions
@@ -862,7 +964,7 @@ Visio-Display/
 | `/set_group_screens/<group_name>`         | POST    | `toggle`           | Link a group to specific screens (empty list = global)  |
 | `/compress/<filename>`                    | POST    | `compress`         | Queue a video for compression                           |
 | `/queue/cancel/<job_id>`                  | POST    | `compress`         | Cancel a pending compression job                        |
-| `/regen_ephemeride`                       | POST    | `ephemeris`        | Force ephemeris card regeneration                       |
+| `/regen_ephemeride`                       | POST    | `ephemeris`        | Manually trigger ephemeris card regeneration (compatibility / internal use) |
 | `/schedule/<filename>`                    | POST    | `schedule`         | Set time/date scheduling for a media item               |
 | `/screen_assign/<filename>`               | POST    | `toggle`           | Assign / remove a media item from a named screen        |
 | `/admin/screens/add`                      | POST    | Logged in          | Create a named screen                                   |
@@ -977,7 +1079,39 @@ An empty or absent `message` means no banner is displayed.
 
 ### Data storage
 
-Configuration and users are stored in a SQLite database (`web/static/data/visio-display.db`), persisted via the Docker volume. The user data structure is as follows:
+Configuration and users are stored in PostgreSQL when using the Docker stack. Uploaded media live in the `MEDIA_DIR` volume and private runtime files live in the `PRIVATE_DIR` volume.
+
+### Docker backup and restore
+
+To move the instance to a new Docker host without rebuilding it by hand, two helper scripts are provided:
+
+- `scripts/docker_backup.sh`
+- `scripts/docker_restore.sh`
+
+The backup includes the PostgreSQL dump, uploaded media, private application data and the current `.env` file when present.
+
+Create a backup:
+
+```bash
+scripts/docker_backup.sh
+```
+
+Restore it on another machine:
+
+```bash
+scripts/docker_restore.sh backups/visio-backup-YYYYMMDD-HHMMSS
+```
+
+Use `--force-env` if you also want to overwrite the local `.env` with the backed-up one.
+
+The super-admin can also manage backups from the web interface in `Settings > Backups`:
+
+- click `Create backup`
+- wait for the progress animation while the archive is being prepared
+- download the generated archive from the list
+- restore it on another running instance with `Restore now`
+
+Only the **5 most recent backups** are kept automatically in the web interface. When a new archive is created, older ones are removed.
 
 ```json
 {
@@ -999,7 +1133,7 @@ The `screens` field is optional. Absent or `null` = access to all screens. An em
 
 ### Migration from earlier versions
 
-If a `users.json` file in the old format exists in the volume, it is migrated automatically to the SQLite database on first startup: the first account becomes the super-admin, all others become regular users with no permissions.
+Automatic migrations from `users.json`, `config.json`, `queue.json`, or `visio-display.db` have been removed. For a clean setup, configure `DATABASE_URL`, import any data you still need into PostgreSQL, then delete the old local files.
 
 ### License
 

@@ -158,6 +158,7 @@ SCREEN_NAME=$SCREEN_NAME_INPUT
 WATCHDOG_CHECK_INTERVAL=30
 WATCHDOG_GRACE_PERIOD=90
 WATCHDOG_FAILURES_BEFORE_REBOOT=1
+FIREFOX_RESTART_INTERVAL_SECONDS=21600
 EOC
 fi
 
@@ -214,6 +215,7 @@ SCREEN_NAME=$NAME
 WATCHDOG_CHECK_INTERVAL=30
 WATCHDOG_GRACE_PERIOD=90
 WATCHDOG_FAILURES_BEFORE_REBOOT=1
+FIREFOX_RESTART_INTERVAL_SECONDS=21600
 EOC
 EOF
 
@@ -280,8 +282,15 @@ if [ ! -s "$CONFIG" ]; then
     exit 1
 fi
 
-SERVER_URL="$(grep '^SERVER_URL=' "$CONFIG" | cut -d '=' -f2-)"
-SCREEN_NAME="$(grep '^SCREEN_NAME=' "$CONFIG" | cut -d '=' -f2-)"
+read_conf() {
+    local key="$1"
+    local line=""
+    line="$(grep "^${key}=" "$CONFIG" 2>/dev/null | head -n1 || true)"
+    printf '%s' "${line#*=}"
+}
+
+SERVER_URL="$(read_conf SERVER_URL)"
+SCREEN_NAME="$(read_conf SCREEN_NAME)"
 TARGET_HOST="$(extract_host "$SERVER_URL")"
 
 DISPLAY_URL="$(
@@ -311,6 +320,66 @@ PY
     exit 1
 }
 
+FIREFOX_RESTART_INTERVAL_SECONDS="$(read_conf FIREFOX_RESTART_INTERVAL_SECONDS)"
+case "${FIREFOX_RESTART_INTERVAL_SECONDS:-}" in
+    ''|*[!0-9]*)
+        FIREFOX_RESTART_INTERVAL_SECONDS=21600
+        ;;
+esac
+if [ "$FIREFOX_RESTART_INTERVAL_SECONDS" -lt 1800 ]; then
+    FIREFOX_RESTART_INTERVAL_SECONDS=1800
+fi
+
+setup_firefox_profile() {
+    local profile_dir="$HOME/.mozilla/firefox/visio-kiosk"
+    mkdir -p "$profile_dir"
+    cat > "$profile_dir/user.js" <<'EOP'
+user_pref("app.normandy.enabled", false);
+user_pref("app.shield.optoutstudies.enabled", false);
+user_pref("browser.aboutConfig.showWarning", false);
+user_pref("browser.bookmarks.restore_default_bookmarks", false);
+user_pref("browser.cache.disk.enable", false);
+user_pref("browser.discovery.enabled", false);
+user_pref("browser.newtabpage.activity-stream.feeds.telemetry", false);
+user_pref("browser.newtabpage.activity-stream.telemetry", false);
+user_pref("browser.newtabpage.enabled", false);
+user_pref("browser.ping-centre.telemetry", false);
+user_pref("browser.search.suggest.enabled", false);
+user_pref("browser.sessionhistory.max_total_viewers", 0);
+user_pref("browser.sessionstore.max_tabs_undo", 0);
+user_pref("browser.sessionstore.max_windows_undo", 0);
+user_pref("browser.sessionstore.resume_from_crash", false);
+user_pref("browser.shell.checkDefaultBrowser", false);
+user_pref("browser.tabs.crashReporting.sendReport", false);
+user_pref("browser.tabs.warnOnClose", false);
+user_pref("browser.urlbar.suggest.searches", false);
+user_pref("datareporting.healthreport.uploadEnabled", false);
+user_pref("dom.ipc.processCount", 1);
+user_pref("dom.push.enabled", false);
+user_pref("dom.serviceWorkers.enabled", false);
+user_pref("extensions.pocket.enabled", false);
+user_pref("media.cache_readahead_limit", 60);
+user_pref("media.cache_resume_threshold", 30);
+user_pref("media.peerconnection.enabled", false);
+user_pref("media.rdd-process.enabled", false);
+user_pref("network.dns.disablePrefetch", true);
+user_pref("network.prefetch-next", false);
+user_pref("toolkit.cosmeticAnimations.enabled", false);
+user_pref("toolkit.telemetry.archive.enabled", false);
+user_pref("toolkit.telemetry.bhrPing.enabled", false);
+user_pref("toolkit.telemetry.enabled", false);
+user_pref("toolkit.telemetry.firstShutdownPing.enabled", false);
+user_pref("toolkit.telemetry.newProfilePing.enabled", false);
+user_pref("toolkit.telemetry.reportingpolicy.firstRun", false);
+user_pref("toolkit.telemetry.server", "");
+user_pref("toolkit.telemetry.shutdownPingSender.enabled", false);
+user_pref("toolkit.telemetry.unified", false);
+EOP
+    printf '%s\n' "$profile_dir"
+}
+
+FIREFOX_PROFILE_DIR="$(setup_firefox_profile)"
+
 wait_with_ui "$TARGET_HOST"
 
 pkill -x unclutter 2>/dev/null || true
@@ -323,12 +392,39 @@ xset s off
 xset -dpms
 xset s noblank
 
-# Also prevent the machine from sleeping through systemd while the kiosk is active.
+LOG_FILE="/tmp/visio-firefox.log"
+export DISPLAY_URL LOG_FILE FIREFOX_PROFILE_DIR FIREFOX_RESTART_INTERVAL_SECONDS
+
+# Keep the X session alive even if Firefox is killed unexpectedly.
 exec systemd-inhibit \
     --what=idle:sleep:handle-lid-switch \
     --who="Visio Display" \
     --why="Kiosque d'affichage actif" \
-    firefox-esr --kiosk "$DISPLAY_URL"
+    bash -c '
+set +e
+while true; do
+    firefox-esr --kiosk --no-remote --profile "$FIREFOX_PROFILE_DIR" "$DISPLAY_URL" &
+    firefox_pid=$!
+    started_at=$(date +%s)
+
+    while kill -0 "$firefox_pid" >/dev/null 2>&1; do
+        sleep 30
+        now=$(date +%s)
+        if [ $((now - started_at)) -ge "$FIREFOX_RESTART_INTERVAL_SECONDS" ]; then
+            printf "%s firefox-esr periodic restart after %ss\n" "$(date "+%F %T")" "$FIREFOX_RESTART_INTERVAL_SECONDS" >> "$LOG_FILE"
+            kill -TERM "$firefox_pid" >/dev/null 2>&1 || true
+            sleep 5
+            kill -0 "$firefox_pid" >/dev/null 2>&1 && kill -KILL "$firefox_pid" >/dev/null 2>&1 || true
+            break
+        fi
+    done
+
+    wait "$firefox_pid"
+    status=$?
+    printf "%s firefox-esr exited with status %s\n" "$(date "+%F %T")" "$status" >> "$LOG_FILE"
+    sleep 2
+done
+'
 EOF
 
 chmod +x "$VISIO_DIR/kiosk.sh"
@@ -341,10 +437,17 @@ set -euo pipefail
 
 CONFIG="/etc/visio/client.conf"
 
+read_conf() {
+    local key="$1"
+    local line=""
+    line="$(grep "^${key}=" "$CONFIG" 2>/dev/null | head -n1 || true)"
+    printf '%s' "${line#*=}"
+}
+
 [ -s "$CONFIG" ] || exit 0
 
-SERVER_URL="$(grep '^SERVER_URL=' "$CONFIG" | cut -d '=' -f2-)"
-SCREEN_NAME="$(grep '^SCREEN_NAME=' "$CONFIG" | cut -d '=' -f2-)"
+SERVER_URL="$(read_conf SERVER_URL)"
+SCREEN_NAME="$(read_conf SCREEN_NAME)"
 
 [ -n "$SERVER_URL" ] || exit 0
 

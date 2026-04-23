@@ -1,6 +1,7 @@
 # MIT License - Copyright (c) 2026 Woofix
 # See LICENSE file for details
 
+import json
 import os
 from datetime import datetime, timedelta
 
@@ -15,6 +16,9 @@ from services.media_svc import (
     clean_filename, is_h264_mp4, get_media_groups,
     collect_group_states, is_media_disabled, normalize_group_name,
     ensure_unique_filename, is_valid_uploaded_image,
+    build_media_preview_map, delete_image_variants, delete_media_thumbnail, delete_video_variants,
+    generate_standard_renditions,
+    get_media_url, get_original_media_url,
 )
 from services.queue_svc import load_queue, save_queue, enqueue_upload_job
 from services.i18n import _flash, _t
@@ -24,7 +28,13 @@ from services.schedule_svc import (
     parse_iso_date, start_of_week, week_days,
 )
 from services.campaign_svc import get_campaigns, save_campaigns_to_config, cleanup_campaigns_for_deleted_media
-from blueprints.guards import admin_guard, perm_guard, feature_guard, feature_guard_json
+from blueprints.guards import (
+    admin_guard,
+    perm_guard,
+    feature_guard,
+    feature_guard_json,
+    permission_redirect_guard,
+)
 
 bp = Blueprint('media', __name__)
 
@@ -53,6 +63,68 @@ def _get_schedule_bucket(cfg, screen):
             return None
         return cfg['screens'][screen].setdefault('schedules', {})
     return cfg.setdefault('schedules', {})
+
+
+def _normalize_conflict_strategy(raw_value):
+    value = str(raw_value or '').strip().lower()
+    return value if value in {'rename_custom', 'overwrite'} else ''
+
+
+def _load_rename_map():
+    try:
+        payload = json.loads(request.form.get('rename_map', '{}') or '{}')
+    except (TypeError, ValueError):
+        return {}
+    if not isinstance(payload, dict):
+        return {}
+    return {
+        str(source).strip(): clean_filename(str(target))
+        for source, target in payload.items()
+        if str(source).strip() and clean_filename(str(target))
+    }
+
+
+def _collect_upload_name_conflicts(files):
+    conflicts = []
+    seen = set()
+    for index, file in enumerate(files):
+        if not file or not file.filename:
+            continue
+        filename = clean_filename(file.filename)
+        if not filename:
+            continue
+        path_exists = os.path.exists(os.path.join(UPLOAD_FOLDER, filename))
+        duplicate_in_batch = filename in seen
+        if path_exists or duplicate_in_batch:
+            conflicts.append({
+                "upload_index": index,
+                "filename": filename,
+            })
+        seen.add(filename)
+    return conflicts
+
+
+def _prepare_overwrite_target(filename):
+    path = os.path.join(UPLOAD_FOLDER, filename)
+    delete_media_thumbnail(filename)
+    delete_image_variants(filename)
+    delete_video_variants(filename)
+    if os.path.exists(path):
+        os.remove(path)
+
+
+def _resolve_custom_rename(file_index, filename, rename_map):
+    target = rename_map.get(str(file_index), '')
+    if not target:
+        return None, "missing rename"
+    source_ext = os.path.splitext(filename)[1].lower()
+    target_root, target_ext = os.path.splitext(target)
+    if not target_ext:
+        target = f"{target_root}{source_ext}"
+        target_ext = source_ext
+    if target_ext.lower() != source_ext:
+        return None, "extension mismatch"
+    return target, None
 
 
 def _scope_details(screen):
@@ -125,6 +197,16 @@ def admin_media():
         schedules  = cfg.get('schedules', {})
 
     media_groups = {f: get_media_groups(f, cfg) for f in all_media}
+    preview_urls = build_media_preview_map(all_media, context='admin')
+    preview_media_urls = {
+        filename: get_media_url(
+            filename,
+            context='preview',
+            allow_original=True,
+            generate_missing=True,
+        ) or get_original_media_url(filename)
+        for filename in all_media
+    }
     effective_cfg = dict(view_cfg)
     effective_cfg['groups'] = cfg.get('groups', {})
     effective_cfg['group_pools'] = cfg.get('group_pools', {})
@@ -136,6 +218,7 @@ def admin_media():
         files=files, unassigned=unassigned, infos=infos, cfg=view_cfg, queued=queued,
         schedules=schedules, current_screen=screen, screens=screens,
         media_groups=media_groups, group_states=group_states, disabled_map=disabled_map,
+        preview_urls=preview_urls, preview_media_urls=preview_media_urls,
         users=list(users.keys()), current_user=session.get('user'),
         logo_path=get_logo_path(), can_toggle=has_permission('toggle'),
         can_schedule=has_permission('schedule'),
@@ -213,6 +296,10 @@ def admin_programming_page():
 def admin_upload_page():
     redir = admin_guard()
     if redir: return redir
+    redir = feature_guard('upload')
+    if redir: return redir
+    redir = permission_redirect_guard('upload', 'admin.admin_page')
+    if redir: return redir
     users = load_users()
     return render_template('admin_upload.html',
         users=list(users.keys()), current_user=session.get('user'),
@@ -232,6 +319,9 @@ def delete_file(filename):
     path = os.path.join(UPLOAD_FOLDER, filename)
     if os.path.exists(path):
         os.remove(path)
+        delete_media_thumbnail(filename)
+        delete_image_variants(filename)
+        delete_video_variants(filename)
         log_activity(session.get('user'), 'delete', filename=filename)
         cfg = load_config()
         cfg["order"]    = [f for f in cfg.get("order", [])    if f != filename]
@@ -268,13 +358,20 @@ def upload_file():
     if not files:
         _flash('flash_no_file', 'error')
         return redirect(url_for('admin.admin_page'))
+    conflict_strategy = _normalize_conflict_strategy(request.form.get('conflict_strategy'))
+    rename_map = _load_rename_map()
+    if not conflict_strategy:
+        conflicts = _collect_upload_name_conflicts(files)
+        if conflicts:
+            return jsonify({"error": "name conflict", "conflicts": conflicts}), 409
 
     total_size = sum(_get_uploaded_file_size(file) for file in files if file and file.filename)
     if total_size > MAX_BATCH_UPLOAD_SIZE:
         return jsonify({"error": "batch too large"}), 400
 
     upload_job_ids = []
-    for file in files:
+    planned_filenames = set()
+    for file_index, file in enumerate(files):
         if not file or file.filename == '':
             continue
         if _get_uploaded_file_size(file) > MAX_FILE_UPLOAD_SIZE:
@@ -286,8 +383,40 @@ def upload_file():
         allowed_exts = VIDEO_EXTS + ('.pdf', '.jpg', '.jpeg', '.png')
         if ext not in allowed_exts:
             return jsonify({"error": "unsupported file type"}), 400
-        filename = ensure_unique_filename(UPLOAD_FOLDER, filename)
+
+        path_exists = os.path.exists(os.path.join(UPLOAD_FOLDER, filename))
+        duplicate_in_batch = filename in planned_filenames
+        needs_rename = path_exists or duplicate_in_batch
+
+        if conflict_strategy == 'rename_custom' and needs_rename:
+            renamed_filename, rename_error = _resolve_custom_rename(file_index, filename, rename_map)
+            if rename_error:
+                return jsonify({"error": rename_error, "filename": filename}), 400
+            if (
+                renamed_filename in planned_filenames
+                or os.path.exists(os.path.join(UPLOAD_FOLDER, renamed_filename))
+            ):
+                return jsonify({
+                    "error": "name conflict",
+                    "conflicts": [{
+                        "upload_index": file_index,
+                        "filename": filename,
+                    }],
+                    "message": f"Le nom choisi existe déjà : {rename_map.get(str(file_index), filename)}",
+                }), 409
+            filename = renamed_filename
+        elif conflict_strategy == 'overwrite' and path_exists:
+            _prepare_overwrite_target(filename)
+        elif needs_rename:
+            return jsonify({
+                "error": "name conflict",
+                "conflicts": [{
+                    "upload_index": file_index,
+                    "filename": filename,
+                }],
+            }), 409
         dest     = os.path.join(UPLOAD_FOLDER, filename)
+        planned_filenames.add(filename)
 
         if ext == '.pdf':
             from pdf2image import convert_from_path
@@ -307,6 +436,7 @@ def upload_file():
             file.save(tmp)
             if ext == '.mp4' and is_h264_mp4(tmp):
                 os.replace(tmp, dest)
+                generate_standard_renditions(filename)
                 log_activity(session.get('user'), 'upload', filename=filename)
             else:
                 final_name = os.path.basename(os.path.splitext(dest)[0] + '.mp4')
@@ -320,6 +450,7 @@ def upload_file():
             if not is_valid_uploaded_image(dest):
                 os.remove(dest)
                 return jsonify({"error": "invalid image file"}), 400
+            generate_standard_renditions(filename)
             log_activity(session.get('user'), 'upload', filename=filename)
 
     return jsonify({"ok": True, "jobs": upload_job_ids, "redirect": "/admin/media"})

@@ -5,8 +5,9 @@
 
 set -eu
 
+APP_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 ENV_FILE="${VISIO_ENV_FILE:-/app/.env}"
-DATA_DIR="${VISIO_DATA_DIR:-data/private}"
+DATA_DIR="${VISIO_DATA_DIR:-$APP_DIR/data/private}"
 DB_FILE="${VISIO_DB_FILE:-${DATA_DIR%/}/visio-display.db}"
 PLACEHOLDER_SECRET="remplace_par_une_chaine_aleatoire"
 

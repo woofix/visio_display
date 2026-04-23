@@ -33,8 +33,8 @@ services:
       - DATABASE_URL=postgresql://visio:${POSTGRES_PASSWORD:-visio}@postgres:5432/visio
     volumes:
       - ./.env:/app/.env:ro
-      - ${MEDIA_DIR:-visio_media}:/app/static/data
-      - ${PRIVATE_DIR:-visio_private}:/app/data
+      - ${MEDIA_DIR:-./web/static/data}:/app/static/data
+      - ${PRIVATE_DIR:-./web/data/private}:/app/data
     ports:
       - "${PORT:-8081}:8080"
     restart: always
@@ -58,8 +58,8 @@ services:
       - DATABASE_URL=postgresql://visio:${POSTGRES_PASSWORD:-visio}@postgres:5432/visio
     volumes:
       - ./.env:/app/.env:ro
-      - ${MEDIA_DIR:-visio_media}:/app/static/data
-      - ${PRIVATE_DIR:-visio_private}:/app/data
+      - ${MEDIA_DIR:-./web/static/data}:/app/static/data
+      - ${PRIVATE_DIR:-./web/data/private}:/app/data
     command: rq worker --url redis://redis:6379 visio-display:upload visio-display:compress
     restart: always
     depends_on:
@@ -71,5 +71,3 @@ services:
 volumes:
   redis_data:
   postgres_data:
-  visio_media:
-  visio_private:

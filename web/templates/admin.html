@@ -867,14 +867,6 @@
             </div>
         </div>
         <div class="topbar-right">
-            <button class="btn warning sm" id="btn-regen">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px">
-                    <path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-                </svg>
-                Éphéméride
-            </button>
-            <span id="regen-status" style="font-size:.8rem;color:var(--green);display:none;font-weight:600">✓ Régénéré !</span>
-
             <!-- Menu utilisateur -->
             <div class="user-menu-wrap">
                 <button class="user-menu-btn" id="user-menu-btn">
@@ -1149,15 +1141,15 @@
                     {% if info.type == 'video' %}
                     <span class="badge-video">VIDEO</span>
                     <video class="thumb-video"
-                           src="/static/data/{{ file }}"
+                           src="/static/data/original/{{ file }}"
                            preload="metadata" muted
-                           data-src="/static/data/{{ file }}"
+                           data-src="/static/data/original/{{ file }}"
                            data-type="video"></video>
                     {% else %}
                     <img class="thumb"
-                         src="/static/data/{{ file }}"
+                         src="/static/data/original/{{ file }}"
                          alt="{{ file }}"
-                         data-src="/static/data/{{ file }}"
+                         data-src="/static/data/original/{{ file }}"
                          data-type="image">
                     {% endif %}
                     <span class="badge-disabled">DÉSACTIVÉ</span>
@@ -1751,18 +1743,6 @@ setInterval(refreshQueue, 30000);
     btnList.addEventListener('click', () => setView('list'));
 })();
 
-/* ─── Ephemeris regeneration ─── */
-document.getElementById('btn-regen').addEventListener('click', async () => {
-    const btn = document.getElementById('btn-regen');
-    btn.disabled = true; btn.textContent = 'Régénération…';
-    await fetch('/regen_ephemeride', { method: 'POST' });
-    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Éphéméride`;
-    btn.disabled = false;
-    const status = document.getElementById('regen-status');
-    status.style.display = 'inline';
-    setTimeout(() => { status.style.display = 'none'; }, 3000);
-});
-
 /* ─── Upload multi-fichiers ─── */
 const uploadArea   = document.getElementById('upload-area');
 const fileInput    = document.getElementById('file-input');
@@ -1799,6 +1779,9 @@ function showPreviews(files) {
 
 const MAX_FILE_SIZE = 16 * 1024 * 1024;
 const MAX_BATCH_SIZE = 256 * 1024 * 1024;
+const NAME_CONFLICT_LABEL = 'Ces fichiers existent déjà :';
+const NAME_CONFLICT_OVERWRITE = 'OK = écraser les fichiers existants';
+const NAME_CONFLICT_RENAME = 'Annuler = renommer automatiquement';
 function checkFileSizes(files) {
     const oversized = [...files].filter(f => f.size > MAX_FILE_SIZE);
     if (oversized.length) {
@@ -1824,27 +1807,56 @@ function showFlash(msg, type) {
     li.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
-document.getElementById('upload-form').addEventListener('submit', function(e) {
-    const filesToUpload = droppedFiles.length ? droppedFiles : [...fileInput.files];
-    if (!filesToUpload.length) return;
-    if (!checkFileSizes(filesToUpload)) { e.preventDefault(); return; }
-    e.preventDefault();
+function chooseConflictStrategy(conflicts) {
+    const names = (conflicts || []).join(', ');
+    const message = `${NAME_CONFLICT_LABEL}\n${names}\n\n${NAME_CONFLICT_OVERWRITE}\n${NAME_CONFLICT_RENAME}`;
+    return window.confirm(message) ? 'overwrite' : 'rename';
+}
+
+function submitDashboardUpload(filesToUpload, strategy = '') {
     const formData = new FormData();
     filesToUpload.forEach(f => formData.append('file', f));
+    if (strategy) formData.append('conflict_strategy', strategy);
     const xhr = new XMLHttpRequest();
     progressWrap.style.display = 'block'; progressBar.style.width = '0';
     xhr.upload.addEventListener('progress', ev => {
         if (ev.lengthComputable) progressBar.style.width = Math.round(ev.loaded / ev.total * 100) + '%';
     });
     xhr.addEventListener('load', () => {
+        let data = {};
+        try {
+            data = JSON.parse(xhr.responseText || '{}');
+        } catch {
+            data = {};
+        }
         if (xhr.status === 413) {
             progressWrap.style.display = 'none';
             showFlash('Lot trop volumineux : la taille cumulée maximale autorisée est de 256 Mo.', 'error');
-        } else { window.location.reload(); }
+            return;
+        }
+        if (xhr.status === 409 && data.error === 'name conflict') {
+            progressWrap.style.display = 'none';
+            submitDashboardUpload(filesToUpload, chooseConflictStrategy(data.conflicts || []));
+            return;
+        }
+        if (xhr.status >= 400) {
+            progressWrap.style.display = 'none';
+            showFlash(data.error || 'L\'upload a échoué.', 'error');
+            return;
+        }
+        window.location.reload();
     });
     xhr.addEventListener('error', () => { progressWrap.style.display = 'none'; showFlash('Erreur réseau lors de l\'upload.', 'error'); });
     xhr.open('POST', '/upload');
     xhr.send(formData);
+}
+
+document.getElementById('upload-form').addEventListener('submit', function(e) {
+    const filesToUpload = droppedFiles.length ? droppedFiles : [...fileInput.files];
+    if (!filesToUpload.length) return;
+    if (!checkFileSizes(filesToUpload)) { e.preventDefault(); return; }
+    e.preventDefault();
+    submitDashboardUpload(filesToUpload);
 });
 </script>
 </body>

@@ -5,18 +5,44 @@ import os
 import secrets
 from flask import Blueprint, request, jsonify
 
-from services.config_svc import load_config
+from services.config_svc import (
+    get_screen_halo_color,
+    halo_color_to_rgb,
+    load_config,
+)
 from services.clients_svc import record_client_heartbeat
 from services.users_svc import is_admin
 from services.media_svc import (
     get_all_media, get_file_info, is_media_scheduled, get_disk_usage,
     is_media_disabled, get_media_groups, is_group_active_on_screen,
+    get_media_url, get_original_media_url,
 )
 from services.campaign_svc import resolve_campaign_override
 from services.ephemeris_svc import generate_ephemeride_image
 from constants import UPLOAD_FOLDER, MEDIA_EXTS
 
 bp = Blueprint('api', __name__)
+
+
+def _requested_display_bounds():
+    try:
+        width = int(request.args.get('w', '') or 0)
+        height = int(request.args.get('h', '') or 0)
+    except (TypeError, ValueError):
+        return None
+    if width <= 0 or height <= 0:
+        return None
+    return width, height
+
+
+def _media_path(filename, media_type, bounds):
+    return get_media_url(
+        filename,
+        context='display',
+        bounds=bounds,
+        allow_original=True,
+        generate_missing=True,
+    ) or get_original_media_url(filename)
 
 
 def _best_remote_ip():
@@ -68,8 +94,12 @@ def api_client_policy():
 
 @bp.route('/api/images')
 def get_images():
-    generate_ephemeride_image()
+    try:
+        generate_ephemeride_image()
+    except Exception as exc:
+        print(f"[EPHEMERIS ERROR] {exc}")
     screen = request.args.get('screen', '').strip().lower()
+    bounds = _requested_display_bounds()
     cfg    = load_config()
     campaign_override = resolve_campaign_override(cfg, screen=screen)
 
@@ -84,7 +114,8 @@ def get_images():
             all_files = {f for f in os.listdir(UPLOAD_FOLDER) if f.lower().endswith(MEDIA_EXTS)}
             files = [f for f in scfg.get('order', []) if f in all_files]
         return jsonify([
-            {"path": f"/static/data/{f}", "type": get_file_info(f)["type"],
+            {"path": _media_path(f, get_file_info(f)["type"], bounds), "type": get_file_info(f)["type"],
+             "rev": int(os.path.getmtime(os.path.join(UPLOAD_FOLDER, f))) if os.path.exists(os.path.join(UPLOAD_FOLDER, f)) else 0,
              "groups": [g for g in get_media_groups(f, effective_cfg)
                         if is_group_active_on_screen(g, cfg, screen)]}
             for f in files
@@ -93,7 +124,8 @@ def get_images():
 
     files = campaign_override.get('files', []) if campaign_override else get_all_media()
     return jsonify([
-        {"path": f"/static/data/{f}", "type": get_file_info(f)["type"],
+        {"path": _media_path(f, get_file_info(f)["type"], bounds), "type": get_file_info(f)["type"],
+         "rev": int(os.path.getmtime(os.path.join(UPLOAD_FOLDER, f))) if os.path.exists(os.path.join(UPLOAD_FOLDER, f)) else 0,
          "groups": get_media_groups(f, cfg)}
         for f in files
         if not is_media_disabled(f, cfg) and is_media_scheduled(f, cfg)
@@ -122,6 +154,16 @@ def api_screens():
     cfg = load_config()
     return jsonify(list(cfg.get('screens', {}).keys()))
 
+
+@bp.route('/api/halo')
+def api_halo():
+    screen = request.args.get('screen', '').strip().lower()
+    cfg = load_config()
+    color = get_screen_halo_color(screen, cfg)
+    return jsonify({
+        'color': color,
+        'rgb': halo_color_to_rgb(color),
+    })
 
 @bp.route('/api/diskusage')
 def api_diskusage():

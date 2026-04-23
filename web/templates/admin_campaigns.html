@@ -14,6 +14,7 @@
 .campaign-layout { display:grid; grid-template-columns:minmax(320px, 420px) minmax(0, 1fr); gap:20px; align-items:start; }
 .campaign-card, .campaign-panel { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow-sm); }
 .campaign-panel { padding:18px; position:sticky; top:82px; }
+.campaign-main { display:flex; flex-direction:column; gap:16px; }
 .campaign-list { display:flex; flex-direction:column; gap:14px; }
 .campaign-card { padding:18px; }
 .campaign-header { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; margin-bottom:12px; }
@@ -37,10 +38,10 @@
 .campaign-field label, .campaign-section-title { font-size:.72rem; font-weight:700; color:var(--text-2); text-transform:uppercase; letter-spacing:.06em; }
 .campaign-field input, .campaign-field select, .campaign-field textarea { border:1.5px solid var(--border); border-radius:10px; padding:10px 12px; font:inherit; color:var(--text); background:var(--surface); }
 .campaign-field input:focus, .campaign-field select:focus, .campaign-field textarea:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px rgba(124,58,237,.09); }
+.campaign-inline-help { font-size:.72rem; color:var(--text-3); line-height:1.5; }
 .campaign-checks { display:flex; flex-wrap:wrap; gap:8px; }
 .campaign-check { display:inline-flex; align-items:center; gap:8px; border:1px solid var(--border); border-radius:999px; padding:7px 12px; background:var(--surface-alt); font-size:.78rem; color:var(--text-2); }
 .campaign-check input { accent-color:var(--primary); }
-.campaign-select { min-height:150px; }
 .campaign-tags { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
 .campaign-tag { display:inline-flex; align-items:center; gap:6px; background:var(--primary-bg); color:var(--primary); border-radius:999px; padding:5px 10px; font-size:.72rem; font-weight:700; }
 .campaign-tag.muted { background:#f3f4f6; color:#6b7280; }
@@ -48,12 +49,44 @@
 .campaign-help { font-size:.78rem; color:var(--text-3); line-height:1.6; }
 .campaign-divider { height:1px; background:var(--border); margin:14px 0; }
 .campaign-card.highlight { box-shadow:0 0 0 2px rgba(124,58,237,.18), var(--shadow); }
+.campaign-library { padding:16px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow-sm); }
+.campaign-library-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
+.campaign-library-title { font-size:.95rem; font-weight:800; color:var(--text); }
+.campaign-library-sub { font-size:.76rem; color:var(--text-3); }
+.campaign-search-box { flex:1; min-width:200px; display:flex; align-items:center; gap:8px; background:var(--surface); border:1.5px solid var(--border); border-radius:var(--radius-sm); padding:7px 12px; transition:border-color .15s,box-shadow .15s; }
+.campaign-search-box:focus-within { border-color:var(--primary); box-shadow:0 0 0 3px rgba(124,58,237,.09); }
+.campaign-search-box svg { width:14px; height:14px; color:var(--text-3); flex-shrink:0; }
+.campaign-media-search { border:none; outline:none; font-family:inherit; font-size:.83rem; color:var(--text); background:transparent; flex:1; width:100%; min-width:0; padding:0; }
+.campaign-media-search::placeholder { color:var(--text-3); }
+.campaign-media-picker { display:grid; gap:12px; }
+.campaign-media-toolbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.campaign-media-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:14px; max-height:640px; overflow:auto; padding-right:4px; }
+.campaign-media-card { position:relative; display:flex; flex-direction:column; border:1px solid var(--border); border-radius:16px; background:var(--surface); overflow:hidden; cursor:pointer; transition:border-color .16s, box-shadow .16s, transform .16s, opacity .16s; box-shadow:var(--shadow-sm); }
+.campaign-media-card:hover { transform:translateY(-2px); box-shadow:var(--shadow); }
+.campaign-media-card input { position:absolute; opacity:0; pointer-events:none; }
+.campaign-media-card.selected { border-color:var(--primary); box-shadow:0 0 0 2px rgba(124,58,237,.18), var(--shadow); }
+.campaign-media-card.hidden { display:none; }
+.campaign-media-thumb-wrap { position:relative; aspect-ratio:16/9; background:#0b1220; }
+.campaign-media-thumb, .campaign-media-video { width:100%; height:100%; display:block; object-fit:cover; background:#0b1220; }
+.campaign-media-type { position:absolute; top:8px; right:8px; border-radius:999px; padding:4px 8px; background:var(--blue); color:#fff; font-size:.62rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase; }
+.campaign-media-checkmark { position:absolute; top:8px; left:8px; width:24px; height:24px; border-radius:999px; display:flex; align-items:center; justify-content:center; background:rgba(15,23,42,.78); color:#fff; border:1px solid rgba(255,255,255,.18); opacity:0; transform:scale(.92); transition:opacity .16s, transform .16s, background .16s; }
+.campaign-media-card.selected .campaign-media-checkmark { opacity:1; transform:scale(1); background:var(--primary); border-color:var(--primary); }
+.campaign-media-body { padding:11px 13px 13px; display:grid; gap:4px; }
+.campaign-media-name { font-size:.76rem; font-weight:700; color:var(--text); line-height:1.35; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.campaign-media-meta { font-size:.69rem; color:var(--text-3); }
+.campaign-media-count { font-size:.72rem; color:var(--text-3); }
+.campaign-media-summary { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+.campaign-media-summary-item { width:64px; }
+.campaign-media-summary-thumb-wrap { position:relative; width:64px; aspect-ratio:1; border-radius:10px; overflow:hidden; background:#0b1220; border:1px solid var(--border); }
+.campaign-media-summary-thumb, .campaign-media-summary-video { width:100%; height:100%; object-fit:cover; display:block; }
+.campaign-media-summary-name { margin-top:5px; font-size:.62rem; color:var(--text-3); line-height:1.25; word-break:break-word; }
 @media (max-width: 980px) {
     .campaign-layout { grid-template-columns:1fr; }
     .campaign-panel { position:static; }
 }
 @media (max-width: 640px) {
     .campaign-grid { grid-template-columns:1fr; }
+    .campaign-media-grid { grid-template-columns:1fr; }
 }
 {% endblock %}
 
@@ -72,7 +105,7 @@
         <div class="campaign-divider"></div>
 
         {% if can_manage_campaigns %}
-        <form action="/admin/campaigns/create" method="post" class="campaign-form">
+        <form action="/admin/campaigns/create" method="post" class="campaign-form" id="campaign-create-form">
             <div class="campaign-field">
                 <label for="new-campaign-name">{{ t('campaigns_name_label') }}</label>
                 <input id="new-campaign-name" type="text" name="name" maxlength="80" required>
@@ -91,6 +124,7 @@
                 <div class="campaign-field">
                     <label for="new-campaign-priority">{{ t('campaigns_priority_label') }}</label>
                     <input id="new-campaign-priority" type="number" name="priority" min="1" max="999" value="100">
+                    <div class="campaign-inline-help">{{ t('campaigns_priority_field_help') }}</div>
                 </div>
                 <label class="campaign-check" style="align-self:end">
                     <input type="checkbox" name="enabled" checked>
@@ -123,12 +157,8 @@
                 {% endif %}
             </div>
             <div class="campaign-field">
-                <label for="new-campaign-media">{{ t('campaigns_media_label') }}</label>
-                <select id="new-campaign-media" name="media" class="campaign-select" multiple>
-                    {% for filename in media_choices %}
-                    <option value="{{ filename }}">{{ filename }}</option>
-                    {% endfor %}
-                </select>
+                <label>{{ t('campaigns_media_label') }}</label>
+                <div class="campaign-help">{{ t('campaigns_media_library_sub') }}</div>
             </div>
             <p class="campaign-help">{{ t('campaigns_priority_help') }}</p>
             <button type="submit" class="btn">{{ t('campaigns_create_cta') }}</button>
@@ -137,6 +167,54 @@
         <p class="campaign-help">{{ t('campaigns_readonly') }}</p>
         {% endif %}
     </aside>
+
+    <section class="campaign-main">
+        {% if can_manage_campaigns %}
+        <section class="campaign-library">
+            <div class="campaign-library-head">
+                <div>
+                    <div class="campaign-library-title">{{ t('campaigns_media_label') }}</div>
+                    <div class="campaign-library-sub">{{ t('campaigns_media_library_sub') }}</div>
+                </div>
+            </div>
+            <div class="campaign-media-picker" data-media-picker
+                 data-visible-singular="{{ t('campaigns_media_count_visible_singular', n='__N__') }}"
+                 data-visible-plural="{{ t('campaigns_media_count_visible_plural', n='__N__') }}"
+                data-selected-visible-singular="{{ t('campaigns_media_count_selected_visible_singular', selected='__S__', visible='__V__') }}"
+                 data-selected-visible-plural="{{ t('campaigns_media_count_selected_visible_plural', selected='__S__', visible='__V__') }}">
+                <div class="campaign-media-toolbar">
+                    <div class="campaign-search-box">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        <input id="new-campaign-media" type="search" class="campaign-media-search" placeholder="{{ t('campaigns_media_search_placeholder') }}" data-media-search>
+                    </div>
+                    <div class="campaign-media-count" data-media-count></div>
+                </div>
+                <div class="campaign-media-grid">
+                    {% for media in media_items %}
+                    <label class="campaign-media-card" data-media-card data-media-name="{{ media.filename|lower }}">
+                        <input type="checkbox" name="media" value="{{ media.filename }}" form="campaign-create-form" data-media-checkbox>
+                        <span class="campaign-media-thumb-wrap">
+                            <span class="campaign-media-checkmark">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width:13px;height:13px"><polyline points="20 6 9 17 4 12"/></svg>
+                            </span>
+                            {% if media.type == 'video' %}
+                            <img class="campaign-media-video" src="{{ media.preview_url }}" alt="{{ media.filename }}" loading="lazy">
+                            <span class="campaign-media-type">{{ t('campaigns_media_type_video') }}</span>
+                            {% else %}
+                            <img class="campaign-media-thumb" src="{{ media.preview_url }}" alt="{{ media.filename }}" loading="lazy">
+                            <span class="campaign-media-type">{{ t('campaigns_media_type_image') }}</span>
+                            {% endif %}
+                        </span>
+                        <span class="campaign-media-body">
+                            <span class="campaign-media-name">{{ media.filename }}</span>
+                            <span class="campaign-media-meta">{{ media.size }} · {{ media.dims }}</span>
+                        </span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+        {% endif %}
 
     <section class="campaign-list">
         {% if campaigns %}
@@ -185,6 +263,26 @@
                     {% endfor %}
                 </div>
 
+                {% if campaign.media %}
+                <div class="campaign-media-summary">
+                    {% for filename in campaign.media %}
+                        {% set media = media_map.get(filename) %}
+                        {% if media %}
+                        <div class="campaign-media-summary-item">
+                            <div class="campaign-media-summary-thumb-wrap">
+                                {% if media.type == 'video' %}
+                                <img class="campaign-media-summary-video" src="{{ media.preview_url }}" alt="{{ media.filename }}" loading="lazy">
+                                {% else %}
+                                <img class="campaign-media-summary-thumb" src="{{ media.preview_url }}" alt="{{ media.filename }}" loading="lazy">
+                                {% endif %}
+                            </div>
+                            <div class="campaign-media-summary-name">{{ media.filename }}</div>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                {% endif %}
+
                 <div class="campaign-actions">
                     {% if can_manage_campaigns %}
                     {% if not campaign.archived %}
@@ -226,6 +324,7 @@
                         <div class="campaign-field">
                             <label for="campaign-priority-{{ campaign.id }}">{{ t('campaigns_priority_label') }}</label>
                             <input id="campaign-priority-{{ campaign.id }}" type="number" name="priority" min="1" max="999" value="{{ campaign.priority }}">
+                            <div class="campaign-inline-help">{{ t('campaigns_priority_field_help') }}</div>
                         </div>
                         <label class="campaign-check" style="align-self:end">
                             <input type="checkbox" name="enabled" value="1" {% if campaign.enabled %}checked{% endif %}>
@@ -249,11 +348,40 @@
                     </div>
                     <div class="campaign-field">
                         <label for="campaign-media-{{ campaign.id }}">{{ t('campaigns_media_label') }}</label>
-                        <select id="campaign-media-{{ campaign.id }}" name="media" class="campaign-select" multiple>
-                            {% for filename in media_choices %}
-                            <option value="{{ filename }}" {% if filename in campaign.media %}selected{% endif %}>{{ filename }}</option>
-                            {% endfor %}
-                        </select>
+                        <div class="campaign-media-picker" data-media-picker
+                             data-visible-singular="{{ t('campaigns_media_count_visible_singular', n='__N__') }}"
+                             data-visible-plural="{{ t('campaigns_media_count_visible_plural', n='__N__') }}"
+                             data-selected-visible-singular="{{ t('campaigns_media_count_selected_visible_singular', selected='__S__', visible='__V__') }}"
+                             data-selected-visible-plural="{{ t('campaigns_media_count_selected_visible_plural', selected='__S__', visible='__V__') }}">
+                            <div class="campaign-search-box">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                <input id="campaign-media-{{ campaign.id }}" type="search" class="campaign-media-search" placeholder="{{ t('campaigns_media_search_placeholder') }}" data-media-search>
+                            </div>
+                            <div class="campaign-media-count" data-media-count></div>
+                            <div class="campaign-media-grid">
+                                {% for media in media_items %}
+                                <label class="campaign-media-card {% if media.filename in campaign.media %}selected{% endif %}" data-media-card data-media-name="{{ media.filename|lower }}">
+                                    <input type="checkbox" name="media" value="{{ media.filename }}" data-media-checkbox {% if media.filename in campaign.media %}checked{% endif %}>
+                                    <span class="campaign-media-thumb-wrap">
+                                        <span class="campaign-media-checkmark">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width:13px;height:13px"><polyline points="20 6 9 17 4 12"/></svg>
+                                        </span>
+                                        {% if media.type == 'video' %}
+                                        <img class="campaign-media-video" src="{{ media.preview_url }}" alt="{{ media.filename }}" loading="lazy">
+                                        <span class="campaign-media-type">{{ t('campaigns_media_type_video') }}</span>
+                                        {% else %}
+                                        <img class="campaign-media-thumb" src="{{ media.preview_url }}" alt="{{ media.filename }}" loading="lazy">
+                                        <span class="campaign-media-type">{{ t('campaigns_media_type_image') }}</span>
+                                        {% endif %}
+                                    </span>
+                                    <span class="campaign-media-body">
+                                        <span class="campaign-media-name">{{ media.filename }}</span>
+                                        <span class="campaign-media-meta">{{ media.size }} · {{ media.dims }}</span>
+                                    </span>
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
                     </div>
                     <button type="submit" class="btn">{{ t('campaigns_save_cta') }}</button>
                 </form>
@@ -266,5 +394,58 @@
         </div>
         {% endif %}
     </section>
+    </section>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('[data-media-picker]').forEach((picker) => {
+    const search = picker.querySelector('[data-media-search]');
+    const cards = Array.from(picker.querySelectorAll('[data-media-card]'));
+    const count = picker.querySelector('[data-media-count]');
+    const format = (template, values) => Object.entries(values).reduce(
+        (result, [key, value]) => result.replaceAll(key, String(value)),
+        template
+    );
+
+    const sync = () => {
+        const query = (search?.value || '').trim().toLowerCase();
+        let visible = 0;
+        let selected = 0;
+
+        cards.forEach((card) => {
+            const checkbox = card.querySelector('[data-media-checkbox]');
+            const matches = !query || card.dataset.mediaName.includes(query);
+            card.classList.toggle('hidden', !matches);
+            card.classList.toggle('selected', !!checkbox?.checked);
+            if (matches) {
+                visible += 1;
+            }
+            if (checkbox?.checked) {
+                selected += 1;
+            }
+        });
+
+        if (count) {
+            count.textContent = selected
+                ? format(
+                    selected > 1 ? picker.dataset.selectedVisiblePlural : picker.dataset.selectedVisibleSingular,
+                    {'__S__': selected, '__V__': visible}
+                )
+                : format(
+                    visible > 1 ? picker.dataset.visiblePlural : picker.dataset.visibleSingular,
+                    {'__N__': visible}
+                );
+        }
+    };
+
+    cards.forEach((card) => {
+        const checkbox = card.querySelector('[data-media-checkbox]');
+        checkbox?.addEventListener('change', sync);
+    });
+    search?.addEventListener('input', sync);
+    sync();
+});
+</script>
 {% endblock %}

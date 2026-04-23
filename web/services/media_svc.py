@@ -12,10 +12,40 @@ from PIL import Image
 from unidecode import unidecode
 
 from constants import (
-    UPLOAD_FOLDER, IMAGES_FOLDER, DEFAULT_LOGO,
-    IMAGE_EXTS, VIDEO_EXTS, MEDIA_EXTS,
+    UPLOAD_FOLDER, VIDEO_THUMB_FOLDER, IMAGE_VARIANT_FOLDER, VIDEO_VARIANT_FOLDER, VIDEO_POSTER_FOLDER,
+    IMAGES_FOLDER, DEFAULT_LOGO,
+    IMAGE_EXTS, VIDEO_EXTS, MEDIA_EXTS, ORIGINAL_MEDIA_URL,
 )
 from services.config_svc import load_config
+
+THUMB_SIZE = (480, 270)
+MAX_VARIANT_WIDTH = 3840
+MAX_VARIANT_HEIGHT = 3840
+IMAGE_RENDITION_PROFILES = {
+    'thumb': {'max_width': 320, 'max_height': 320, 'quality': 82},
+    'small': {'max_width': 640, 'max_height': 640, 'quality': 84},
+    'medium': {'max_width': 1280, 'max_height': 1280, 'quality': 85},
+    'large': {'max_width': 1920, 'max_height': 1920, 'quality': 86},
+    'xlarge': {'max_width': 2560, 'max_height': 2560, 'quality': 88},
+}
+VIDEO_POSTER_PROFILES = {
+    'thumb': {'width': 320, 'height': 180},
+    'small': {'width': 640, 'height': 360},
+    'medium': {'width': 1280, 'height': 720},
+    'large': {'width': 1920, 'height': 1080},
+}
+VIDEO_RENDITION_PROFILES = {
+    'v720': {'width': 1280, 'height': 720, 'video_bitrate': '2500k', 'audio_bitrate': '128k'},
+    'v1080': {'width': 1920, 'height': 1080, 'video_bitrate': '5000k', 'audio_bitrate': '160k'},
+    'v1440': {'width': 2560, 'height': 1440, 'video_bitrate': '9000k', 'audio_bitrate': '192k'},
+    'v2160': {'width': 3840, 'height': 2160, 'video_bitrate': '16000k', 'audio_bitrate': '192k'},
+}
+DEFAULT_CONTEXTS = {
+    'admin': {'image_profile': 'thumb', 'video_poster_profile': 'thumb', 'video_profile': 'v720'},
+    'campaign': {'image_profile': 'small', 'video_poster_profile': 'small', 'video_profile': 'v720'},
+    'preview': {'image_profile': 'medium', 'video_poster_profile': 'medium', 'video_profile': 'v1080'},
+    'display': {'image_profile': 'large', 'video_poster_profile': 'large', 'video_profile': 'v1080'},
+}
 
 
 def strip_html(text):
@@ -48,6 +78,626 @@ def is_valid_uploaded_image(path):
         return True
     except Exception:
         return False
+
+
+def get_media_type(filename):
+    ext = os.path.splitext(filename)[1].lower()
+    if ext in IMAGE_EXTS:
+        return 'image'
+    if ext in VIDEO_EXTS:
+        return 'video'
+    return 'unknown'
+
+
+def get_image_profile_names():
+    return list(IMAGE_RENDITION_PROFILES.keys())
+
+
+def get_video_poster_profile_names():
+    return list(VIDEO_POSTER_PROFILES.keys())
+
+
+def get_video_profile_names():
+    return list(VIDEO_RENDITION_PROFILES.keys())
+
+
+def get_thumbnail_name(filename):
+    stem, ext = os.path.splitext(os.path.basename(filename))
+    suffix = ext[1:].lower() if ext else 'file'
+    return f'{stem}__{suffix}.jpg'
+
+
+def _normalize_variant_bounds(width, height):
+    try:
+        width = int(width)
+        height = int(height)
+    except (TypeError, ValueError):
+        return None
+    if width <= 0 or height <= 0:
+        return None
+    width = max(320, min(width, MAX_VARIANT_WIDTH))
+    height = max(180, min(height, MAX_VARIANT_HEIGHT))
+    return width, height
+
+
+def _normalize_dimension(value):
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return 0
+    return max(0, parsed)
+
+
+def get_image_variant_name(filename, width, height):
+    stem, ext = os.path.splitext(os.path.basename(filename))
+    suffix = ext[1:].lower() if ext else 'file'
+    return f'{stem}__{suffix}__{width}x{height}.jpg'
+
+
+def get_image_rendition_name(filename, profile_name):
+    stem, ext = os.path.splitext(os.path.basename(filename))
+    suffix = ext[1:].lower() if ext else 'file'
+    return f'{stem}__{suffix}__{profile_name}.jpg'
+
+
+def get_image_variant_path(filename, width, height):
+    return os.path.join(IMAGE_VARIANT_FOLDER, get_image_variant_name(filename, width, height))
+
+
+def get_image_rendition_path(filename, profile_name):
+    return os.path.join(IMAGE_VARIANT_FOLDER, get_image_rendition_name(filename, profile_name))
+
+
+def _url_for_existing_path(pathname, url_prefix, filename):
+    if os.path.exists(pathname):
+        cache_bust = int(os.path.getmtime(pathname))
+        return f'{url_prefix}/{filename}?v={cache_bust}'
+    return None
+
+
+def get_original_media_url(filename):
+    source_path = os.path.join(UPLOAD_FOLDER, filename)
+    if not os.path.exists(source_path):
+        return None
+    cache_bust = int(os.path.getmtime(source_path))
+    return f'{ORIGINAL_MEDIA_URL}/{filename}?v={cache_bust}'
+
+
+def get_image_variant_url(filename, width, height):
+    rendition_name = get_image_variant_name(filename, width, height)
+    return _url_for_existing_path(
+        get_image_variant_path(filename, width, height),
+        '/static/data/variants',
+        rendition_name,
+    )
+
+
+def get_image_rendition_url(filename, profile_name):
+    rendition_name = get_image_rendition_name(filename, profile_name)
+    return _url_for_existing_path(
+        get_image_rendition_path(filename, profile_name),
+        '/static/data/variants',
+        rendition_name,
+    )
+
+
+def get_existing_image_rendition_url(filename, profile_name):
+    return get_image_rendition_url(filename, profile_name)
+
+
+def get_thumbnail_path(filename):
+    return os.path.join(VIDEO_THUMB_FOLDER, get_thumbnail_name(filename))
+
+
+def get_thumbnail_url(filename):
+    thumb_name = get_thumbnail_name(filename)
+    return _url_for_existing_path(
+        get_thumbnail_path(filename),
+        '/static/data/thumbnails',
+        thumb_name,
+    )
+
+
+def get_existing_thumbnail_url(filename):
+    return get_thumbnail_url(filename)
+
+
+def get_video_poster_name(filename, profile_name):
+    stem, ext = os.path.splitext(os.path.basename(filename))
+    suffix = ext[1:].lower() if ext else 'file'
+    return f'{stem}__{suffix}__{profile_name}.jpg'
+
+
+def get_video_poster_path(filename, profile_name):
+    return os.path.join(VIDEO_POSTER_FOLDER, get_video_poster_name(filename, profile_name))
+
+
+def get_video_poster_url(filename, profile_name):
+    poster_name = get_video_poster_name(filename, profile_name)
+    return _url_for_existing_path(
+        get_video_poster_path(filename, profile_name),
+        '/static/data/video_posters',
+        poster_name,
+    )
+
+
+def get_existing_video_poster_url(filename, profile_name):
+    return get_video_poster_url(filename, profile_name)
+
+
+def get_video_variant_name(filename, profile_name):
+    stem, _ext = os.path.splitext(os.path.basename(filename))
+    return f'{stem}__{profile_name}.mp4'
+
+
+def get_video_variant_path(filename, profile_name):
+    return os.path.join(VIDEO_VARIANT_FOLDER, get_video_variant_name(filename, profile_name))
+
+
+def get_video_variant_url(filename, profile_name):
+    variant_name = get_video_variant_name(filename, profile_name)
+    return _url_for_existing_path(
+        get_video_variant_path(filename, profile_name),
+        '/static/data/video_variants',
+        variant_name,
+    )
+
+
+def get_existing_video_variant_url(filename, profile_name):
+    return get_video_variant_url(filename, profile_name)
+
+
+def delete_media_thumbnail(filename):
+    thumb_path = get_thumbnail_path(filename)
+    if os.path.exists(thumb_path):
+        try:
+            os.remove(thumb_path)
+        except OSError:
+            pass
+
+
+def delete_image_variants(filename):
+    stem, ext = os.path.splitext(os.path.basename(filename))
+    suffix = ext[1:].lower() if ext else 'file'
+    prefix = f'{stem}__{suffix}__'
+    if not os.path.isdir(IMAGE_VARIANT_FOLDER):
+        return
+    for entry in os.listdir(IMAGE_VARIANT_FOLDER):
+        if entry.startswith(prefix):
+            try:
+                os.remove(os.path.join(IMAGE_VARIANT_FOLDER, entry))
+            except OSError:
+                pass
+
+
+def delete_video_variants(filename):
+    stem = os.path.splitext(os.path.basename(filename))[0]
+    prefixes = [f'{stem}__']
+    for folder in (VIDEO_VARIANT_FOLDER, VIDEO_POSTER_FOLDER):
+        if not os.path.isdir(folder):
+            continue
+        for entry in os.listdir(folder):
+            if not any(entry.startswith(prefix) for prefix in prefixes):
+                continue
+            try:
+                os.remove(os.path.join(folder, entry))
+            except OSError:
+                pass
+
+
+def _fit_and_pad_thumbnail(img):
+    frame = img.convert('RGB')
+    frame.thumbnail(THUMB_SIZE, Image.Resampling.LANCZOS)
+    canvas = Image.new('RGB', THUMB_SIZE, 'black')
+    offset = ((THUMB_SIZE[0] - frame.width) // 2, (THUMB_SIZE[1] - frame.height) // 2)
+    canvas.paste(frame, offset)
+    return canvas
+
+
+def _thumbnail_to_fit(img, width, height):
+    frame = img.convert('RGB')
+    frame.thumbnail((width, height), Image.Resampling.LANCZOS)
+    return frame
+
+
+def generate_image_thumbnail(source_path, filename):
+    os.makedirs(VIDEO_THUMB_FOLDER, exist_ok=True)
+    thumb_path = get_thumbnail_path(filename)
+    try:
+        with Image.open(source_path) as img:
+            _fit_and_pad_thumbnail(img).save(thumb_path, 'JPEG', quality=82, optimize=True)
+        return thumb_path
+    except Exception:
+        return None
+
+
+def generate_image_rendition(source_path, filename, profile_name):
+    profile = IMAGE_RENDITION_PROFILES.get(profile_name)
+    if not profile:
+        return None
+    os.makedirs(IMAGE_VARIANT_FOLDER, exist_ok=True)
+    rendition_path = get_image_rendition_path(filename, profile_name)
+    try:
+        with Image.open(source_path) as img:
+            frame = _thumbnail_to_fit(img, profile['max_width'], profile['max_height'])
+            frame.save(
+                rendition_path,
+                'JPEG',
+                quality=profile.get('quality', 86),
+                optimize=True,
+            )
+        return rendition_path
+    except Exception:
+        return None
+
+
+def generate_image_variant(source_path, filename, width, height):
+    bounds = _normalize_variant_bounds(width, height)
+    if not bounds:
+        return None
+    width, height = bounds
+    os.makedirs(IMAGE_VARIANT_FOLDER, exist_ok=True)
+    variant_path = get_image_variant_path(filename, width, height)
+    try:
+        with Image.open(source_path) as img:
+            frame = img.convert('RGB')
+            frame.thumbnail((width, height), Image.Resampling.LANCZOS)
+            frame.save(variant_path, 'JPEG', quality=86, optimize=True)
+        return variant_path
+    except Exception:
+        return None
+
+
+def generate_video_thumbnail(source_path, filename):
+    os.makedirs(VIDEO_THUMB_FOLDER, exist_ok=True)
+    thumb_path = get_thumbnail_path(filename)
+    try:
+        subprocess.run([
+            'ffmpeg', '-y',
+            '-i', source_path,
+            '-vf', 'thumbnail,scale=480:270:force_original_aspect_ratio=decrease,pad=480:270:(ow-iw)/2:(oh-ih)/2:black',
+            '-frames:v', '1',
+            '-q:v', '5',
+            thumb_path,
+        ], capture_output=True, check=True)
+        return thumb_path
+    except Exception:
+        return None
+
+
+def generate_video_poster(source_path, filename, profile_name):
+    profile = VIDEO_POSTER_PROFILES.get(profile_name)
+    if not profile:
+        return None
+    os.makedirs(VIDEO_POSTER_FOLDER, exist_ok=True)
+    poster_path = get_video_poster_path(filename, profile_name)
+    filter_expr = (
+        'thumbnail,'
+        f'scale={profile["width"]}:{profile["height"]}:force_original_aspect_ratio=decrease,'
+        f'pad={profile["width"]}:{profile["height"]}:(ow-iw)/2:(oh-ih)/2:black'
+    )
+    try:
+        subprocess.run([
+            'ffmpeg', '-y',
+            '-i', source_path,
+            '-vf', filter_expr,
+            '-frames:v', '1',
+            '-q:v', '5',
+            poster_path,
+        ], capture_output=True, check=True)
+        return poster_path
+    except Exception:
+        return None
+
+
+def generate_video_variant(source_path, filename, profile_name):
+    profile = VIDEO_RENDITION_PROFILES.get(profile_name)
+    if not profile:
+        return None
+    os.makedirs(VIDEO_VARIANT_FOLDER, exist_ok=True)
+    variant_path = get_video_variant_path(filename, profile_name)
+    scale_expr = (
+        f'scale=w=min(iw\\,{profile["width"]}):h=min(ih\\,{profile["height"]}):'
+        'force_original_aspect_ratio=decrease'
+    )
+    try:
+        subprocess.run([
+            'ffmpeg', '-y',
+            '-i', source_path,
+            '-vf', scale_expr,
+            '-c:v', 'libx264',
+            '-preset', 'medium',
+            '-profile:v', 'high',
+            '-pix_fmt', 'yuv420p',
+            '-movflags', '+faststart',
+            '-b:v', profile['video_bitrate'],
+            '-maxrate', profile['video_bitrate'],
+            '-bufsize', str(int(profile['video_bitrate'][:-1]) * 2) + 'k',
+            '-c:a', 'aac',
+            '-b:a', profile['audio_bitrate'],
+            variant_path,
+        ], capture_output=True, check=True)
+        return variant_path
+    except Exception:
+        return None
+
+
+def ensure_image_thumbnail(filename):
+    source_path = os.path.join(UPLOAD_FOLDER, filename)
+    if not os.path.exists(source_path):
+        return None
+    thumb_url = get_thumbnail_url(filename)
+    if thumb_url:
+        return thumb_url
+    if generate_image_thumbnail(source_path, filename):
+        return get_thumbnail_url(filename)
+    return None
+
+
+def ensure_image_rendition(filename, profile_name):
+    if profile_name not in IMAGE_RENDITION_PROFILES:
+        return None
+    source_path = os.path.join(UPLOAD_FOLDER, filename)
+    if not os.path.exists(source_path):
+        return None
+    rendition_url = get_image_rendition_url(filename, profile_name)
+    if rendition_url:
+        return rendition_url
+    if generate_image_rendition(source_path, filename, profile_name):
+        return get_image_rendition_url(filename, profile_name)
+    return None
+
+
+def ensure_image_variant(filename, width, height):
+    bounds = _normalize_variant_bounds(width, height)
+    if not bounds:
+        return None
+    width, height = bounds
+    source_path = os.path.join(UPLOAD_FOLDER, filename)
+    if not os.path.exists(source_path):
+        return None
+    variant_url = get_image_variant_url(filename, width, height)
+    if variant_url:
+        return variant_url
+    if generate_image_variant(source_path, filename, width, height):
+        return get_image_variant_url(filename, width, height)
+    return None
+
+
+def ensure_video_thumbnail(filename):
+    source_path = os.path.join(UPLOAD_FOLDER, filename)
+    if not os.path.exists(source_path):
+        return None
+    thumb_url = get_thumbnail_url(filename)
+    if thumb_url:
+        return thumb_url
+    if generate_video_thumbnail(source_path, filename):
+        return get_thumbnail_url(filename)
+    return None
+
+
+def ensure_video_poster(filename, profile_name):
+    if profile_name not in VIDEO_POSTER_PROFILES:
+        return None
+    source_path = os.path.join(UPLOAD_FOLDER, filename)
+    if not os.path.exists(source_path):
+        return None
+    poster_url = get_video_poster_url(filename, profile_name)
+    if poster_url:
+        return poster_url
+    if generate_video_poster(source_path, filename, profile_name):
+        return get_video_poster_url(filename, profile_name)
+    return None
+
+
+def ensure_video_variant(filename, profile_name):
+    if profile_name not in VIDEO_RENDITION_PROFILES:
+        return None
+    source_path = os.path.join(UPLOAD_FOLDER, filename)
+    if not os.path.exists(source_path):
+        return None
+    variant_url = get_video_variant_url(filename, profile_name)
+    if variant_url:
+        return variant_url
+    if generate_video_variant(source_path, filename, profile_name):
+        return get_video_variant_url(filename, profile_name)
+    return None
+
+
+def get_image_dimensions(filename):
+    source_path = os.path.join(UPLOAD_FOLDER, filename)
+    if not os.path.exists(source_path):
+        return 0, 0
+    try:
+        with Image.open(source_path) as img:
+            return _normalize_dimension(img.width), _normalize_dimension(img.height)
+    except Exception:
+        return 0, 0
+
+
+def get_video_dimensions(filename):
+    source_path = os.path.join(UPLOAD_FOLDER, filename)
+    if not os.path.exists(source_path):
+        return 0, 0
+    try:
+        result = subprocess.run([
+            'ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_streams', source_path
+        ], capture_output=True, text=True, check=True)
+        info = json.loads(result.stdout)
+        for stream in info.get('streams', []):
+            if stream.get('codec_type') != 'video':
+                continue
+            return (
+                _normalize_dimension(stream.get('width')),
+                _normalize_dimension(stream.get('height')),
+            )
+    except Exception:
+        return 0, 0
+    return 0, 0
+
+
+def _eligible_image_profiles(filename):
+    width, height = get_image_dimensions(filename)
+    if width <= 0 or height <= 0:
+        return []
+    eligible = []
+    longest_edge = max(width, height)
+    for profile_name, profile in IMAGE_RENDITION_PROFILES.items():
+        if longest_edge >= min(profile['max_width'], profile['max_height']):
+            eligible.append(profile_name)
+    return eligible or ['thumb']
+
+
+def _eligible_video_profiles(filename):
+    width, height = get_video_dimensions(filename)
+    if width <= 0 or height <= 0:
+        return ['v720']
+    eligible = []
+    longest_edge = max(width, height)
+    for profile_name, profile in VIDEO_RENDITION_PROFILES.items():
+        if longest_edge >= min(profile['width'], profile['height']):
+            eligible.append(profile_name)
+    return eligible or ['v720']
+
+
+def generate_standard_image_renditions(filename, *, force=False):
+    source_path = os.path.join(UPLOAD_FOLDER, filename)
+    if not os.path.exists(source_path):
+        return []
+    generated = []
+    if force or not get_thumbnail_url(filename):
+        if generate_image_thumbnail(source_path, filename):
+            generated.append('legacy-thumb')
+    for profile_name in _eligible_image_profiles(filename):
+        if not force and get_existing_image_rendition_url(filename, profile_name):
+            continue
+        if generate_image_rendition(source_path, filename, profile_name):
+            generated.append(profile_name)
+    return generated
+
+
+def generate_standard_video_renditions(filename, *, force=False):
+    source_path = os.path.join(UPLOAD_FOLDER, filename)
+    if not os.path.exists(source_path):
+        return []
+    generated = []
+    if force or not get_existing_thumbnail_url(filename):
+        if generate_video_thumbnail(source_path, filename):
+            generated.append('legacy-thumb')
+    for profile_name in get_video_poster_profile_names():
+        if not force and get_existing_video_poster_url(filename, profile_name):
+            continue
+        if generate_video_poster(source_path, filename, profile_name):
+            generated.append(f'poster:{profile_name}')
+    for profile_name in _eligible_video_profiles(filename):
+        if not force and get_existing_video_variant_url(filename, profile_name):
+            continue
+        if generate_video_variant(source_path, filename, profile_name):
+            generated.append(profile_name)
+    return generated
+
+
+def generate_standard_renditions(filename, *, force=False):
+    media_type = get_media_type(filename)
+    if media_type == 'image':
+        return generate_standard_image_renditions(filename, force=force)
+    if media_type == 'video':
+        return generate_standard_video_renditions(filename, force=force)
+    return []
+
+
+def _pick_image_profile(context='admin', bounds=None):
+    if context == 'display' and bounds:
+        target = max(bounds[0], bounds[1])
+        if target <= 320:
+            return 'thumb'
+        if target <= 640:
+            return 'small'
+        if target <= 1280:
+            return 'medium'
+        if target <= 1920:
+            return 'large'
+        return 'xlarge'
+    return DEFAULT_CONTEXTS.get(context, DEFAULT_CONTEXTS['admin'])['image_profile']
+
+
+def _pick_video_profile(context='admin', bounds=None):
+    if context == 'display' and bounds:
+        target = max(bounds[0], bounds[1])
+        if target <= 1280:
+            return 'v720'
+        if target <= 1920:
+            return 'v1080'
+        if target <= 2560:
+            return 'v1440'
+        return 'v2160'
+    return DEFAULT_CONTEXTS.get(context, DEFAULT_CONTEXTS['admin'])['video_profile']
+
+
+def _pick_video_poster_profile(context='admin', bounds=None):
+    if context == 'display' and bounds:
+        image_profile = _pick_image_profile(context=context, bounds=bounds)
+        return 'large' if image_profile in ('large', 'xlarge') else image_profile
+    return DEFAULT_CONTEXTS.get(context, DEFAULT_CONTEXTS['admin'])['video_poster_profile']
+
+def get_media_url(filename, *, context='admin', bounds=None, allow_original=False, generate_missing=False):
+    try:
+        media_type = get_media_type(filename)
+        if media_type == 'image':
+            profile_name = _pick_image_profile(context=context, bounds=bounds)
+            image_url = (
+                ensure_image_rendition(filename, profile_name)
+                if generate_missing else
+                get_existing_image_rendition_url(filename, profile_name)
+            )
+            if image_url:
+                return image_url
+            legacy_thumb = ensure_image_thumbnail(filename) if generate_missing else get_existing_thumbnail_url(filename)
+            return get_original_media_url(filename) if allow_original else legacy_thumb
+        if media_type == 'video':
+            if context in ('admin', 'campaign'):
+                poster_profile = _pick_video_poster_profile(context=context, bounds=bounds)
+                poster_url = (
+                    ensure_video_poster(filename, poster_profile)
+                    if generate_missing else
+                    get_existing_video_poster_url(filename, poster_profile)
+                )
+                if poster_url:
+                    return poster_url
+                legacy_thumb = ensure_video_thumbnail(filename) if generate_missing else get_existing_thumbnail_url(filename)
+                return legacy_thumb or ('/static/images/logo.svg' if not allow_original else get_original_media_url(filename))
+            video_profile = _pick_video_profile(context=context, bounds=bounds)
+            video_url = (
+                ensure_video_variant(filename, video_profile)
+                if generate_missing else
+                get_existing_video_variant_url(filename, video_profile)
+            )
+            if video_url:
+                return video_url
+            if allow_original:
+                return get_original_media_url(filename)
+            return get_existing_thumbnail_url(filename)
+        return get_original_media_url(filename) if allow_original else None
+    except Exception:
+        if get_media_type(filename) == 'video':
+            legacy_thumb = ensure_video_thumbnail(filename) if generate_missing else get_existing_thumbnail_url(filename)
+            return legacy_thumb or ('/static/images/logo.svg' if not allow_original else get_original_media_url(filename))
+        if get_media_type(filename) == 'image':
+            legacy_thumb = ensure_image_thumbnail(filename) if generate_missing else get_existing_thumbnail_url(filename)
+            return legacy_thumb or (get_original_media_url(filename) if allow_original else None)
+        return get_original_media_url(filename) if allow_original else None
+
+
+def build_media_preview_map(files, context='admin'):
+    previews = {}
+    for filename in files:
+        previews[filename] = get_media_url(
+            filename,
+            context=context,
+            allow_original=True,
+            generate_missing=True,
+        ) or get_original_media_url(filename)
+    return previews
 
 
 def is_safe_svg_file(path):

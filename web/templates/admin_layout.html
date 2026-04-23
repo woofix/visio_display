@@ -491,10 +491,12 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
             {{ t('nav_programming') }}
         </a>
         {% endif %}
+        {% if has_permission('upload') and is_feature_enabled('upload') %}
         <a href="/admin/upload" class="nav-item {% if path == '/admin/upload' %}active{% endif %}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
             {{ t('nav_upload') }}
         </a>
+        {% endif %}
         <a href="/admin/queue" class="nav-item {% if path == '/admin/queue' %}active{% endif %}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
             {{ t('nav_queue') }}
@@ -524,14 +526,18 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20"/><path d="M2 12h10"/></svg>
                 {{ t('nav_theme') }}
             </a>
+            <a href="/admin/settings?tab=application" class="nav-item nav-subitem {% if path == '/admin/settings' and (tab|default('logo')) == 'application' %}active{% endif %}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+                {{ t('nav_application') }}
+            </a>
             {% if current_user_is_superadmin %}
             <a href="/admin/settings?tab=installation" class="nav-item nav-subitem {% if path == '/admin/settings' and (tab|default('logo')) == 'installation' %}active{% endif %}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 {{ t('nav_installation') }}
             </a>
-            <a href="/admin/settings?tab=application" class="nav-item nav-subitem {% if path == '/admin/settings' and (tab|default('logo')) == 'application' %}active{% endif %}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
-                {{ t('nav_application') }}
+            <a href="/admin/settings?tab=sauvegardes" class="nav-item nav-subitem {% if path == '/admin/settings' and (tab|default('logo')) == 'sauvegardes' %}active{% endif %}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="3" x2="12" y2="15"/><path d="M5 7h14"/></svg>
+                {{ t('nav_backups') }}
             </a>
             <a href="/admin/settings?tab=meteo" class="nav-item nav-subitem {% if path == '/admin/settings' and (tab|default('logo')) == 'meteo' %}active{% endif %}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/></svg>
@@ -608,14 +614,6 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
         </div>
         <div class="topbar-right">
             {% block topbar_actions %}{% endblock %}
-
-            {% if has_permission('ephemeris') and is_feature_enabled('ephemeris') %}
-            <button class="btn-icon btn-warn" id="btn-regen" title="{{ t('btn_ephemeris') }}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            </button>
-            <span id="regen-ok" style="font-size:.78rem;color:var(--green);display:none;font-weight:600">✓</span>
-            <div class="topbar-vsep"></div>
-            {% endif %}
 
             <div class="user-menu-wrap">
                 <button class="user-menu-btn" id="user-menu-btn">
@@ -780,22 +778,6 @@ document.getElementById('modal-close').addEventListener('click', () => {
 document.getElementById('modal').addEventListener('click', e => {
     if (e.target === e.currentTarget) { document.getElementById('modal-video').pause(); e.currentTarget.classList.remove('open'); }
 });
-
-/* ── Ephemeris ── */
-const regenBtn = document.getElementById('btn-regen');
-if (regenBtn) {
-    regenBtn.addEventListener('click', async function() {
-        this.disabled = true; this.textContent = '…';
-        await fetch('/regen_ephemeride', { method: 'POST' });
-        this.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>`;
-        this.disabled = false;
-        const ok = document.getElementById('regen-ok');
-        if (ok) {
-            ok.style.display = 'inline';
-            setTimeout(() => ok.style.display = 'none', 2500);
-        }
-    });
-}
 
 /* ── Queue badge (global) ── */
 async function updateQueueBadge() {

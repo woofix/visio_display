@@ -4,14 +4,34 @@
 import logging
 import time
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import constants as C
 from db import db, ActivityLog
+from services.config_svc import load_config
 
 
 LOGGER = logging.getLogger(__name__)
 _last_cleanup_ts = 0.0
 _last_vacuum_ts = 0.0
+
+
+def _get_activity_timezone():
+    cfg = load_config()
+    tz_name = str(cfg.get('meteo_tz') or C.DEFAULT_METEO_TZ).strip() or C.DEFAULT_METEO_TZ
+    try:
+        return ZoneInfo(tz_name)
+    except ZoneInfoNotFoundError:
+        LOGGER.warning("Unknown activity log timezone '%s', falling back to %s", tz_name, C.DEFAULT_METEO_TZ)
+        return ZoneInfo(C.DEFAULT_METEO_TZ)
+
+
+def _format_activity_timestamp(timestamp):
+    try:
+        utc_dt = datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%S').replace(tzinfo=timezone.utc)
+    except (TypeError, ValueError):
+        return timestamp
+    return utc_dt.astimezone(_get_activity_timezone()).strftime('%Y-%m-%d %H:%M:%S')
 
 
 def log_config_change(username, details, *, filename=None):
@@ -109,4 +129,9 @@ def get_activity_log(limit=200):
             .order_by(ActivityLog.id.desc())
             .limit(limit)
             .all())
-    return [r.to_dict() for r in rows]
+    entries = []
+    for row in rows:
+        entry = row.to_dict()
+        entry['timestamp_display'] = _format_activity_timestamp(entry.get('timestamp'))
+        entries.append(entry)
+    return entries

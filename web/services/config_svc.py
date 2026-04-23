@@ -5,10 +5,28 @@ import json
 
 from db import AppConfig, db
 
+DEFAULT_HALO_COLOR = "#8a2be2"
+
 
 def normalize_default_screen_name(value):
     cleaned = " ".join(str(value or "").split())
     return cleaned[:48]
+
+
+def normalize_halo_color(value, fallback=DEFAULT_HALO_COLOR):
+    raw = str(value or "").strip().lower()
+    if raw.startswith("#"):
+        raw = raw[1:]
+    if len(raw) == 3 and all(ch in "0123456789abcdef" for ch in raw):
+        raw = "".join(ch * 2 for ch in raw)
+    if len(raw) == 6 and all(ch in "0123456789abcdef" for ch in raw):
+        return f"#{raw}"
+    return fallback
+
+
+def halo_color_to_rgb(color):
+    normalized = normalize_halo_color(color)
+    return ", ".join(str(int(normalized[idx:idx + 2], 16)) for idx in (1, 3, 5))
 
 
 def get_default_screen_name(cfg=None):
@@ -17,13 +35,14 @@ def get_default_screen_name(cfg=None):
     return custom_name or None
 
 
-def _default_screen_config():
+def _default_screen_config(halo_color=DEFAULT_HALO_COLOR):
     return {
         "order": [],
         "disabled": [],
         "disabled_groups": [],
         "durations": {},
         "schedules": {},
+        "halo_color": normalize_halo_color(halo_color),
     }
 
 
@@ -60,6 +79,7 @@ def _default_config():
         "group_screens": {},
         "disabled_groups": [],
         "default_screen_name": "",
+        "default_halo_color": DEFAULT_HALO_COLOR,
         "screens": {},
         "campaigns": [],
         "client_watchdog": _default_client_watchdog(),
@@ -86,6 +106,8 @@ def normalize_config(cfg):
     ] if isinstance(cfg.get("hidden_recent_jobs"), list) else []
     merged["disabled_groups"] = cfg.get("disabled_groups", []) if isinstance(cfg.get("disabled_groups"), list) else []
     merged["default_screen_name"] = normalize_default_screen_name(cfg.get("default_screen_name", ""))
+    merged["default_halo_color"] = normalize_halo_color(cfg.get("default_halo_color", DEFAULT_HALO_COLOR))
+    default_halo_color = merged["default_halo_color"]
     stored_features = cfg.get("features", {})
     merged["features"] = {**_default_features(), **(stored_features if isinstance(stored_features, dict) else {})}
     stored_watchdog = cfg.get("client_watchdog", {})
@@ -106,9 +128,10 @@ def normalize_config(cfg):
     normalized_screens = {}
     if isinstance(screens, dict):
         for name, screen_cfg in screens.items():
-            base = _default_screen_config()
+            base = _default_screen_config(default_halo_color)
             if isinstance(screen_cfg, dict):
                 base.update(screen_cfg)
+            base["halo_color"] = normalize_halo_color(base.get("halo_color", default_halo_color), default_halo_color)
             normalized_screens[name] = base
     merged["screens"] = normalized_screens
     alert = cfg.get('priority_alert', {})
@@ -135,6 +158,16 @@ def load_config():
 def is_feature_enabled(feature_name):
     cfg = load_config()
     return bool(cfg.get("features", {}).get(feature_name, True))
+
+
+def get_screen_halo_color(screen_name="", cfg=None):
+    cfg = cfg or load_config()
+    default_halo_color = normalize_halo_color(cfg.get("default_halo_color", DEFAULT_HALO_COLOR))
+    screen = str(screen_name or "").strip().lower()
+    if screen:
+        scfg = cfg.get("screens", {}).get(screen, {})
+        return normalize_halo_color(scfg.get("halo_color", default_halo_color), default_halo_color)
+    return default_halo_color
 
 
 def save_config(cfg):

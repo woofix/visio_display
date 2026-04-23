@@ -9,7 +9,6 @@ from __future__ import annotations
 import argparse
 import getpass
 import os
-import sqlite3
 import sys
 from pathlib import Path
 
@@ -18,6 +17,8 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 try:
+    from app import create_app
+    from db import User
     from services.queue_svc import get_redis
     from services.users_svc import set_user_password
 except ModuleNotFoundError:
@@ -30,9 +31,6 @@ except ModuleNotFoundError:
         "Les dépendances Python sont introuvables. Lancez le script avec l'environnement virtuel du projet "
         f"({venv_python}) ou installez les dépendances Python."
     )
-
-from constants import DB_FILE, LEGACY_DB_FILE  # noqa: E402
-
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -56,42 +54,32 @@ def build_parser() -> argparse.ArgumentParser:
         help="Read the new password from standard input instead of prompting interactively.",
     )
     parser.add_argument(
-        "--db",
-        help="Path to the SQLite database file. Defaults to the project database.",
+        "--database-url",
+        help=(
+            "Full SQLAlchemy database URL override. "
+            "Useful for PostgreSQL deployments in Docker."
+        ),
     )
     return parser
 
 
-def resolve_db_path(explicit_path: str | None) -> Path:
-    if explicit_path:
-        db_path = Path(explicit_path).expanduser()
-        if not db_path.is_absolute():
-            db_path = Path.cwd() / db_path
-        return db_path
+def configure_database_env(database_url: str | None) -> str:
+    if database_url:
+        os.environ["DATABASE_URL"] = database_url
+        return database_url
 
-    candidates = [
-        ROOT_DIR / DB_FILE,
-        ROOT_DIR / LEGACY_DB_FILE,
-    ]
-    for candidate in candidates:
-        if candidate.exists():
-            return candidate
-    return candidates[0]
+    current = os.environ.get("DATABASE_URL", "").strip()
+    if current:
+        return current
+
+    raise SystemExit(
+        "DATABASE_URL est obligatoire. Ce projet fonctionne maintenant uniquement avec PostgreSQL."
+    )
 
 
-def connect_db(db_path: Path) -> sqlite3.Connection:
-    if not db_path.exists():
-        raise SystemExit(f"Base de données introuvable : {db_path}")
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
-def list_superadmins(conn: sqlite3.Connection) -> list[str]:
-    rows = conn.execute(
-        "select username from users where superadmin = 1 order by username"
-    ).fetchall()
-    return [row["username"] for row in rows]
+def list_superadmins() -> list[str]:
+    rows = User.query.filter_by(superadmin=True).order_by(User.username).all()
+    return [row.username for row in rows]
 
 
 def resolve_target(requested_user: str | None, superadmins: list[str]) -> str:
@@ -139,14 +127,15 @@ def main() -> int:
     args = parser.parse_args()
 
     os.chdir(ROOT_DIR)
-    db_path = resolve_db_path(args.db)
-    with connect_db(db_path) as conn:
-        superadmins = list_superadmins(conn)
+    database_label = configure_database_env(args.database_url)
+    app = create_app(start_scheduler=False)
+    with app.app_context():
+        superadmins = list_superadmins()
         if args.list:
             if not superadmins:
                 print("Aucun compte super-admin n'existe dans la base.")
             else:
-                print(f"Base : {db_path}")
+                print(f"Base : {database_label}")
                 print("Comptes super-admin :")
                 for username in superadmins:
                     print(f"- {username}")
@@ -156,16 +145,13 @@ def main() -> int:
         password = read_password_from_stdin() if args.password_stdin else read_password_from_prompt()
         validate_password(password)
 
-        updated = conn.execute(
-            "select 1 from users where username = ? and superadmin = 1",
-            (target_user,),
-        ).fetchone()
-        if not updated:
+        user = User.query.filter_by(username=target_user, superadmin=True).first()
+        if user is None:
             raise SystemExit(f'Le compte "{target_user}" ne peut pas être modifié.')
         get_redis().ping()
         set_user_password(target_user, password)
 
-    print(f'Base : {db_path}')
+    print(f'Base : {database_label}')
     print(f'Mot de passe Redis mis à jour pour le super-admin "{target_user}".')
     return 0
 

@@ -13,10 +13,12 @@
 {% block topbar_sub %}{% if current_screen %}{{ t('media_screen_label') }} « {{ current_screen }} » — {% endif %}{% if files|length > 1 %}{{ t('media_topbar_sub_p', n=files|length) }}{% else %}{{ t('media_topbar_sub_s', n=files|length) }}{% endif %}{% endblock %}
 
 {% block topbar_actions %}
+{% if has_permission('upload') and is_feature_enabled('upload') %}
 <a href="/admin/upload" class="btn sm">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
     {{ t('btn_add') }}
 </a>
+{% endif %}
 {% endblock %}
 
 {% block styles %}
@@ -414,12 +416,12 @@
         <span class="badge-group-disabled">{{ t('media_group_disabled_badge') }}</span>
         {% if info.type == 'video' %}
         <span class="badge-video">{{ t('badge_video') }}</span>
-        <video class="thumb-video" src="/static/data/{{ file }}" preload="metadata" muted
-               data-src="/static/data/{{ file }}" data-type="video"
-               data-preview-disabled="{{ 'true' if disabled_map.get(file, false) else 'false' }}"></video>
+        <img class="thumb-video" src="{{ preview_urls[file] }}" alt="{{ file }}" loading="lazy"
+             data-src="{{ preview_media_urls[file] }}" data-type="video"
+             data-preview-disabled="{{ 'true' if disabled_map.get(file, false) else 'false' }}">
         {% else %}
-        <img class="thumb" src="/static/data/{{ file }}" alt="{{ file }}"
-             data-src="/static/data/{{ file }}" data-type="image"
+        <img class="thumb" src="{{ preview_urls[file] }}" alt="{{ file }}" loading="lazy"
+             data-src="{{ preview_media_urls[file] }}" data-type="image"
              data-preview-disabled="{{ 'true' if disabled_map.get(file, false) else 'false' }}">
         {% endif %}
         <span class="badge-disabled">{{ t('badge_disabled') }}</span>
@@ -521,9 +523,11 @@
     <div class="file-card unassigned" data-file="{{ file }}" data-type="{{ info.type }}">
         {% if info.type == 'video' %}
         <span class="badge-video">{{ t('badge_video') }}</span>
-        <video class="thumb-video" src="/static/data/{{ file }}" preload="metadata" muted></video>
+        <img class="thumb-video" src="{{ preview_urls[file] }}" alt="{{ file }}" loading="lazy"
+             data-src="{{ preview_media_urls[file] }}" data-type="video">
         {% else %}
-        <img class="thumb" src="/static/data/{{ file }}" alt="{{ file }}">
+        <img class="thumb" src="{{ preview_urls[file] }}" alt="{{ file }}" loading="lazy"
+             data-src="{{ preview_media_urls[file] }}" data-type="image">
         {% endif %}
         <div class="card-body">
             <div class="fname" title="{{ file }}">{{ file }}</div>

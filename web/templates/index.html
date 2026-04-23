@@ -8,6 +8,10 @@
     <style>
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
+        :root {
+            --media-halo-rgb: {{ display_halo_rgb | default('138, 43, 226') }};
+        }
+
         html, body {
             width: 100%;
             height: 100%;
@@ -34,9 +38,9 @@
             max-height: 100%;
             object-fit: contain;
             box-shadow:
-                0 0 20px 10px rgba(138, 43, 226, 0.8),
-                0 0 40px 20px rgba(138, 43, 226, 0.5),
-                0 0 60px 30px rgba(138, 43, 226, 0.3);
+                0 0 20px 10px rgba(var(--media-halo-rgb), 0.8),
+                0 0 40px 20px rgba(var(--media-halo-rgb), 0.5),
+                0 0 60px 30px rgba(var(--media-halo-rgb), 0.3);
             border-radius: 6px;
         }
 
@@ -45,12 +49,11 @@
             max-height: 100%;
             object-fit: contain;
             box-shadow:
-                0 0 20px 10px rgba(138, 43, 226, 0.8),
-                0 0 40px 20px rgba(138, 43, 226, 0.5),
-                0 0 60px 30px rgba(138, 43, 226, 0.3);
+                0 0 20px 10px rgba(var(--media-halo-rgb), 0.8),
+                0 0 40px 20px rgba(var(--media-halo-rgb), 0.5),
+                0 0 60px 30px rgba(var(--media-halo-rgb), 0.3);
             border-radius: 6px;
         }
-
         .priority-alert {
             position: fixed;
             top: 22px;
@@ -135,8 +138,9 @@
             transition: background .15s, color .15s, border-color .15s;
             white-space: nowrap;
         }
-        .screen-btn:hover { background: rgba(138,43,226,.5); border-color: rgba(138,43,226,.8); color: #fff; }
-        .screen-btn.active { background: rgba(138,43,226,.75); border-color: rgba(138,43,226,1); color: #fff; }
+        .screen-btn:hover { background: rgba(var(--media-halo-rgb), .5); border-color: rgba(var(--media-halo-rgb), .8); color: #fff; }
+        .screen-btn.active { background: rgba(var(--media-halo-rgb), .75); border-color: rgba(var(--media-halo-rgb), 1); color: #fff; }
+
     </style>
 </head>
 <body>
@@ -154,24 +158,52 @@
     const SCREEN           = new URLSearchParams(location.search).get('screen') || '';
     const SCREEN_PARAM     = SCREEN ? `?screen=${encodeURIComponent(SCREEN)}` : '';
 
+    function getDisplayBounds() {
+        const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
+        const width = Math.max(
+            window.innerWidth || 0,
+            window.screen?.width || 0
+        );
+        const height = Math.max(
+            window.innerHeight || 0,
+            window.screen?.height || 0
+        );
+        return {
+            width: Math.max(1, Math.round(width * dpr)),
+            height: Math.max(1, Math.round(height * dpr)),
+        };
+    }
+
+    function mediaApiUrl() {
+        const bounds = getDisplayBounds();
+        const separator = SCREEN_PARAM ? '&' : '?';
+        return `/api/images${SCREEN_PARAM}${separator}w=${encodeURIComponent(bounds.width)}&h=${encodeURIComponent(bounds.height)}`;
+    }
+
     let media        = [];
     let durations    = {};
     let groupPools   = {};
     let sampledMedia = [];
     let currentIndex = 0;
     let currentSlide = null;
+    let currentItem  = null;
     let timer        = null;
     let alertMessage = '';
     let alertPoller  = null;
     let mediaRefreshTimer = null;
+    let haloRefreshTimer = null;
     let wakeLock     = null;
+    let isAdvancingAfterMediaError = false;
+    let mediaRefreshChannel = null;
+    let mediaSignature = '';
+    let poolSignature = '';
 
     const alertBox = document.getElementById('priority-alert');
     const alertText = document.getElementById('priority-alert-message');
 
     async function fetchMedia() {
         try {
-            const res = await fetch('/api/images' + SCREEN_PARAM, { cache: 'no-store' });
+            const res = await fetch(mediaApiUrl(), { cache: 'no-store' });
             if (!res.ok) return media.length ? media : [];
             const fetched = await res.json();
             return fetched.length ? fetched : [];
@@ -190,8 +222,48 @@
         }
     }
 
+    async function fetchHalo() {
+        try {
+            const res = await fetch('/api/halo' + SCREEN_PARAM, { cache: 'no-store' });
+            if (!res.ok) return null;
+            return await res.json();
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function applyHalo(halo) {
+        if (!halo?.rgb) return;
+        document.documentElement.style.setProperty('--media-halo-rgb', halo.rgb);
+        document.body?.style.setProperty('--media-halo-rgb', halo.rgb);
+    }
+
+    async function refreshHalo() {
+        const halo = await fetchHalo();
+        if (!halo) return;
+        applyHalo(halo);
+    }
+
     function getFilename(path) {
         return path.split('/').pop().split('?')[0];
+    }
+
+    function computeMediaSignature(items) {
+        return items
+            .map(item => `${item.path}|${item.type}|${item.rev || 0}|${(item.groups || []).slice().sort().join(',')}`)
+            .sort()
+            .join('||');
+    }
+
+    function mediaUrl(item) {
+        return `${item.path}?v=${encodeURIComponent(item?.rev || Date.now())}`;
+    }
+
+    function computePoolSignature(pools) {
+        return JSON.stringify(
+            Object.entries(pools)
+                .sort(([a], [b]) => a.localeCompare(b))
+        );
     }
 
     function samplePools(mediaList, pools) {
@@ -283,6 +355,60 @@
         return d ? d * 1000 : DEFAULT_DURATION;
     }
 
+    function discardCurrentSlide(slide) {
+        if (!slide || !slide.parentNode) return;
+        if (slide === currentSlide) {
+            currentSlide = null;
+            currentItem = null;
+        }
+        slide.remove();
+    }
+
+    function scheduleAdvance(item, el) {
+        const duration = getDuration(item);
+
+        if (item.type === 'video') {
+            let done = false;
+            const advance = () => {
+                if (done) return;
+                done = true;
+                next();
+            };
+            el.addEventListener('ended', advance, { once: true });
+            timer = setTimeout(advance, duration);
+        } else {
+            timer = setTimeout(next, duration);
+        }
+    }
+
+    function restartCurrentSlide(item) {
+        if (timer) {
+            clearTimeout(timer);
+            timer = null;
+        }
+        const el = showSlide(item);
+        scheduleAdvance(item, el);
+    }
+
+    async function handleMediaLoadError(item, slide) {
+        const failedPath = item?.path || '';
+        media = media.filter(candidate => candidate.path !== failedPath);
+        sampledMedia = sampledMedia.filter(candidate => candidate.path !== failedPath);
+        discardCurrentSlide(slide);
+
+        try {
+            await refreshMediaState();
+        } catch (e) {
+            // Keep the current in-memory fallback if the refresh also fails.
+        }
+
+        if (isAdvancingAfterMediaError) return;
+        isAdvancingAfterMediaError = true;
+        Promise.resolve().then(() => next()).finally(() => {
+            isAdvancingAfterMediaError = false;
+        });
+    }
+
     function showSlide(item) {
         const slide = document.createElement('div');
         slide.className = 'slide';
@@ -290,19 +416,24 @@
         let el;
         if (item.type === 'video') {
             el = document.createElement('video');
-            el.src         = item.path + '?t=' + Date.now();
+            el.src         = mediaUrl(item);
             el.autoplay    = true;
             el.muted       = true;
             el.controls    = false;
             el.playsInline = true;
         } else {
             el = document.createElement('img');
-            el.src = item.path + '?t=' + Date.now();
+            el.src = mediaUrl(item);
             el.alt = '';
         }
 
         slide.appendChild(el);
         document.body.appendChild(slide);
+
+        const onLoadError = () => {
+            console.warn('Media unavailable, skipping:', item.path);
+            handleMediaLoadError(item, slide);
+        };
 
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
@@ -322,21 +453,65 @@
         }
 
         currentSlide = slide;
+        currentItem = item;
+        if (item.type === 'video') {
+            ['error', 'stalled', 'abort'].forEach(evt => {
+                el.addEventListener(evt, onLoadError, { once: true });
+            });
+        } else {
+            el.addEventListener('error', onLoadError, { once: true });
+        }
         return el;
     }
 
     async function refreshMediaState() {
-        const [freshMedia, freshDurations, freshPools] = await Promise.all([
-            fetchMedia(), fetchDurations(), fetchPools()
+        const [freshMedia, freshDurations, freshPools, freshHalo] = await Promise.all([
+            fetchMedia(), fetchDurations(), fetchPools(), fetchHalo()
         ]);
+        applyHalo(freshHalo);
         durations  = freshDurations;
         groupPools = freshPools;
         if (!freshMedia.length) return;
-        if (currentIndex === 0 || !sampledMedia.length) {
+        const nextMediaSignature = computeMediaSignature(freshMedia);
+        const nextPoolSignature = computePoolSignature(groupPools);
+        const mediaChanged = nextMediaSignature !== mediaSignature;
+        const poolsChanged = nextPoolSignature !== poolSignature;
+
+        if (mediaChanged || poolsChanged || currentIndex === 0 || !sampledMedia.length) {
             sampledMedia = samplePools(freshMedia, groupPools);
+            mediaSignature = nextMediaSignature;
+            poolSignature = nextPoolSignature;
         }
         media = sampledMedia.length ? sampledMedia : freshMedia;
         if (currentIndex >= media.length) currentIndex = 0;
+        if (currentItem) {
+            const updatedCurrentItem = media.find(item => item.path === currentItem.path);
+            if (updatedCurrentItem && (updatedCurrentItem.rev || 0) !== (currentItem.rev || 0)) {
+                restartCurrentSlide(updatedCurrentItem);
+            } else if (!updatedCurrentItem) {
+                currentItem = null;
+            }
+        }
+    }
+
+    async function handleExternalMediaRefresh() {
+        await refreshMediaState();
+    }
+
+    function setupMediaRefreshListeners() {
+        window.addEventListener('storage', event => {
+            if (event.key === 'visio-display:media-refresh') {
+                handleExternalMediaRefresh();
+            }
+        });
+
+        if (!('BroadcastChannel' in window)) return;
+        mediaRefreshChannel = new BroadcastChannel('visio-display-media');
+        mediaRefreshChannel.addEventListener('message', event => {
+            if (event?.data?.type === 'media-refresh') {
+                handleExternalMediaRefresh();
+            }
+        });
     }
 
     async function next() {
@@ -350,28 +525,18 @@
         const item = media[currentIndex];
         currentIndex = (currentIndex + 1) % media.length;
 
-        const el       = showSlide(item);
-        const duration = getDuration(item);
-
-        if (item.type === 'video') {
-            let done = false;
-            const advance = () => {
-                if (done) return;
-                done = true;
-                next();
-            };
-            el.addEventListener('ended', advance, { once: true });
-            timer = setTimeout(advance, duration);
-        } else {
-            timer = setTimeout(next, duration);
-        }
+        const el = showSlide(item);
+        scheduleAdvance(item, el);
     }
 
     async function start() {
         await requestWakeLock();
+        setupMediaRefreshListeners();
+        await refreshHalo();
         await refreshMediaState();
         await refreshPriorityAlert();
         alertPoller = setInterval(refreshPriorityAlert, 5000);
+        haloRefreshTimer = setInterval(refreshHalo, 5000);
         mediaRefreshTimer = setInterval(refreshMediaState, 15000);
         next();
     }

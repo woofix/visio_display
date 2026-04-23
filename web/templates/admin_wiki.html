@@ -492,6 +492,7 @@
             <a data-section="s13">13. {{ t('wiki_s13_title') }}</a>
             <a data-section="s14">14. {{ t('wiki_s14_title') }}</a>
             <a data-section="s15">15. {{ t('wiki_s15_title') }}</a>
+            <a data-section="s16">16. {{ t('wiki_s16_title') }}</a>
         </div>
     </aside>
 
@@ -741,6 +742,7 @@
             <ul>
                 <li>{{ t('wiki_s8_update1') }}</li>
                 <li>{{ t('wiki_s8_update2') }}</li>
+                <li>{{ t('wiki_s8_update3') }}</li>
             </ul>
             <h3>{{ t('wiki_s8_countdown_title') }}</h3>
             <div class="wiki-callout">
@@ -817,6 +819,10 @@
             <h3>{{ t('wiki_s10_reset_title') }}</h3>
             <p>{{ t('wiki_s10_reset_desc') }}</p>
             <div class="wiki-callout warning">{{ t('wiki_s10_reset_superadmin_note') }}</div>
+            <p>{{ t('wiki_s10_reset_superadmin_cmd_label') }}</p>
+            <pre><code>{{ t('wiki_s10_reset_superadmin_cmd') }}</code></pre>
+            <p>{{ t('wiki_s10_reset_superadmin_docker_cmd_label') }}</p>
+            <pre><code>{{ t('wiki_s10_reset_superadmin_docker_cmd') }}</code></pre>
             <h3>{{ t('wiki_s10_delete_title') }}</h3>
             <p>{{ t('wiki_s10_delete_desc') }}</p>
         </section>
@@ -940,6 +946,42 @@
             <p>{{ t('wiki_s15_retention_desc') }}</p>
             <div class="wiki-callout warning">
                 <strong>{{ t('wiki_tip') }}</strong> {{ t('wiki_s15_who') }}
+            </div>
+        </section>
+
+        <!-- §16 Backups -->
+        <section class="wiki-section" id="s16">
+            <div class="wiki-section-header">
+                <div class="wiki-section-num">16</div>
+                <h2>{{ t('wiki_s16_title') }}</h2>
+            </div>
+            <p>{{ t('wiki_s16_desc') }}</p>
+            <div class="wiki-callout">
+                <strong>{{ t('wiki_right_required') }}</strong> {{ t('wiki_superadmin') }}<br>
+                {{ t('wiki_s16_access') }}
+            </div>
+            <h3>{{ t('wiki_s16_create_title') }}</h3>
+            <ol class="wiki-steps">
+                <li>{{ t('wiki_s16_create_step1') }}</li>
+                <li>{{ t('wiki_s16_create_step2') }}</li>
+                <li>{{ t('wiki_s16_create_step3') }}</li>
+            </ol>
+            <h3>{{ t('wiki_s16_contains_title') }}</h3>
+            <ul>
+                <li>{{ t('wiki_s16_contains1') }}</li>
+                <li>{{ t('wiki_s16_contains2') }}</li>
+                <li>{{ t('wiki_s16_contains3') }}</li>
+            </ul>
+            <h3>{{ t('wiki_s16_retention_title') }}</h3>
+            <p>{{ t('wiki_s16_retention_desc') }}</p>
+            <h3>{{ t('wiki_s16_restore_title') }}</h3>
+            <ol class="wiki-steps">
+                <li>{{ t('wiki_s16_restore_step1') }}</li>
+                <li>{{ t('wiki_s16_restore_step2') }}</li>
+                <li>{{ t('wiki_s16_restore_step3') }}</li>
+            </ol>
+            <div class="wiki-callout warning">
+                <strong>{{ t('wiki_tip') }}</strong> {{ t('wiki_s16_warning') }}
             </div>
         </section>
 

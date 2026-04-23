@@ -67,6 +67,11 @@
 .alert-preview { border:1px solid rgba(220,38,38,.18); background:linear-gradient(135deg, rgba(127,29,29,.96), rgba(220,38,38,.94)); color:#fff; border-radius:14px; padding:12px 14px; box-shadow:0 10px 30px rgba(127,29,29,.18); }
 .alert-preview-label { font-size:.68rem; letter-spacing:.08em; text-transform:uppercase; opacity:.82; font-weight:700; margin-bottom:6px; }
 .alert-preview-body { font-size:.95rem; font-weight:700; line-height:1.4; white-space:pre-wrap; word-break:break-word; }
+.screen-admin-list { list-style:none; padding:0; margin:0 0 16px 0; display:flex; flex-direction:column; gap:10px; }
+.screen-admin-item { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; background:var(--bg); border:1px solid var(--border); border-radius:var(--radius-sm); flex-wrap:wrap; }
+.screen-admin-name { font-size:.84rem; font-weight:700; color:var(--text); }
+.screen-admin-meta { font-size:.72rem; color:var(--text-3); margin-top:3px; }
+.screen-admin-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-left:auto; }
 
 @media(max-width:700px) { .sa-grid { grid-template-columns: 1fr; } .perm-grid { grid-template-columns: 1fr; } }
 {% endblock %}
@@ -232,14 +237,19 @@
             <div><button type="submit" class="btn sm">{{ t('superadmin_default_screen_save') }}</button></div>
         </form>
         {% if all_screens %}
-        <ul style="list-style:none;padding:0;margin:0 0 16px 0;display:flex;flex-direction:column;gap:8px">
+        <ul class="screen-admin-list">
             {% for s in all_screens %}
-            <li style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm)">
-                <span style="font-size:.84rem;font-weight:600;color:var(--text)">{{ s }}</span>
-                <form method="post" action="/admin/screens/delete/{{ s }}"
-                      onsubmit="return confirm('{{ t('media_screen_delete_confirm') }}'.replace('{name}','{{ s }}'))">
-                    <button type="submit" class="btn sm danger">{{ t('superadmin_delete') }}</button>
-                </form>
+            <li class="screen-admin-item">
+                <div>
+                    <div class="screen-admin-name">{{ s }}</div>
+                    <div class="screen-admin-meta">{{ t('superadmin_screens_manage') }}</div>
+                </div>
+                <div class="screen-admin-actions">
+                    <form method="post" action="/admin/screens/delete/{{ s }}"
+                          onsubmit="return confirm('{{ t('media_screen_delete_confirm') }}'.replace('{name}','{{ s }}'))">
+                        <button type="submit" class="btn sm danger">{{ t('superadmin_delete') }}</button>
+                    </form>
+                </div>
             </li>
             {% endfor %}
         </ul>

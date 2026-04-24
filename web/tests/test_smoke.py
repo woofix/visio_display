@@ -37,10 +37,18 @@ class AppSmokeTests(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.fake_redis = FakeRedis()
+        self._env_backup = {key: os.environ.get(key) for key in (
+            "VISIO_DATA_DIR",
+            "ADMIN_USER",
+            "ADMIN_PASSWORD",
+            "SECRET_KEY",
+            "DATABASE_URL",
+        )}
         os.environ["VISIO_DATA_DIR"] = os.path.join(self.temp_dir.name, "private")
         os.environ["ADMIN_USER"] = "admin"
         os.environ["ADMIN_PASSWORD"] = "supersecure123"
         os.environ["SECRET_KEY"] = "test-secret-key"
+        os.environ["DATABASE_URL"] = f"sqlite:///{os.path.join(self.temp_dir.name, 'test.sqlite')}"
 
         redis_module = types.ModuleType("redis")
 
@@ -104,6 +112,11 @@ class AppSmokeTests(unittest.TestCase):
             patcher.stop()
         for name in ("redis", "rq", "rq.job", "rq.registry"):
             sys.modules.pop(name, None)
+        for key, value in self._env_backup.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
         self.temp_dir.cleanup()
 
     def _login(self):
@@ -312,6 +325,33 @@ class AppSmokeTests(unittest.TestCase):
             self.assertTrue(os.path.exists(os.path.join(UPLOAD_FOLDER, "clip.mp4")))
             cfg = load_config()
             self.assertIn("clip.mp4", cfg.get("disabled", []))
+
+    def test_encoding_window_uses_configured_application_timezone(self):
+        with self.app.app_context():
+            from services.config_svc import save_config
+
+            save_config({"meteo_tz": "Europe/Paris"})
+
+        queue_svc = import_module("services.queue_svc")
+
+        class FixedDateTime:
+            @classmethod
+            def now(cls, tz=None):
+                value = datetime(2026, 1, 1, 19, 30, 0, tzinfo=timezone.utc)
+                if tz is None:
+                    return value.replace(tzinfo=None)
+                return value.astimezone(tz)
+
+        with patch.object(queue_svc, "datetime", FixedDateTime):
+            self.assertTrue(queue_svc.is_encoding_window())
+
+        with self.app.app_context():
+            from services.config_svc import save_config
+
+            save_config({"meteo_tz": "UTC"})
+
+        with patch.object(queue_svc, "datetime", FixedDateTime):
+            self.assertFalse(queue_svc.is_encoding_window())
 
     def test_client_heartbeat_schema_contains_extended_columns(self):
         with self.app.app_context():

@@ -50,8 +50,10 @@
 
 /* Add user form */
 .add-user-form { display: flex; flex-direction: column; gap: 10px; }
-.add-user-form input { padding: 9px 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: .84rem; font-family: inherit; color: var(--text); background: var(--surface); color-scheme: light; transition: border-color .15s; }
-.add-user-form input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(124,58,237,.09); }
+.add-user-form input,
+.add-user-form select { padding: 9px 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: .84rem; font-family: inherit; color: var(--text); background: var(--surface); color-scheme: light; transition: border-color .15s; }
+.add-user-form input:focus,
+.add-user-form select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(124,58,237,.09); }
 .add-user-form input::placeholder { color: var(--text-3); }
 
 .delete-btn-wrap { margin-left: auto; }
@@ -115,6 +117,19 @@
             {{ t('superadmin_accounts_perms') }}
         </h3>
 
+        <form action="/admin/users/reset_password" method="post" class="add-user-form" style="margin-bottom:16px;max-width:620px">
+            <select name="username" required>
+                <option value="">Choisir un utilisateur</option>
+                {% for reset_username, reset_entry in users.items() %}
+                    {% if not reset_entry.superadmin %}
+                    <option value="{{ reset_username }}">{{ reset_username }}</option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+            <input type="password" name="new_password" placeholder="{{ t('superadmin_reset_pass_placeholder') }}" required minlength="10">
+            <div><button type="submit" class="btn sm">{{ t('superadmin_reset_password') }}</button></div>
+        </form>
+
         {% for username, entry in users.items() %}
         <div class="user-card">
             <div class="user-card-header">
@@ -137,7 +152,10 @@
                 {% if not entry.superadmin %}
                 <div class="delete-btn-wrap">
                     <form action="/admin/users/delete/{{ username }}" method="post"
-                          onsubmit="return confirm('{{ t('superadmin_delete_confirm', username=username) }}')">
+                          data-confirm="{{ t('superadmin_delete_confirm', username=username) }}"
+                          data-confirm-title="{{ t('superadmin_delete') }}"
+                          data-confirm-tone="error"
+                          data-confirm-ok="{{ t('superadmin_delete') }}">
                         <button class="btn sm danger">{{ t('superadmin_delete') }}</button>
                     </form>
                 </div>
@@ -202,7 +220,7 @@
                     {{ t('superadmin_reset_password') }}
                 </button>
                 <form action="/admin/users/reset_password/{{ username }}" method="post" class="reset-pass-form" id="reset-form-{{ username }}" style="display:none">
-                    <input type="password" name="new_password" placeholder="{{ t('superadmin_reset_pass_placeholder') }}" required minlength="8">
+                    <input type="password" name="new_password" placeholder="{{ t('superadmin_reset_pass_placeholder') }}" required minlength="10">
                     <button type="submit" class="btn sm">{{ t('superadmin_reset_password') }}</button>
                 </form>
             </div>
@@ -246,7 +264,10 @@
                 </div>
                 <div class="screen-admin-actions">
                     <form method="post" action="/admin/screens/delete/{{ s }}"
-                          onsubmit="return confirm('{{ t('media_screen_delete_confirm') }}'.replace('{name}','{{ s }}'))">
+                          data-confirm="{{ t('media_screen_delete_confirm') | replace('{name}', s) }}"
+                          data-confirm-title="{{ t('superadmin_delete') }}"
+                          data-confirm-tone="error"
+                          data-confirm-ok="{{ t('superadmin_delete') }}">
                         <button type="submit" class="btn sm danger">{{ t('superadmin_delete') }}</button>
                     </form>
                 </div>

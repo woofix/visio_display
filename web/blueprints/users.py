@@ -107,8 +107,18 @@ def change_password():
 
 @bp.route('/admin/users/reset_password/<username>', methods=['POST'])
 def reset_user_password(username):
+    return _reset_user_password_for(username)
+
+
+@bp.route('/admin/users/reset_password', methods=['POST'])
+def reset_selected_user_password():
+    return _reset_user_password_for(request.form.get('username', ''))
+
+
+def _reset_user_password_for(username):
     g = superadmin_guard()
     if g: return g
+    username = normalize_username(username)
     user = get_user(username)
     if user is None:
         _flash('flash_user_not_found', 'error')

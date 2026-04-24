@@ -313,7 +313,10 @@
         <a href="/admin/media?screen={{ s }}" class="screen-tab {% if current_screen == s %}active{% endif %}">{{ s }}</a>
         {% if current_screen == s and current_user_is_superadmin %}
         <form method="post" action="/admin/screens/delete/{{ s }}" style="display:inline"
-              onsubmit="return confirm(SCREEN_DELETE_CONFIRM.replace('{name}', '{{ s }}'))">
+              data-confirm="{{ t('media_screen_delete_confirm') | replace('{name}', s) }}"
+              data-confirm-title="Supprimer l’écran"
+              data-confirm-tone="error"
+              data-confirm-ok="Supprimer">
             <button type="submit" class="screen-tab delete-tab" title="✕">✕</button>
         </form>
         {% endif %}
@@ -558,38 +561,48 @@
 </div>
 
 <!-- Schedule modal -->
-<div class="modal-overlay" id="schedule-modal">
-    <div class="modal-box">
-        <button class="modal-close" id="modal-close-btn" title="✕">&times;</button>
-        <h2>{{ t('modal_schedule_title') }}</h2>
-        <p class="modal-sub" id="modal-filename">—</p>
-        <div class="modal-info" id="modal-info"></div>
-
-        <div class="modal-section">
-            <label>
-                <input type="checkbox" id="chk-time"> {{ t('modal_time_limit') }}
-            </label>
-            <div class="modal-row" id="row-time">
-                <span>{{ t('modal_from') }}</span>
-                <input type="time" id="time-start" disabled>
-                <span>{{ t('modal_to') }}</span>
-                <input type="time" id="time-end" disabled>
+<div class="modal-overlay theme-dialog-overlay" id="schedule-modal">
+    <div class="modal-box theme-dialog">
+        <button class="modal-close theme-dialog-close" id="modal-close-btn" title="Fermer" aria-label="Fermer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+        <div class="theme-dialog-header" style="padding-right:64px">
+            <div class="theme-dialog-icon" data-tone="info" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            </div>
+            <div>
+                <div class="theme-dialog-title">{{ t('modal_schedule_title') }}</div>
+                <p class="modal-sub theme-dialog-copy" id="modal-filename">—</p>
             </div>
         </div>
+        <div class="theme-dialog-body">
+            <div class="modal-info" id="modal-info"></div>
 
-        <div class="modal-section">
-            <label>
-                <input type="checkbox" id="chk-date"> {{ t('modal_date_limit') }}
-            </label>
-            <div class="modal-row" id="row-date">
-                <span>{{ t('modal_from_date') }}</span>
-                <input type="date" id="date-start" disabled>
-                <span>{{ t('modal_to_date') }}</span>
-                <input type="date" id="date-end" disabled>
+            <div class="modal-section">
+                <label>
+                    <input type="checkbox" id="chk-time"> {{ t('modal_time_limit') }}
+                </label>
+                <div class="modal-row" id="row-time">
+                    <span>{{ t('modal_from') }}</span>
+                    <input type="time" id="time-start" disabled>
+                    <span>{{ t('modal_to') }}</span>
+                    <input type="time" id="time-end" disabled>
+                </div>
+            </div>
+
+            <div class="modal-section">
+                <label>
+                    <input type="checkbox" id="chk-date"> {{ t('modal_date_limit') }}
+                </label>
+                <div class="modal-row" id="row-date">
+                    <span>{{ t('modal_from_date') }}</span>
+                    <input type="date" id="date-start" disabled>
+                    <span>{{ t('modal_to_date') }}</span>
+                    <input type="date" id="date-end" disabled>
+                </div>
             </div>
         </div>
-
-        <div class="modal-footer">
+        <div class="modal-footer theme-dialog-actions">
             <button class="btn secondary sm" id="modal-clear-btn">{{ t('modal_clear') }}</button>
             <button class="btn sm" id="modal-save-btn">{{ t('modal_save') }}</button>
         </div>
@@ -931,7 +944,12 @@ document.querySelectorAll('.btn-compress').forEach(btn => {
         e.stopPropagation();
         btn.closest('.dropdown-menu')?.classList.remove('open');
         const file = btn.dataset.file;
-        if (!confirm(JS_CONFIRM_COMPRESS.replace('{file}', file))) return;
+        if (!await window.appUI.confirm({
+            titleText: {{ t('action_compress') | tojson }},
+            messageText: JS_CONFIRM_COMPRESS.replace('{file}', file),
+            tone: 'warning',
+            confirmLabel: {{ t('action_compress') | tojson }},
+        })) return;
         btn.disabled = true; btn.textContent = JS_COMPRESS_ADDING;
         try {
             const res  = await fetch(`/compress/${encodeURIComponent(file)}`, { method:'POST' });
@@ -948,7 +966,12 @@ document.querySelectorAll('.btn-force-encode').forEach(btn => {
         e.stopPropagation();
         btn.closest('.dropdown-menu')?.classList.remove('open');
         const file = btn.dataset.file;
-        if (!confirm(JS_FORCE_CONFIRM.replace('{file}', file))) return;
+        if (!await window.appUI.confirm({
+            titleText: {{ t('action_force_encode') | tojson }},
+            messageText: JS_FORCE_CONFIRM.replace('{file}', file),
+            tone: 'warning',
+            confirmLabel: {{ t('action_force_encode') | tojson }},
+        })) return;
         btn.disabled = true;
         btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ${JS_FORCE_LAUNCHING}`;
         try {
@@ -972,9 +995,14 @@ document.querySelectorAll('.btn-force-encode').forEach(btn => {
 
 /* ── Delete ── */
 document.querySelectorAll('.btn-delete').forEach(btn => {
-    btn.addEventListener('click', e => {
+    btn.addEventListener('click', async e => {
         e.stopPropagation();
-        if (!confirm(JS_CONFIRM_DELETE.replace('{file}', btn.dataset.file))) return;
+        if (!await window.appUI.confirm({
+            titleText: 'Supprimer le média',
+            messageText: JS_CONFIRM_DELETE.replace('{file}', btn.dataset.file),
+            tone: 'error',
+            confirmLabel: 'Supprimer',
+        })) return;
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = btn.dataset.action;
@@ -999,10 +1027,7 @@ new MutationObserver(() => {
 
 /* ── Flash ── */
 function showFlash(msg, type) {
-    let list = document.querySelector('.flash-list');
-    if (!list) { list = document.createElement('ul'); list.className = 'flash-list'; document.querySelector('.content').prepend(list); }
-    const li = document.createElement('li'); li.className = type; li.textContent = msg;
-    list.appendChild(li); li.scrollIntoView({ behavior:'smooth', block:'center' });
+    window.appUI.showFlash(msg, type);
 }
 
 /* ── Schedule modal ── */
@@ -1138,7 +1163,12 @@ document.querySelectorAll('.btn-remove-from-screen').forEach(btn => {
         e.stopPropagation();
         btn.closest('.dropdown-menu')?.classList.remove('open');
         const file = btn.dataset.file;
-        if (!confirm(JS_SCREEN_REMOVE_CONFIRM.replace('{file}', file).replace('{screen}', CURRENT_SCREEN))) return;
+        if (!await window.appUI.confirm({
+            titleText: 'Retirer de l’écran',
+            messageText: JS_SCREEN_REMOVE_CONFIRM.replace('{file}', file).replace('{screen}', CURRENT_SCREEN),
+            tone: 'warning',
+            confirmLabel: 'Retirer',
+        })) return;
         const data = await screenAssign(file, 'remove');
         if (data.ok) {
             showFlash(JS_SCREEN_REMOVED.replace('{file}', file).replace('{screen}', CURRENT_SCREEN), 'success');

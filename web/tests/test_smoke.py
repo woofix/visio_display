@@ -151,6 +151,60 @@ class AppSmokeTests(unittest.TestCase):
                 for entry in logs
             ))
 
+    def test_superadmin_can_reset_user_password(self):
+        with self.app.app_context():
+            from services.users_svc import create_user
+
+            create_user("operator", "initial-pass-123", permissions=[])
+
+        with self.client.session_transaction() as session:
+            session["user"] = "admin"
+            session["_csrf_token"] = "reset-token"
+            token = session["_csrf_token"]
+
+        response = self.client.post(
+            "/admin/users/reset_password/operator",
+            data={"new_password": "updated-pass-123", "_csrf_token": token},
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.headers["Location"].endswith("/admin/superadmin"))
+
+        with self.app.app_context():
+            from services.users_svc import verify_user_password
+
+            self.assertFalse(verify_user_password("operator", "initial-pass-123"))
+            self.assertTrue(verify_user_password("operator", "updated-pass-123"))
+
+    def test_superadmin_can_reset_selected_user_password(self):
+        with self.app.app_context():
+            from services.users_svc import create_user
+
+            create_user("operator", "initial-pass-123", permissions=[])
+
+        with self.client.session_transaction() as session:
+            session["user"] = "admin"
+            session["_csrf_token"] = "reset-token"
+            token = session["_csrf_token"]
+
+        response = self.client.post(
+            "/admin/users/reset_password",
+            data={
+                "username": "operator",
+                "new_password": "selected-pass-123",
+                "_csrf_token": token,
+            },
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 302)
+
+        with self.app.app_context():
+            from services.users_svc import verify_user_password
+
+            self.assertTrue(verify_user_password("operator", "selected-pass-123"))
+
     def test_save_config_normalizes_missing_sections(self):
         with self.app.app_context():
             from services.config_svc import load_config, save_config
@@ -573,6 +627,35 @@ class AppSmokeTests(unittest.TestCase):
 
             cfg = load_config()
             self.assertEqual(cfg["screens"]["lobby"]["halo_color"], "#123456")
+
+    def test_simple_admin_can_open_application_settings_tab(self):
+        with self.app.app_context():
+            from services.config_svc import save_config
+            from services.users_svc import create_user
+
+            save_config({
+                "default_halo_color": "#112233",
+                "screens": {
+                    "hall": {"halo_color": "#abcdef"},
+                },
+            })
+            create_user(
+                "editor",
+                "editorsecure123",
+                superadmin=False,
+                permissions=[],
+                screens=["hall"],
+            )
+
+        with self.client.session_transaction() as session:
+            session["user"] = "editor"
+
+        response = self.client.get("/admin/settings?tab=application")
+
+        self.assertEqual(response.status_code, 200)
+        html = response.get_data(as_text=True)
+        self.assertRegex(html, r'id="tab-application" class="[^"]*\bactive\b')
+        self.assertIn('href="/admin/settings?tab=application"', html)
 
     def test_activity_log_retention_trims_old_and_excess_rows(self):
         with self.app.app_context():

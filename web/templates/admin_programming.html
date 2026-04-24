@@ -73,14 +73,12 @@
 
 .modal-overlay { position:fixed; inset:0; background:rgba(10,10,20,.55); display:none; align-items:center; justify-content:center; z-index:1200; padding:20px; }
 .modal-overlay.open { display:flex; }
-.modal-box { width:min(720px, 100%); background:var(--surface); border:1px solid var(--border); border-radius:18px; box-shadow:var(--shadow-lg); padding:22px; position:relative; }
-.modal-close { position:absolute; top:14px; right:14px; width:34px; height:34px; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text-3); cursor:pointer; font-size:1.2rem; }
-.modal-close:hover { color:var(--primary); border-color:var(--primary); }
+.modal-box { width:min(720px, 100%); }
 .modal-title { font-size:1.05rem; font-weight:800; color:var(--text); }
 .modal-sub { margin-top:4px; color:var(--text-3); font-size:.79rem; }
 .modal-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px; margin-top:16px; }
 .modal-grid .full { grid-column:1 / -1; }
-.modal-footer { display:flex; justify-content:space-between; gap:8px; margin-top:18px; flex-wrap:wrap; }
+.modal-footer { display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
 .modal-danger { margin-right:auto; }
 
 @media(max-width:1100px) {
@@ -346,12 +344,22 @@
 </div>
 
 {% if can_schedule %}
-<div class="modal-overlay" id="programming-modal">
-    <div class="modal-box">
-        <button type="button" class="modal-close" id="programming-modal-close">&times;</button>
-        <div class="modal-title" id="programming-modal-title">Nouvelle plage</div>
-        <div class="modal-sub" id="programming-modal-sub">Créez, modifiez ou dupliquez une plage de diffusion.</div>
+<div class="modal-overlay theme-dialog-overlay" id="programming-modal">
+    <div class="modal-box theme-dialog">
+        <button type="button" class="modal-close theme-dialog-close" id="programming-modal-close" aria-label="Fermer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+        <div class="theme-dialog-header" style="padding-right:64px">
+            <div class="theme-dialog-icon" data-tone="info" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            </div>
+            <div>
+                <div class="modal-title theme-dialog-title" id="programming-modal-title">Nouvelle plage</div>
+                <div class="modal-sub theme-dialog-copy" id="programming-modal-sub">Créez, modifiez ou dupliquez une plage de diffusion.</div>
+            </div>
+        </div>
 
+        <div class="theme-dialog-body">
         <div class="modal-grid">
             <div class="full form-group">
                 <label for="programming-filename">Média</label>
@@ -387,7 +395,8 @@
             </div>
         </div>
 
-        <div class="modal-footer">
+        </div>
+        <div class="modal-footer theme-dialog-actions">
             <button type="button" class="btn danger sm modal-danger" id="programming-delete-btn" style="display:none">Supprimer</button>
             <div style="display:flex; gap:8px; flex-wrap:wrap; margin-left:auto">
                 <button type="button" class="btn secondary sm" id="programming-cancel-btn">Annuler</button>
@@ -579,12 +588,21 @@ if (canSchedule) {
             });
             window.location.reload();
         } catch (error) {
-            alert(error.message);
+            await window.appUI.alert(error.message, {
+                titleText: 'Erreur de sauvegarde',
+                tone: 'error',
+                confirmLabel: 'Fermer',
+            });
         }
     });
 
     deleteBtn.addEventListener('click', async () => {
-        if (!confirm('Supprimer cette plage ?')) return;
+        if (!await window.appUI.confirm({
+            titleText: 'Supprimer la plage',
+            messageText: 'Supprimer cette plage ?',
+            tone: 'error',
+            confirmLabel: 'Supprimer',
+        })) return;
         try {
             await postJson('/programming/delete', {
                 filename: originalFilename,
@@ -592,7 +610,11 @@ if (canSchedule) {
             });
             window.location.reload();
         } catch (error) {
-            alert(error.message);
+            await window.appUI.alert(error.message, {
+                titleText: 'Erreur de suppression',
+                tone: 'error',
+                confirmLabel: 'Fermer',
+            });
         }
     });
 }

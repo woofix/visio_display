@@ -474,7 +474,11 @@
                         <p class="management-copy">{{ t('activity_sensitive_sub') }}</p>
                     </div>
 
-                    <form method="post" action="/admin/activity/purge" class="purge-form">
+                    <form method="post" action="/admin/activity/purge" class="purge-form"
+                          data-confirm="{{ t('activity_purge_old_confirm') }}"
+                          data-confirm-title="{{ t('activity_purge_old_title') }}"
+                          data-confirm-tone="warning"
+                          data-confirm-ok="{{ t('activity_purge_old_submit') }}">
                         <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="purge_scope" value="older_than">
                         <div class="danger-panel">
@@ -484,20 +488,24 @@
                                     <label for="older_than_days">{{ t('activity_purge_old_days') }}</label>
                                     <input type="number" min="1" step="1" id="older_than_days" name="older_than_days" value="{{ activity_settings.retention_days }}">
                                 </div>
-                                <button type="submit" class="btn warning sm" onclick="return confirm('{{ t('activity_purge_old_confirm') }}')">{{ t('activity_purge_old_submit') }}</button>
+                                <button type="submit" class="btn warning sm">{{ t('activity_purge_old_submit') }}</button>
                             </div>
                             <div class="danger-help">{{ t('activity_purge_old_help') }}</div>
                         </div>
                     </form>
 
-                    <form method="post" action="/admin/activity/purge" class="purge-form">
+                    <form method="post" action="/admin/activity/purge" class="purge-form"
+                          data-confirm="{{ t('activity_purge_all_confirm') }}"
+                          data-confirm-title="{{ t('activity_purge_all_title') }}"
+                          data-confirm-tone="error"
+                          data-confirm-ok="{{ t('activity_purge_all_submit') }}">
                         <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="purge_scope" value="all">
                         <div class="danger-panel">
                             <h4>{{ t('activity_purge_all_title') }}</h4>
                             <div class="danger-help">{{ t('activity_purge_all_help') }}</div>
                             <div>
-                                <button type="submit" class="btn danger sm" onclick="return confirm('{{ t('activity_purge_all_confirm') }}')">{{ t('activity_purge_all_submit') }}</button>
+                                <button type="submit" class="btn danger sm">{{ t('activity_purge_all_submit') }}</button>
                             </div>
                         </div>
                     </form>

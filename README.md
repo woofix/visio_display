@@ -45,6 +45,12 @@ Application web légère de signalétique numérique. Elle affiche un diaporama 
 - Les groupes sont indépendants par écran (désactivation individuelle ou par groupe)
 - Liaison écrans : chaque groupe peut être restreint à un ou plusieurs écrans spécifiques — sans liaison il est global (visible sur tous les écrans)
 
+**Campagnes temporaires**
+- Créer des campagnes événementielles ciblant des groupes et/ou des médias précis
+- Définir une période de diffusion, une priorité et les écrans concernés
+- La campagne active la plus prioritaire remplace temporairement la rotation normale sur ses écrans cibles
+- Duplication, activation/désactivation rapide, archivage et restauration depuis l'interface
+
 **Alerte prioritaire**
 - Diffusion instantanée d'un message en bannière sur l'écran d'affichage (super-admin uniquement)
 - Publication automatique à chaque frappe, sans rechargement ni interruption du diaporama
@@ -207,6 +213,7 @@ Le script distant configure alors automatiquement :
 **Surveillance des clients :**
 
 Les clients détectés dans l'administration sont rafraîchis automatiquement et les nouvelles installations envoient un heartbeat toutes les 30 secondes environ.
+Le super-admin peut aussi configurer le watchdog kiosque, arrêter/redémarrer un client détecté, réinstaller le client ou lancer une mise à jour Debian distante depuis **Paramètres > Installation client**.
 
 **Interface d'administration :** ouvrir `http://<hôte>:8081/admin` et se connecter.
 
@@ -356,6 +363,7 @@ Les écrans sont créés depuis la médiathèque (`/admin/media`). Chaque écran
 - Les noms réservés (`default`, `admin`, `api`, `static`, `login`, `logout`) ne peuvent pas être utilisés
 - Un même média peut appartenir à plusieurs écrans simultanément
 - Chaque écran hérite des médias assignés mais dispose de son propre ordre, ses désactivations, durées et programmations
+- Le super-admin peut renommer l'écran par défaut côté interface et définir une couleur de halo par écran
 
 ### Assignation des médias aux écrans
 
@@ -393,6 +401,7 @@ Visio-Display/
     │   ├── admin.py             # Tableau de bord
     │   ├── api.py               # API JSON
     │   ├── auth.py              # Connexion / déconnexion
+    │   ├── campaigns.py         # Campagnes temporaires
     │   ├── ephemeris.py         # Carte éphéméride
     │   ├── guards.py            # Helpers de contrôle d'accès
     │   ├── media.py             # Médiathèque
@@ -402,11 +411,15 @@ Visio-Display/
     │   ├── users.py             # Gestion des utilisateurs
     │   └── wiki.py              # Page d'aide intégrée
     ├── services/                # Logique métier
+    │   ├── backup_svc.py        # Sauvegarde/restauration Docker et web
+    │   ├── campaign_svc.py      # Résolution et sélection des campagnes
+    │   ├── clients_svc.py       # Heartbeat et état des clients d'affichage
     │   ├── config_svc.py        # Configuration applicative (lecture/écriture)
     │   ├── ephemeris_svc.py     # Génération de la carte éphéméride
     │   ├── i18n.py              # Internationalisation (flash messages, traductions)
     │   ├── media_svc.py         # Opérations sur les fichiers médias
     │   ├── queue_svc.py         # File d'encodage + tâches RQ
+    │   ├── server_stats_svc.py  # Statistiques CPU/RAM du serveur
     │   └── users_svc.py         # CRUD utilisateurs + permissions
     ├── static/
     │   ├── data/                # Médias et rendus générés (non versionné)
@@ -416,6 +429,7 @@ Visio-Display/
         ├── login.html           # Page de connexion
         ├── admin_layout.html    # Gabarit partagé (sidebar, topbar, thèmes)
         ├── admin_dashboard.html # Vue d'ensemble + espace disque
+        ├── admin_campaigns.html # Campagnes temporaires
         ├── admin_media.html     # Médiathèque + réorganisation + écrans
         ├── admin_upload.html    # Import de médias + suivi d'encodage
         ├── admin_queue.html     # File d'encodage + progression
@@ -435,6 +449,9 @@ Visio-Display/
 | `/api/config`                             | GET     | Non                | Configuration complète                               |
 | `/api/diskusage`                          | GET     | Non                | Statistiques disque                                  |
 | `/api/screens`                            | GET     | Non                | Liste des écrans nommés                              |
+| `/api/halo`                               | GET     | Non                | Couleur de halo de l'écran courant (`?screen=<nom>`) |
+| `/api/client-policy`                      | GET     | Non                | Politique watchdog envoyée aux clients kiosque       |
+| `/api/client-heartbeat`                   | POST    | Non                | Remontée d'état d'un client d'affichage              |
 | `/api/priority-alert`                     | GET     | Non                | Message d'alerte prioritaire en cours                |
 | `/api/queue`                              | GET     | Connecté           | État de la file d'encodage (compression + upload)    |
 | `/upload`                                 | POST    | `upload`           | Importer des fichiers (retourne JSON + jobs d'encodage) |
@@ -452,6 +469,22 @@ Visio-Display/
 | `/screen_assign/<filename>`               | POST    | `toggle`           | Assigner / retirer un média d'un écran nommé         |
 | `/admin/screens/add`                      | POST    | Connecté           | Créer un écran nommé                                 |
 | `/admin/screens/delete/<name>`            | POST    | Connecté           | Supprimer un écran nommé                             |
+| `/admin/screens/default-name`             | POST    | Super-admin        | Renommer l'écran par défaut dans l'interface         |
+| `/admin/screens/halo`                     | POST    | Super-admin        | Définir la couleur de halo d'un écran                |
+| `/admin/campaigns/create`                 | POST    | `schedule` ou `toggle` | Créer une campagne temporaire                     |
+| `/admin/campaigns/<id>/update`            | POST    | `schedule` ou `toggle` | Modifier une campagne                             |
+| `/admin/campaigns/<id>/toggle`            | POST    | `schedule` ou `toggle` | Activer/désactiver une campagne                   |
+| `/admin/campaigns/<id>/duplicate`         | POST    | `schedule` ou `toggle` | Dupliquer une campagne                            |
+| `/admin/campaigns/<id>/archive`           | POST    | `schedule` ou `toggle` | Archiver/restaurer une campagne                   |
+| `/admin/settings/client-watchdog`         | POST    | Super-admin        | Configurer le watchdog des clients kiosque           |
+| `/admin/settings/known-clients`           | GET     | Super-admin        | Liste JSON des clients détectés                      |
+| `/admin/settings/install-client`          | POST    | Super-admin        | Installer/réinstaller un client distant via SSH      |
+| `/admin/settings/client-power`            | POST    | Super-admin        | Arrêter, redémarrer, réinstaller ou mettre à jour un client |
+| `/admin/settings/backups/create-stream`   | POST    | Super-admin        | Créer une sauvegarde avec progression NDJSON         |
+| `/admin/settings/backups/download/<file>` | GET     | Super-admin        | Télécharger une sauvegarde                           |
+| `/admin/settings/backups/copy/<file>`     | POST    | Super-admin        | Copier une sauvegarde vers SMB                       |
+| `/admin/settings/backups/delete/<file>`   | POST    | Super-admin        | Supprimer une sauvegarde locale                      |
+| `/admin/settings/backups/restore`         | POST    | Super-admin        | Restaurer une archive de sauvegarde                  |
 | `/admin/settings/theme`                   | POST    | Connecté           | Changer le thème de l'interface                      |
 | `/admin/settings/language`                | POST    | Connecté           | Changer la langue de l'interface (fr/en)             |
 | `/admin/settings/appname`                 | POST    | Super-admin        | Personnaliser le nom de l'application                |
@@ -520,6 +553,29 @@ Les quatre champs (`time_start`, `time_end`, `date_start`, `date_end`) sont tous
 ```
 
 Chaque média peut appartenir à zéro, un ou plusieurs groupes. `disabled_groups` liste les groupes dont tous les médias sont masqués. `group_screens` restreint un groupe à des écrans spécifiques — `""` désigne l'écran par défaut ; une entrée absente ou liste vide = groupe global (visible sur tous les écrans).
+
+**Campagnes temporaires (`campaigns`)**
+
+```json
+{
+  "campaigns": [
+    {
+      "id": "campagne-jpo",
+      "name": "Journée portes ouvertes",
+      "start_date": "2026-05-15",
+      "end_date": "2026-05-16",
+      "priority": 200,
+      "enabled": true,
+      "archived": false,
+      "screens": ["hall"],
+      "groups": ["jpo"],
+      "media": ["accueil-jpo.jpg"]
+    }
+  ]
+}
+```
+
+Une campagne active et non archivée peut cibler des groupes, des médias isolés ou les deux. Si plusieurs campagnes sont actives sur un même écran, celles avec la priorité la plus élevée déterminent la rotation temporaire.
 
 **Alerte prioritaire (`priority_alert`)**
 
@@ -646,6 +702,12 @@ A lightweight web-based digital signage. It displays a fullscreen slideshow of i
 - Groups are independent per screen (individual or group-level disabling)
 - Screen linking: each group can be restricted to one or more specific screens — with no link it is global (visible on all screens)
 
+**Temporary campaigns**
+- Create event-based campaigns targeting specific groups and/or media items
+- Set a broadcast period, a priority and the targeted screens
+- The active campaign with the highest priority temporarily replaces the normal rotation on its target screens
+- Duplicate, quick-enable/disable, archive and restore campaigns from the interface
+
 **Priority alert**
 - Instantly broadcast a message as a banner on the display screen (super-admin only)
 - Auto-published on each keystroke, no reload or slideshow interruption
@@ -726,7 +788,7 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 | Variable         | Description                                                       |
 |------------------|-------------------------------------------------------------------|
 | `ADMIN_USER`     | Super-admin username (read only on first boot)                    |
-| `ADMIN_PASSWORD` | Super-admin password (minimum 8 characters)                       |
+| `ADMIN_PASSWORD` | Super-admin password (minimum 10 characters)                      |
 | `SECRET_KEY`     | Flask session signing key (required)                              |
 | `POSTGRES_PASSWORD` | Password for the PostgreSQL `visio` role used by the Docker stack |
 | `SESSION_COOKIE_SECURE` | Forces the session cookie to use `Secure` (recommended behind HTTPS) |
@@ -810,6 +872,7 @@ The remote script then configures:
 **Client monitoring:**
 
 Detected clients in the admin UI refresh automatically, and new installations send a heartbeat roughly every 30 seconds.
+The super-admin can also configure the kiosk watchdog, shut down/restart a detected client, reinstall the client, or run a remote Debian update from **Settings > Client installation**.
 
 **Admin interface:** open `http://<host>:8081/admin` and log in with your credentials.
 
@@ -874,6 +937,7 @@ Screens are created from the media library (`/admin/media`). Each named screen i
 - Reserved names (`default`, `admin`, `api`, `static`, `login`, `logout`) cannot be used
 - A single media item can be assigned to multiple screens at once
 - Each screen inherits the assigned media but has its own order, disabled list, durations, and schedules
+- The super-admin can rename the default screen in the interface and set a per-screen halo color
 
 ### Assigning media to screens
 
@@ -911,6 +975,7 @@ Visio-Display/
     │   ├── admin.py             # Dashboard
     │   ├── api.py               # JSON API
     │   ├── auth.py              # Login / logout
+    │   ├── campaigns.py         # Temporary campaigns
     │   ├── ephemeris.py         # Ephemeris card
     │   ├── guards.py            # Access control helpers
     │   ├── media.py             # Media library
@@ -920,20 +985,25 @@ Visio-Display/
     │   ├── users.py             # User management
     │   └── wiki.py              # Built-in help page
     ├── services/                # Business logic
+    │   ├── backup_svc.py        # Docker and web backup/restore
+    │   ├── campaign_svc.py      # Campaign resolution and selection
+    │   ├── clients_svc.py       # Display client heartbeat and status
     │   ├── config_svc.py        # App config (read/write)
     │   ├── ephemeris_svc.py     # Ephemeris card generation
     │   ├── i18n.py              # Internationalisation (flash messages, translations)
     │   ├── media_svc.py         # Media file operations
     │   ├── queue_svc.py         # Encoding queue + RQ tasks
+    │   ├── server_stats_svc.py  # Server CPU/RAM stats
     │   └── users_svc.py         # User CRUD + permissions
     ├── static/
-    │   ├── data/                # Media files + SQLite DB visio-display.db (not versioned)
+    │   ├── data/                # Media files and generated renders (not versioned)
     │   └── images/              # Logo and static assets
     └── templates/               # Jinja2 templates
         ├── index.html           # Fullscreen slideshow
         ├── login.html           # Login page
         ├── admin_layout.html    # Shared layout (sidebar, topbar, themes)
         ├── admin_dashboard.html # Overview + disk usage
+        ├── admin_campaigns.html # Temporary campaigns
         ├── admin_media.html     # Media library + reordering + screens
         ├── admin_upload.html    # Media import + encoding progress
         ├── admin_queue.html     # Encoding queue + progress bars
@@ -953,6 +1023,9 @@ Visio-Display/
 | `/api/config`                             | GET     | No                 | Full configuration                                      |
 | `/api/diskusage`                          | GET     | No                 | Disk usage stats                                        |
 | `/api/screens`                            | GET     | No                 | List of named screens                                   |
+| `/api/halo`                               | GET     | No                 | Halo color for the current screen (`?screen=<name>`)     |
+| `/api/client-policy`                      | GET     | No                 | Watchdog policy sent to kiosk clients                   |
+| `/api/client-heartbeat`                   | POST    | No                 | Display client status heartbeat                         |
 | `/api/priority-alert`                     | GET     | No                 | Current priority alert message                          |
 | `/api/queue`                              | GET     | Logged in          | Encoding queue state (compression + upload jobs)        |
 | `/upload`                                 | POST    | `upload`           | Upload files (returns JSON with encoding job list)      |
@@ -970,6 +1043,22 @@ Visio-Display/
 | `/screen_assign/<filename>`               | POST    | `toggle`           | Assign / remove a media item from a named screen        |
 | `/admin/screens/add`                      | POST    | Logged in          | Create a named screen                                   |
 | `/admin/screens/delete/<name>`            | POST    | Logged in          | Delete a named screen                                   |
+| `/admin/screens/default-name`             | POST    | Super-admin        | Rename the default screen in the interface              |
+| `/admin/screens/halo`                     | POST    | Super-admin        | Set the halo color for a screen                         |
+| `/admin/campaigns/create`                 | POST    | `schedule` or `toggle` | Create a temporary campaign                         |
+| `/admin/campaigns/<id>/update`            | POST    | `schedule` or `toggle` | Update a campaign                                   |
+| `/admin/campaigns/<id>/toggle`            | POST    | `schedule` or `toggle` | Enable/disable a campaign                           |
+| `/admin/campaigns/<id>/duplicate`         | POST    | `schedule` or `toggle` | Duplicate a campaign                                |
+| `/admin/campaigns/<id>/archive`           | POST    | `schedule` or `toggle` | Archive/restore a campaign                          |
+| `/admin/settings/client-watchdog`         | POST    | Super-admin        | Configure kiosk client watchdog                         |
+| `/admin/settings/known-clients`           | GET     | Super-admin        | JSON list of detected clients                           |
+| `/admin/settings/install-client`          | POST    | Super-admin        | Install/reinstall a remote client over SSH              |
+| `/admin/settings/client-power`            | POST    | Super-admin        | Shut down, restart, reinstall, or update a client       |
+| `/admin/settings/backups/create-stream`   | POST    | Super-admin        | Create a backup with NDJSON progress                    |
+| `/admin/settings/backups/download/<file>` | GET     | Super-admin        | Download a backup archive                               |
+| `/admin/settings/backups/copy/<file>`     | POST    | Super-admin        | Copy a backup to SMB                                    |
+| `/admin/settings/backups/delete/<file>`   | POST    | Super-admin        | Delete a local backup                                   |
+| `/admin/settings/backups/restore`         | POST    | Super-admin        | Restore a backup archive                                |
 | `/admin/settings/theme`                   | POST    | Logged in          | Change the UI theme                                     |
 | `/admin/settings/language`                | POST    | Logged in          | Change the UI language (fr/en)                          |
 | `/admin/settings/appname`                 | POST    | Super-admin        | Set the application name                                |
@@ -1038,6 +1127,29 @@ All four fields (`time_start`, `time_end`, `date_start`, `date_end`) are optiona
 ```
 
 Each media item can belong to zero, one or several groups. `disabled_groups` lists groups whose media are all hidden. `group_screens` restricts a group to specific screens — `""` refers to the default screen; a missing entry or empty list = global group (visible on all screens).
+
+**Temporary campaigns (`campaigns`)**
+
+```json
+{
+  "campaigns": [
+    {
+      "id": "open-day",
+      "name": "Open day",
+      "start_date": "2026-05-15",
+      "end_date": "2026-05-16",
+      "priority": 200,
+      "enabled": true,
+      "archived": false,
+      "screens": ["hall"],
+      "groups": ["open-day"],
+      "media": ["welcome-open-day.jpg"]
+    }
+  ]
+}
+```
+
+An active, non-archived campaign can target groups, individual media items, or both. If several campaigns are active on the same screen, the highest-priority campaigns determine the temporary rotation.
 
 **Priority alert (`priority_alert`)**
 

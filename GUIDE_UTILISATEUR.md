@@ -25,6 +25,7 @@ Visio-Display est une application d'**affichage dynamique** (digital signage) qu
 15. [Journal d'activité](#15-journal-dactivité)
 16. [Wiki — aide intégrée](#16-wiki--aide-intégrée)
 17. [Sauvegarder et restaurer le serveur](#17-sauvegarder-et-restaurer-le-serveur)
+18. [Campagnes temporaires](#18-campagnes-temporaires)
 
 ---
 
@@ -259,6 +260,7 @@ Noms réservés (interdits) : `default`, `admin`, `api`, `static`, `login`, `log
 - Chaque écran gère **indépendamment** l'ordre, l'activation, la durée et la planification de chaque média.
 - Un même fichier peut être **assigné à plusieurs écrans simultanément**.
 - Les utilisateurs peuvent être **restreints à certains écrans** (voir section 11).
+- Le super-admin peut personnaliser le **nom affiché de l'écran par défaut** et la **couleur de halo** utilisée autour des médias pendant la lecture.
 
 > **Conseil :** lors de l'installation d'un client d'affichage, indiquez l'URL de base du serveur puis, si nécessaire, le nom d'écran. Le poste client construit lui-même l'URL finale à ouvrir.
 
@@ -291,6 +293,16 @@ Depuis **Paramètres > Installation client**, la zone **Contrôle client** perme
 - **Mettre à jour Debian** lance la mise à jour système du poste.
 
 > **Attention :** la réinstallation du client n’est pas une simple mise à jour système ; elle relance bien la procédure d’installation du client d’affichage.
+
+### Watchdog kiosque
+
+Le super-admin peut configurer la politique de surveillance envoyée aux clients installés :
+
+- l'intervalle entre deux vérifications ;
+- le délai de grâce après le démarrage ;
+- le nombre d'échecs consécutifs avant redémarrage automatique.
+
+Cette politique aide un client kiosque à revenir tout seul en service si le navigateur d'affichage cesse durablement de fonctionner.
 
 ---
 
@@ -604,6 +616,41 @@ Pour restaurer sur une autre instance déjà démarrée :
 4. cliquez sur **Restaurer maintenant**.
 
 > La restauration réinjecte les données de l'application, les médias et les données privées. Le fichier `.env` sauvegardé reste fourni comme copie de référence, mais n'est pas réécrit automatiquement par l'interface.
+
+---
+
+## 18. Campagnes temporaires
+
+Accessible depuis **Campagnes temporaires** dans le menu.
+
+Les campagnes permettent de prendre temporairement la main sur la rotation normale pour un événement, une période ou une urgence préparée à l'avance.
+
+> **Permission requise :** `schedule` ou `toggle`
+
+### Créer une campagne
+
+1. Cliquez sur **Nouvelle campagne**.
+2. Renseignez un nom, une période de début/fin si nécessaire, une priorité et les écrans ciblés.
+3. Sélectionnez au moins un groupe ou un média dans la médiathèque intégrée.
+4. Activez la campagne puis enregistrez.
+
+### Priorité et diffusion
+
+- Si plusieurs campagnes sont actives sur le même écran, celle avec la priorité la plus élevée prend le dessus.
+- Une campagne peut cibler des groupes, des médias isolés, ou les deux.
+- Les campagnes respectent les restrictions d'écrans de l'utilisateur connecté.
+- Une campagne archivée ne peut pas être activée tant qu'elle n'est pas restaurée.
+
+### Actions disponibles
+
+| Action | Description |
+|---|---|
+| **Modifier** | Met à jour les dates, la priorité, les écrans et les contenus ciblés. |
+| **Activer / Désactiver** | Bascule rapidement une campagne non archivée. |
+| **Dupliquer** | Crée une copie réutilisable pour un nouvel événement. |
+| **Archiver / Restaurer** | Retire une campagne de l'exploitation courante sans perdre sa configuration. |
+
+Les actions de campagne sont enregistrées dans le **Journal d'activité** sous le type **Campagne**.
 
 ---
 

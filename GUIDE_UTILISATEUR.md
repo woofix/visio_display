@@ -78,6 +78,13 @@ Pour vous déconnecter, cliquez sur votre nom en haut à droite puis **Déconnex
 - Les menus affichés dépendent de vos **permissions** : certaines sections peuvent être absentes si votre compte n'y a pas accès.
 - Le tableau de bord sert surtout de **point d'entrée rapide** ; la gestion détaillée se fait ensuite dans la médiathèque, les paramètres et les plages de diffusion.
 
+### Différence entre super-admin et utilisateur
+
+| Profil | Ce qu'il peut faire | Limites |
+|---|---|---|
+| **Super-admin** | Accède à toute l'application, tous les écrans, tous les réglages globaux, la gestion des comptes, les sauvegardes, l'installation client, les fonctionnalités système et l'alerte prioritaire. | Son compte ne peut pas être supprimé depuis l'interface et ses permissions ne se retirent pas comme celles d'un utilisateur. |
+| **Utilisateur** | Accède uniquement aux menus et actions correspondant aux permissions attribuées par le super-admin. Il peut aussi être limité à certains écrans. | Ne peut pas gérer les comptes, accorder des permissions, créer/supprimer des écrans, restaurer le serveur, publier l'alerte prioritaire ou modifier les réglages réservés au super-admin. |
+
 ---
 
 ## 4. Ajouter des médias
@@ -385,6 +392,8 @@ Accessible depuis **Paramètres → Utilisateurs**.
 
 L'entrée **Utilisateurs** du menu n'affiche pas de compteur du nombre de comptes.
 
+> **Réservé au super-admin :** seul le super-admin peut créer des comptes, supprimer des comptes utilisateurs, modifier les permissions et limiter les utilisateurs à certains écrans.
+
 ### Créer un compte
 
 1. Cliquez sur **Ajouter un compte**.
@@ -473,6 +482,13 @@ L'alerte prioritaire permet de diffuser **immédiatement** un message en banniè
 | `logo` | Changer ou réinitialiser le logo de l'application |
 | `ephemeris` | Régénérer la carte éphéméride, gérer les événements datés |
 | `schedule` | Définir des planifications horaires et de dates |
+
+### Rôles et limites
+
+| Type de compte | Peut faire | Ne peut pas faire |
+|---|---|---|
+| **Super-admin** | Tout ce que permettent les permissions, plus les actions d'administration globale : utilisateurs, écrans, sauvegardes, météo, installation client, fonctionnalités, alerte prioritaire et encodage forcé. | Son compte et ses permissions sont protégés dans l'interface courante. |
+| **Utilisateur** | Uniquement les actions couvertes par ses permissions, et seulement sur les écrans autorisés si une restriction est définie. | Créer ou supprimer des comptes, accorder des permissions, créer ou supprimer des écrans, restaurer le serveur, publier l'alerte prioritaire ou modifier les réglages globaux réservés. |
 
 > Le super-admin dispose de **toutes les permissions** et peut en plus : créer/supprimer des comptes, créer/supprimer des écrans, personnaliser le nom de l'application, configurer la localisation météo, publier une alerte prioritaire et forcer l'encodage hors fenêtre nocturne.
 

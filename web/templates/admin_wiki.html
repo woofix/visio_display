@@ -204,22 +204,24 @@
 
 /* Callout / info box */
 .wiki-callout {
-    background: var(--primary-bg);
-    border: 1px solid rgba(124,58,237,.2);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--info-bg) 92%, var(--surface) 8%), color-mix(in srgb, var(--surface) 94%, var(--info-bg) 6%));
+    border: 1px solid var(--info-border);
     border-left: 3px solid var(--primary);
     border-radius: 8px;
     padding: 10px 14px;
     font-size: .82rem;
-    color: var(--text-2);
+    color: var(--info-text);
     line-height: 1.6;
     margin: 10px 0;
 }
 .wiki-callout.warning {
-    background: #fff7ed;
-    border-color: rgba(234,88,12,.2);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--warning-bg) 92%, var(--surface) 8%), color-mix(in srgb, var(--surface) 94%, var(--warning-bg) 6%));
+    border-color: var(--warning-border);
     border-left-color: var(--orange);
+    color: var(--warning-text);
 }
 .wiki-callout strong { color: var(--text); }
+.wiki-callout.warning strong { color: var(--warning-text); }
 
 /* Badge permission */
 .perm-badge {
@@ -449,6 +451,10 @@
 {% endblock %}
 
 {% block content %}
+{% macro tx(key, fallback) -%}
+    {%- set value = t(key) -%}
+    {{- fallback if value == key else value -}}
+{%- endmacro %}
 
 <div class="wiki-hero">
     <div class="wiki-hero-title">
@@ -565,6 +571,14 @@
                 <li>{{ t('wiki_s3_note1') }}</li>
                 <li>{{ t('wiki_s3_note2') }}</li>
             </ul>
+            <h3>{{ tx('wiki_s3_roles_title', 'Différence entre super-admin et utilisateur') }}</h3>
+            <table class="wiki-table">
+                <thead><tr><th>{{ tx('wiki_s3_roles_col_role', 'Profil') }}</th><th>{{ tx('wiki_s3_roles_col_scope', 'Ce qu’il peut faire') }}</th><th>{{ tx('wiki_s3_roles_col_limits', 'Limites') }}</th></tr></thead>
+                <tbody>
+                    <tr><td><strong>{{ tx('wiki_s3_roles_superadmin', 'Super-admin') }}</strong></td><td>{{ tx('wiki_s3_roles_superadmin_scope', 'Accès complet à l’application, à tous les écrans, aux comptes, aux sauvegardes, aux fonctionnalités système et aux réglages globaux.') }}</td><td>{{ tx('wiki_s3_roles_superadmin_limits', 'Ses permissions ne se retirent pas depuis l’interface et son compte ne peut pas être supprimé.') }}</td></tr>
+                    <tr><td><strong>{{ tx('wiki_s3_roles_user', 'Utilisateur') }}</strong></td><td>{{ tx('wiki_s3_roles_user_scope', 'Accès limité aux menus et actions correspondant aux permissions attribuées par le super-admin.') }}</td><td>{{ tx('wiki_s3_roles_user_limits', 'Ne peut pas gérer les comptes, les écrans, les sauvegardes, les alertes prioritaires ni les réglages réservés au super-admin.') }}</td></tr>
+                </tbody>
+            </table>
         </section>
 
         <!-- §4 Add media -->
@@ -815,6 +829,9 @@
                 <h2>{{ t('wiki_s10_title') }}</h2>
             </div>
             <p>{{ t('wiki_s10_access') }}</p>
+            <div class="wiki-callout warning">
+                <strong>{{ tx('wiki_s10_scope_title', 'Réservé au super-admin :') }}</strong> {{ tx('wiki_s10_scope_desc', 'seul le super-admin peut créer des comptes, supprimer des comptes utilisateurs, modifier les permissions et limiter les utilisateurs à certains écrans.') }}
+            </div>
             <h3>{{ t('wiki_s10_create_title') }}</h3>
             <ol class="wiki-steps">
                 <li>{{ t('wiki_s10_step1') }}</li>
@@ -882,6 +899,14 @@
                     <tr><td><span class="perm-badge">logo</span></td><td>{{ t('wiki_perm_logo') }}</td></tr>
                     <tr><td><span class="perm-badge">ephemeris</span></td><td>{{ t('wiki_perm_ephemeris') }}</td></tr>
                     <tr><td><span class="perm-badge">schedule</span></td><td>{{ t('wiki_perm_schedule') }}</td></tr>
+                </tbody>
+            </table>
+            <h3>{{ tx('wiki_s12_difference_title', 'Rôles et limites') }}</h3>
+            <table class="wiki-table">
+                <thead><tr><th>{{ tx('wiki_s12_col_user_type', 'Type de compte') }}</th><th>{{ tx('wiki_s12_col_can_do', 'Peut faire') }}</th><th>{{ tx('wiki_s12_col_cannot_do', 'Ne peut pas faire') }}</th></tr></thead>
+                <tbody>
+                    <tr><td><strong>{{ tx('wiki_s12_superadmin_label', 'Super-admin') }}</strong></td><td>{{ tx('wiki_s12_superadmin_can', 'Tout ce que permettent les permissions, plus les actions d’administration globale : utilisateurs, écrans, sauvegardes, météo, installation client, fonctionnalités, alerte prioritaire et encodage forcé.') }}</td><td>{{ tx('wiki_s12_superadmin_cannot', 'Son compte et ses permissions sont protégés dans l’interface courante.') }}</td></tr>
+                    <tr><td><strong>{{ tx('wiki_s12_user_label', 'Utilisateur') }}</strong></td><td>{{ tx('wiki_s12_user_can', 'Uniquement les actions couvertes par ses permissions, et seulement sur les écrans autorisés si une restriction est définie.') }}</td><td>{{ tx('wiki_s12_user_cannot', 'Créer ou supprimer des comptes, accorder des permissions, créer ou supprimer des écrans, restaurer le serveur, publier l’alerte prioritaire ou modifier les réglages globaux réservés.') }}</td></tr>
                 </tbody>
             </table>
             <div class="wiki-callout">{{ t('wiki_s12_superadmin') }}</div>

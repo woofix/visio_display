@@ -202,20 +202,60 @@ button:hover {
 .flash-list {
     list-style: none;
     margin-bottom: 16px;
+    display: grid;
+    gap: 8px;
 }
 
 .flash-list li {
-    padding: 10px 14px;
-    border-radius: 12px;
-    margin-bottom: 6px;
+    padding: 12px 13px;
+    border-radius: 16px;
     font-size: .84rem;
     text-align: left;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    border: 1px solid rgba(79, 70, 229, .18);
+    background: linear-gradient(180deg, rgba(224, 231, 255, .92), rgba(255, 255, 255, .92));
+    color: #3730a3;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, .08);
 }
 
 .flash-list li.error {
-    background: #fef2f2;
+    background: linear-gradient(180deg, rgba(254, 242, 242, .94), rgba(255, 255, 255, .92));
     color: #991b1b;
-    border: 1px solid #fecaca;
+    border-color: #fecaca;
+}
+
+.flash-list li.success {
+    background: linear-gradient(180deg, rgba(240, 253, 244, .94), rgba(255, 255, 255, .92));
+    color: #166534;
+    border-color: #bbf7d0;
+}
+
+.flash-list li.warning {
+    background: linear-gradient(180deg, rgba(255, 247, 237, .94), rgba(255, 255, 255, .92));
+    color: #9a3412;
+    border-color: #fed7aa;
+}
+
+.flash-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, .6);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+}
+
+.flash-icon svg {
+    width: 14px;
+    height: 14px;
+}
+
+.flash-body {
+    line-height: 1.55;
 }
 
 @media (max-width: 520px) {

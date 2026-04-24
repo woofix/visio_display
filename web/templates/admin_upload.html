@@ -255,11 +255,11 @@
     font-size: .85rem; font-weight: 600;
     border: 1px solid;
 }
-.window-banner.on  { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
-.window-banner.off { background: #fff7ed; color: #9a3412; border-color: #fed7aa; }
+.window-banner.on  { background: linear-gradient(180deg, color-mix(in srgb, var(--success-bg) 90%, white 10%), color-mix(in srgb, var(--surface) 94%, var(--success-bg) 6%)); color: var(--success-text); border-color: var(--success-border); }
+.window-banner.off { background: linear-gradient(180deg, color-mix(in srgb, var(--warning-bg) 90%, white 10%), color-mix(in srgb, var(--surface) 94%, var(--warning-bg) 6%)); color: var(--warning-text); border-color: var(--warning-border); }
 .window-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-.window-dot.on  { background: #22c55e; box-shadow: 0 0 0 3px #bbf7d0; animation: pulse 2s infinite; }
-.window-dot.off { background: var(--orange); box-shadow: 0 0 0 3px #fed7aa; }
+.window-dot.on  { background: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--success-border) 80%, transparent); animation: pulse 2s infinite; }
+.window-dot.off { background: var(--orange); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warning-border) 80%, transparent); }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.55} }
 
 .queue-section { margin-bottom: 22px; }
@@ -274,19 +274,19 @@
 .job-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.1rem; }
 .job-progress-wrap { height: 5px; background: var(--border); border-radius: 4px; overflow: hidden; margin-top: 5px; }
 .job-progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--primary-light)); border-radius: 4px; transition: width .5s; }
-.job-icon.pending    { background: #fff7ed; }
-.job-icon.processing { background: #ede9fe; animation: spin-slow 3s linear infinite; }
+.job-icon.pending    { background: color-mix(in srgb, var(--warning-bg) 88%, white 12%); color: var(--warning-text); }
+.job-icon.processing { background: color-mix(in srgb, var(--info-bg) 88%, white 12%); color: var(--info-text); animation: spin-slow 3s linear infinite; }
 @keyframes spin-slow { to { transform: rotate(360deg); } }
 .job-info { flex: 1; min-width: 0; }
 .job-name   { font-size: .84rem; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .job-meta   { font-size: .73rem; color: var(--text-3); margin-top: 2px; }
 .job-status { font-size: .72rem; font-weight: 700; padding: 3px 9px; border-radius: 8px; white-space: nowrap; }
-.job-status.pending    { background: #fff7ed; color: #9a3412; }
-.job-status.processing { background: #ede9fe; color: var(--primary); }
-.job-status.done       { background: #f0fdf4; color: #15803d; }
-.job-status.error      { background: #fef2f2; color: #991b1b; }
-.job-result { font-size: .76rem; color: var(--green); font-weight: 600; }
-.job-result.error { color: var(--red); }
+.job-status.pending    { background: color-mix(in srgb, var(--warning-bg) 88%, white 12%); color: var(--warning-text); }
+.job-status.processing { background: color-mix(in srgb, var(--info-bg) 88%, white 12%); color: var(--info-text); }
+.job-status.done       { background: color-mix(in srgb, var(--success-bg) 88%, white 12%); color: var(--success-text); }
+.job-status.error      { background: color-mix(in srgb, var(--error-bg) 88%, white 12%); color: var(--error-text); }
+.job-result { font-size: .76rem; color: var(--success-text); font-weight: 600; }
+.job-result.error { color: var(--error-text); }
 .empty-queue { text-align: center; padding: 40px 20px; color: var(--text-3); }
 .empty-queue svg { width: 44px; height: 44px; color: #ddd6fe; display: block; margin: 0 auto 12px; }
 .empty-queue p { font-size: .85rem; }
@@ -520,8 +520,8 @@
 {% endif %}
 </div>
 
-<div class="upload-conflict-modal" id="upload-conflict-modal" aria-hidden="true">
-    <div class="upload-conflict-dialog" role="dialog" aria-modal="true" aria-labelledby="upload-conflict-title">
+<div class="upload-conflict-modal theme-dialog-overlay" id="upload-conflict-modal" aria-hidden="true">
+    <div class="upload-conflict-dialog theme-dialog" role="dialog" aria-modal="true" aria-labelledby="upload-conflict-title">
         <div class="upload-conflict-head">
             <h3 id="upload-conflict-title">Fichier déjà existant</h3>
             <p>Choisissez un nouveau nom, ou écrasez le fichier existant.</p>
@@ -535,10 +535,10 @@
     </div>
 </div>
 
-<div class="queue-force-modal" id="queue-force-modal" aria-hidden="true">
-    <div class="queue-force-dialog" role="dialog" aria-modal="true" aria-labelledby="queue-force-title">
-        <div class="queue-force-head">
-            <div class="queue-force-icon" aria-hidden="true">
+<div class="queue-force-modal theme-dialog-overlay" id="queue-force-modal" aria-hidden="true">
+    <div class="queue-force-dialog theme-dialog" role="dialog" aria-modal="true" aria-labelledby="queue-force-title">
+        <div class="queue-force-head theme-dialog-header">
+            <div class="queue-force-icon theme-dialog-icon" data-tone="warning" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polygon points="5 3 19 12 5 21 5 3"></polygon>
                 </svg>
@@ -548,8 +548,8 @@
                 <p>{{ t('queue_force_confirm') }}</p>
             </div>
         </div>
-        <div class="queue-force-body">
-            <div class="queue-force-note">
+        <div class="queue-force-body theme-dialog-body">
+            <div class="queue-force-note theme-dialog-note" data-tone="warning">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="10"></circle>
                     <line x1="12" y1="8" x2="12" y2="12"></line>
@@ -561,7 +561,7 @@
                 </div>
             </div>
         </div>
-        <div class="queue-force-actions">
+        <div class="queue-force-actions theme-dialog-actions">
             <button type="button" class="btn secondary sm" id="queue-force-cancel">Annuler</button>
             <button type="button" class="btn primary sm" id="queue-force-confirm">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px">
@@ -1063,10 +1063,7 @@ document.getElementById('upload-form').addEventListener('submit', function(e) {
 });
 
 function showFlash(msg, type) {
-    let list = document.querySelector('.flash-list');
-    if (!list) { list = document.createElement('ul'); list.className = 'flash-list'; document.querySelector('.content').prepend(list); }
-    const li = document.createElement('li'); li.className = type; li.textContent = msg;
-    list.appendChild(li); li.scrollIntoView({ behavior:'smooth', block:'center' });
+    window.appUI.showFlash(msg, type);
 }
 
 {% if is_feature_enabled('videos') and is_feature_enabled('compress') %}
@@ -1152,7 +1149,12 @@ async function refreshQueue() {
 }
 
 async function cancelJob(id) {
-    if (!confirm(JS_CONFIRM_CANCEL)) return;
+    if (!await window.appUI.confirm({
+        titleText: JS_CANCEL_BTN,
+        messageText: JS_CONFIRM_CANCEL,
+        tone: 'warning',
+        confirmLabel: JS_CANCEL_BTN,
+    })) return;
     await fetch(`/queue/cancel/${id}`, { method: 'POST' });
     refreshQueue();
 }

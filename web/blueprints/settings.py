@@ -103,6 +103,14 @@ def _build_settings_context(tab='logo', install_defaults=None, install_result=No
                             client_control_defaults=None, client_control_result=None):
     cfg = load_config()
     client_watchdog = cfg.get('client_watchdog', {})
+    is_sa = is_superadmin()
+    backup_remote = cfg.get('backup_remote', {}) if is_sa else {}
+    backup_remote_defaults = {
+        'enabled': bool(backup_remote.get('enabled')),
+        'url': str(backup_remote.get('url', '') or ''),
+        'username': str(backup_remote.get('username', '') or ''),
+        'password': str(backup_remote.get('password', '') or ''),
+    }
     users = load_users()
     today = date.today()
     raw_events = cfg.get("events", [])
@@ -126,7 +134,6 @@ def _build_settings_context(tab='logo', install_defaults=None, install_result=No
         "resolved_school_zone": get_school_zone(cfg),
         "school_zone_label": dict(SCHOOL_ZONES).get(cfg.get("school_zone", "auto"), "Auto"),
     }
-    is_sa = is_superadmin()
     screen_names = list(cfg.get('screens', {}).keys())
     manageable_screens = screen_names if is_sa else [name for name in screen_names if has_screen_access(name)]
     active_tab = _normalize_settings_tab(tab)
@@ -139,7 +146,7 @@ def _build_settings_context(tab='logo', install_defaults=None, install_result=No
         logo_path=get_logo_path(),
         events=events,
         current_user_is_superadmin=is_sa,
-        backup_remote=(cfg.get('backup_remote', {}) if is_sa else {}),
+        backup_remote=backup_remote_defaults,
         theme=user_theme,
         settings_topbar_subtitle=_settings_topbar_subtitle(active_tab, is_sa),
         can_ephemeris=has_permission('ephemeris'),

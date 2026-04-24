@@ -234,10 +234,15 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
         {% if messages %}
         <ul class="flash-list">
             {% for cat, msg in messages %}
-            <li class="{{ cat }}">
-                {% if cat == 'success' %}<svg class="u-icon-15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                {% elif cat == 'error' %}<svg class="u-icon-15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                {% endif %}{{ msg }}
+            {% set flash_cat = cat if cat in ['success', 'error', 'warning', 'info'] else 'info' %}
+            <li class="{{ flash_cat }}">
+                <span class="flash-icon" aria-hidden="true">
+                    {% if flash_cat == 'success' %}<svg class="u-icon-15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    {% elif flash_cat == 'error' %}<svg class="u-icon-15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    {% elif flash_cat == 'warning' %}<svg class="u-icon-15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M12 3 2 21h20L12 3z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    {% else %}<svg class="u-icon-15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><circle cx="12" cy="12" r="10"/><line x1="12" y1="10" x2="12" y2="16"/><line x1="12" y1="7" x2="12.01" y2="7"/></svg>{% endif %}
+                </span>
+                <span class="flash-body">{{ msg }}</span>
             </li>
             {% endfor %}
         </ul>
@@ -254,6 +259,25 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
     <span id="modal-close">&times;</span>
     <img id="modal-img" src="" alt="" class="u-hidden">
     <video id="modal-video" controls class="u-hidden"></video>
+</div>
+
+<div id="app-feedback-dialog" class="theme-dialog-overlay" aria-hidden="true">
+    <div class="theme-dialog" role="dialog" aria-modal="true" aria-labelledby="app-feedback-title" aria-describedby="app-feedback-message">
+        <div class="theme-dialog-header">
+            <div class="theme-dialog-icon" id="app-feedback-icon" data-tone="info" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><circle cx="12" cy="12" r="10"/><line x1="12" y1="10" x2="12" y2="16"/><line x1="12" y1="7" x2="12.01" y2="7"/></svg>
+            </div>
+            <div>
+                <div class="theme-dialog-title" id="app-feedback-title">Message</div>
+                <div class="theme-dialog-copy" id="app-feedback-message"></div>
+            </div>
+        </div>
+        <div class="theme-dialog-body" id="app-feedback-body"></div>
+        <div class="theme-dialog-actions" id="app-feedback-actions">
+            <button type="button" class="btn secondary sm" id="app-feedback-cancel">Annuler</button>
+            <button type="button" class="btn sm" id="app-feedback-confirm">Continuer</button>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -380,6 +404,164 @@ async function updateQueueBadge() {
 updateQueueBadge();
 setInterval(updateQueueBadge, 30000);
 {% endif %}
+
+/* ── Messages & confirmations ── */
+(function() {
+    const contentShell = document.querySelector('.content-shell');
+    const dialog = document.getElementById('app-feedback-dialog');
+    const icon = document.getElementById('app-feedback-icon');
+    const title = document.getElementById('app-feedback-title');
+    const message = document.getElementById('app-feedback-message');
+    const body = document.getElementById('app-feedback-body');
+    const actions = document.getElementById('app-feedback-actions');
+    const cancelBtn = document.getElementById('app-feedback-cancel');
+    const confirmBtn = document.getElementById('app-feedback-confirm');
+    const icons = {
+        info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><circle cx="12" cy="12" r="10"/><line x1="12" y1="10" x2="12" y2="16"/><line x1="12" y1="7" x2="12.01" y2="7"/></svg>',
+        success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>',
+        warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M12 3 2 21h20L12 3z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+        error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+    };
+    let resolver = null;
+    let previouslyFocused = null;
+
+    function escapeHtml(value) {
+        return String(value)
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#39;');
+    }
+
+    function ensureFlashList() {
+        if (!contentShell) return null;
+        let list = contentShell.querySelector('.flash-list');
+        if (!list) {
+            list = document.createElement('ul');
+            list.className = 'flash-list';
+            contentShell.prepend(list);
+        }
+        return list;
+    }
+
+    function flashMarkup(type, messageText) {
+        const tone = ['success', 'error', 'warning', 'info'].includes(type) ? type : 'info';
+        return `
+            <span class="flash-icon" aria-hidden="true">${icons[tone]}</span>
+            <span class="flash-body">${escapeHtml(messageText)}</span>
+        `;
+    }
+
+    function closeDialog(result) {
+        if (!resolver) return;
+        const done = resolver;
+        resolver = null;
+        dialog.classList.remove('open');
+        dialog.setAttribute('aria-hidden', 'true');
+        body.innerHTML = '';
+        previouslyFocused?.focus?.();
+        previouslyFocused = null;
+        done(result);
+    }
+
+    function openDialog(options = {}) {
+        const {
+            kind = 'confirm',
+            tone = 'info',
+            titleText = kind === 'confirm' ? 'Confirmation' : 'Information',
+            messageText = '',
+            note = '',
+            confirmLabel = kind === 'confirm' ? 'Confirmer' : 'Fermer',
+            cancelLabel = 'Annuler',
+            confirmClass = tone === 'error' ? 'danger' : tone === 'warning' ? 'warning' : '',
+        } = options;
+
+        icon.dataset.tone = tone;
+        icon.innerHTML = icons[tone] || icons.info;
+        title.textContent = titleText;
+        message.textContent = messageText;
+        body.innerHTML = note
+            ? `<div class="theme-dialog-note" data-tone="${tone === 'success' ? 'info' : tone}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg><div><strong>À savoir</strong><p>${escapeHtml(note)}</p></div></div>`
+            : '';
+        cancelBtn.style.display = kind === 'confirm' ? '' : 'none';
+        cancelBtn.textContent = cancelLabel;
+        confirmBtn.textContent = confirmLabel;
+        confirmBtn.className = `btn sm${confirmClass ? ` ${confirmClass}` : ''}`;
+
+        previouslyFocused = document.activeElement;
+        dialog.classList.add('open');
+        dialog.setAttribute('aria-hidden', 'false');
+        requestAnimationFrame(() => confirmBtn.focus());
+
+        return new Promise(resolve => {
+            resolver = resolve;
+        });
+    }
+
+    cancelBtn.addEventListener('click', () => closeDialog(false));
+    confirmBtn.addEventListener('click', () => closeDialog(true));
+    dialog.addEventListener('click', event => {
+        if (event.target === dialog) {
+            closeDialog(false);
+        }
+    });
+    document.addEventListener('keydown', event => {
+        if (dialog.getAttribute('aria-hidden') !== 'false') return;
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            closeDialog(false);
+        }
+    });
+
+    window.appUI = {
+        showFlash(messageText, type = 'info', options = {}) {
+            const list = ensureFlashList();
+            if (!list) return;
+            const item = document.createElement('li');
+            item.className = ['success', 'error', 'warning', 'info'].includes(type) ? type : 'info';
+            item.dataset.dismissible = 'true';
+            item.innerHTML = `${flashMarkup(type, messageText)}<button type="button" class="flash-close" aria-label="Fermer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>`;
+            const close = () => item.remove();
+            item.querySelector('.flash-close')?.addEventListener('click', close);
+            list.appendChild(item);
+            item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            const timeout = Number.isFinite(options.timeout) ? options.timeout : 5200;
+            if (timeout > 0) {
+                window.setTimeout(close, timeout);
+            }
+        },
+        confirm(options) {
+            const normalized = typeof options === 'string' ? { messageText: options } : options;
+            return openDialog({ kind: 'confirm', tone: 'warning', ...normalized });
+        },
+        alert(messageText, options = {}) {
+            return openDialog({ kind: 'alert', messageText, ...options });
+        },
+    };
+
+    document.addEventListener('submit', async event => {
+        const form = event.target;
+        if (!(form instanceof HTMLFormElement)) return;
+        if (!form.dataset.confirm || form.dataset.confirmBypass === 'true') {
+            delete form.dataset.confirmBypass;
+            return;
+        }
+        event.preventDefault();
+        const ok = await window.appUI.confirm({
+            titleText: form.dataset.confirmTitle || 'Confirmation',
+            messageText: form.dataset.confirm,
+            note: form.dataset.confirmNote || '',
+            tone: form.dataset.confirmTone || 'warning',
+            confirmLabel: form.dataset.confirmOk || 'Confirmer',
+            cancelLabel: form.dataset.confirmCancel || 'Annuler',
+        });
+        if (ok) {
+            form.dataset.confirmBypass = 'true';
+            form.requestSubmit();
+        }
+    });
+})();
 </script>
 
 {% block scripts %}{% endblock %}

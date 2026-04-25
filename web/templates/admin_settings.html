@@ -13,6 +13,7 @@
 {% block styles %}
 /* Sections with anchor navigation */
 .admin-section { scroll-margin-top: 80px; }
+#alerte-prioritaire, #comptes-permissions, #ajouter-compte, #gestion-ecrans, #mot-de-passe { scroll-margin-top: 90px; }
 .admin-section + .admin-section { border-top: 1px solid var(--border); padding-top: 28px; margin-top: 28px; }
 .admin-section-title { font-size: .82rem; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
 .admin-section-title svg { width: 14px; height: 14px; }
@@ -832,7 +833,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
             {% endif %}
 
             <!-- Changer mot de passe — visible pour tous -->
-            <div class="admin-block {% if not current_user_is_superadmin %}full-col{% endif %}">
+            <div class="admin-block {% if not current_user_is_superadmin %}full-col{% endif %}" id="mot-de-passe">
                 <h3>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                     {{ t('admins_change_password') }}
@@ -1167,7 +1168,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
 
         <div class="sa-grid">
 
-            <div class="sa-block full-col">
+            <div class="sa-block full-col" id="alerte-prioritaire">
                 <h3>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                     {{ t('superadmin_priority_alert_title') }}
@@ -1191,7 +1192,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                 </div>
             </div>
 
-            <div class="sa-block full-col">
+            <div class="sa-block full-col" id="comptes-permissions">
                 <h3>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                     {{ t('superadmin_accounts_perms') }}
@@ -1307,7 +1308,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                 {% endfor %}
             </div>
 
-            <div class="sa-block">
+            <div class="sa-block" id="ajouter-compte">
                 <h3>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
                     {{ t('superadmin_add_account') }}
@@ -1320,7 +1321,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                 </form>
             </div>
 
-            <div class="sa-block">
+            <div class="sa-block" id="gestion-ecrans">
                 <h3>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
                     {{ t('superadmin_screens_manage') }}

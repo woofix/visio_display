@@ -326,7 +326,7 @@ body.sidebar-open {
 }
 
 .nav-subnav.open {
-    max-height: 420px;
+    max-height: var(--subnav-height, 9999px);
 }
 
 .nav-subitem {

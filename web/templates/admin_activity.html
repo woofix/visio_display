@@ -47,11 +47,11 @@
     pointer-events: none;
 }
 .activity-hero h1 {
-    color: #fff;
+    color: var(--on-primary);
     margin-bottom: 6px;
 }
 .activity-hero p {
-    color: color-mix(in srgb, white 76%, var(--primary-bg));
+    color: color-mix(in srgb, var(--on-primary) 76%, var(--primary-bg));
     max-width: 72ch;
 }
 .activity-summary {
@@ -334,14 +334,14 @@
     border-radius: 8px;
     white-space: nowrap;
 }
-.action-upload   { background: #dbeafe; color: #1d4ed8; }
-.action-delete   { background: #fee2e2; color: #b91c1c; }
-.action-login    { background: #dcfce7; color: #15803d; }
-.action-logout   { background: #fef9c3; color: #92400e; }
-.action-toggle   { background: #ede9fe; color: #6d28d9; }
-.action-compress { background: #ffedd5; color: #c2410c; }
-.action-config   { background: #d1fae5; color: #047857; }
-.action-campaign { background: #e0f2fe; color: #0369a1; }
+.action-upload   { background: var(--info-bg);    color: var(--info-text); }
+.action-delete   { background: var(--error-bg);   color: var(--error-text); }
+.action-login    { background: var(--success-bg); color: var(--success-text); }
+.action-logout   { background: var(--warning-bg); color: var(--warning-text); }
+.action-toggle   { background: var(--primary-bg); color: var(--primary); }
+.action-compress { background: var(--warning-bg); color: var(--warning-text); }
+.action-config   { background: var(--success-bg); color: var(--success-text); }
+.action-campaign { background: var(--info-bg);    color: var(--info-text); }
 .action-default  { background: var(--surface-alt); color: var(--text-3); }
 .log-filename {
     font-family: 'Inter', monospace;

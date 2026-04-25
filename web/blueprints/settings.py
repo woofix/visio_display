@@ -184,6 +184,8 @@ def _build_settings_context(tab='logo', install_defaults=None, install_result=No
         manageable_screens=manageable_screens,
         priority_alert=cfg.get('priority_alert', {}) if is_sa else {},
         tab=active_tab,
+        all_features=ALL_FEATURES if is_sa else [],
+        features=cfg.get('features', {}) if is_sa else {},
     )
 
 
@@ -247,7 +249,7 @@ def set_client_watchdog():
     save_config(cfg)
     log_config_change(session.get('user'), f'watchdog client mis à jour: interval={cfg["client_watchdog"]["check_interval_seconds"]}s, grâce={cfg["client_watchdog"]["grace_period_seconds"]}s, échecs={cfg["client_watchdog"]["consecutive_failures_before_reboot"]}')
     _flash('flash_client_watchdog_updated', 'success')
-    return redirect(url_for('settings.admin_settings_page') + '?tab=installation')
+    return redirect('/admin/settings#installation')
 
 
 @bp.route('/admin/settings/known-clients')
@@ -270,7 +272,7 @@ def create_backup():
     backup = create_backup_archive()
     log_config_change(session.get('user'), f"sauvegarde créée: {backup['filename']}")
     _flash('flash_backup_created', 'success', filename=backup['filename'])
-    return redirect(url_for('settings.admin_settings_page') + '?tab=sauvegardes')
+    return redirect('/admin/settings#sauvegardes')
 
 
 @bp.route('/admin/settings/backups/remote', methods=['POST'])
@@ -283,10 +285,10 @@ def save_backup_remote():
     remote_settings = _build_backup_remote_settings_from_form(cfg.get('backup_remote', {}))
     if remote_settings['enabled'] and not remote_settings['url']:
         _flash('flash_backup_remote_missing_url', 'error')
-        return redirect(url_for('settings.admin_settings_page') + '?tab=sauvegardes')
+        return redirect('/admin/settings#sauvegardes')
     if remote_settings['url'] and not remote_settings['url'].lower().startswith('smb://'):
         _flash('flash_backup_remote_invalid_url', 'error')
-        return redirect(url_for('settings.admin_settings_page') + '?tab=sauvegardes')
+        return redirect('/admin/settings#sauvegardes')
 
     cfg['backup_remote'] = remote_settings
     save_config(cfg)
@@ -295,7 +297,7 @@ def save_backup_remote():
         f"destination SMB des sauvegardes mise à jour: active={'oui' if remote_settings['enabled'] else 'non'}, url={remote_settings['url'] or '-'}",
     )
     _flash('flash_backup_remote_saved', 'success')
-    return redirect(url_for('settings.admin_settings_page') + '?tab=sauvegardes')
+    return redirect('/admin/settings#sauvegardes')
 
 
 @bp.route('/admin/settings/backups/create-stream', methods=['POST'])
@@ -366,7 +368,7 @@ def copy_backup(filename):
     remote_settings = cfg.get('backup_remote', {})
     if not remote_settings.get('enabled') or not remote_settings.get('url'):
         _flash('flash_backup_remote_not_configured', 'error')
-        return redirect(url_for('settings.admin_settings_page') + '?tab=sauvegardes')
+        return redirect('/admin/settings#sauvegardes')
 
     try:
         path = backup_path(filename)
@@ -378,7 +380,7 @@ def copy_backup(filename):
     else:
         log_config_change(session.get('user'), f"sauvegarde copiée vers SMB: {filename}")
         _flash('flash_backup_copied', 'success', filename=filename)
-    return redirect(url_for('settings.admin_settings_page') + '?tab=sauvegardes')
+    return redirect('/admin/settings#sauvegardes')
 
 
 @bp.route('/admin/settings/backups/delete/<filename>', methods=['POST'])
@@ -394,7 +396,7 @@ def delete_backup(filename):
     else:
         log_config_change(session.get('user'), f"sauvegarde supprimée: {filename}")
         _flash('flash_backup_deleted', 'success', filename=filename)
-    return redirect(url_for('settings.admin_settings_page') + '?tab=sauvegardes')
+    return redirect('/admin/settings#sauvegardes')
 
 
 @bp.route('/admin/settings/backups/restore', methods=['POST'])
@@ -406,17 +408,17 @@ def restore_backup():
     uploaded = request.files.get('backup_file')
     if uploaded is None or not uploaded.filename:
         _flash('flash_backup_file_missing', 'error')
-        return redirect(url_for('settings.admin_settings_page') + '?tab=sauvegardes')
+        return redirect('/admin/settings#sauvegardes')
 
     try:
         restore_backup_archive(uploaded)
     except Exception as exc:
         flash(str(exc) or _t('flash_backup_restore_failed'), 'error')
-        return redirect(url_for('settings.admin_settings_page') + '?tab=sauvegardes')
+        return redirect('/admin/settings#sauvegardes')
 
     log_config_change(session.get('user'), f"sauvegarde restaurée: {uploaded.filename}")
     _flash('flash_backup_restored', 'success', filename=uploaded.filename)
-    return redirect(url_for('settings.admin_settings_page') + '?tab=sauvegardes')
+    return redirect('/admin/settings#sauvegardes')
 
 
 @bp.route('/admin/settings/install-client', methods=['POST'])
@@ -441,14 +443,14 @@ def install_client():
             raise ValueError
     except ValueError:
         _flash('flash_install_invalid_port', 'error')
-        return redirect(url_for('settings.admin_settings_page') + '?tab=installation')
+        return redirect('/admin/settings#installation')
 
     if not host or not ssh_user or not kiosk_user or not server_url or not machine_name or not ssh_password:
         _flash('flash_install_missing_fields', 'error')
-        return redirect(url_for('settings.admin_settings_page') + '?tab=installation')
+        return redirect('/admin/settings#installation')
     if not sudo_same_as_ssh and not sudo_password:
         _flash('flash_install_missing_sudo_password', 'error')
-        return redirect(url_for('settings.admin_settings_page') + '?tab=installation')
+        return redirect('/admin/settings#installation')
 
     install_result = deploy_client_install(
         host=host,
@@ -509,17 +511,17 @@ def control_client_power():
             raise ValueError
     except ValueError:
         _flash('flash_install_invalid_port', 'error')
-        return redirect(url_for('settings.admin_settings_page') + '?tab=installation')
+        return redirect('/admin/settings#installation')
 
     if action not in {'shutdown', 'restart', 'update', 'os-update'}:
         _flash('flash_client_control_invalid_action', 'error')
-        return redirect(url_for('settings.admin_settings_page') + '?tab=installation')
+        return redirect('/admin/settings#installation')
     if not host or not ssh_user or not ssh_password:
         _flash('flash_client_control_missing_fields', 'error')
-        return redirect(url_for('settings.admin_settings_page') + '?tab=installation')
+        return redirect('/admin/settings#installation')
     if not sudo_same_as_ssh and not sudo_password:
         _flash('flash_install_missing_sudo_password', 'error')
-        return redirect(url_for('settings.admin_settings_page') + '?tab=installation')
+        return redirect('/admin/settings#installation')
 
     if action == 'update':
         client_control_result = deploy_client_update(
@@ -600,7 +602,7 @@ def set_appname():
         save_config(cfg)
         log_config_change(session.get('user'), f'nom application:{name}')
         _flash('flash_appname_updated', 'success')
-    return redirect(url_for('settings.admin_settings_page') + '?tab=application')
+    return redirect('/admin/settings#application')
 
 
 @bp.route('/admin/settings/meteo', methods=['POST'])
@@ -614,7 +616,7 @@ def set_meteo_location():
     school_zone = request.form.get('school_zone', 'auto').strip() or 'auto'
     if not ville:
         _flash('flash_meteo_invalid', 'error')
-        return redirect(url_for('settings.admin_settings_page') + '?tab=meteo')
+        return redirect('/admin/settings#meteo')
     try:
         lat_f = float(lat)
         lng_f = float(lng)
@@ -622,7 +624,7 @@ def set_meteo_location():
             raise ValueError("out of range")
     except (ValueError, TypeError):
         _flash('flash_meteo_invalid', 'error')
-        return redirect(url_for('settings.admin_settings_page') + '?tab=meteo')
+        return redirect('/admin/settings#meteo')
     if not tz:
         tz = DEFAULT_METEO_TZ
     valid_school_zones = {value for value, _label in SCHOOL_ZONES}
@@ -640,7 +642,7 @@ def set_meteo_location():
     from services.ephemeris_svc import generate_ephemeride_image
     generate_ephemeride_image(force=True)
     _flash('flash_meteo_updated', 'success', ville=ville)
-    return redirect(url_for('settings.admin_settings_page') + '?tab=meteo')
+    return redirect('/admin/settings#meteo')
 
 
 @bp.route('/admin/settings/theme', methods=['POST'])
@@ -655,7 +657,7 @@ def set_theme():
         update_user_theme(username, theme)
         log_config_change(username, f'thème:{theme}')
     _flash('flash_theme_updated', 'success')
-    return redirect(url_for('settings.admin_settings_page') + '?tab=theme')
+    return redirect('/admin/settings#theme')
 
 
 @bp.route('/admin/settings/language', methods=['POST'])
@@ -670,19 +672,14 @@ def set_language():
         update_user_language(username, lang)
         log_config_change(username, f'langue:{lang}')
     _flash('flash_language_updated', 'success')
-    return redirect(url_for('settings.admin_settings_page') + '?tab=language')
+    return redirect('/admin/settings#language')
 
 
 @bp.route('/admin/features')
 def admin_features_page():
     g = superadmin_guard()
     if g: return g
-    cfg = load_config()
-    return render_template('admin_features.html',
-        all_features=ALL_FEATURES,
-        features=cfg.get('features', {}),
-        current_user=session.get('user'),
-        logo_path=get_logo_path())
+    return redirect('/admin/settings#fonctionnalites')
 
 
 @bp.route('/admin/features/toggle', methods=['POST'])
@@ -693,7 +690,8 @@ def toggle_feature():
     valid_keys = {k for k, _, _ in ALL_FEATURES}
     if feature not in valid_keys:
         _flash('flash_feature_disabled_access', 'error')
-        return redirect(url_for('settings.admin_features_page'))
+        _flash('flash_feature_disabled_access', 'error')
+        return redirect('/admin/settings#fonctionnalites')
     cfg = load_config()
     features = dict(cfg.get('features', {}))
     features[feature] = not bool(features.get(feature, True))
@@ -701,7 +699,7 @@ def toggle_feature():
     save_config(cfg)
     log_config_change(session.get('user'), f'fonctionnalité {feature}: {features[feature]}')
     _flash('flash_feature_updated', 'success')
-    return redirect(url_for('settings.admin_features_page'))
+    return redirect('/admin/settings#fonctionnalites')
 
 
 @bp.route('/admin/logo/upload', methods=['POST'])

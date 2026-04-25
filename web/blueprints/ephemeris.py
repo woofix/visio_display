@@ -33,19 +33,19 @@ def add_event():
     date_str = request.form.get('date', '').strip()
     if not label or not date_str:
         _flash('flash_label_date_required', 'error')
-        return redirect(url_for('settings.admin_settings_page') + '?tab=evenements')
+        return redirect('/admin/settings#meteo')
     try:
         date.fromisoformat(date_str)
     except ValueError:
         _flash('flash_invalid_date', 'error')
-        return redirect(url_for('settings.admin_settings_page') + '?tab=evenements')
+        return redirect('/admin/settings#meteo')
     cfg = load_config()
     cfg.setdefault("events", []).append({"label": label, "date": date_str})
     save_config(cfg)
     log_config_change(session.get('user'), f'événement ajouté:{label} ({date_str})')
     generate_ephemeride_image(force=True)
     _flash('flash_event_added', 'success', label=label)
-    return redirect(url_for('settings.admin_settings_page') + '?tab=evenements')
+    return redirect('/admin/settings#meteo')
 
 
 @bp.route('/admin/events/delete/<int:idx>', methods=['POST'])
@@ -62,4 +62,4 @@ def delete_event(idx):
         log_config_change(session.get('user'), f'événement supprimé:{removed["label"]} ({removed["date"]})')
         generate_ephemeride_image(force=True)
         _flash('flash_event_deleted', 'success', label=removed['label'])
-    return redirect(url_for('settings.admin_settings_page') + '?tab=evenements')
+    return redirect('/admin/settings#meteo')

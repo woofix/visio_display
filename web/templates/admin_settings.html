@@ -11,14 +11,11 @@
 {% block topbar_sub %}{{ settings_topbar_subtitle }}{% endblock %}
 
 {% block styles %}
-/* Tab bar */
-.tab-bar { display:flex; gap:2px; border-bottom:2px solid var(--border); margin-bottom:24px; flex-wrap:wrap; }
-.tab-btn  { padding:9px 20px; border:none; background:none; cursor:pointer; font-family:inherit; font-size:.84rem; font-weight:600; color:var(--text-3); border-bottom:2px solid transparent; margin-bottom:-2px; transition:all .15s; display:inline-flex; align-items:center; gap:7px; text-decoration:none; }
-.tab-btn svg { width:14px; height:14px; }
-.tab-btn:hover  { color:var(--primary); }
-.tab-btn.active { color:var(--primary); border-bottom-color:var(--primary); }
-.tab-pane { display:none; }
-.tab-pane.active { display:block; }
+/* Sections with anchor navigation */
+.admin-section { scroll-margin-top: 80px; }
+.admin-section + .admin-section { border-top: 1px solid var(--border); padding-top: 28px; margin-top: 28px; }
+.admin-section-title { font-size: .82rem; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.admin-section-title svg { width: 14px; height: 14px; }
 
 /* Logo tab */
 .logo-layout { display:grid; grid-template-columns:220px 1fr; gap:28px; align-items:start; }
@@ -246,9 +243,89 @@
         white-space: normal;
     }
 }
-{% endblock %}
 
-{% set active_tab = tab | default('logo') %}
+/* ── Superadmin section ── */
+.sa-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.sa-block { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 22px; box-shadow: var(--shadow-sm); }
+.sa-block h3 { font-size: .82rem; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 7px; }
+.sa-block h3 svg { width: 14px; height: 14px; }
+.user-card { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 16px; overflow: hidden; }
+.user-card:last-child { margin-bottom: 0; }
+.user-card-header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--bg); }
+.user-card-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg,var(--primary),var(--primary-light)); display: flex; align-items: center; justify-content: center; font-size: .8rem; font-weight: 700; color: #fff; flex-shrink: 0; }
+.user-card-avatar.superadmin-av { background: linear-gradient(135deg,#f59e0b,#fbbf24); }
+.user-card-name { font-size: .9rem; font-weight: 700; color: var(--text); }
+.user-card-role { font-size: .68rem; color: var(--text-3); margin-top: 1px; }
+.sa-badge { font-size: .63rem; padding: 2px 8px; border-radius: 8px; font-weight: 700; margin-left: 6px; }
+.sa-badge.superadmin { background: #fef3c7; color: #92400e; }
+.sa-badge.user { background: var(--primary-bg); color: var(--primary); }
+.perm-body { padding: 14px 16px; }
+.perm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+.perm-item { display: flex; align-items: center; gap: 8px; }
+.perm-item input[type=checkbox] { width: 15px; height: 15px; accent-color: var(--primary); cursor: pointer; }
+.perm-item label { font-size: .8rem; color: var(--text-2); cursor: pointer; }
+.perm-item.disabled label { color: var(--text-3); }
+.perm-all-note { font-size: .73rem; color: #92400e; background: #fef3c7; padding: 7px 12px; border-radius: 7px; margin-bottom: 14px; }
+.reset-pass-section { border-top: 1px solid var(--border); padding: 12px 16px; background: var(--surface); }
+.reset-pass-toggle { font-size: .76rem; color: var(--text-3); cursor: pointer; background: none; border: none; font-family: inherit; display: flex; align-items: center; gap: 5px; padding: 0; }
+.reset-pass-toggle:hover { color: var(--primary); }
+.reset-pass-form { display: none; margin-top: 10px; display: flex; gap: 8px; align-items: center; }
+.reset-pass-form input { padding: 6px 10px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: .8rem; font-family: inherit; color: var(--text); background: var(--surface); flex: 1; }
+.reset-pass-form input:focus { outline: none; border-color: var(--primary); }
+.add-user-form { display: flex; flex-direction: column; gap: 10px; }
+.add-user-form input,
+.add-user-form select { padding: 9px 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: .84rem; font-family: inherit; color: var(--text); background: var(--surface); color-scheme: light; transition: border-color .15s; }
+.add-user-form input:focus,
+.add-user-form select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(124,58,237,.09); }
+.add-user-form input::placeholder { color: var(--text-3); }
+.delete-btn-wrap { margin-left: auto; }
+.alert-panel { display:flex; flex-direction:column; gap:12px; }
+.alert-panel p { font-size:.8rem; color:var(--text-3); line-height:1.5; }
+.alert-live { display:flex; align-items:center; gap:8px; font-size:.74rem; color:var(--text-3); }
+.alert-live-dot { width:9px; height:9px; border-radius:50%; background:#dc2626; box-shadow:0 0 0 5px rgba(220,38,38,.12); flex-shrink:0; }
+.alert-live-text { color:#991b1b; font-weight:700; }
+.alert-editor { width:100%; min-height:110px; resize:vertical; padding:12px 14px; border:1.5px solid var(--border); border-radius:var(--radius-sm); font:inherit; color:var(--text); background:var(--surface); line-height:1.5; }
+.alert-editor:focus { outline:none; border-color:#dc2626; box-shadow:0 0 0 3px rgba(220,38,38,.12); }
+.alert-actions { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.alert-status { font-size:.74rem; color:var(--text-3); min-height:1.1em; }
+.alert-preview { border:1px solid rgba(220,38,38,.18); background:linear-gradient(135deg, rgba(127,29,29,.96), rgba(220,38,38,.94)); color:#fff; border-radius:14px; padding:12px 14px; box-shadow:0 10px 30px rgba(127,29,29,.18); }
+.alert-preview-label { font-size:.68rem; letter-spacing:.08em; text-transform:uppercase; opacity:.82; font-weight:700; margin-bottom:6px; }
+.alert-preview-body { font-size:.95rem; font-weight:700; line-height:1.4; white-space:pre-wrap; word-break:break-word; }
+.screen-admin-list { list-style:none; padding:0; margin:0 0 16px 0; display:flex; flex-direction:column; gap:10px; }
+.screen-admin-item { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; background:var(--bg); border:1px solid var(--border); border-radius:var(--radius-sm); flex-wrap:wrap; }
+.screen-admin-name { font-size:.84rem; font-weight:700; color:var(--text); }
+.screen-admin-meta { font-size:.72rem; color:var(--text-3); margin-top:3px; }
+.screen-admin-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-left:auto; }
+@media(max-width:700px) { .sa-grid { grid-template-columns: 1fr; } .perm-grid { grid-template-columns: 1fr; } }
+
+/* ── Features section ── */
+.feat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.feat-card { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 18px 20px; display: flex; align-items: center; gap: 16px; transition: border-color .15s, box-shadow .15s; box-shadow: var(--shadow-sm); }
+.feat-card.feat-on  { border-color: var(--border); }
+.feat-card.feat-off { border-color: var(--border); opacity: .72; }
+.feat-icon { width: 42px; height: 42px; border-radius: 11px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background .15s; }
+.feat-on  .feat-icon { background: var(--primary-bg); color: var(--primary); }
+.feat-off .feat-icon { background: var(--bg); color: var(--text-3); }
+.feat-icon svg { width: 18px; height: 18px; }
+.feat-info { flex: 1; min-width: 0; }
+.feat-name { font-size: .87rem; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+.feat-badge { font-size: .6rem; font-weight: 700; padding: 2px 7px; border-radius: 6px; letter-spacing: .05em; text-transform: uppercase; }
+.feat-badge.on  { background: #dcfce7; color: #166534; }
+.feat-badge.off { background: #fee2e2; color: #991b1b; }
+.feat-desc { font-size: .74rem; color: var(--text-3); line-height: 1.45; }
+.toggle-wrap { flex-shrink: 0; }
+.toggle-switch { position: relative; display: inline-block; width: 46px; height: 26px; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+.toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #d1d5db; border-radius: 26px; transition: background .2s; }
+.toggle-slider::before { content: ''; position: absolute; height: 20px; width: 20px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+input:checked + .toggle-slider { background: var(--primary); }
+input:checked + .toggle-slider::before { transform: translateX(20px); }
+[data-theme="sombre"] .toggle-slider { background: #374151; }
+[data-theme="sombre"] input:checked + .toggle-slider { background: var(--primary); }
+.feat-info-banner { background: var(--primary-bg); border: 1px solid rgba(124,58,237,.15); border-radius: var(--radius-sm); padding: 12px 16px; font-size: .79rem; color: var(--primary-dark); margin-bottom: 20px; display: flex; align-items: flex-start; gap: 10px; }
+.feat-info-banner svg { width: 15px; height: 15px; flex-shrink: 0; margin-top: 1px; }
+@media(max-width:700px) { .feat-grid { grid-template-columns: 1fr; } }
+{% endblock %}
 
 {% block content %}
 <div class="page-header">
@@ -258,9 +335,12 @@
 
 <div class="card">
 
-
-    <!-- ── LOGO TAB ── -->
-    <div id="tab-logo" class="tab-pane {% if active_tab == 'logo' %}active{% endif %}">
+    <!-- ── LOGO ── -->
+    <div id="logo" class="admin-section">
+        <div class="admin-section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+            {{ t('nav_logo') }}
+        </div>
         <div class="logo-layout">
             <div class="logo-preview">
                 <img src="{{ logo_path }}" alt="{{ t('logo_preview_label') }}" id="logo-img">
@@ -293,8 +373,12 @@
         </div>
     </div>
 
-    <!-- ── THEME TAB ── -->
-    <div id="tab-theme" class="tab-pane {% if active_tab == 'theme' %}active{% endif %}">
+    <!-- ── THEME ── -->
+    <div id="theme" class="admin-section">
+        <div class="admin-section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20"/><path d="M2 12h10"/></svg>
+            {{ t('nav_theme') }}
+        </div>
         <p style="font-size:.82rem;color:var(--text-3);margin-bottom:20px">{{ t('theme_subtitle') }}</p>
         <form action="/admin/settings/theme" method="post">
             <div class="theme-grid">
@@ -376,8 +460,12 @@
     </div>
 
     {% if current_user_is_superadmin %}
-    <!-- ── CLIENT INSTALLATION TAB ── -->
-    <div id="tab-installation" class="tab-pane {% if active_tab == 'installation' %}active{% endif %}">
+    <!-- ── INSTALLATION ── -->
+    <div id="installation" class="admin-section">
+        <div class="admin-section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            {{ t('nav_installation') }}
+        </div>
         <div class="install-note" style="margin-bottom:16px">
             <div class="logo-section-label" style="margin-bottom:10px">{{ t('install_requirements_title') }}</div>
             <p class="install-help">{{ t('install_requirements_desc') }}</p>
@@ -676,8 +764,12 @@
     </div>
     {% endif %}
 
-    <!-- ── ADMINISTRATORS TAB ── -->
-    <div id="tab-admins" class="tab-pane {% if active_tab == 'admins' %}active{% endif %}">
+    <!-- ── ADMINISTRATEURS ── -->
+    <div id="admins" class="admin-section">
+        <div class="admin-section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+            {{ t('nav_admins') }}
+        </div>
         <div class="admins-layout">
 
             {% if current_user_is_superadmin %}
@@ -685,7 +777,7 @@
                 <h3>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
                     {{ t('admins_active_accounts') }}
-                    <a href="/admin/superadmin" class="btn sm" style="margin-left:auto;font-size:.72rem">
+                    <a href="/admin/settings#superadmin" class="btn sm" style="margin-left:auto;font-size:.72rem">
                         {{ t('admins_manage_perms') }}
                     </a>
                 </h3>
@@ -756,7 +848,12 @@
     </div>
 
     {% if current_user_is_superadmin %}
-    <div id="tab-sauvegardes" class="tab-pane {% if active_tab == 'sauvegardes' %}active{% endif %}">
+    <!-- ── SAUVEGARDES ── -->
+    <div id="sauvegardes" class="admin-section">
+        <div class="admin-section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="3" x2="12" y2="15"/><path d="M5 7h14"/></svg>
+            {{ t('nav_backups') }}
+        </div>
         <div class="backup-grid">
             <div class="backup-card">
                 <h3>{{ t('backup_create_title') }}</h3>
@@ -887,8 +984,12 @@
     </div>
     {% endif %}
 
-    <!-- ── APPLICATION TAB ── -->
-    <div id="tab-application" class="tab-pane {% if active_tab == 'application' %}active{% endif %}">
+    <!-- ── APPLICATION ── -->
+    <div id="application" class="admin-section">
+        <div class="admin-section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+            {{ t('nav_application') }}
+        </div>
         <p style="font-size:.82rem;color:var(--text-3);margin-bottom:20px">{{ t('app_subtitle') }}</p>
         {% if current_user_is_superadmin %}
         <div class="settings-section-card">
@@ -942,8 +1043,12 @@
     </div>
 
     {% if current_user_is_superadmin %}
-    <!-- ── WEATHER TAB (super-admin) ── -->
-    <div id="tab-meteo" class="tab-pane {% if active_tab == 'meteo' %}active{% endif %}">
+    <!-- ── MÉTÉO ── -->
+    <div id="meteo" class="admin-section">
+        <div class="admin-section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/></svg>
+            {{ t('tab_meteo') }}
+        </div>
         <p style="font-size:.82rem;color:var(--text-3);margin-bottom:20px">{{ t('settings_meteo_subtitle') }}</p>
 
         <!-- Current configuration -->
@@ -1025,8 +1130,12 @@
     </div>
     {% endif %}
 
-    <!-- ── LANGUAGE TAB ── -->
-    <div id="tab-language" class="tab-pane {% if active_tab == 'language' %}active{% endif %}">
+    <!-- ── LANGUE ── -->
+    <div id="language" class="admin-section">
+        <div class="admin-section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            {{ t('tab_language') }}
+        </div>
         <p style="font-size:.82rem;color:var(--text-3);margin-bottom:20px">{{ t('language_subtitle') }}</p>
         <form action="/admin/settings/language" method="post">
             <div class="lang-grid" style="margin-bottom:20px">
@@ -1047,6 +1156,277 @@
             <button type="submit" class="btn sm">{{ t('language_apply') }}</button>
         </form>
     </div>
+
+    {% if current_user_is_superadmin %}
+    <!-- ── SUPER-ADMIN ── -->
+    <div id="superadmin" class="admin-section">
+        <div class="admin-section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            {{ t('nav_superadmin') }}
+        </div>
+
+        <div class="sa-grid">
+
+            <div class="sa-block full-col">
+                <h3>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    {{ t('superadmin_priority_alert_title') }}
+                </h3>
+                <div class="alert-panel">
+                    <p>{{ t('superadmin_priority_alert_desc') }}</p>
+                    <div class="alert-live">
+                        <span class="alert-live-dot"></span>
+                        <span class="alert-live-text">{{ t('superadmin_priority_alert_live') }}</span>
+                        <span>{{ t('superadmin_priority_alert_hint') }}</span>
+                    </div>
+                    <textarea id="priority-alert-input" class="alert-editor" maxlength="280" placeholder="{{ t('superadmin_priority_alert_placeholder') }}">{{ priority_alert.message | default('') }}</textarea>
+                    <div class="alert-actions">
+                        <div id="priority-alert-status" class="alert-status"></div>
+                        <button type="button" class="btn secondary sm" id="priority-alert-clear">{{ t('superadmin_priority_alert_clear') }}</button>
+                    </div>
+                    <div id="priority-alert-preview" class="alert-preview"{% if not priority_alert.message %} style="display:none"{% endif %}>
+                        <div class="alert-preview-label">{{ t('superadmin_priority_alert_preview') }}</div>
+                        <div id="priority-alert-preview-body" class="alert-preview-body">{{ priority_alert.message | default('') }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sa-block full-col">
+                <h3>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    {{ t('superadmin_accounts_perms') }}
+                </h3>
+
+                <form action="/admin/users/reset_password" method="post" class="add-user-form" style="margin-bottom:16px;max-width:620px">
+                    <select name="username" required>
+                        <option value="">Choisir un utilisateur</option>
+                        {% for reset_username, reset_entry in users.items() %}
+                            {% if not reset_entry.superadmin %}
+                            <option value="{{ reset_username }}">{{ reset_username }}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                    <input type="password" name="new_password" placeholder="{{ t('superadmin_reset_pass_placeholder') }}" required minlength="10">
+                    <div><button type="submit" class="btn sm">{{ t('superadmin_reset_password') }}</button></div>
+                </form>
+
+                {% for username, entry in users.items() %}
+                <div class="user-card">
+                    <div class="user-card-header">
+                        <div class="user-card-avatar {% if entry.superadmin %}superadmin-av{% endif %}">{{ username[0].upper() }}</div>
+                        <div>
+                            <div class="user-card-name">
+                                {{ username }}
+                                {% if username == current_user %}<span class="sa-badge user">{{ t('superadmin_you') }}</span>{% endif %}
+                                {% if entry.superadmin %}<span class="sa-badge superadmin">{{ t('superadmin_badge_superadmin') }}</span>{% endif %}
+                            </div>
+                            <div class="user-card-role">
+                                {% if entry.superadmin %}
+                                    {{ t('superadmin_all_perms') }}
+                                {% else %}
+                                    {% set perms = entry.permissions | default([]) %}
+                                    {% if perms|length == 0 %}{{ t('superadmin_no_perm') }}{% else %}{{ t('superadmin_n_perms', n=perms|length) }}{% endif %}
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% if not entry.superadmin %}
+                        <div class="delete-btn-wrap">
+                            <form action="/admin/users/delete/{{ username }}" method="post"
+                                  data-confirm="{{ t('superadmin_delete_confirm', username=username) }}"
+                                  data-confirm-title="{{ t('superadmin_delete') }}"
+                                  data-confirm-tone="error"
+                                  data-confirm-ok="{{ t('superadmin_delete') }}">
+                                <button class="btn sm danger">{{ t('superadmin_delete') }}</button>
+                            </form>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="perm-body">
+                        {% if entry.superadmin %}
+                        <div class="perm-all-note">{{ t('superadmin_perm_all_note') }}</div>
+                        {% else %}
+                        <form action="/admin/users/permissions/{{ username }}" method="post">
+                            <div class="perm-grid">
+                                {% for perm_key, perm_label in all_permissions %}
+                                <div class="perm-item">
+                                    <input type="checkbox" name="perm_{{ perm_key }}" id="perm_{{ username }}_{{ perm_key }}"
+                                           {% if perm_key in (entry.permissions | default([])) %}checked{% endif %}>
+                                    <label for="perm_{{ username }}_{{ perm_key }}">{{ perm_label }}</label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <div style="display:flex;gap:8px;align-items:center">
+                                <button type="submit" class="btn success sm">{{ t('superadmin_save_perms') }}</button>
+                                <button type="button" class="btn secondary sm" onclick="toggleAll(this)">{{ t('superadmin_check_all') }}</button>
+                            </div>
+                        </form>
+                        {% endif %}
+                    </div>
+
+                    {% if not entry.superadmin %}
+                    <div class="perm-body" style="border-top:1px solid var(--border);padding-top:14px">
+                        <form action="/admin/users/screens/{{ username }}" method="post">
+                            <div style="font-size:.79rem;font-weight:700;color:var(--text-2);margin-bottom:10px;display:flex;align-items:center;gap:6px">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;color:var(--primary)"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                                {{ t('superadmin_screens_label') }}
+                            </div>
+                            {% if all_screens %}
+                            <div class="perm-grid" style="margin-bottom:10px">
+                                {% set user_screens = entry.screens if (entry.screens is defined and entry.screens) else [] %}
+                                {% for s in all_screens %}
+                                <div class="perm-item">
+                                    <input type="checkbox" name="screen_{{ s }}" id="screen_{{ username }}_{{ s }}"
+                                           {% if not user_screens or s in user_screens %}checked{% endif %}>
+                                    <label for="screen_{{ username }}_{{ s }}">{{ s }}</label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <div style="font-size:.72rem;color:var(--text-3);margin-bottom:10px">{{ t('superadmin_screens_desc') }}</div>
+                            <button type="submit" class="btn secondary sm">{{ t('superadmin_save_perms') }}</button>
+                            {% else %}
+                            <p style="font-size:.76rem;color:var(--text-3)">{{ t('superadmin_screens_none_defined') }}</p>
+                            {% endif %}
+                        </form>
+                    </div>
+                    {% endif %}
+
+                    {% if not entry.superadmin %}
+                    <div class="reset-pass-section">
+                        <button type="button" class="reset-pass-toggle" onclick="toggleResetForm(this)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            {{ t('superadmin_reset_password') }}
+                        </button>
+                        <form action="/admin/users/reset_password/{{ username }}" method="post" class="reset-pass-form" id="reset-form-{{ username }}" style="display:none">
+                            <input type="password" name="new_password" placeholder="{{ t('superadmin_reset_pass_placeholder') }}" required minlength="10">
+                            <button type="submit" class="btn sm">{{ t('superadmin_reset_password') }}</button>
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="sa-block">
+                <h3>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+                    {{ t('superadmin_add_account') }}
+                </h3>
+                <form action="/admin/users/add" method="post" class="add-user-form">
+                    <input type="text"     name="username" placeholder="{{ t('superadmin_username_placeholder') }}" required autocomplete="off">
+                    <input type="password" name="password" placeholder="{{ t('superadmin_password_placeholder') }}" required>
+                    <p style="font-size:.73rem;color:var(--text-3)">{{ t('superadmin_new_account_desc') }}</p>
+                    <div><button type="submit" class="btn success sm">{{ t('superadmin_create') }}</button></div>
+                </form>
+            </div>
+
+            <div class="sa-block">
+                <h3>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                    {{ t('superadmin_screens_manage') }}
+                </h3>
+                <form action="/admin/screens/default-name" method="post" class="add-user-form" style="margin-bottom:12px">
+                    <input type="text" name="default_screen_name" value="{{ cfg.get('default_screen_name', '') }}"
+                           placeholder="{{ t('superadmin_default_screen_placeholder') }}" maxlength="48">
+                    <div><button type="submit" class="btn sm">{{ t('superadmin_default_screen_save') }}</button></div>
+                </form>
+                {% if all_screens %}
+                <ul class="screen-admin-list">
+                    {% for s in all_screens %}
+                    <li class="screen-admin-item">
+                        <div>
+                            <div class="screen-admin-name">{{ s }}</div>
+                            <div class="screen-admin-meta">{{ t('superadmin_screens_manage') }}</div>
+                        </div>
+                        <div class="screen-admin-actions">
+                            <form method="post" action="/admin/screens/delete/{{ s }}"
+                                  data-confirm="{{ t('media_screen_delete_confirm') | replace('{name}', s) }}"
+                                  data-confirm-title="{{ t('superadmin_delete') }}"
+                                  data-confirm-tone="error"
+                                  data-confirm-ok="{{ t('superadmin_delete') }}">
+                                <button type="submit" class="btn sm danger">{{ t('superadmin_delete') }}</button>
+                            </form>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p style="font-size:.76rem;color:var(--text-3);margin-bottom:16px">{{ t('superadmin_screens_none_defined') }}</p>
+                {% endif %}
+                <form action="/admin/screens/add" method="post" class="add-user-form">
+                    <input type="text" name="screen_name" placeholder="{{ t('media_screen_placeholder') }}" pattern="[a-z0-9_-]{1,32}" required>
+                    <div><button type="submit" class="btn success sm">{{ t('superadmin_screens_create') }}</button></div>
+                </form>
+            </div>
+
+            <div class="sa-block">
+                <h3>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    {{ t('superadmin_my_password') }}
+                </h3>
+                <form action="/admin/users/password" method="post" class="add-user-form">
+                    <input type="password" name="current_password" placeholder="{{ t('admins_current_password') }}" required>
+                    <input type="password" name="new_password"     placeholder="{{ t('admins_new_password') }}" required>
+                    <div><button type="submit" class="btn sm">{{ t('admins_update') }}</button></div>
+                </form>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ── FONCTIONNALITÉS ── -->
+    <div id="fonctionnalites" class="admin-section">
+        <div class="admin-section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            {{ t('nav_features') }}
+        </div>
+
+        <div class="feat-info-banner">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            {{ t('features_info_banner') }}
+        </div>
+
+        {% set feature_icons = {
+            'upload':         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>',
+            'videos':         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>',
+            'delete':         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>',
+            'compress':       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>',
+            'ephemeris':      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>',
+            'schedule':       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+            'groups':         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>',
+            'screens':        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>',
+            'priority_alert': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+            'activity':       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>',
+        } %}
+
+        <div class="feat-grid">
+            {% for key, name_key, desc_key in all_features %}
+            {% set enabled = features.get(key, True) %}
+            <div class="feat-card {% if enabled %}feat-on{% else %}feat-off{% endif %}">
+                <div class="feat-icon">{{ feature_icons.get(key, '') | safe }}</div>
+                <div class="feat-info">
+                    <div class="feat-name">
+                        {{ t(name_key) }}
+                        <span class="feat-badge {% if enabled %}on{% else %}off{% endif %}">
+                            {% if enabled %}{{ t('features_enabled') }}{% else %}{{ t('features_disabled') }}{% endif %}
+                        </span>
+                    </div>
+                    <div class="feat-desc">{{ t(desc_key) }}</div>
+                </div>
+                <div class="toggle-wrap">
+                    <form method="post" action="/admin/features/toggle" data-feature="{{ key }}">
+                        <input type="hidden" name="feature" value="{{ key }}">
+                        <label class="toggle-switch" title="{{ t('features_toggle') }} {{ t(name_key) }}">
+                            <input type="checkbox" {% if enabled %}checked{% endif %} onchange="this.closest('form').submit()">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
 
 </div>
 {% endblock %}
@@ -1383,8 +1763,8 @@ document.querySelectorAll('.theme-card input[type=radio]').forEach(radio => {
     const label = document.getElementById('backup-create-label');
     const loadingBox = document.getElementById('backup-create-loading-box');
     const logBox = document.getElementById('backup-create-log');
-    const list = document.querySelector('#tab-sauvegardes .backup-list');
-    const emptyState = document.querySelector('#tab-sauvegardes .backup-empty');
+    const list = document.querySelector('#sauvegardes .backup-list');
+    const emptyState = document.querySelector('#sauvegardes .backup-empty');
     if (!form || !button || !label || !loadingBox || !logBox) return;
 
     const escapeHtml = (value) => String(value || '')
@@ -1712,5 +2092,88 @@ function notifyDisplayRefresh(type) {
 document.querySelectorAll('.screen-halo-form').forEach(form => {
     form.addEventListener('submit', () => notifyDisplayRefresh('media-refresh'));
 });
+
+/* ── Superadmin: priority alert ── */
+(function() {
+    const priorityAlertInput = document.getElementById('priority-alert-input');
+    if (!priorityAlertInput) return;
+    const priorityAlertStatus = document.getElementById('priority-alert-status');
+    const priorityAlertPreview = document.getElementById('priority-alert-preview');
+    const priorityAlertPreviewBody = document.getElementById('priority-alert-preview-body');
+    const priorityAlertClear = document.getElementById('priority-alert-clear');
+
+    let priorityAlertTimer = null;
+    let priorityAlertController = null;
+    let lastSavedPriorityAlert = priorityAlertInput.value.trim();
+
+    function renderPriorityAlertPreview(message) {
+        if (!priorityAlertPreview || !priorityAlertPreviewBody) return;
+        priorityAlertPreviewBody.textContent = message;
+        priorityAlertPreview.style.display = message ? 'block' : 'none';
+    }
+
+    function setPriorityAlertStatus(message, isError = false) {
+        if (!priorityAlertStatus) return;
+        priorityAlertStatus.textContent = message;
+        priorityAlertStatus.style.color = isError ? '#b91c1c' : 'var(--text-3)';
+    }
+
+    async function pushPriorityAlert(message) {
+        if (priorityAlertController) priorityAlertController.abort();
+        priorityAlertController = new AbortController();
+        setPriorityAlertStatus('{{ t("superadmin_priority_alert_saving") }}');
+        try {
+            const res = await fetch('/admin/priority-alert', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+                body: new URLSearchParams({ message }),
+                signal: priorityAlertController.signal
+            });
+            if (!res.ok) throw new Error('save_failed');
+            const data = await res.json();
+            lastSavedPriorityAlert = data.message || '';
+            priorityAlertInput.value = lastSavedPriorityAlert;
+            renderPriorityAlertPreview(lastSavedPriorityAlert);
+            setPriorityAlertStatus(lastSavedPriorityAlert ? '{{ t("superadmin_priority_alert_saved") }}' : '{{ t("superadmin_priority_alert_cleared") }}');
+        } catch (err) {
+            if (err.name === 'AbortError') return;
+            setPriorityAlertStatus('{{ t("superadmin_priority_alert_error") }}', true);
+        }
+    }
+
+    function schedulePriorityAlertSave() {
+        const message = priorityAlertInput.value.trim().replace(/\s+/g, ' ');
+        renderPriorityAlertPreview(message);
+        if (message === lastSavedPriorityAlert) { setPriorityAlertStatus(''); return; }
+        clearTimeout(priorityAlertTimer);
+        setPriorityAlertStatus('{{ t("superadmin_priority_alert_pending") }}');
+        priorityAlertTimer = setTimeout(() => pushPriorityAlert(message), 250);
+    }
+
+    priorityAlertInput.addEventListener('input', schedulePriorityAlertSave);
+    renderPriorityAlertPreview(lastSavedPriorityAlert);
+
+    if (priorityAlertClear) {
+        priorityAlertClear.addEventListener('click', () => {
+            priorityAlertInput.value = '';
+            schedulePriorityAlertSave();
+        });
+    }
+})();
+
+function toggleAll(btn) {
+    const form = btn.closest('form');
+    const boxes = form.querySelectorAll('input[type=checkbox]');
+    const allChecked = Array.from(boxes).every(b => b.checked);
+    boxes.forEach(b => b.checked = !allChecked);
+    btn.textContent = allChecked ? '{{ t("superadmin_check_all") }}' : '{{ t("superadmin_uncheck_all") }}';
+}
+
+function toggleResetForm(btn) {
+    const section = btn.closest('.reset-pass-section');
+    const form = section.querySelector('.reset-pass-form');
+    const isVisible = form.style.display !== 'none';
+    form.style.display = isVisible ? 'none' : 'flex';
+}
 </script>
 {% endblock %}

@@ -323,7 +323,7 @@
                     {% endfor %}
                 {% endif %}
                 <div class="calendar-events">
-                    {% for item in cell.items %}
+                    {% for item in cell['items'] %}
                     <div class="event-pill calendar-event"
                          data-screen="{{ item.screen }}"
                          data-groups="{{ item.groups | join('||') }}"

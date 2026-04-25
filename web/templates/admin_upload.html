@@ -161,52 +161,6 @@
     padding: 14px 20px; border-top: 1px solid var(--border); background: var(--surface-alt);
     display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap;
 }
-.queue-force-modal {
-    position: fixed; inset: 0; display: none; place-items: center;
-    background: rgba(15, 23, 42, .58); z-index: 1001; padding: 20px;
-}
-.queue-force-modal.open { display: grid; }
-.queue-force-dialog {
-    width: min(500px, 100%); background: var(--surface); color: var(--text);
-    border: 1px solid var(--border); border-radius: 16px; overflow: hidden;
-    box-shadow: var(--shadow-sm);
-}
-.queue-force-head {
-    padding: 18px 20px; display: flex; gap: 10px; align-items: flex-start;
-    border-bottom: 1px solid var(--border);
-    background: var(--surface-alt);
-}
-.queue-force-icon {
-    width: 24px; height: 24px; border-radius: 6px; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
-    color: var(--primary); background: var(--primary-bg);
-}
-.queue-force-icon svg { width: 13px; height: 13px; }
-.queue-force-head h3 { font-size: .82rem; font-weight: 700; margin: 0 0 6px; }
-.queue-force-head p { margin: 0; font-size: .75rem; color: var(--text-3); line-height: 1.6; }
-.queue-force-body {
-    padding: 18px 20px; display: grid; gap: 12px;
-}
-.queue-force-note {
-    display: flex; gap: 10px; align-items: flex-start;
-    padding: 12px 14px; border-radius: 12px;
-    background: var(--surface-alt);
-    border: 1px solid var(--border);
-    color: var(--text-2); font-size: .79rem; line-height: 1.55;
-}
-.queue-force-note svg {
-    width: 16px; height: 16px; flex-shrink: 0; margin-top: 1px; color: var(--primary);
-}
-.queue-force-note strong {
-    display: block; margin-bottom: 4px; color: var(--text); font-size: .8rem; font-weight: 700;
-}
-.queue-force-note span:last-child {
-    display: block; color: var(--text-3);
-}
-.queue-force-actions {
-    padding: 14px 20px; border-top: 1px solid var(--border); background: var(--surface-alt);
-    display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap;
-}
 
 #file-preview { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
 #file-preview .prev-item { width: 80px; height: 80px; border-radius: 9px; overflow: hidden; background: var(--surface-alt); position: relative; border: 1px solid var(--border); }
@@ -520,7 +474,7 @@
 {% endif %}
 </div>
 
-<div class="upload-conflict-modal theme-dialog-overlay" id="upload-conflict-modal" aria-hidden="true">
+<div class="upload-conflict-modal" id="upload-conflict-modal" aria-hidden="true">
     <div class="upload-conflict-dialog theme-dialog" role="dialog" aria-modal="true" aria-labelledby="upload-conflict-title">
         <div class="upload-conflict-head">
             <h3 id="upload-conflict-title">Fichier déjà existant</h3>
@@ -535,43 +489,6 @@
     </div>
 </div>
 
-<div class="queue-force-modal theme-dialog-overlay" id="queue-force-modal" aria-hidden="true">
-    <div class="queue-force-dialog theme-dialog" role="dialog" aria-modal="true" aria-labelledby="queue-force-title">
-        <div class="queue-force-head theme-dialog-header">
-            <div class="queue-force-icon theme-dialog-icon" data-tone="warning" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                </svg>
-            </div>
-            <div>
-                <h3 id="queue-force-title">{{ t('queue_force_btn') }}</h3>
-                <p>{{ t('queue_force_confirm') }}</p>
-            </div>
-        </div>
-        <div class="queue-force-body theme-dialog-body">
-            <div class="queue-force-note theme-dialog-note" data-tone="warning">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <line x1="12" y1="8" x2="12" y2="12"></line>
-                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                </svg>
-                <div>
-                    <strong>Impact pendant l’encodage</strong>
-                    <span>L’encodage démarre immédiatement pour les éléments en attente, même hors de la fenêtre nocturne. Cela peut saturer la machine et risque de bloquer temporairement les clients pendant l’encodage.</span>
-                </div>
-            </div>
-        </div>
-        <div class="queue-force-actions theme-dialog-actions">
-            <button type="button" class="btn secondary sm" id="queue-force-cancel">Annuler</button>
-            <button type="button" class="btn primary sm" id="queue-force-confirm">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px">
-                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                </svg>
-                {{ t('queue_force_btn') }}
-            </button>
-        </div>
-    </div>
-</div>
 {% endblock %}
 
 {% block scripts %}
@@ -644,13 +561,9 @@ const conflictBody = document.getElementById('upload-conflict-body');
 const conflictCancelBtn = document.getElementById('upload-conflict-cancel');
 const conflictOverwriteBtn = document.getElementById('upload-conflict-overwrite');
 const conflictRenameBtn = document.getElementById('upload-conflict-rename');
-const queueForceModal = document.getElementById('queue-force-modal');
-const queueForceCancelBtn = document.getElementById('queue-force-cancel');
-const queueForceConfirmBtn = document.getElementById('queue-force-confirm');
 let droppedFiles    = [];
 let _pollTimer      = null;
 let conflictDialogState = null;
-let queueForceFormState = null;
 
 function getExt(name) { return name.slice(name.lastIndexOf('.')).toLowerCase(); }
 
@@ -933,19 +846,6 @@ function escapeHtmlAttr(value) {
     return escapeHtml(value);
 }
 
-function openQueueForceDialog(form) {
-    queueForceFormState = form;
-    queueForceModal.classList.add('open');
-    queueForceModal.setAttribute('aria-hidden', 'false');
-    requestAnimationFrame(() => queueForceConfirmBtn.focus());
-}
-
-function closeQueueForceDialog() {
-    queueForceModal.classList.remove('open');
-    queueForceModal.setAttribute('aria-hidden', 'true');
-    queueForceFormState = null;
-}
-
 conflictCancelBtn.addEventListener('click', () => closeConflictDialog(null));
 conflictOverwriteBtn.addEventListener('click', () => closeConflictDialog({ strategy: 'overwrite' }));
 conflictRenameBtn.addEventListener('click', () => {
@@ -954,28 +854,26 @@ conflictRenameBtn.addEventListener('click', () => {
     closeConflictDialog({ strategy: 'rename_custom', renameMap });
 });
 document.querySelectorAll('.queue-force-form').forEach(form => {
-    form.addEventListener('submit', event => {
+    form.addEventListener('submit', async event => {
         event.preventDefault();
-        openQueueForceDialog(form);
+        const ok = await window.appUI.confirm({
+            titleText: {{ t('queue_force_btn') | tojson }},
+            messageText: {{ t('queue_force_confirm') | tojson }},
+            note: "L'encodage démarre immédiatement pour les éléments en attente, même hors de la fenêtre nocturne. Cela peut saturer la machine et risque de bloquer temporairement les clients pendant l'encodage.",
+            tone: 'warning',
+            confirmLabel: {{ t('queue_force_btn') | tojson }},
+        });
+        if (ok) form.submit();
     });
-});
-queueForceCancelBtn.addEventListener('click', closeQueueForceDialog);
-queueForceConfirmBtn.addEventListener('click', () => {
-    const form = queueForceFormState;
-    closeQueueForceDialog();
-    if (form) form.submit();
 });
 conflictModal.addEventListener('click', event => {
     if (event.target === conflictModal) closeConflictDialog(null);
 });
-queueForceModal.addEventListener('click', event => {
-    if (event.target === queueForceModal) closeQueueForceDialog();
-});
+document.querySelector('.upload-conflict-dialog').addEventListener('click', e => e.stopPropagation());
 document.addEventListener('keydown', event => {
     if (event.key === 'Escape') {
         event.preventDefault();
         if (conflictDialogState) closeConflictDialog(null);
-        else if (queueForceFormState) closeQueueForceDialog();
         return;
     }
     if (conflictDialogState && event.key === 'Enter' && event.target instanceof HTMLInputElement) {
@@ -1154,6 +1052,7 @@ async function cancelJob(id) {
         messageText: JS_CONFIRM_CANCEL,
         tone: 'warning',
         confirmLabel: JS_CANCEL_BTN,
+        cancelLabel: 'Non',
     })) return;
     await fetch(`/queue/cancel/${id}`, { method: 'POST' });
     refreshQueue();

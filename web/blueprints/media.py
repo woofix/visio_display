@@ -19,6 +19,7 @@ from services.media_svc import (
     delete_image_variants, delete_media_thumbnail, delete_video_variants,
     generate_standard_renditions,
     get_media_url, get_original_media_url, are_videos_enabled,
+    build_media_preview_map,
 )
 from services.queue_svc import load_queue, save_queue, enqueue_compress_job
 from services.i18n import _flash, _t
@@ -322,6 +323,16 @@ def admin_programming_page():
         filter_screen_choices=filter_screen_choices,
         group_choices=group_choices,
         media_choices=files,
+        media_items=[
+            {
+                'filename': f,
+                'type': media_infos[f].get('type', 'unknown'),
+                'size': media_infos[f].get('size', '--'),
+                'dims': media_infos[f].get('dims', '--'),
+                'preview_url': build_media_preview_map([f], context='campaign').get(f),
+            }
+            for f in files
+        ],
         users=list(users.keys()),
         current_user=session.get('user'),
         logo_path=get_logo_path(),

@@ -80,17 +80,46 @@
 .modal-grid .full { grid-column:1 / -1; }
 .modal-footer { display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
 .modal-danger { margin-right:auto; }
+.media-vignette-picker { display:flex; flex-direction:column; gap:8px; }
+.media-vignette-search-row { display:flex; align-items:center; gap:8px; background:var(--surface); border:1.5px solid var(--border); border-radius:10px; padding:7px 11px; transition:border-color .15s; }
+.media-vignette-search-row:focus-within { border-color:var(--primary); box-shadow:0 0 0 3px rgba(124,58,237,.09); }
+.media-vignette-search-row svg { width:13px; height:13px; color:var(--text-3); flex-shrink:0; }
+.media-vignette-search { border:none; outline:none; font:inherit; font-size:.82rem; color:var(--text); background:transparent; flex:1; min-width:0; }
+.media-vignette-search::placeholder { color:var(--text-3); }
+.media-vignette-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(100px, 1fr)); gap:8px; max-height:260px; overflow-y:auto; padding-right:2px; }
+.media-vignette-item { position:relative; border:2px solid var(--border); border-radius:10px; overflow:hidden; cursor:pointer; transition:border-color .15s, box-shadow .15s; background:var(--surface); }
+.media-vignette-item:hover { border-color:var(--primary); }
+.media-vignette-item.selected { border-color:var(--primary); box-shadow:0 0 0 3px rgba(124,58,237,.2); }
+.media-vignette-item.hidden { display:none; }
+.media-vignette-thumb-wrap { position:relative; width:100%; aspect-ratio:16/9; background:#0b1220; overflow:hidden; }
+.media-vignette-thumb { width:100%; height:100%; object-fit:cover; display:block; }
+.media-vignette-overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(124,58,237,.72); color:#fff; opacity:0; transition:opacity .15s; }
+.media-vignette-item.selected .media-vignette-overlay { opacity:1; }
+.media-vignette-badge { position:absolute; top:4px; left:4px; border-radius:999px; padding:2px 5px; background:rgba(0,0,0,.55); color:#fff; font-size:.52rem; font-weight:700; letter-spacing:.04em; backdrop-filter:blur(4px); }
+.media-vignette-label { padding:5px 6px; }
+.media-vignette-name { font-size:.67rem; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; }
+.media-vignette-empty { font-size:.78rem; color:var(--text-3); text-align:center; padding:20px; }
+.media-vignette-count { font-size:.72rem; color:var(--text-3); }
+.media-vignette-error { font-size:.75rem; color:var(--red); font-weight:600; display:none; margin-top:2px; }
+.media-vignette-error.visible { display:block; }
 
 @media(max-width:1100px) {
     .filter-grid, .summary-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); }
-    .calendar-grid { grid-template-columns:140px repeat(7, minmax(160px, 1fr)); overflow:auto; }
+    .calendar-wrap { overflow-x:auto; }
+    .calendar-grid { grid-template-columns:140px repeat(7, minmax(160px, 1fr)); min-width:1100px; }
 }
 @media(max-width:720px) {
     .filter-grid, .summary-grid, .modal-grid { grid-template-columns:1fr; }
-    .calendar-grid { display:flex; flex-direction:column; }
+    .calendar-wrap { overflow-x:unset; }
+    .calendar-grid { display:flex; flex-direction:column; min-width:0; }
     .calendar-head.desktop-only { display:none; }
     .calendar-label, .calendar-cell { min-height:auto; }
     .list-table { min-width:760px; }
+}
+@media(max-width:640px) {
+    .week-nav .btn, .row-actions .btn, .toolbar-actions .btn, .modal-footer .btn { width:auto; }
+    .week-nav { gap:6px; }
+    .panel-head { gap:10px; }
 }
 {% endblock %}
 
@@ -285,6 +314,7 @@
             </div>
         </div>
 
+        <div class="calendar-wrap">
         <div class="calendar-grid" id="calendar-grid">
             <div class="calendar-head desktop-only"></div>
             {% for day in week_labels %}
@@ -340,6 +370,7 @@
             {% endfor %}
             {% endfor %}
         </div>
+        </div>
     </section>
 </div>
 
@@ -362,12 +393,35 @@
         <div class="theme-dialog-body">
         <div class="modal-grid">
             <div class="full form-group">
-                <label for="programming-filename">Média</label>
-                <select id="programming-filename">
-                    {% for filename in media_choices %}
-                    <option value="{{ filename }}">{{ filename }}</option>
-                    {% endfor %}
-                </select>
+                <label>Média</label>
+                <input type="hidden" id="programming-filename">
+                <div class="media-vignette-picker" id="programming-media-picker">
+                    <div class="media-vignette-search-row">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="search" class="media-vignette-search" id="programming-media-search" placeholder="Rechercher un média…">
+                        <span class="media-vignette-count" id="programming-media-count"></span>
+                    </div>
+                    <div class="media-vignette-grid" id="programming-media-grid">
+                        {% for media in media_items %}
+                        <div class="media-vignette-item" data-filename="{{ media.filename }}" data-name="{{ media.filename|lower }}" tabindex="0" role="option" aria-selected="false">
+                            <div class="media-vignette-thumb-wrap">
+                                <img class="media-vignette-thumb" src="{{ media.preview_url }}" alt="{{ media.filename }}" loading="lazy">
+                                <div class="media-vignette-overlay">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width:20px;height:20px"><polyline points="20 6 9 17 4 12"/></svg>
+                                </div>
+                                <span class="media-vignette-badge">{% if media.type == 'video' %}VID{% else %}IMG{% endif %}</span>
+                            </div>
+                            <div class="media-vignette-label">
+                                <span class="media-vignette-name" title="{{ media.filename }}">{{ media.filename }}</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        {% if not media_items %}
+                        <div class="media-vignette-empty">Aucun média disponible.</div>
+                        {% endif %}
+                    </div>
+                    <div class="media-vignette-error" id="programming-media-error">Veuillez sélectionner un média.</div>
+                </div>
             </div>
             <div class="form-group">
                 <label for="programming-screen">Écran</label>
@@ -504,22 +558,66 @@ if (canSchedule) {
     const timeStartField = document.getElementById('programming-time-start');
     const timeEndField = document.getElementById('programming-time-end');
     const deleteBtn = document.getElementById('programming-delete-btn');
+    const mediaSearch = document.getElementById('programming-media-search');
+    const mediaGrid = document.getElementById('programming-media-grid');
+    const mediaCountEl = document.getElementById('programming-media-count');
+    const mediaErrorEl = document.getElementById('programming-media-error');
+    const vignetteItems = [...document.querySelectorAll('#programming-media-grid .media-vignette-item')];
     let currentMode = 'create';
     let originalFilename = '';
     let originalScreen = '';
+
+    function selectVignette(filename) {
+        vignetteItems.forEach(item => {
+            const isSelected = item.dataset.filename === filename;
+            item.classList.toggle('selected', isSelected);
+            item.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+        });
+        filenameField.value = filename || '';
+        if (filename) mediaErrorEl.classList.remove('visible');
+    }
+
+    function syncVignetteCount() {
+        const visible = vignetteItems.filter(i => !i.classList.contains('hidden')).length;
+        mediaCountEl.textContent = visible + ' média' + (visible > 1 ? 's' : '');
+    }
+
+    mediaSearch?.addEventListener('input', () => {
+        const query = mediaSearch.value.trim().toLowerCase();
+        vignetteItems.forEach(item => {
+            item.classList.toggle('hidden', !!query && !item.dataset.name.includes(query));
+        });
+        syncVignetteCount();
+    });
+
+    vignetteItems.forEach(item => {
+        item.addEventListener('click', () => selectVignette(item.dataset.filename));
+        item.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectVignette(item.dataset.filename); }
+        });
+    });
+
+    syncVignetteCount();
 
     function openModal(mode, payload = {}) {
         currentMode = mode;
         originalFilename = payload.originalFilename || payload.filename || '';
         originalScreen = payload.originalScreen || payload.screen || '';
         modalTitle.textContent = mode === 'edit' ? 'Modifier la plage' : (mode === 'duplicate' ? 'Dupliquer la plage' : 'Nouvelle plage');
-        filenameField.value = payload.filename || filenameField.options[0]?.value || '';
+        mediaSearch.value = '';
+        vignetteItems.forEach(i => i.classList.remove('hidden'));
+        syncVignetteCount();
+        const target = payload.filename || vignetteItems[0]?.dataset.filename || '';
+        selectVignette(target);
+        const selected = vignetteItems.find(i => i.dataset.filename === target);
+        if (selected) selected.scrollIntoView({ block: 'nearest' });
         screenField.value = payload.screen || '';
         dateStartField.value = payload.dateStart || '';
         dateEndField.value = payload.dateEnd || '';
         timeStartField.value = payload.timeStart || '';
         timeEndField.value = payload.timeEnd || '';
         deleteBtn.style.display = mode === 'edit' ? '' : 'none';
+        mediaErrorEl.classList.remove('visible');
         modal.classList.add('open');
     }
 
@@ -575,6 +673,11 @@ if (canSchedule) {
     }
 
     document.getElementById('programming-save-btn').addEventListener('click', async () => {
+        if (!filenameField.value) {
+            mediaErrorEl.classList.add('visible');
+            mediaGrid.scrollIntoView({ block: 'nearest' });
+            return;
+        }
         try {
             await postJson('/programming/save', {
                 filename: filenameField.value,

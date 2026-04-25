@@ -93,6 +93,7 @@ def normalize_campaign(raw_campaign, *, valid_screens=None, valid_media=None):
         "screens": screens,
         "groups": groups,
         "media": media,
+        "created_by": str(raw_campaign.get("created_by") or "").strip(),
         "created_at": str(raw_campaign.get("created_at") or "").strip() or datetime.now().isoformat(timespec="seconds"),
         "updated_at": str(raw_campaign.get("updated_at") or "").strip() or datetime.now().isoformat(timespec="seconds"),
     }

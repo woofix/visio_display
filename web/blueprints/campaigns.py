@@ -13,7 +13,7 @@ from services.campaign_svc import (
     save_campaigns_to_config,
     serialize_campaign_for_view,
 )
-from services.config_svc import load_config, save_config
+from services.config_svc import load_config, save_config, get_default_screen_name
 from services.i18n import _flash
 from services.media_svc import (
     build_media_preview_map,
@@ -166,6 +166,7 @@ def admin_campaigns_page():
         current_campaign=request.args.get("campaign", "").strip(),
         users=list(users.keys()),
         current_user=session.get("user"),
+        default_screen_name=get_default_screen_name(cfg) or "",
         logo_path=get_logo_path(),
         current_user_is_superadmin=is_superadmin(),
         can_manage_campaigns=has_permission("schedule") or has_permission("toggle"),
@@ -187,6 +188,7 @@ def create_campaign():
         _flash(error_key, "error")
         return _campaign_redirect()
 
+    campaign["created_by"] = session.get("user", "")
     campaigns = get_campaigns(cfg)
     campaigns.insert(0, campaign)
     save_campaigns_to_config(cfg, campaigns)
@@ -216,6 +218,12 @@ def update_campaign(campaign_id):
         _flash("flash_no_screen_access", "error")
         return _campaign_redirect()
 
+    current_user = session.get("user")
+    owner = current.get("created_by", "")
+    if not is_superadmin() and owner and owner != current_user:
+        _flash("flash_campaign_edit_denied", "error")
+        return _campaign_redirect(campaign_id)
+
     payload = request.form.copy()
     payload["campaign_id"] = campaign_id
     payload["created_at"] = current.get("created_at", "")
@@ -224,6 +232,7 @@ def update_campaign(campaign_id):
         _flash(error_key, "error")
         return _campaign_redirect(campaign_id)
 
+    campaign["created_by"] = current.get("created_by", "")
     updated = [campaign if item["id"] == campaign_id else item for item in campaigns]
     save_campaigns_to_config(cfg, updated)
     save_config(cfg)
@@ -249,6 +258,10 @@ def toggle_campaign(campaign_id):
         if not campaign_allowed_for_user(campaign, _allowed_screens(cfg), is_superadmin=is_superadmin()):
             _flash("flash_no_screen_access", "error")
             return _campaign_redirect()
+        _owner = campaign.get("created_by", "")
+        if not is_superadmin() and _owner and _owner != session.get("user"):
+            _flash("flash_campaign_edit_denied", "error")
+            return _campaign_redirect(campaign_id)
         if campaign.get("archived"):
             _flash("flash_campaign_archived_toggle_blocked", "error")
             return _campaign_redirect(campaign_id)
@@ -290,6 +303,7 @@ def duplicate_campaign(campaign_id):
             "name": f'{source["name"]} (copie)',
             "enabled": False,
             "archived": False,
+            "created_by": session.get("user", ""),
             "updated_at": datetime.now().isoformat(timespec="seconds"),
         },
         valid_screens=list(cfg.get("screens", {}).keys()),
@@ -301,6 +315,36 @@ def duplicate_campaign(campaign_id):
     log_activity(session.get("user"), "campaign", details=f'duplicated:{source["name"]}')
     _flash("flash_campaign_duplicated", "success", name=duplicate["name"])
     return _campaign_redirect(duplicate["id"])
+
+
+@bp.route("/admin/campaigns/<campaign_id>/delete", methods=["POST"])
+def delete_campaign(campaign_id):
+    redir = admin_guard()
+    if redir:
+        return redir
+    if not (has_permission("schedule") or has_permission("toggle")):
+        _flash("flash_campaign_permission_denied", "error")
+        return _campaign_redirect()
+
+    cfg = load_config()
+    campaigns = get_campaigns(cfg)
+    target = next((item for item in campaigns if item["id"] == campaign_id), None)
+    if target is None:
+        _flash("flash_campaign_not_found", "error")
+        return _campaign_redirect()
+
+    current_user = session.get("user")
+    owner = target.get("created_by", "")
+    if not is_superadmin() and owner and owner != current_user:
+        _flash("flash_campaign_delete_denied", "error")
+        return _campaign_redirect()
+
+    updated = [item for item in campaigns if item["id"] != campaign_id]
+    save_campaigns_to_config(cfg, updated)
+    save_config(cfg)
+    log_activity(current_user, "campaign", details=f'deleted:{target["name"]}')
+    _flash("flash_campaign_deleted", "success", name=target["name"])
+    return _campaign_redirect()
 
 
 @bp.route("/admin/campaigns/<campaign_id>/archive", methods=["POST"])
@@ -320,6 +364,10 @@ def archive_campaign(campaign_id):
         if not campaign_allowed_for_user(campaign, _allowed_screens(cfg), is_superadmin=is_superadmin()):
             _flash("flash_no_screen_access", "error")
             return _campaign_redirect()
+        _owner = campaign.get("created_by", "")
+        if not is_superadmin() and _owner and _owner != session.get("user"):
+            _flash("flash_campaign_edit_denied", "error")
+            return _campaign_redirect(campaign_id)
         campaign["archived"] = not campaign.get("archived", False)
         if campaign["archived"]:
             campaign["enabled"] = False

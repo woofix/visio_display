@@ -1,17 +1,46 @@
 # MIT License - Copyright (c) 2026 Woofix
 # See LICENSE file for details
-
-**/__pycache__
-**/*.pyc
-**/*.pyo
+# Secrets
 .env
 .env.*
+
+# Runtime data
+data/
+private/
+web/data/private/
+
+# Generated media / uploads
+web/static/data/
+
+# Databases
+*.db
+
+# Logs
 *.log
-.git
-.gitignore
-.github
-CONTRIBUTING.md
-web/.venv
-web/tests
-web/requirements-dev.txt
-web/.pytest_cache
+
+# Python cache
+__pycache__/
+*.py[cod]
+.pytest_cache/
+web/.pytest_cache/
+
+# Virtual env
+.venv/
+web/.venv/
+
+# OS
+.DS_Store
+
+# Media uploads
+*.mp4
+*.jpg
+*.jpeg
+*.png
+*.avif
+*.webm
+*.mov
+*.avi
+*.mkv
+
+# Local Docker override
+docker-compose.override.yml

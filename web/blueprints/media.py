@@ -84,6 +84,19 @@ def _load_rename_map():
     }
 
 
+def _pdf_page_filenames(filename):
+    stem = os.path.splitext(filename)[0]
+    page = 1
+    pages = []
+    while True:
+        page_filename = f'{stem}_page_{page}.jpg'
+        if not os.path.exists(os.path.join(UPLOAD_FOLDER, page_filename)):
+            break
+        pages.append(page_filename)
+        page += 1
+    return pages
+
+
 def _collect_upload_name_conflicts(files):
     conflicts = []
     seen = set()
@@ -93,7 +106,12 @@ def _collect_upload_name_conflicts(files):
         filename = clean_filename(file.filename)
         if not filename:
             continue
-        path_exists = os.path.exists(os.path.join(UPLOAD_FOLDER, filename))
+        ext = os.path.splitext(filename)[1].lower()
+        if ext == '.pdf':
+            existing_pages = _pdf_page_filenames(filename)
+            path_exists = bool(existing_pages)
+        else:
+            path_exists = os.path.exists(os.path.join(UPLOAD_FOLDER, filename))
         duplicate_in_batch = filename in seen
         if path_exists or duplicate_in_batch:
             conflicts.append({
@@ -105,12 +123,26 @@ def _collect_upload_name_conflicts(files):
 
 
 def _prepare_overwrite_target(filename):
-    path = os.path.join(UPLOAD_FOLDER, filename)
-    delete_media_thumbnail(filename)
-    delete_image_variants(filename)
-    delete_video_variants(filename)
-    if os.path.exists(path):
-        os.remove(path)
+    ext = os.path.splitext(filename)[1].lower()
+    if ext == '.pdf':
+        stem = os.path.splitext(filename)[0]
+        page = 1
+        while True:
+            page_filename = f'{stem}_page_{page}.jpg'
+            page_path = os.path.join(UPLOAD_FOLDER, page_filename)
+            if not os.path.exists(page_path):
+                break
+            delete_media_thumbnail(page_filename)
+            delete_image_variants(page_filename)
+            os.remove(page_path)
+            page += 1
+    else:
+        path = os.path.join(UPLOAD_FOLDER, filename)
+        delete_media_thumbnail(filename)
+        delete_image_variants(filename)
+        delete_video_variants(filename)
+        if os.path.exists(path):
+            os.remove(path)
 
 
 def _resolve_custom_rename(file_index, filename, rename_map):
@@ -433,9 +465,13 @@ def upload_file():
             file.save(dest)
             try:
                 images = convert_from_path(dest)
+                stem = os.path.splitext(filename)[0]
                 for i, img in enumerate(images):
-                    img_path = dest.replace('.pdf', f'_page_{i+1}.jpg')
+                    page_filename = f'{stem}_page_{i+1}.jpg'
+                    img_path = os.path.join(UPLOAD_FOLDER, page_filename)
                     img.save(img_path, 'JPEG', quality=95)
+                    generate_standard_renditions(page_filename)
+                    planned_filenames.add(page_filename)
                 log_activity(session.get('user'), 'upload', filename=filename, details='pdf→jpg')
             finally:
                 if os.path.exists(dest):
@@ -460,7 +496,10 @@ def upload_file():
             generate_standard_renditions(filename)
             log_activity(session.get('user'), 'upload', filename=filename)
 
-    return jsonify({"ok": True, "jobs": [], "queued_files": queued_video_files, "redirect": "/admin/media"})
+    redirect_url = "/admin/media"
+    if queued_video_files:
+        redirect_url = "/admin/upload#encoding-queue"
+    return jsonify({"ok": True, "queued_files": queued_video_files, "redirect": redirect_url})
 
 
 @bp.route('/toggle/<filename>', methods=['POST'])

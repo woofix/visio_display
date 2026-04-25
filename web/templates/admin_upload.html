@@ -437,7 +437,13 @@
             </div>
 
             <div class="queue-section">
-                <div class="queue-section-title">{{ t('queue_recent_section') }}</div>
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                    <div class="queue-section-title" style="margin-bottom:0;">{{ t('queue_recent_section') }}</div>
+                    <button id="btn-clear-recent" class="btn secondary sm" style="display:none; font-size:.72rem; padding:4px 10px;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                        Tout effacer
+                    </button>
+                </div>
                 <div id="recent-jobs">
                     <div class="empty-queue" style="padding:20px">
                         <p>{{ t('queue_empty_recent') }}</p>
@@ -939,11 +945,7 @@ function submitUploadFiles(files, strategy = '', renameMap = null) {
             showFlash(message, 'error');
             return;
         }
-        if (data.jobs && data.jobs.length > 0) {
-            startProgressPolling(data.jobs);
-        } else {
-            window.location.href = data.redirect || '/admin/media';
-        }
+        window.location.href = data.redirect || '/admin/media';
     });
     xhr.addEventListener('error', () => { setUploadingState(false); progressWrap.style.display = 'none'; showFlash(MSG_NETWORK_ERROR, 'error'); });
     xhr.open('POST', '/upload');
@@ -1014,6 +1016,11 @@ async function refreshQueue() {
             }
         }
 
+        const clearRecentBtn = document.getElementById('btn-clear-recent');
+        if (clearRecentBtn) {
+            clearRecentBtn.style.display = (data.recent || []).length ? 'inline-flex' : 'none';
+        }
+
         const recentEl = document.getElementById('recent-jobs');
         if (recentEl) {
             if ((data.recent || []).length) {
@@ -1051,12 +1058,30 @@ async function cancelJob(id) {
         titleText: JS_CANCEL_BTN,
         messageText: JS_CONFIRM_CANCEL,
         tone: 'warning',
-        confirmLabel: JS_CANCEL_BTN,
+        confirmLabel: 'Oui',
         cancelLabel: 'Non',
     })) return;
-    await fetch(`/queue/cancel/${id}`, { method: 'POST' });
+    await fetch(`/queue/cancel/${id}`, {
+        method: 'POST',
+        headers: { 'X-CSRF-Token': window.CSRF_TOKEN },
+    });
     refreshQueue();
 }
+
+document.getElementById('btn-clear-recent')?.addEventListener('click', async () => {
+    if (!await window.appUI.confirm({
+        titleText: 'Tout effacer',
+        messageText: 'Supprimer tous les encodages récents de la liste ?',
+        tone: 'warning',
+        confirmLabel: 'Effacer',
+        cancelLabel: 'Annuler',
+    })) return;
+    await fetch('/queue/clear-recent', {
+        method: 'POST',
+        headers: { 'X-CSRF-Token': window.CSRF_TOKEN },
+    });
+    refreshQueue();
+});
 
 refreshQueue();
 setInterval(refreshQueue, 5000);

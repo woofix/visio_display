@@ -3,7 +3,7 @@
 
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from flask import Blueprint, redirect, jsonify, session
 
@@ -21,6 +21,16 @@ from services.i18n import _flash
 from blueprints.guards import admin_guard, superadmin_guard, perm_guard, feature_guard, feature_guard_json
 
 bp = Blueprint('queue', __name__)
+
+
+def _finished_after(job, cutoff):
+    finished = job.get('finished')
+    if not finished:
+        return True
+    try:
+        return datetime.fromisoformat(finished) > cutoff
+    except (ValueError, TypeError):
+        return True
 
 
 @bp.route('/admin/queue')
@@ -82,13 +92,9 @@ def cancel_job(job_id):
         save_queue(q)
         log_activity(session.get('user'), 'compress', filename=job['filename'], details='tâche annulée')
     else:
-        cfg = load_config()
-        hidden = cfg.get('hidden_recent_jobs', [])
-        if job_id not in hidden:
-            hidden.append(job_id)
-            cfg['hidden_recent_jobs'] = hidden
-            save_config(cfg)
-            log_config_change(session.get('user'), f'job compression masqué:{job_id}')
+        q.remove(job)
+        save_queue(q)
+        log_activity(session.get('user'), 'compress', filename=job['filename'], details='job supprimé')
     return jsonify({"ok": True})
 
 
@@ -158,6 +164,23 @@ def force_compress_single(filename):
     return jsonify({"ok": True, "job_id": job["id"]})
 
 
+@bp.route('/queue/clear-recent', methods=['POST'])
+def clear_recent_jobs():
+    g = feature_guard_json('videos')
+    if g: return g
+    g = feature_guard_json('compress')
+    if g: return g
+    if not is_admin():
+        return jsonify({"error": "unauthorized"}), 401
+    q = load_queue()
+    removed = [j for j in q if j['status'] in ('done', 'error')]
+    q = [j for j in q if j['status'] not in ('done', 'error')]
+    save_queue(q)
+    if removed:
+        log_activity(session.get('user'), 'compress', details=f'{len(removed)} encodage(s) récent(s) supprimé(s)')
+    return jsonify({"ok": True, "removed": len(removed)})
+
+
 @bp.route('/api/queue')
 def api_queue():
     g = feature_guard_json('videos')
@@ -169,8 +192,22 @@ def api_queue():
     q = load_queue()
     cfg = load_config()
     hidden_recent = set(cfg.get('hidden_recent_jobs', []))
+    cutoff = datetime.now() - timedelta(days=3)
     active = [j for j in q if j['status'] in ('pending', 'processing')]
-    recent = [j for j in q if j['status'] in ('done', 'error') and j['id'] not in hidden_recent][-5:]
+    recent_all = [
+        j for j in q
+        if j['status'] in ('done', 'error')
+        and j['id'] not in hidden_recent
+        and _finished_after(j, cutoff)
+    ]
+    # Keep only the most recent entry per filename to avoid duplicates
+    seen_filenames = set()
+    recent_dedup = []
+    for j in reversed(recent_all):
+        if j['filename'] not in seen_filenames:
+            recent_dedup.append(j)
+            seen_filenames.add(j['filename'])
+    recent = list(reversed(recent_dedup))[-5:]
 
     # Attach compress progress from Redis for processing jobs
     r = get_redis()

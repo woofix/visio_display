@@ -1014,11 +1014,12 @@ TRANSLATIONS = {
         'wiki_s17_priority2': 'Une campagne peut cibler des groupes, des médias isolés, ou les deux.',
         'wiki_s17_priority3': 'Les campagnes respectent les restrictions d’écrans de l’utilisateur connecté.',
         'wiki_s17_priority4': 'Une campagne archivée doit être restaurée avant de pouvoir être réactivée.',
+        'wiki_s17_priority5': 'Seul le créateur de la campagne (ou un super-admin) peut la modifier, l’activer/désactiver, l’archiver ou la supprimer. Le bouton Dupliquer reste accessible à tous.',
         'wiki_s17_actions_title': 'Actions disponibles',
-        'wiki_s17_action_update': 'Modifier — met à jour les dates, la priorité, les écrans et les contenus ciblés.',
-        'wiki_s17_action_toggle': 'Activer / Désactiver — bascule rapidement une campagne non archivée.',
-        'wiki_s17_action_duplicate': 'Dupliquer — crée une copie réutilisable pour un nouvel événement.',
-        'wiki_s17_action_archive': 'Archiver / Restaurer — retire une campagne de l’exploitation courante sans perdre sa configuration.',
+        'wiki_s17_action_update': 'Modifier — met à jour les dates, la priorité, les écrans et les contenus ciblés (réservé au propriétaire ou au super-admin).',
+        'wiki_s17_action_toggle': 'Activer / Désactiver — bascule rapidement une campagne non archivée (réservé au propriétaire ou au super-admin).',
+        'wiki_s17_action_duplicate': 'Dupliquer — crée une copie réutilisable pour un nouvel événement (accessible à tous les utilisateurs ayant les permissions requises).',
+        'wiki_s17_action_archive': 'Archiver / Restaurer — retire une campagne de l’exploitation courante sans perdre sa configuration (réservé au propriétaire ou au super-admin).',
         'wiki_s17_log_note': 'Les actions de campagne sont enregistrées dans le Journal d’activité sous le type Campagne.',
 
         # ── Activity log ──
@@ -2091,11 +2092,12 @@ TRANSLATIONS = {
         'wiki_s17_priority2': 'A campaign can target groups, individual media items, or both.',
         'wiki_s17_priority3': 'Campaigns respect the screen restrictions of the logged-in user.',
         'wiki_s17_priority4': 'An archived campaign must be restored before it can be enabled again.',
+        'wiki_s17_priority5': 'Only the campaign creator (or a super-admin) can edit, enable/disable, archive or delete it. The Duplicate button remains available to all users with the required permissions.',
         'wiki_s17_actions_title': 'Available actions',
-        'wiki_s17_action_update': 'Update — changes dates, priority, screens and targeted content.',
-        'wiki_s17_action_toggle': 'Enable / Disable — quickly toggles a non-archived campaign.',
-        'wiki_s17_action_duplicate': 'Duplicate — creates a reusable copy for a new event.',
-        'wiki_s17_action_archive': 'Archive / Restore — removes a campaign from day-to-day operation without losing its configuration.',
+        'wiki_s17_action_update': 'Update — changes dates, priority, screens and targeted content (owner or super-admin only).',
+        'wiki_s17_action_toggle': 'Enable / Disable — quickly toggles a non-archived campaign (owner or super-admin only).',
+        'wiki_s17_action_duplicate': 'Duplicate — creates a reusable copy for a new event (available to all users with the required permissions).',
+        'wiki_s17_action_archive': 'Archive / Restore — removes a campaign from day-to-day operation without losing its configuration (owner or super-admin only).',
         'wiki_s17_log_note': 'Campaign actions are recorded in the Activity Log under the Campaign type.',
 
         # ── Activity log ──

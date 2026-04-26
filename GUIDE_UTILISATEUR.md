@@ -657,14 +657,19 @@ Les campagnes permettent de prendre temporairement la main sur la rotation norma
 - Les campagnes respectent les restrictions d'écrans de l'utilisateur connecté.
 - Une campagne archivée ne peut pas être activée tant qu'elle n'est pas restaurée.
 
+### Propriété des campagnes
+
+Seul le **créateur de la campagne** (ou un super-admin) peut la modifier, l'activer/désactiver, l'archiver ou la supprimer. Le bouton **Dupliquer** reste accessible à tous les utilisateurs disposant des permissions requises.
+
 ### Actions disponibles
 
-| Action | Description |
-|---|---|
-| **Modifier** | Met à jour les dates, la priorité, les écrans et les contenus ciblés. |
-| **Activer / Désactiver** | Bascule rapidement une campagne non archivée. |
-| **Dupliquer** | Crée une copie réutilisable pour un nouvel événement. |
-| **Archiver / Restaurer** | Retire une campagne de l'exploitation courante sans perdre sa configuration. |
+| Action | Description | Qui peut agir |
+|---|---|---|
+| **Modifier** | Met à jour les dates, la priorité, les écrans et les contenus ciblés. | Propriétaire ou super-admin |
+| **Activer / Désactiver** | Bascule rapidement une campagne non archivée. | Propriétaire ou super-admin |
+| **Dupliquer** | Crée une copie réutilisable pour un nouvel événement. | Tout utilisateur autorisé |
+| **Archiver / Restaurer** | Retire une campagne de l'exploitation courante sans perdre sa configuration. | Propriétaire ou super-admin |
+| **Supprimer** | Supprime définitivement la campagne. | Propriétaire ou super-admin |
 
 Les actions de campagne sont enregistrées dans le **Journal d'activité** sous le type **Campagne**.
 

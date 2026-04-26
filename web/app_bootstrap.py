@@ -322,6 +322,7 @@ def register_blueprints(app):
     from blueprints.media import bp as media_bp
     from blueprints.queue import bp as queue_bp
     from blueprints.screens import bp as screens_bp
+    from blueprints.search import bp as search_bp
     from blueprints.settings import bp as settings_bp
     from blueprints.users import bp as users_bp
     from blueprints.wiki import bp as wiki_bp
@@ -336,6 +337,7 @@ def register_blueprints(app):
         ephemeris_bp,
         users_bp,
         settings_bp,
+        search_bp,
         api_bp,
         wiki_bp,
         activity_bp,

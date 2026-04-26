@@ -168,10 +168,81 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
         </div>
 
         <div class="nav-label u-mt-2">{{ t('nav_label_help') }}</div>
-        <a href="/admin/wiki" class="nav-item {% if path == '/admin/wiki' %}active{% endif %}">
+        <button class="nav-item nav-item-parent {% if path == '/admin/wiki' %}open{% endif %}" data-nav-toggle="nav-help-sub">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-            {{ t('nav_wiki') }}
-        </a>
+            {{ t('nav_label_help') }}
+            <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        <div class="nav-subnav {% if path == '/admin/wiki' %}open{% endif %}" id="nav-help-sub">
+            <a href="/admin/wiki#s1" class="nav-item nav-subitem" data-wiki-nav="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><circle cx="12" cy="12" r="2"/></svg>
+                {{ t('wiki_s1_title') }}
+            </a>
+            <a href="/admin/wiki#s2" class="nav-item nav-subitem" data-wiki-nav="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><circle cx="12" cy="12" r="2"/></svg>
+                {{ t('wiki_s2_title') }}
+            </a>
+            <a href="/admin/wiki#s3" class="nav-item nav-subitem" data-wiki-nav="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><circle cx="12" cy="12" r="2"/></svg>
+                {{ t('wiki_s3_title') }}
+            </a>
+            <a href="/admin/wiki#s4" class="nav-item nav-subitem" data-wiki-nav="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><circle cx="12" cy="12" r="2"/></svg>
+                {{ t('wiki_s4_title') }}
+            </a>
+            <a href="/admin/wiki#s5" class="nav-item nav-subitem" data-wiki-nav="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><circle cx="12" cy="12" r="2"/></svg>
+                {{ t('wiki_s5_title') }}
+            </a>
+            <a href="/admin/wiki#s6" class="nav-item nav-subitem" data-wiki-nav="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><circle cx="12" cy="12" r="2"/></svg>
+                {{ t('wiki_s6_title') }}
+            </a>
+            <a href="/admin/wiki#s7" class="nav-item nav-subitem" data-wiki-nav="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><circle cx="12" cy="12" r="2"/></svg>
+                {{ t('wiki_s7_title') }}
+            </a>
+            <a href="/admin/wiki#s8" class="nav-item nav-subitem" data-wiki-nav="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><circle cx="12" cy="12" r="2"/></svg>
+                {{ t('wiki_s8_title') }}
+            </a>
+            <a href="/admin/wiki#s9" class="nav-item nav-subitem" data-wiki-nav="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><circle cx="12" cy="12" r="2"/></svg>
+                {{ t('wiki_s9_title') }}
+            </a>
+            <a href="/admin/wiki#s10" class="nav-item nav-subitem" data-wiki-nav="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><circle cx="12" cy="12" r="2"/></svg>
+                {{ t('wiki_s10_title') }}
+            </a>
+            <a href="/admin/wiki#s11" class="nav-item nav-subitem" data-wiki-nav="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><circle cx="12" cy="12" r="2"/></svg>
+                {{ t('wiki_s11_title') }}
+            </a>
+            <a href="/admin/wiki#s12" class="nav-item nav-subitem" data-wiki-nav="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><circle cx="12" cy="12" r="2"/></svg>
+                {{ t('wiki_s12_title') }}
+            </a>
+            <a href="/admin/wiki#s13" class="nav-item nav-subitem" data-wiki-nav="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><circle cx="12" cy="12" r="2"/></svg>
+                {{ t('wiki_s13_title') }}
+            </a>
+            <a href="/admin/wiki#s14" class="nav-item nav-subitem" data-wiki-nav="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><circle cx="12" cy="12" r="2"/></svg>
+                {{ t('wiki_s14_title') }}
+            </a>
+            <a href="/admin/wiki#s15" class="nav-item nav-subitem" data-wiki-nav="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><circle cx="12" cy="12" r="2"/></svg>
+                {{ t('wiki_s15_title') }}
+            </a>
+            <a href="/admin/wiki#s16" class="nav-item nav-subitem" data-wiki-nav="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><circle cx="12" cy="12" r="2"/></svg>
+                {{ t('wiki_s16_title') }}
+            </a>
+            <a href="/admin/wiki#s17" class="nav-item nav-subitem" data-wiki-nav="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><circle cx="12" cy="12" r="2"/></svg>
+                {{ t('wiki_s17_title') }}
+            </a>
+        </div>
 
     </nav>
 
@@ -364,6 +435,7 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
     // Gestion des ancres internes (liens sidebar vers #sections)
     document.querySelectorAll('.sidebar a[href*="#"]').forEach(link => {
         link.addEventListener('click', function(e) {
+            if (link.dataset.wikiNav) return;
             const url = new URL(this.href, window.location.href);
             if (url.pathname === window.location.pathname && url.hash) {
                 e.preventDefault();

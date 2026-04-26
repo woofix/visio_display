@@ -698,9 +698,9 @@ TRANSLATIONS = {
         'ephemeris_school_break_default': 'VACANCES SCOLAIRES',
         'ephemeris_school_break_dates': 'du {start} au {end}',
         # ── Wiki ──
-        'nav_wiki': 'Guide utilisateur',
+        'nav_wiki': 'Aide',
         'wiki_topbar_sub': 'Documentation et aide',
-        'wiki_hero_title': 'Guide utilisateur — Visio-Display',
+        'wiki_hero_title': 'Aide — Visio-Display',
         'wiki_hero_sub': 'Retrouvez ici toutes les informations pour utiliser l\'application : importer des médias, planifier l\'affichage, gérer les écrans et les utilisateurs.',
         'wiki_toc_title': 'Sommaire',
         'wiki_search_placeholder': 'Rechercher…',
@@ -1789,9 +1789,9 @@ TRANSLATIONS = {
         'ephemeris_school_break_default': 'SCHOOL HOLIDAYS',
         'ephemeris_school_break_dates': 'from {start} to {end}',
         # ── Wiki ──
-        'nav_wiki': 'User Guide',
+        'nav_wiki': 'Help',
         'wiki_topbar_sub': 'Documentation and help',
-        'wiki_hero_title': 'User Guide — Visio-Display',
+        'wiki_hero_title': 'Help — Visio-Display',
         'wiki_hero_sub': 'Everything you need to use the application: import media, schedule display, manage screens and users.',
         'wiki_toc_title': 'Contents',
         'wiki_search_placeholder': 'Search…',

@@ -1,10 +1,10 @@
 #!/bin/bash
 # Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
-set -e
+set -euo pipefail
 
 REPO_URL="https://github.com/woofix/visio_display.git"
-DEFAULT_INSTALL_DIR="/srv/visio_display"
+DEFAULT_INSTALL_DIR="$(pwd)/visio_display"
 DEFAULT_PORT="8081"
 
 # ── Couleurs ──────────────────────────────────────────────────────────────────
@@ -62,7 +62,7 @@ done
 
 while true; do
     read -srp "Mot de passe admin : " ADMIN_PASSWORD; echo
-    [[ ${#ADMIN_PASSWORD} -ge 8 ]] || { warn "Le mot de passe doit faire au moins 8 caractères."; continue; }
+    [[ ${#ADMIN_PASSWORD} -ge 10 ]] || { warn "Le mot de passe doit faire au moins 10 caractères."; continue; }
     read -srp "Confirmer le mot de passe : " ADMIN_PASSWORD2; echo
     [[ "$ADMIN_PASSWORD" == "$ADMIN_PASSWORD2" ]] && break
     warn "Les mots de passe ne correspondent pas."
@@ -75,9 +75,34 @@ header "Configuration réseau"
 read -rp "Port HTTP du serveur [${DEFAULT_PORT}] : " PORT
 PORT="${PORT:-$DEFAULT_PORT}"
 
+# ── Nettoyage des données existantes ─────────────────────────────────────────
+header "Nettoyage"
+
+warn "Cette étape va arrêter les containers et supprimer toutes les données existantes (base de données, cache)."
+read -rp "Appuyez sur Entrée pour continuer ou Ctrl+C pour annuler..."
+
+PROJECT_NAME="$(basename "$INSTALL_DIR" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9_-')"
+docker compose down --remove-orphans 2>/dev/null || true
+for vol in postgres_data redis_data; do
+    VNAME="${PROJECT_NAME}_${vol}"
+    if docker volume inspect "$VNAME" >/dev/null 2>&1; then
+        docker volume rm "$VNAME" >/dev/null
+        ok "Volume $VNAME supprimé."
+    fi
+done
+
 # ── Mot de passe PostgreSQL ───────────────────────────────────────────────────
-POSTGRES_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_hex(24))' 2>/dev/null \
-    || openssl rand -hex 24)"
+header "Base de données PostgreSQL"
+
+while true; do
+    read -srp "Mot de passe PostgreSQL : " POSTGRES_PASSWORD; echo
+    [[ ${#POSTGRES_PASSWORD} -ge 10 ]] || { warn "Le mot de passe doit faire au moins 10 caractères."; continue; }
+    read -srp "Confirmer le mot de passe : " POSTGRES_PASSWORD2; echo
+    [[ "$POSTGRES_PASSWORD" == "$POSTGRES_PASSWORD2" ]] && break
+    warn "Les mots de passe ne correspondent pas."
+done
+
+ok "Mot de passe PostgreSQL configuré."
 
 # ── Clé secrète Flask ─────────────────────────────────────────────────────────
 SECRET_KEY="$(python3 -c 'import secrets; print(secrets.token_hex(32))' 2>/dev/null \

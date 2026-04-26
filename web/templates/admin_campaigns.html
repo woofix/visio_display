@@ -314,7 +314,11 @@
                             {% if campaign.archived %}{{ t('campaigns_restore_cta') }}{% else %}{{ t('campaigns_archive_cta') }}{% endif %}
                         </button>
                     </form>
-                    <form action="/admin/campaigns/{{ campaign.id }}/delete" method="post" onsubmit="return confirm('{{ t('campaigns_delete_confirm') }}')">
+                    <form action="/admin/campaigns/{{ campaign.id }}/delete" method="post"
+                          data-confirm="{{ t('campaigns_delete_confirm') }}"
+                          data-confirm-title="{{ t('campaigns_delete_cta') }}"
+                          data-confirm-tone="error"
+                          data-confirm-ok="{{ t('campaigns_delete_cta') }}">
                         <button type="submit" class="btn sm danger">{{ t('campaigns_delete_cta') }}</button>
                     </form>
                     {% endif %}

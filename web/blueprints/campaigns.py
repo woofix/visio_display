@@ -24,7 +24,7 @@ from services.media_svc import (
     normalize_group_name,
 )
 from services.users_svc import has_permission, has_screen_access, is_superadmin, load_users
-from blueprints.guards import admin_guard
+from blueprints.guards import admin_guard, feature_guard
 
 bp = Blueprint("campaigns", __name__)
 
@@ -137,7 +137,7 @@ def _parse_campaign_form(cfg, raw_data):
 
 @bp.route("/admin/campaigns")
 def admin_campaigns_page():
-    redir = admin_guard()
+    redir = admin_guard() or feature_guard('campaigns')
     if redir:
         return redir
 
@@ -175,7 +175,7 @@ def admin_campaigns_page():
 
 @bp.route("/admin/campaigns/create", methods=["POST"])
 def create_campaign():
-    redir = admin_guard()
+    redir = admin_guard() or feature_guard('campaigns')
     if redir:
         return redir
     if not (has_permission("schedule") or has_permission("toggle")):
@@ -200,7 +200,7 @@ def create_campaign():
 
 @bp.route("/admin/campaigns/<campaign_id>/update", methods=["POST"])
 def update_campaign(campaign_id):
-    redir = admin_guard()
+    redir = admin_guard() or feature_guard('campaigns')
     if redir:
         return redir
     if not (has_permission("schedule") or has_permission("toggle")):
@@ -243,7 +243,7 @@ def update_campaign(campaign_id):
 
 @bp.route("/admin/campaigns/<campaign_id>/toggle", methods=["POST"])
 def toggle_campaign(campaign_id):
-    redir = admin_guard()
+    redir = admin_guard() or feature_guard('campaigns')
     if redir:
         return redir
     if not (has_permission("schedule") or has_permission("toggle")):
@@ -279,7 +279,7 @@ def toggle_campaign(campaign_id):
 
 @bp.route("/admin/campaigns/<campaign_id>/duplicate", methods=["POST"])
 def duplicate_campaign(campaign_id):
-    redir = admin_guard()
+    redir = admin_guard() or feature_guard('campaigns')
     if redir:
         return redir
     if not (has_permission("schedule") or has_permission("toggle")):
@@ -319,7 +319,7 @@ def duplicate_campaign(campaign_id):
 
 @bp.route("/admin/campaigns/<campaign_id>/delete", methods=["POST"])
 def delete_campaign(campaign_id):
-    redir = admin_guard()
+    redir = admin_guard() or feature_guard('campaigns')
     if redir:
         return redir
     if not (has_permission("schedule") or has_permission("toggle")):
@@ -349,7 +349,7 @@ def delete_campaign(campaign_id):
 
 @bp.route("/admin/campaigns/<campaign_id>/archive", methods=["POST"])
 def archive_campaign(campaign_id):
-    redir = admin_guard()
+    redir = admin_guard() or feature_guard('campaigns')
     if redir:
         return redir
     if not (has_permission("schedule") or has_permission("toggle")):

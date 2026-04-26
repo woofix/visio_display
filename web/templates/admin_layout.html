@@ -75,10 +75,12 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
             {{ t('nav_media') }}
         </a>
+        {% if is_feature_enabled('campaigns') %}
         <a href="/admin/campaigns" class="nav-item {% if path == '/admin/campaigns' %}active{% endif %}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7V3m8 4V3"/><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 11h18"/><path d="M8 15h3"/><path d="M13 15h3"/><path d="M8 18h8"/></svg>
             {{ t('nav_campaigns') }}
         </a>
+        {% endif %}
         {% if has_permission('schedule') and is_feature_enabled('schedule') %}
         <a href="/admin/programming" class="nav-item {% if path == '/admin/programming' %}active{% endif %}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/></svg>
@@ -137,13 +139,13 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
                 {{ t('tab_meteo') }}
             </a>
 
+            {% endif %}
+            <div style="font-size:.67rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;padding:10px 14px 4px;margin-top:2px">Configuration avancée</div>
+            {% if current_user_is_superadmin %}
             <a href="/admin/settings#fonctionnalites" class="nav-item nav-subitem">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                 {{ t('nav_features') }}
             </a>
-            {% endif %}
-            <div style="font-size:.67rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;padding:10px 14px 4px;margin-top:2px">Configuration avancée</div>
-            {% if current_user_is_superadmin %}
             <a href="/admin/settings#alerte-prioritaire" class="nav-item nav-subitem">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                 {{ t('superadmin_priority_alert_title') }}

@@ -114,6 +114,7 @@ ALL_FEATURES = [
     ("delete",         "feature_delete",          "feature_delete_desc"),
     ("compress",       "feature_compress",        "feature_compress_desc"),
     ("ephemeris",      "feature_ephemeris",       "feature_ephemeris_desc"),
+    ("campaigns",      "feature_campaigns",       "feature_campaigns_desc"),
     ("schedule",       "feature_schedule",        "feature_schedule_desc"),
     ("groups",         "feature_groups",          "feature_groups_desc"),
     ("screens",        "feature_screens",         "feature_screens_desc"),

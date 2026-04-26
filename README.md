@@ -1,4 +1,4 @@
-<!-- MIT License - Copyright (c) 2026 Woofix - See LICENSE file for details -->
+<!-- Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details. -->
 
 # Visio-Display — Diaporama numérique · Digital Signage
 
@@ -659,7 +659,7 @@ Les anciennes migrations automatiques depuis `users.json`, `config.json`, `queue
 
 ### Licence
 
-MIT License — Copyright (c) 2026 Woofix
+Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 ---
 
@@ -1250,4 +1250,4 @@ Automatic migrations from `users.json`, `config.json`, `queue.json`, or `visio-d
 
 ### License
 
-MIT License — Copyright (c) 2026 Woofix
+Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.

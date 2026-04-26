@@ -1,4 +1,4 @@
-# MIT License - Copyright (c) 2026 Eric TOMAS and Jean-michel TOMAS
+# GNU General Public License v3.0 (GPL-3.0) - Copyright (c) 2026 Eric TOMAS and Jean-michel TOMAS
 # Translations for the Visio-Display admin interface — FR / EN
 
 TRANSLATIONS = {

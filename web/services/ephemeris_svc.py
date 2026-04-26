@@ -378,6 +378,18 @@ def _displayable_saint_name(raw_name):
     return parts[0]
 
 
+def _extract_modern_name(contenu):
+    if not contenu:
+        return None
+    import re
+    text = re.split(r'<', contenu, maxsplit=1)[0].strip()
+    match = re.match(r'^([A-ZÀ-Ÿa-zà-ÿ]+(?:\s+ou\s+[A-ZÀ-Ÿa-zà-ÿ]+)*)\s*\.', text)
+    if not match:
+        return None
+    parts = re.split(r'\s+ou\s+', match.group(1), flags=re.IGNORECASE)
+    return parts[-1].strip() if parts else None
+
+
 def get_ephemeride_nominis(target_date=None):
     target_date = target_date or date.today()
     url = "https://nominis.cef.fr/json/saintdujour.php"
@@ -389,7 +401,9 @@ def get_ephemeride_nominis(target_date=None):
         traditional_name = strip_html(saint.get("nom", "")).strip()
         if traditional_name:
             desc = strip_html(saint.get("description", "")).strip()
-            return _displayable_saint_name(traditional_name) or traditional_name, desc
+            modern = _extract_modern_name(saint.get("contenu", ""))
+            display = modern or _displayable_saint_name(traditional_name) or traditional_name
+            return display, desc
         return None, ""
     except Exception as e:
         print("[NOMINIS ERROR]", e)

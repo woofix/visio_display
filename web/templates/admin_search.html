@@ -77,6 +77,13 @@
 .search-activity-action { font-size: .8rem; font-weight: 700; color: var(--text); }
 .search-activity-meta { font-size: .7rem; color: var(--text-3); margin-top: 2px; }
 .search-activity-details { font-size: .72rem; color: var(--text-2); margin-top: 4px; word-break: break-word; }
+
+.search-restricted-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; display: flex; align-items: flex-start; gap: 12px; box-shadow: var(--shadow-sm); opacity: .8; }
+.search-restricted-icon { width: 34px; height: 34px; border-radius: 9px; background: #fef3c7; color: #b45309; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.search-restricted-icon svg { width: 16px; height: 16px; }
+.search-restricted-title { font-size: .86rem; font-weight: 700; color: var(--text); }
+.search-restricted-desc { font-size: .71rem; color: var(--text-3); margin-top: 2px; line-height: 1.4; }
+.search-restricted-msg { font-size: .72rem; color: #b45309; margin-top: 5px; font-weight: 600; }
 {% endblock %}
 
 {% block content %}
@@ -154,6 +161,41 @@
                 <div class="search-page-desc">{{ page.desc }}</div>
             </div>
         </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{# ── Accès restreint ── #}
+{% if results.restricted %}
+<div class="search-category">
+    <div class="search-cat-header">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#b45309" stroke-width="2" style="width:16px;height:16px">
+            <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        <span class="search-cat-title" style="color:#b45309">Accès restreint</span>
+        <span class="search-cat-count" style="background:#fef3c7;color:#b45309">{{ results.restricted|length }}</span>
+    </div>
+    <div class="search-pages-grid">
+        {% for page in results.restricted %}
+        <div class="search-restricted-card">
+            <div class="search-restricted-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+            </div>
+            <div>
+                <div class="search-restricted-title">{{ page.title }}</div>
+                <div class="search-restricted-desc">{{ page.desc }}</div>
+                <div class="search-restricted-msg">
+                    {% if get_language() == 'en' %}
+                        You do not have permission to access this feature. Please ask your administrator.
+                    {% else %}
+                        Vous n'avez pas les droits pour accéder à cette fonctionnalité. Veuillez contacter un administrateur.
+                    {% endif %}
+                </div>
+            </div>
+        </div>
         {% endfor %}
     </div>
 </div>

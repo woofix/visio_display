@@ -1233,6 +1233,15 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                                     {% if perms|length == 0 %}{{ t('superadmin_no_perm') }}{% else %}{{ t('superadmin_n_perms', n=perms|length) }}{% endif %}
                                 {% endif %}
                             </div>
+                            {% if not entry.superadmin and user_roles_map is defined %}
+                            {% set uroles = user_roles_map.get(username, []) %}
+                            <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;align-items:center">
+                                {% for rname in uroles %}
+                                <span style="font-size:.65rem;padding:1px 7px;border-radius:8px;background:var(--primary-bg);color:var(--primary);font-weight:600">{{ rname }}</span>
+                                {% endfor %}
+                                <a href="/admin/roles" style="font-size:.65rem;color:var(--primary);text-decoration:underline;margin-left:2px">{{ t('nav_roles') }}</a>
+                            </div>
+                            {% endif %}
                         </div>
                         {% if not entry.superadmin %}
                         <div class="delete-btn-wrap">

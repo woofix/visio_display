@@ -216,7 +216,10 @@ def has_permission(perm):
     u = db.session.get(User, username)
     if u is None:
         return False
-    return perm in _json_list(u.permissions)
+    if perm in _json_list(u.permissions):
+        return True
+    from services.rbac_svc import get_effective_permissions_for_user
+    return perm in get_effective_permissions_for_user(username)
 
 
 def has_screen_access(screen_name):

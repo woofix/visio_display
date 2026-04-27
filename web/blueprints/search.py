@@ -8,11 +8,28 @@ from services.campaign_svc import get_campaigns
 from services.config_svc import load_config
 from services.i18n import get_language
 from services.media_svc import get_all_media, get_media_url, is_media_disabled
-from services.users_svc import is_superadmin, load_users
+from services.users_svc import is_superadmin, load_users, has_permission
 
 bp = Blueprint('search', __name__)
 
 MAX_PER_CATEGORY = 20
+
+# URL prefix → permission requise pour y accéder
+_URL_PERMISSION_MAP = [
+    ('/admin/upload', 'upload'),
+]
+
+
+def _split_restricted(pages, has_perm_fn):
+    accessible, restricted = [], []
+    for page in pages:
+        url = page.get('url', '')
+        required = next((p for prefix, p in _URL_PERMISSION_MAP if url.startswith(prefix)), None)
+        if required and not has_perm_fn(required):
+            restricted.append({**page, 'required_perm': required})
+        else:
+            accessible.append(page)
+    return accessible, restricted
 
 
 def _search_index(query, lang, category):
@@ -147,14 +164,21 @@ def _search_users(query):
     return results
 
 
-def _run_search(query, cfg, lang='fr', superadmin=False):
+def _run_search(query, cfg, lang='fr', superadmin=False, has_perm_fn=None):
+    if has_perm_fn is None:
+        has_perm_fn = lambda p: True
+
+    all_pages = _search_index(query, lang, 'page')
+    accessible_pages, restricted_pages = _split_restricted(all_pages, has_perm_fn)
+
     results = {
-        'pages':     _search_index(query, lang, 'page'),
-        'wiki':      _search_index(query, lang, 'wiki'),
-        'media':     _search_media(query, cfg),
-        'campaigns': _search_campaigns(query, cfg),
-        'config':    _search_config(query, cfg),
-        'activity':  _search_activity(query),
+        'pages':      accessible_pages,
+        'wiki':       _search_index(query, lang, 'wiki'),
+        'media':      _search_media(query, cfg),
+        'campaigns':  _search_campaigns(query, cfg),
+        'config':     _search_config(query, cfg),
+        'activity':   _search_activity(query),
+        'restricted': restricted_pages,
     }
     if superadmin:
         results['users'] = _search_users(query)
@@ -170,10 +194,10 @@ def admin_search_page():
     cfg = load_config()
     sa = is_superadmin()
     lang = get_language()
-    results = _run_search(q, cfg, lang=lang, superadmin=sa) if q else {
-        'pages': [], 'wiki': [], 'media': [], 'campaigns': [], 'config': [], 'activity': [], 'users': [],
+    results = _run_search(q, cfg, lang=lang, superadmin=sa, has_perm_fn=has_permission) if q else {
+        'pages': [], 'wiki': [], 'media': [], 'campaigns': [], 'config': [], 'activity': [], 'restricted': [], 'users': [],
     }
-    total = sum(len(v) for v in results.values())
+    total = sum(len(v) for k, v in results.items() if k != 'restricted')
     return render_template(
         'admin_search.html',
         query=q,
@@ -191,11 +215,11 @@ def api_search():
         return jsonify({'error': 'unauthorized'}), 401
     q = request.args.get('q', '').strip()
     if len(q) < 2:
-        return jsonify({'pages': [], 'wiki': [], 'media': [], 'campaigns': [], 'config': [], 'activity': []})
+        return jsonify({'pages': [], 'wiki': [], 'media': [], 'campaigns': [], 'config': [], 'activity': [], 'restricted': []})
     cfg = load_config()
     sa = is_superadmin()
     lang = get_language()
-    results = _run_search(q, cfg, lang=lang, superadmin=sa)
+    results = _run_search(q, cfg, lang=lang, superadmin=sa, has_perm_fn=has_permission)
     for category in results.values():
         for item in category:
             item.pop('thumb_url', None)

@@ -1,0 +1,253 @@
+{# GNU General Public License v3.0 (GPL-3.0) - Copyright (c) 2026 Woofix - See LICENSE file for details #}
+{% extends 'admin_layout.html' %}
+
+{% block title %}{{ t('roles_title') }}{% endblock %}
+{% block topbar_icon %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>{% endblock %}
+{% block topbar_breadcrumbs %}<div class="topbar-breadcrumbs">
+    <a href="/admin" class="bc-link">{{ app_name }}</a>
+    <svg class="bc-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    <span class="bc-current">{{ t('roles_title') }}</span>
+</div>{% endblock %}
+{% block topbar_sub %}{{ t('roles_topbar_sub') }}{% endblock %}
+
+{% block styles %}
+.roles-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+@media (max-width: 900px) { .roles-layout { grid-template-columns: 1fr; } }
+
+.role-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 22px; box-shadow: var(--shadow-sm); margin-bottom: 16px; }
+.role-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.role-name { font-size: .9rem; font-weight: 700; color: var(--text); flex: 1; }
+.role-display { font-size: .75rem; color: var(--text-3); margin-top: 2px; }
+.role-badge { font-size: .65rem; font-weight: 700; padding: 2px 8px; border-radius: 8px; background: var(--primary-bg); color: var(--primary); white-space: nowrap; }
+.role-badge.system { background: #fef3c7; color: #92400e; }
+.role-desc { font-size: .78rem; color: var(--text-3); margin-bottom: 14px; font-style: italic; }
+
+.perm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px 12px; margin-bottom: 14px; }
+.perm-item { display: flex; align-items: center; gap: 7px; font-size: .81rem; color: var(--text-2); }
+.perm-item input[type=checkbox] { accent-color: var(--primary); width: 14px; height: 14px; flex-shrink: 0; }
+
+.role-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.section-title { font-size: .82rem; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.section-title svg { width: 14px; height: 14px; }
+
+.create-form-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 22px; box-shadow: var(--shadow-sm); }
+.form-row { margin-bottom: 14px; }
+.form-label { display: block; font-size: .77rem; font-weight: 700; color: var(--text-2); margin-bottom: 5px; }
+.form-input { width: 100%; padding: 8px 11px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: .83rem; font-family: inherit; color: var(--text); background: var(--surface); transition: border-color .15s; box-sizing: border-box; }
+.form-input:focus { outline: none; border-color: var(--primary); }
+
+.user-assign-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow-sm); margin-bottom: 14px; }
+.user-assign-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.user-avatar { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--primary-light)); display: flex; align-items: center; justify-content: center; font-size: .73rem; font-weight: 700; color: #fff; flex-shrink: 0; }
+.user-name { font-size: .86rem; font-weight: 700; color: var(--text); }
+.user-role-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 3px; }
+.user-role-tag { font-size: .67rem; padding: 2px 8px; border-radius: 8px; background: var(--primary-bg); color: var(--primary); font-weight: 600; }
+.user-role-none { font-size: .74rem; color: var(--text-3); }
+.role-checkbox-list { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 12px; }
+.role-checkbox-item { display: flex; align-items: center; gap: 6px; font-size: .81rem; color: var(--text-2); }
+.role-checkbox-item input { accent-color: var(--primary); }
+
+.edit-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1000; align-items: center; justify-content: center; }
+.edit-modal.open { display: flex; }
+.edit-modal-box { background: var(--surface); border-radius: var(--radius); padding: 28px 30px; width: 480px; max-width: 95vw; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+.edit-modal-title { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 20px; }
+.edit-modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{{ t('roles_title') }}</h1>
+        <p class="page-sub">{{ t('roles_desc') }}</p>
+    </div>
+</div>
+
+<div class="roles-layout">
+
+    <!-- ══ LEFT: Role list + permissions ══ -->
+    <div>
+        <div class="section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            {{ t('roles_list_title') }}
+        </div>
+
+        {% for role in roles %}
+        <div class="role-card">
+            <div class="role-card-header">
+                <div style="flex:1">
+                    <div class="role-name">{{ role.display_name }}
+                        {% if role.is_system %}<span class="role-badge system">{{ t('roles_system_badge') }}</span>{% endif %}
+                    </div>
+                    <div class="role-display">{{ role.name }}</div>
+                </div>
+                {% if not role.is_system %}
+                <button type="button" class="btn secondary sm"
+                        onclick="openEditModal({{ role.id }}, {{ role.display_name|tojson }}, {{ (role.description or '')|tojson }})">
+                    {{ t('roles_edit_btn') }}
+                </button>
+                <form action="/admin/roles/{{ role.id }}/delete" method="post"
+                      data-confirm="{{ t('roles_delete_confirm', name=role.display_name) }}"
+                      data-confirm-title="{{ t('roles_delete_btn') }}"
+                      data-confirm-tone="error"
+                      data-confirm-ok="{{ t('roles_delete_btn') }}">
+                    <button class="btn sm danger">{{ t('roles_delete_btn') }}</button>
+                </form>
+                {% endif %}
+            </div>
+
+            {% if role.description %}
+            <div class="role-desc">{{ role.description }}</div>
+            {% endif %}
+
+            <form action="/admin/roles/{{ role.id }}/permissions" method="post">
+                <div class="perm-grid">
+                    {% for perm_key, perm_label_key in all_permissions %}
+                    <div class="perm-item">
+                        <input type="checkbox" name="perm_{{ perm_key }}" id="rp_{{ role.id }}_{{ perm_key }}"
+                               {% if perm_key in role.get_permissions() %}checked{% endif %}>
+                        <label for="rp_{{ role.id }}_{{ perm_key }}">{{ t(perm_label_key) }}</label>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="role-actions">
+                    <button type="submit" class="btn success sm">{{ t('roles_save_perms') }}</button>
+                    <button type="button" class="btn secondary sm" onclick="toggleAll(this)">{{ t('superadmin_check_all') }}</button>
+                </div>
+            </form>
+        </div>
+        {% endfor %}
+
+        <!-- Create role form -->
+        <div class="create-form-card">
+            <div class="section-title" style="margin-bottom:16px">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                {{ t('roles_create_title') }}
+            </div>
+            <form action="/admin/roles/create" method="post">
+                <div class="form-row">
+                    <label class="form-label" for="new-role-name">{{ t('roles_name_label') }}</label>
+                    <input type="text" id="new-role-name" name="name" class="form-input"
+                           placeholder="{{ t('roles_name_placeholder') }}"
+                           pattern="[a-z0-9_-]{2,64}" required>
+                </div>
+                <div class="form-row">
+                    <label class="form-label" for="new-role-dname">{{ t('roles_display_name_label') }}</label>
+                    <input type="text" id="new-role-dname" name="display_name" class="form-input"
+                           placeholder="{{ t('roles_display_name_ph') }}" required>
+                </div>
+                <div class="form-row">
+                    <label class="form-label" for="new-role-desc">{{ t('roles_description_label') }}</label>
+                    <input type="text" id="new-role-desc" name="description" class="form-input"
+                           placeholder="{{ t('roles_description_ph') }}">
+                </div>
+                <div class="form-row">
+                    <div class="form-label">{{ t('roles_permissions_label') }}</div>
+                    <div class="perm-grid" style="margin-top:6px;margin-bottom:12px">
+                        {% for perm_key, perm_label_key in all_permissions %}
+                        <div class="perm-item">
+                            <input type="checkbox" name="perm_{{ perm_key }}" id="new_perm_{{ perm_key }}">
+                            <label for="new_perm_{{ perm_key }}">{{ t(perm_label_key) }}</label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <button type="submit" class="btn success sm">{{ t('roles_create_btn') }}</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ══ RIGHT: User-role assignment ══ -->
+    <div>
+        <div class="section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            {{ t('roles_assignment_title') }}
+        </div>
+
+        {% for username, user_roles in users_roles.items() %}
+        {% set uinfo = namespace(is_sa=false) %}
+        {% for r in user_roles %}{% endfor %}{# just iterate #}
+        <div class="user-assign-card">
+            <div class="user-assign-header">
+                <div class="user-avatar">{{ username[0].upper() }}</div>
+                <div style="flex:1">
+                    <div class="user-name">{{ username }}</div>
+                    <div class="user-role-tags">
+                        {% if users_sa.get(username) %}
+                            <span class="role-badge system">Super-Admin</span>
+                        {% elif user_roles %}
+                            {% for r in user_roles %}
+                            <span class="user-role-tag">{{ r.display_name }}</span>
+                            {% endfor %}
+                        {% else %}
+                            <span class="user-role-none">{{ t('roles_no_roles') }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% if roles and not users_sa.get(username) %}
+            <form action="/admin/users/{{ username }}/roles" method="post">
+                <div class="role-checkbox-list">
+                    {% for role in roles %}
+                    <label class="role-checkbox-item">
+                        <input type="checkbox" name="role_{{ role.id }}"
+                               {% if role in user_roles %}checked{% endif %}>
+                        {{ role.display_name }}
+                    </label>
+                    {% endfor %}
+                </div>
+                <button type="submit" class="btn secondary sm">{{ t('roles_save_assignment') }}</button>
+            </form>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Edit modal -->
+<div class="edit-modal" id="edit-modal">
+    <div class="edit-modal-box">
+        <div class="edit-modal-title">{{ t('roles_edit_title') }}</div>
+        <form id="edit-modal-form" method="post" action="">
+            <div class="form-row">
+                <label class="form-label">{{ t('roles_display_name_label') }}</label>
+                <input type="text" name="display_name" id="edit-display-name" class="form-input" required>
+            </div>
+            <div class="form-row">
+                <label class="form-label">{{ t('roles_description_label') }}</label>
+                <input type="text" name="description" id="edit-description" class="form-input">
+            </div>
+            <div class="edit-modal-actions">
+                <button type="button" class="btn secondary sm" onclick="closeEditModal()">{{ t('modal_cancel') }}</button>
+                <button type="submit" class="btn success sm">{{ t('roles_save_perms') }}</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleAll(btn) {
+    const form = btn.closest('form');
+    const boxes = form.querySelectorAll('input[type=checkbox]');
+    const allChecked = [...boxes].every(b => b.checked);
+    boxes.forEach(b => b.checked = !allChecked);
+}
+
+function openEditModal(roleId, displayName, description) {
+    document.getElementById('edit-modal-form').action = '/admin/roles/' + roleId + '/edit';
+    document.getElementById('edit-display-name').value = displayName;
+    document.getElementById('edit-description').value = description || '';
+    document.getElementById('edit-modal').classList.add('open');
+}
+
+function closeEditModal() {
+    document.getElementById('edit-modal').classList.remove('open');
+}
+
+document.getElementById('edit-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeEditModal();
+});
+</script>
+{% endblock %}

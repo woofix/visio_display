@@ -7,6 +7,43 @@ db = SQLAlchemy()
 PASSWORD_HASH_PLACEHOLDER = '__REDIS__'
 
 
+class Role(db.Model):
+    __tablename__ = 'roles'
+    id           = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    name         = db.Column(db.String(64), unique=True, nullable=False)
+    display_name = db.Column(db.String(128), nullable=False)
+    description  = db.Column(db.Text, nullable=True)
+    is_system    = db.Column(db.Boolean, default=False, nullable=False)
+
+    role_permissions = db.relationship('RolePermission', backref='role', cascade='all, delete-orphan', lazy='dynamic')
+    user_roles       = db.relationship('UserRole', backref='role', cascade='all, delete-orphan', lazy='dynamic')
+
+    def get_permissions(self):
+        return [rp.permission for rp in self.role_permissions]
+
+    def to_dict(self):
+        return {
+            'id':           self.id,
+            'name':         self.name,
+            'display_name': self.display_name,
+            'description':  self.description or '',
+            'is_system':    self.is_system,
+            'permissions':  self.get_permissions(),
+        }
+
+
+class RolePermission(db.Model):
+    __tablename__ = 'role_permissions'
+    role_id    = db.Column(db.Integer, db.ForeignKey('roles.id', ondelete='CASCADE'), primary_key=True)
+    permission = db.Column(db.String(64), primary_key=True, nullable=False)
+
+
+class UserRole(db.Model):
+    __tablename__ = 'user_roles'
+    username = db.Column(db.String(64), db.ForeignKey('users.username', ondelete='CASCADE'), primary_key=True)
+    role_id  = db.Column(db.Integer, db.ForeignKey('roles.id', ondelete='CASCADE'), primary_key=True)
+
+
 class AppConfig(db.Model):
     __tablename__ = 'app_config'
     id   = db.Column(db.Integer, primary_key=True)

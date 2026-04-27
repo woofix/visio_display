@@ -33,6 +33,7 @@ from services.config_svc import (
     load_config,
 )
 from services.i18n import _flash, _trans, get_language
+from services.rbac_svc import init_rbac
 from services.users_svc import has_permission, init_users, is_superadmin, load_users
 from translations import TRANSLATIONS
 
@@ -310,6 +311,7 @@ def initialize_database(app):
         migrate_client_heartbeats_schema()
         reseed_search_index()
         init_users()
+        init_rbac()
         harden_private_storage_permissions()
 
 
@@ -322,6 +324,7 @@ def register_blueprints(app):
     from blueprints.ephemeris import bp as ephemeris_bp
     from blueprints.media import bp as media_bp
     from blueprints.queue import bp as queue_bp
+    from blueprints.roles import bp as roles_bp
     from blueprints.screens import bp as screens_bp
     from blueprints.search import bp as search_bp
     from blueprints.settings import bp as settings_bp
@@ -338,6 +341,7 @@ def register_blueprints(app):
         ephemeris_bp,
         users_bp,
         settings_bp,
+        roles_bp,
         search_bp,
         api_bp,
         wiki_bp,

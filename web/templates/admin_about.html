@@ -1,0 +1,54 @@
+{% extends 'admin_layout.html' %}
+
+{% block title %}À propos{% endblock %}
+
+{% block topbar_icon %}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="12" y1="16" x2="12" y2="12"/>
+    <line x1="12" y1="8" x2="12.01" y2="8"/>
+</svg>
+{% endblock %}
+
+{% block topbar_breadcrumbs %}
+<div class="topbar-breadcrumbs">
+    <a href="/admin" class="bc-link">{{ app_name }}</a>
+    <svg class="bc-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <polyline points="9 18 15 12 9 6"/>
+    </svg>
+    <span class="bc-current">À propos</span>
+</div>
+{% endblock %}
+
+{% block topbar_sub %}Informations sur l’application{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>À propos</h1>
+        <p>Informations générales</p>
+    </div>
+</div>
+
+<div class="wiki-body">
+
+    <section class="wiki-section">
+        <div class="wiki-section-header">
+            <h2>Application</h2>
+        </div>
+
+        <p><strong>Nom :</strong> {{ app_name }}</p>
+        <p><strong>Version :</strong> {{ config.VERSION if config.VERSION else "1.0" }}</p>
+        <p><strong>Licence :</strong> GPL-3.0</p>
+        <p><strong>Auteur :</strong> Eric TOMAS (Woofix)</p>
+
+        <div class="wiki-callout">
+            <strong>GitHub :</strong><br>
+            <a href="https://github.com/woofix/visio_display" target="_blank">
+                https://github.com/woofix/visio_display
+            </a>
+        </div>
+    </section>
+
+</div>
+{% endblock %}

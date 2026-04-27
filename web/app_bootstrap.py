@@ -303,10 +303,12 @@ def configure_proxy(app):
 
 
 def initialize_database(app):
+    from services.search_index_svc import reseed_search_index
     db.init_app(app)
     with app.app_context():
         db.create_all()
         migrate_client_heartbeats_schema()
+        reseed_search_index()
         init_users()
         harden_private_storage_permissions()
 

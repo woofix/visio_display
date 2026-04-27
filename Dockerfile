@@ -21,4 +21,4 @@ COPY install.sh /app/install.sh
 
 EXPOSE 8080
 
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:8080", "wsgi:app"]
+CMD ["gunicorn", "-w", "1", "-b", "0.0.0.0:8080", "wsgi:app"]

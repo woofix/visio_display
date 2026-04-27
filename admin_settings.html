@@ -454,6 +454,9 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                 </label>
 
             </div>
+            <div style="margin-top:20px">
+                <button type="submit" class="btn sm">{{ t('theme_apply') }}</button>
+            </div>
         </form>
     </div>
 
@@ -616,13 +619,10 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                         </div>
                         <div class="install-field full">
                             <label>{{ t('install_server_url_label') }}</label>
-                            {% set effective_screen = install_defaults.screen_name or cfg.get('default_screen_name', '') %}
-                            {% set default_screen = cfg.get('default_screen_name', '') %}
                             {% if all_screens %}
-                            {% set all_screens_with_default = ([default_screen] + all_screens) | unique | list if default_screen and default_screen not in all_screens else all_screens %}
                             <select id="install-server-url" name="server_url" required>
-                                {% for screen in all_screens_with_default %}
-                                <option value="{{ server_base_url }}" data-screen="{{ screen }}" {% if screen == effective_screen %}selected{% endif %}>{{ screen }}</option>
+                                {% for screen in all_screens %}
+                                <option value="{{ server_base_url }}" data-screen="{{ screen }}" {% if screen == install_defaults.screen_name %}selected{% endif %}>{{ screen }}</option>
                                 {% endfor %}
                             </select>
                             {% else %}
@@ -631,7 +631,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                         </div>
                         <div class="install-field">
                             <label>{{ t('install_screen_name_label') }}</label>
-                            <input type="text" id="install-screen-name" name="screen_name" value="{{ effective_screen }}" placeholder="{{ t('install_screen_name_placeholder') }}" maxlength="32">
+                            <input type="text" id="install-screen-name" name="screen_name" value="{{ install_defaults.screen_name }}" placeholder="{{ t('install_screen_name_placeholder') }}" maxlength="32">
                         </div>
                         <div class="install-field">
                             <label>{{ t('install_ssh_password_label') }}</label>
@@ -1335,17 +1335,8 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                     {{ t('superadmin_screens_manage') }}
                 </h3>
                 <form action="/admin/screens/default-name" method="post" class="add-user-form" style="margin-bottom:12px">
-                    {% if all_screens %}
-                    <select name="default_screen_name">
-                        <option value="">{{ t('superadmin_default_screen_placeholder') }}</option>
-                        {% for s in all_screens %}
-                        <option value="{{ s }}" {% if cfg.get('default_screen_name') == s %}selected{% endif %}>{{ s }}</option>
-                        {% endfor %}
-                    </select>
-                    {% else %}
                     <input type="text" name="default_screen_name" value="{{ cfg.get('default_screen_name', '') }}"
                            placeholder="{{ t('superadmin_default_screen_placeholder') }}" maxlength="48">
-                    {% endif %}
                     <div><button type="submit" class="btn sm">{{ t('superadmin_default_screen_save') }}</button></div>
                 </form>
                 {% if all_screens %}

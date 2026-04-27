@@ -841,11 +841,24 @@ def get_logo_path():
 
 def get_disk_usage():
     import shutil
-    total, used, free = shutil.disk_usage(UPLOAD_FOLDER)
+
+    media_bytes = 0
+    for folder in (UPLOAD_FOLDER, VIDEO_THUMB_FOLDER, IMAGE_VARIANT_FOLDER,
+                   VIDEO_VARIANT_FOLDER, VIDEO_POSTER_FOLDER):
+        if not os.path.isdir(folder):
+            continue
+        for dirpath, _, filenames in os.walk(folder):
+            for fname in filenames:
+                try:
+                    media_bytes += os.path.getsize(os.path.join(dirpath, fname))
+                except OSError:
+                    pass
+
+    stat = shutil.disk_usage(UPLOAD_FOLDER)
     return {
-        "total": round(total / (1024**3), 1),
-        "used":  round(used  / (1024**3), 1),
-        "free":  round(free  / (1024**3), 1),
+        "total": round(stat.total / (1024**3), 1),
+        "used":  round(media_bytes / (1024**3), 1),
+        "free":  round(stat.free  / (1024**3), 1),
     }
 
 

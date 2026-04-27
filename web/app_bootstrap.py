@@ -330,6 +330,7 @@ def register_blueprints(app):
     from blueprints.settings import bp as settings_bp
     from blueprints.users import bp as users_bp
     from blueprints.wiki import bp as wiki_bp
+    from blueprints.about import bp as about_bp
 
     for blueprint in (
         auth_bp,
@@ -345,6 +346,7 @@ def register_blueprints(app):
         search_bp,
         api_bp,
         wiki_bp,
+        about_bp,
         activity_bp,
     ):
         app.register_blueprint(blueprint)

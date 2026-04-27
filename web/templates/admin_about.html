@@ -1,6 +1,6 @@
 {% extends 'admin_layout.html' %}
 
-{% block title %}À propos{% endblock %}
+{% block title %}{{ t('about_title') }}{% endblock %}
 
 {% block topbar_icon %}
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -16,39 +16,123 @@
     <svg class="bc-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
         <polyline points="9 18 15 12 9 6"/>
     </svg>
-    <span class="bc-current">À propos</span>
+    <span class="bc-current">{{ t('about_title') }}</span>
 </div>
 {% endblock %}
 
-{% block topbar_sub %}Informations sur l’application{% endblock %}
+{% block topbar_sub %}{{ t('about_topbar_sub') }}{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <div>
-        <h1>À propos</h1>
-        <p>Informations générales</p>
-    </div>
-</div>
-
 <div class="wiki-body">
 
     <section class="wiki-section">
         <div class="wiki-section-header">
-            <h2>Application</h2>
+            <h2>{{ t('about_section_app') }}</h2>
         </div>
 
-        <p><strong>Nom :</strong> {{ app_name }}</p>
-        <p><strong>Version :</strong> {{ config.VERSION if config.VERSION else "1.0" }}</p>
-        <p><strong>Licence :</strong> GPL-3.0</p>
-        <p><strong>Auteur :</strong> Eric TOMAS (Woofix)</p>
+        <table class="about-table">
+            <tbody>
+                <tr>
+                    <th>{{ t('about_name_label') }}</th>
+                    <td><strong>Visio Display</strong></td>
+                </tr>
+                <tr>
+                    <th>{{ t('about_version_label') }}</th>
+                    <td>
+                        <span class="about-version">{{ app_version }}</span>
+                        {% if git_commit %}
+                        <span class="about-commit">{{ git_commit }}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <th>{{ t('about_description_label') }}</th>
+                    <td>{{ t('about_description_text') }}</td>
+                </tr>
+                <tr>
+                    <th>{{ t('about_author_label') }}</th>
+                    <td>Eric TOMAS (Woofix)</td>
+                </tr>
+                <tr>
+                    <th>{{ t('about_idea_label') }}</th>
+                    <td>Jean-Michel TOMAS</td>
+                </tr>
+                <tr>
+                    <th>{{ t('about_license_label') }}</th>
+                    <td>
+                        {% if license_exists %}
+                        <a href="/static/LICENSE" target="_blank" rel="noopener noreferrer">GNU GPL v3.0</a>
+                        {% else %}
+                        GNU GPL v3.0
+                        {% endif %}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
 
-        <div class="wiki-callout">
-            <strong>GitHub :</strong><br>
-            <a href="https://github.com/woofix/visio_display" target="_blank">
-                https://github.com/woofix/visio_display
-            </a>
+    <section class="wiki-section">
+        <div class="wiki-section-header">
+            <h2>{{ t('about_section_tech') }}</h2>
         </div>
+
+        <table class="about-table">
+            <tbody>
+                <tr>
+                    <th>{{ t('about_backend_label') }}</th>
+                    <td>Flask (Python)</td>
+                </tr>
+                <tr>
+                    <th>{{ t('about_database_label') }}</th>
+                    <td>PostgreSQL</td>
+                </tr>
+                <tr>
+                    <th>{{ t('about_deployment_label') }}</th>
+                    <td>Docker</td>
+                </tr>
+            </tbody>
+        </table>
     </section>
 
 </div>
+
+<style>
+.about-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .88rem;
+    margin-top: .5rem;
+}
+.about-table th,
+.about-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    vertical-align: top;
+}
+.about-table th {
+    width: 200px;
+    color: var(--text-2);
+    font-weight: 600;
+    white-space: nowrap;
+}
+.about-table tr:last-child th,
+.about-table tr:last-child td {
+    border-bottom: none;
+}
+.about-version {
+    font-weight: 700;
+    color: var(--primary);
+}
+.about-commit {
+    display: inline-block;
+    margin-left: 8px;
+    font-family: monospace;
+    font-size: .78rem;
+    background: var(--primary-bg);
+    color: var(--primary-dark);
+    padding: 1px 7px;
+    border-radius: 5px;
+}
+</style>
 {% endblock %}

@@ -153,9 +153,9 @@ def set_user_screens(username):
         _flash('flash_superadmin_perms_locked', 'error')
         return redirect('/admin/settings#superadmin')
     cfg         = load_config()
-    all_screens = list(cfg.get('screens', {}).keys())
+    all_screens = ['', *cfg.get('screens', {}).keys()]
     selected    = [s for s in all_screens if request.form.get(f'screen_{s}')]
-    update_user_screens(username, selected if selected else None)
+    update_user_screens(username, selected)
     log_config_change(session.get('user'), f'écrans {username}: {", ".join(selected) if selected else "tous"}')
     _flash('flash_screens_updated', 'success', username=username)
     return redirect('/admin/settings#superadmin')

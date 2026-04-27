@@ -213,6 +213,8 @@ def admin_media():
     screens   = [s for s in cfg.get('screens', {}).keys() if has_screen_access(s)]
 
     if screen and screen in cfg.get('screens', {}):
+        if not has_screen_access(screen):
+            return redirect('/admin/media?screen=' + (screens[0] if screens else ''))
         scfg         = cfg['screens'][screen]
         assigned_set = set(scfg.get('order', []))
         files        = [f for f in scfg.get('order', []) if f in set(all_media)]
@@ -222,6 +224,8 @@ def admin_media():
                         'durations': scfg.get('durations', {})}
         schedules    = scfg.get('schedules', {})
     else:
+        if not has_screen_access(''):
+            return redirect('/admin/media?screen=' + (screens[0] if screens else ''))
         screen     = ''
         files      = all_media
         unassigned = []
@@ -255,6 +259,7 @@ def admin_media():
     return render_template('admin_media.html',
         files=files, unassigned=unassigned, infos=infos, cfg=view_cfg, queued=queued,
         schedules=schedules, current_screen=screen, screens=screens,
+        has_default_screen=has_screen_access(''),
         media_groups=media_groups, group_states=group_states, disabled_map=disabled_map,
         preview_urls=preview_urls, preview_media_urls=preview_media_urls,
         users=list(users.keys()), current_user=session.get('user'),
@@ -305,8 +310,8 @@ def admin_programming_page():
             'label': f'{weekday_label} {day.strftime("%d/%m")}',
         })
 
-    screen_choices = [('', default_screen_name)] + [(screen, screen) for screen in allowed_screens]
-    filter_screen_choices = [('__global__', default_screen_name)] + [(screen, screen) for screen in allowed_screens]
+    screen_choices = ([('', default_screen_name)] if has_screen_access('') else []) + [(screen, screen) for screen in allowed_screens]
+    filter_screen_choices = ([('__global__', default_screen_name)] if has_screen_access('') else []) + [(screen, screen) for screen in allowed_screens]
     group_choices = sorted({group for entry in entries for group in entry.get('groups', [])}, key=str.casefold)
 
     return render_template(

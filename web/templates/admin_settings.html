@@ -454,6 +454,9 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                 </label>
 
             </div>
+            <div style="margin-top:20px">
+                <button type="submit" class="btn sm">{{ t('theme_apply') }}</button>
+            </div>
         </form>
     </div>
 
@@ -616,22 +619,11 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                         </div>
                         <div class="install-field full">
                             <label>{{ t('install_server_url_label') }}</label>
-                            {% set effective_screen = install_defaults.screen_name or cfg.get('default_screen_name', '') %}
-                            {% set default_screen = cfg.get('default_screen_name', '') %}
-                            {% if all_screens %}
-                            {% set all_screens_with_default = ([default_screen] + all_screens) | unique | list if default_screen and default_screen not in all_screens else all_screens %}
-                            <select id="install-server-url" name="server_url" required>
-                                {% for screen in all_screens_with_default %}
-                                <option value="{{ server_base_url }}" data-screen="{{ screen }}" {% if screen == effective_screen %}selected{% endif %}>{{ screen }}</option>
-                                {% endfor %}
-                            </select>
-                            {% else %}
-                            <input type="url" id="install-server-url" name="server_url" value="{{ install_defaults.server_url or server_base_url }}" placeholder="{{ t('install_server_url_placeholder') }}" required>
-                            {% endif %}
+                            <input type="url" id="install-server-url" name="server_url" value="{{ install_defaults.server_url }}" placeholder="{{ t('install_server_url_placeholder') }}" required>
                         </div>
                         <div class="install-field">
                             <label>{{ t('install_screen_name_label') }}</label>
-                            <input type="text" id="install-screen-name" name="screen_name" value="{{ effective_screen }}" placeholder="{{ t('install_screen_name_placeholder') }}" maxlength="32">
+                            <input type="text" name="screen_name" value="{{ install_defaults.screen_name }}" placeholder="{{ t('install_screen_name_placeholder') }}" maxlength="32">
                         </div>
                         <div class="install-field">
                             <label>{{ t('install_ssh_password_label') }}</label>
@@ -846,7 +838,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                     {{ t('admins_change_password') }}
                 </h3>
-                <form action="/admin/users/password" method="post" class="form-group" id="change-password-form">
+                <form action="/admin/users/password" method="post" class="form-group">
                     <input type="password" name="current_password" placeholder="{{ t('admins_current_password') }}" required>
                     <input type="password" name="new_password"     placeholder="{{ t('admins_new_password') }}" required>
                     <div><button type="submit" class="btn sm">{{ t('admins_update') }}</button></div>
@@ -1282,12 +1274,12 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                             </div>
                             {% if all_screens %}
                             <div class="perm-grid" style="margin-bottom:10px">
-                                {% set user_screens = entry.screens if (entry.screens is defined and entry.screens) else [] %}
+                                {% set user_screens = entry.screens if (entry.screens is defined and entry.screens is not none) else none %}
                                 {% for s in all_screens %}
                                 <div class="perm-item">
                                     <input type="checkbox" name="screen_{{ s }}" id="screen_{{ username }}_{{ s }}"
-                                           {% if not user_screens or s in user_screens %}checked{% endif %}>
-                                    <label for="screen_{{ username }}_{{ s }}">{{ s }}</label>
+                                           {% if user_screens is none or s in user_screens %}checked{% endif %}>
+                                    <label for="screen_{{ username }}_{{ s }}">{% if s == '' %}{{ cfg.get('default_screen_name') or t('media_screen_default') }}{% else %}{{ s }}{% endif %}</label>
                                 </div>
                                 {% endfor %}
                             </div>
@@ -1344,7 +1336,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                     {% for s in all_screens %}
                     <li class="screen-admin-item">
                         <div>
-                            <div class="screen-admin-name">{{ s }}</div>
+                            <div class="screen-admin-name">{% if s == '' %}{{ cfg.get('default_screen_name') or t('media_screen_default') }}{% else %}{{ s }}{% endif %}</div>
                             <div class="screen-admin-meta">{{ t('superadmin_screens_manage') }}</div>
                         </div>
                         <div class="screen-admin-actions">
@@ -1373,7 +1365,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                     {{ t('superadmin_my_password') }}
                 </h3>
-                <form action="/admin/users/password" method="post" class="add-user-form" id="sa-change-password-form">
+                <form action="/admin/users/password" method="post" class="add-user-form">
                     <input type="password" name="current_password" placeholder="{{ t('admins_current_password') }}" required>
                     <input type="password" name="new_password"     placeholder="{{ t('admins_new_password') }}" required>
                     <div><button type="submit" class="btn sm">{{ t('admins_update') }}</button></div>
@@ -1444,18 +1436,10 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
 {% block scripts %}
 <script>
 (function() {
-    const serverUrlEl = document.getElementById('install-server-url');
-    if (!serverUrlEl) return;
-    const screenNameInput = document.getElementById('install-screen-name');
-    if (serverUrlEl.tagName === 'SELECT') {
-        function syncScreen() {
-            const opt = serverUrlEl.options[serverUrlEl.selectedIndex];
-            if (opt && screenNameInput) screenNameInput.value = opt.dataset.screen || '';
-        }
-        serverUrlEl.addEventListener('change', syncScreen);
-        syncScreen();
-    } else {
-        if (!serverUrlEl.value.trim()) serverUrlEl.value = window.location.origin;
+    const serverUrlInput = document.getElementById('install-server-url');
+    if (!serverUrlInput) return;
+    if (!serverUrlInput.value.trim()) {
+        serverUrlInput.value = window.location.origin;
     }
 })();
 
@@ -2194,24 +2178,5 @@ function toggleResetForm(btn) {
     const isVisible = form.style.display !== 'none';
     form.style.display = isVisible ? 'none' : 'flex';
 }
-
-(function () {
-    var pwdMsg = "{{ t('flash_new_password_too_short') | e }}";
-    ['change-password-form', 'sa-change-password-form'].forEach(function (id) {
-        var form = document.getElementById(id);
-        if (!form) return;
-        form.addEventListener('submit', function (e) {
-            var field = form.querySelector('input[name="new_password"]');
-            if (field && field.value.trim().length < 10) {
-                e.preventDefault();
-                e.stopImmediatePropagation();
-                if (window.appUI && window.appUI.alert) {
-                    window.appUI.alert(pwdMsg, { tone: 'error' });
-                }
-                field.focus();
-            }
-        });
-    });
-})();
 </script>
 {% endblock %}

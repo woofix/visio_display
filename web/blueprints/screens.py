@@ -69,6 +69,8 @@ def delete_screen(name):
 def update_default_screen_name():
     redir = superadmin_guard()
     if redir: return redir
+    redir = feature_guard('screens')
+    if redir: return redir
 
     cfg = load_config()
     new_name = normalize_default_screen_name(request.form.get('default_screen_name', ''))

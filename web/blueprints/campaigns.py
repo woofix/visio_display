@@ -34,7 +34,7 @@ def _allowed_screens(cfg):
 
 def _screen_choices(cfg):
     choices = []
-    if is_superadmin():
+    if has_screen_access(''):
         choices.append(("__default__", ""))
     choices.extend((screen, screen) for screen in _allowed_screens(cfg))
     return choices

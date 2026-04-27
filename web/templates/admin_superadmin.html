@@ -195,12 +195,12 @@
                     </div>
                     {% if all_screens %}
                     <div class="perm-grid" style="margin-bottom:10px">
-                        {% set user_screens = entry.screens if (entry.screens is defined and entry.screens) else [] %}
+                        {% set user_screens = entry.screens if (entry.screens is defined and entry.screens is not none) else none %}
                         {% for s in all_screens %}
                         <div class="perm-item">
                             <input type="checkbox" name="screen_{{ s }}" id="screen_{{ username }}_{{ s }}"
-                                   {% if not user_screens or s in user_screens %}checked{% endif %}>
-                            <label for="screen_{{ username }}_{{ s }}">{{ s }}</label>
+                                   {% if user_screens is none or s in user_screens %}checked{% endif %}>
+                            <label for="screen_{{ username }}_{{ s }}">{% if s == '' %}{{ cfg.get('default_screen_name') or t('media_screen_default') }}{% else %}{{ s }}{% endif %}</label>
                         </div>
                         {% endfor %}
                     </div>
@@ -259,7 +259,7 @@
             {% for s in all_screens %}
             <li class="screen-admin-item">
                 <div>
-                    <div class="screen-admin-name">{{ s }}</div>
+                    <div class="screen-admin-name">{% if s == '' %}{{ cfg.get('default_screen_name') or t('media_screen_default') }}{% else %}{{ s }}{% endif %}</div>
                     <div class="screen-admin-meta">{{ t('superadmin_screens_manage') }}</div>
                 </div>
                 <div class="screen-admin-actions">

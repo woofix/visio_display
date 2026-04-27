@@ -308,7 +308,7 @@
 <div class="screen-bar">
     <span class="screen-bar-label">{{ t('media_screen_label') }}</span>
     <div class="screen-tabs">
-        <a href="/admin/media" class="screen-tab {% if not current_screen %}active{% endif %}">{{ default_screen_name }}</a>
+        {% if has_default_screen %}<a href="/admin/media" class="screen-tab {% if not current_screen %}active{% endif %}">{{ default_screen_name }}</a>{% endif %}
         {% for s in screens %}
         <a href="/admin/media?screen={{ s }}" class="screen-tab {% if current_screen == s %}active{% endif %}">{{ s }}</a>
         {% if current_screen == s and current_user_is_superadmin %}

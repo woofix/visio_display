@@ -26,6 +26,7 @@ Visio-Display est une application d'**affichage dynamique** (digital signage) qu
 16. [Wiki — aide intégrée](#16-wiki--aide-intégrée)
 17. [Sauvegarder et restaurer le serveur](#17-sauvegarder-et-restaurer-le-serveur)
 18. [Campagnes temporaires](#18-campagnes-temporaires)
+19. [Recherche globale](#19-recherche-globale)
 
 ---
 
@@ -672,6 +673,33 @@ Seul le **créateur de la campagne** (ou un super-admin) peut la modifier, l'act
 | **Supprimer** | Supprime définitivement la campagne. | Propriétaire ou super-admin |
 
 Les actions de campagne sont enregistrées dans le **Journal d'activité** sous le type **Campagne**.
+
+---
+
+## 19. Recherche globale
+
+La barre de recherche en haut de l'interface permet de retrouver rapidement n'importe quel contenu de l'administration.
+
+### Accès rapide
+
+- Cliquez sur la barre de recherche dans la topbar, ou appuyez sur **Cmd+K** (Mac) / **Ctrl+K** (Windows/Linux) depuis n'importe quelle page.
+- Tapez au moins 2 caractères — les résultats apparaissent en temps réel dans un menu déroulant.
+- Utilisez **↑ ↓** pour naviguer dans les résultats et **Entrée** pour ouvrir la sélection. **Échap** ferme le menu.
+
+### Périmètre de la recherche
+
+| Catégorie | Ce qui est recherché |
+|---|---|
+| **Pages** | Accès direct aux sections de l'administration |
+| **Médias** | Nom de fichier dans la médiathèque |
+| **Campagnes** | Nom de campagne |
+| **Configuration** | Sections de paramétrage |
+| **Utilisateurs** | Nom de compte (super-admin uniquement) |
+| **Journal d'activité** | Dernières entrées correspondantes |
+
+### Page de résultats complète
+
+Le lien **Tous les résultats →** en bas du menu déroulant, ou la touche Entrée sans sélection, ouvre la page `/admin/search` avec l'ensemble des résultats groupés par catégorie.
 
 ---
 

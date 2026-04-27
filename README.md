@@ -71,7 +71,8 @@ Application web légère de signalétique numérique. Elle affiche un diaporama 
 - Visionneuse plein écran au clic
 - Nom de l'application personnalisable
 - Choix de la langue de l'interface (français / anglais)
-- Choix du thème de l'interface : Violet, Sombre, Bleu
+- Choix du thème de l'interface : Violet, Sombre, Bleu — prévisualisation en temps réel au survol
+- Recherche globale instantanée (`Cmd+K` / `Ctrl+K`) : médias, campagnes, utilisateurs, configuration, journal d'activité
 
 **Journal d'activité**
 - Enregistre les actions d'exploitation et d'administration : uploads, suppressions, connexions/déconnexions, activations/désactivations, compressions vidéo, changements de configuration et actions sur les campagnes
@@ -728,7 +729,8 @@ A lightweight web-based digital signage. It displays a fullscreen slideshow of i
 - Fullscreen media viewer on click
 - Customizable application name
 - UI language selection (French / English)
-- UI theme selection: Violet, Dark, Blue
+- UI theme selection: Violet, Dark, Blue — live preview on selection
+- Instant global search (`Cmd+K` / `Ctrl+K`): media, campaigns, users, configuration, activity log
 
 **Activity log**
 - Records operations and admin changes: uploads, deletions, logins/logouts, enable/disable actions, video compressions, configuration changes, and campaign actions

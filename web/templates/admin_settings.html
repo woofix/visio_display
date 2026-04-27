@@ -619,11 +619,15 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                         </div>
                         <div class="install-field full">
                             <label>{{ t('install_server_url_label') }}</label>
-                            <input type="url" id="install-server-url" name="server_url" value="{{ install_defaults.server_url }}" placeholder="{{ t('install_server_url_placeholder') }}" required>
-                        </div>
-                        <div class="install-field">
-                            <label>{{ t('install_screen_name_label') }}</label>
-                            <input type="text" name="screen_name" value="{{ install_defaults.screen_name }}" placeholder="{{ t('install_screen_name_placeholder') }}" maxlength="32">
+                            <select id="install-screen-url-select">
+                                {% for s in all_screens %}
+                                <option value="{{ s }}" {% if install_defaults.screen_name == s %}selected{% endif %}>
+                                    {{ s if s else (cfg.get('default_screen_name') or t('media_screen_default')) }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <input type="hidden" id="install-server-url" name="server_url" value="{{ install_defaults.server_url }}">
+                            <input type="hidden" id="install-screen-name" name="screen_name" value="{{ install_defaults.screen_name }}">
                         </div>
                         <div class="install-field">
                             <label>{{ t('install_ssh_password_label') }}</label>
@@ -1436,11 +1440,22 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
 {% block scripts %}
 <script>
 (function() {
+    const sel = document.getElementById('install-screen-url-select');
     const serverUrlInput = document.getElementById('install-server-url');
-    if (!serverUrlInput) return;
-    if (!serverUrlInput.value.trim()) {
-        serverUrlInput.value = window.location.origin;
+    const screenNameInput = document.getElementById('install-screen-name');
+    if (!sel) return;
+    const base = window.location.origin;
+    function buildUrl(screen) {
+        return screen ? base + '/?screen=' + encodeURIComponent(screen) : base + '/';
     }
+    // options already have screen names as textContent from Jinja
+    function sync() {
+        const screen = sel.value;
+        if (serverUrlInput) serverUrlInput.value = base;
+        if (screenNameInput) screenNameInput.value = screen;
+    }
+    sel.addEventListener('change', sync);
+    sync();
 })();
 
 (function() {

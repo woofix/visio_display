@@ -1335,17 +1335,8 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                     {{ t('superadmin_screens_manage') }}
                 </h3>
                 <form action="/admin/screens/default-name" method="post" class="add-user-form" style="margin-bottom:12px">
-                    {% if all_screens %}
-                    <select name="default_screen_name">
-                        <option value="">{{ t('superadmin_default_screen_placeholder') }}</option>
-                        {% for s in all_screens %}
-                        <option value="{{ s }}" {% if cfg.get('default_screen_name') == s %}selected{% endif %}>{{ s }}</option>
-                        {% endfor %}
-                    </select>
-                    {% else %}
                     <input type="text" name="default_screen_name" value="{{ cfg.get('default_screen_name', '') }}"
                            placeholder="{{ t('superadmin_default_screen_placeholder') }}" maxlength="48">
-                    {% endif %}
                     <div><button type="submit" class="btn sm">{{ t('superadmin_default_screen_save') }}</button></div>
                 </form>
                 {% if all_screens %}

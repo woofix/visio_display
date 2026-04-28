@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 
 
-INSTALL_SCRIPT = Path(__file__).resolve().parents[2] / 'scripts' / 'install.sh'
+INSTALL_SCRIPT = Path(__file__).resolve().parents[1] / 'scripts' / 'install.sh'
 
 
 def _run_command(cmd):

@@ -216,7 +216,7 @@
     }
 
     function getDuration(item) {
-        const filename = item.path.split('/').pop().split('?')[0];
+        const filename = item.name || item.path.split('/').pop().split('?')[0];
         const d = durations[filename];
         return d ? d * 1000 : DEFAULT_DURATION;
     }

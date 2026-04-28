@@ -110,10 +110,18 @@ def get_images():
         if campaign_override:
             files = campaign_override.get('files', [])
         else:
-            all_files = set(get_all_media(cfg))
-            files = [f for f in scfg.get('order', []) if f in all_files]
+            all_files = get_all_media(cfg)
+            all_files_set = set(all_files)
+            screen_order = scfg.get('order', [])
+            if screen_order:
+                assigned = [f for f in screen_order if f in all_files_set]
+                ephemeride_extras = [f for f in all_files if f.startswith('ephemeride_') and f not in screen_order]
+                files = assigned + ephemeride_extras
+            else:
+                files = all_files
         return jsonify([
             {"path": _media_path(f, get_file_info(f)["type"], bounds), "type": get_file_info(f)["type"],
+             "name": f,
              "rev": int(os.path.getmtime(os.path.join(UPLOAD_FOLDER, f))) if os.path.exists(os.path.join(UPLOAD_FOLDER, f)) else 0,
              "groups": [g for g in get_media_groups(f, effective_cfg)
                         if is_group_active_on_screen(g, cfg, screen)]}
@@ -121,11 +129,12 @@ def get_images():
             if not is_media_disabled(f, effective_cfg) and is_media_scheduled(f, scfg)
         ])
 
-    files = campaign_override.get('files', []) if campaign_override else get_all_media()
+    files = campaign_override.get('files', []) if campaign_override else get_all_media(cfg)
     return jsonify([
         {"path": _media_path(f, get_file_info(f)["type"], bounds), "type": get_file_info(f)["type"],
+         "name": f,
          "rev": int(os.path.getmtime(os.path.join(UPLOAD_FOLDER, f))) if os.path.exists(os.path.join(UPLOAD_FOLDER, f)) else 0,
-         "groups": get_media_groups(f, cfg)}
+         "groups": [g for g in get_media_groups(f, cfg) if is_group_active_on_screen(g, cfg, '')]}
         for f in files
         if not is_media_disabled(f, cfg) and is_media_scheduled(f, cfg)
     ])

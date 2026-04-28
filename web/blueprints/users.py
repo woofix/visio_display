@@ -5,6 +5,7 @@ from flask import Blueprint, jsonify, redirect, render_template, request, sessio
 
 from constants import ALL_PERMISSIONS
 from services.activity_svc import log_config_change
+from services.rbac_svc import get_all_roles, set_user_roles
 from services.users_svc import (
     create_user,
     delete_user_account,
@@ -54,6 +55,9 @@ def add_user():
         _flash('flash_user_exists', 'error', username=username)
         return redirect('/admin/settings#superadmin')
     create_user(username, password, superadmin=False, permissions=[])
+    role_id = request.form.get('role_id', '').strip()
+    if role_id.isdigit():
+        set_user_roles(username, [int(role_id)])
     log_config_change(session.get('user'), f'utilisateur créé:{username}')
     _flash('flash_user_created', 'success', username=username)
     return redirect('/admin/settings#superadmin')

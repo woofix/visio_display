@@ -1329,6 +1329,14 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                 <form action="/admin/users/add" method="post" class="add-user-form">
                     <input type="text"     name="username" placeholder="{{ t('superadmin_username_placeholder') }}" required autocomplete="off">
                     <input type="password" name="password" placeholder="{{ t('superadmin_password_placeholder') }}" required>
+                    {% if all_roles %}
+                    <select name="role_id">
+                        <option value="">— Aucun rôle —</option>
+                        {% for role in all_roles %}
+                        <option value="{{ role.id }}">{{ role.display_name }}{% if role.description %} – {{ role.description }}{% endif %}</option>
+                        {% endfor %}
+                    </select>
+                    {% endif %}
                     <p style="font-size:.73rem;color:var(--text-3)">{{ t('superadmin_new_account_desc') }}</p>
                     <div><button type="submit" class="btn success sm">{{ t('superadmin_create') }}</button></div>
                 </form>

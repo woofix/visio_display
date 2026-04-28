@@ -654,31 +654,9 @@ setInterval(updateQueueBadge, 30000);
         },
     };
 
-    function showToast(msg, tone) {
-        let list = document.getElementById('flash-toast-list');
-        if (!list) {
-            list = document.createElement('ul');
-            list.id = 'flash-toast-list';
-            list.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:9000;list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;max-width:400px;width:calc(100% - 48px)';
-            document.body.appendChild(list);
-        }
-        const item = document.createElement('li');
-        item.style.cssText = 'padding:13px 16px;border-radius:14px;font-size:.86rem;font-weight:600;display:flex;align-items:center;gap:10px;border:1px solid;box-shadow:var(--shadow-lg);transition:opacity .2s,transform .2s;background:linear-gradient(180deg,color-mix(in srgb,var(--surface-strong) 90%,white 10%),var(--surface))';
-        const colors = { success: 'var(--success-text)', info: 'var(--info-text)' };
-        const borders = { success: 'var(--success-border)', info: 'var(--info-border)' };
-        item.style.color = colors[tone] || 'var(--info-text)';
-        item.style.borderColor = borders[tone] || 'var(--info-border)';
-        item.innerHTML = `<span style="flex:1">${escapeHtml(msg)}</span><button type="button" onclick="this.closest('li').remove()" style="width:24px;height:24px;border:0;background:transparent;cursor:pointer;color:inherit;opacity:.6;display:flex;align-items:center;justify-content:center;border-radius:6px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" style="width:14px;height:14px"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;
-        list.appendChild(item);
-        setTimeout(() => { item.style.opacity = '0'; item.style.transform = 'translateY(6px)'; setTimeout(() => item.remove(), 220); }, 4000);
-    }
-
     if (window.__flashMessages && window.__flashMessages.length) {
-        const blocking = window.__flashMessages.filter(f => f.tone === 'error' || f.tone === 'warning');
-        const passive  = window.__flashMessages.filter(f => f.tone === 'success' || f.tone === 'info');
-        passive.forEach(f => showToast(f.msg, f.tone));
         (async () => {
-            for (const f of blocking) {
+            for (const f of window.__flashMessages) {
                 await openDialog({ kind: 'alert', messageText: f.msg, tone: f.tone, titleText: f.title, confirmLabel: 'Fermer' });
             }
         })();

@@ -24,7 +24,7 @@ from services.backup_svc import (
 )
 from services.clients_svc import list_known_clients
 from services.config_svc import load_config, save_config
-from services.rbac_svc import get_user_roles
+from services.rbac_svc import get_all_roles, get_user_roles
 from services.users_svc import (
     has_permission,
     has_screen_access,
@@ -181,6 +181,7 @@ def _build_settings_context(tab='logo', install_defaults=None, install_result=No
         available_backups=list_backups() if is_sa else [],
         all_permissions=[(k, _t(lbl_key)) for k, lbl_key in ALL_PERMISSIONS] if is_sa else [],
         all_screens=['', *cfg.get('screens', {}).keys()] if is_sa else [],
+        all_roles=get_all_roles() if is_sa else [],
         user_roles_map={u: [r.display_name for r in get_user_roles(u)] for u in users.keys()} if is_sa else {},
         manageable_screens=manageable_screens,
         priority_alert=cfg.get('priority_alert', {}) if is_sa else {},

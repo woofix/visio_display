@@ -618,94 +618,106 @@ body.sidebar-open {
 
 .flash-list {
     list-style: none;
-    margin-bottom: 20px;
-    display: grid;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
     gap: 10px;
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9000;
+    max-width: 420px;
+    width: calc(100% - 48px);
 }
 
 .flash-list li {
-    padding: 13px 15px;
-    border-radius: 16px;
-    font-size: .87rem;
-    font-weight: 600;
+    border-radius: calc(var(--radius) + 2px);
+    border: 1px solid color-mix(in srgb, var(--border) 88%, white 12%);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--surface-strong) 90%, white 10%), var(--surface));
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    transition: opacity .2s ease, transform .2s ease;
+}
+
+.flash-list li.fade-out {
+    opacity: 0;
+    transform: translateY(6px) scale(.98);
+    pointer-events: none;
+}
+
+.flash-header {
+    padding: 14px 16px;
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 12px;
-    border: 1px solid var(--info-border);
-    background: linear-gradient(180deg, color-mix(in srgb, var(--info-bg) 92%, white 8%), color-mix(in srgb, var(--surface) 94%, var(--info-bg) 6%));
-    color: var(--info-text);
-    box-shadow: var(--shadow-sm);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--surface-alt) 86%, white 14%), color-mix(in srgb, var(--surface) 94%, var(--surface-alt) 6%));
+    border-bottom: 1px solid var(--border);
 }
 
-.flash-list li.success {
-    background: linear-gradient(180deg, color-mix(in srgb, var(--success-bg) 92%, white 8%), color-mix(in srgb, var(--surface) 94%, var(--success-bg) 6%));
-    color: var(--success-text);
-    border-color: var(--success-border);
+.flash-header-title {
+    flex: 1;
+    font-size: .95rem;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -.01em;
 }
 
-.flash-list li.error {
-    background: linear-gradient(180deg, color-mix(in srgb, var(--error-bg) 92%, white 8%), color-mix(in srgb, var(--surface) 94%, var(--error-bg) 6%));
-    color: var(--error-text);
-    border-color: var(--error-border);
+.flash-message-body {
+    padding: 14px 16px;
+    font-size: .84rem;
+    color: var(--text-2);
+    line-height: 1.6;
 }
 
-.flash-list li.warning {
-    background: linear-gradient(180deg, color-mix(in srgb, var(--warning-bg) 92%, white 8%), color-mix(in srgb, var(--surface) 94%, var(--warning-bg) 6%));
-    color: var(--warning-text);
-    border-color: var(--warning-border);
-}
-
-.flash-list li.info {
-    background: linear-gradient(180deg, color-mix(in srgb, var(--info-bg) 92%, white 8%), color-mix(in srgb, var(--surface) 94%, var(--info-bg) 6%));
-    color: var(--info-text);
-    border-color: var(--info-border);
-}
-
-.flash-icon {
-    width: 30px;
-    height: 30px;
-    border-radius: 10px;
+.flash-di-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 13px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     flex: 0 0 auto;
-    background: color-mix(in srgb, currentColor 12%, transparent);
+    color: var(--info-text);
+    background: color-mix(in srgb, var(--info-bg) 92%, white 8%);
+    border: 1px solid var(--info-border);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.35);
 }
 
-.flash-icon svg {
-    width: 15px;
-    height: 15px;
-}
+.flash-di-icon[data-tone="success"] { color: var(--success-text); background: color-mix(in srgb, var(--success-bg) 92%, white 8%); border-color: var(--success-border); }
+.flash-di-icon[data-tone="error"]   { color: var(--error-text);   background: color-mix(in srgb, var(--error-bg)   92%, white 8%); border-color: var(--error-border); }
+.flash-di-icon[data-tone="warning"] { color: var(--warning-text); background: color-mix(in srgb, var(--warning-bg) 92%, white 8%); border-color: var(--warning-border); }
 
-.flash-body {
-    min-width: 0;
-    flex: 1;
-    line-height: 1.55;
-}
-
-.flash-list li[data-dismissible="true"] {
-    padding-right: 10px;
+.flash-di-icon svg {
+    width: 18px;
+    height: 18px;
 }
 
 .flash-close {
-    width: 30px;
-    height: 30px;
-    border: 0;
-    border-radius: 10px;
-    background: transparent;
-    color: inherit;
-    opacity: .7;
+    width: 34px;
+    height: 34px;
+    border-radius: 11px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-3);
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    transition: opacity .15s, background .15s, transform .15s;
+    transition: color .15s, border-color .15s, background .15s, transform .15s;
+    flex-shrink: 0;
 }
 
 .flash-close:hover {
-    opacity: 1;
-    background: color-mix(in srgb, currentColor 10%, transparent);
+    color: var(--primary);
+    border-color: var(--primary);
+    background: var(--primary-bg);
     transform: translateY(-1px);
+}
+
+.flash-close svg {
+    width: 15px;
+    height: 15px;
 }
 
 .page-header {
@@ -1159,6 +1171,14 @@ body.sidebar-open {
 }
 
 @media (max-width: 640px) {
+    .flash-list {
+        bottom: 16px;
+        right: 16px;
+        left: 16px;
+        width: auto;
+        max-width: none;
+    }
+
     .flash-list li {
         border-radius: 14px;
         padding: 12px 13px;

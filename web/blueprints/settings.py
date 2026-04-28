@@ -551,19 +551,20 @@ def control_client_power():
         )
     client_control_result['summary'] = _t(client_control_result.get('summary_key', ''))
 
+    action_key = action.replace('-', '_')
     if client_control_result.get('ok'):
         log_config_change(session.get('user'), f'action client:{action}:{host}')
         _flash(
             'flash_client_control_success',
             'success',
-            action=_t(f'client_control_action_{action}'),
+            action=_t(f'client_control_action_{action_key}'),
             host=host,
         )
     else:
         _flash(
             'flash_client_control_failed',
             'error',
-            action=_t(f'client_control_action_{action}'),
+            action=_t(f'client_control_action_{action_key}'),
             host=host,
         )
 

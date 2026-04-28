@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 
 
-INSTALL_SCRIPT = Path(__file__).resolve().parents[1] / 'scripts' / 'install.sh'
+INSTALL_SCRIPT = Path(__file__).resolve().parents[2] / 'scripts' / 'install.sh'
 
 
 def _run_command(cmd):
@@ -428,7 +428,7 @@ def deploy_client_os_update(host, port, ssh_user, ssh_password='', sudo_password
         "DEBIAN_FRONTEND=noninteractive apt-get -y autoremove --purge && "
         "apt-get autoclean && "
         f"if [ -f /run/reboot-required ] || [ -f /var/run/reboot-required ]; then echo {reboot_marker}; "
-        "nohup sh -c 'sleep 2; systemctl reboot || shutdown -r now || reboot' >/dev/null 2>&1 </dev/null &; "
+        "nohup sh -c 'sleep 2; systemctl reboot || shutdown -r now || reboot' >/dev/null 2>&1 </dev/null & "
         f"fi && echo {marker}"
     )
     remote_cmd = _build_remote_elevated_command(base_cmd, elevation_pw_q)

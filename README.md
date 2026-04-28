@@ -191,7 +191,7 @@ La modification régénère automatiquement la carte éphéméride.
 chromium-browser --kiosk --noerrdialogs --disable-infobars http://localhost:8081
 ```
 
-Avec le client installé via `install.sh`, la session kiosque désactive automatiquement la mise en veille de l'écran (DPMS/X11) et inhibe la veille machine tant que le navigateur d'affichage est lancé.
+Avec le client installé via `scripts/install.sh`, la session kiosque désactive automatiquement la mise en veille de l'écran (DPMS/X11) et inhibe la veille machine tant que le navigateur d'affichage est lancé.
 Le client construit automatiquement l'URL d'affichage à partir de l'URL du serveur et du nom d'écran configurés lors de l'installation.
 
 **Installation automatisée d'un client distant :**
@@ -851,7 +851,7 @@ When the ephemeris is regenerated, the slideshow reloads it automatically withou
 chromium-browser --kiosk --noerrdialogs --disable-infobars http://localhost:8081
 ```
 
-When the client is installed with `install.sh`, the kiosk session automatically disables display sleep (DPMS/X11) and inhibits system sleep while the display browser is running.
+When the client is installed with `scripts/install.sh`, the kiosk session automatically disables display sleep (DPMS/X11) and inhibits system sleep while the display browser is running.
 The client automatically builds the display URL from the configured server URL and screen name during installation.
 
 **Automated remote client installation:**

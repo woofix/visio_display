@@ -17,8 +17,8 @@ RUN pip install --upgrade "pip==24.3.1" \
 
 # Application code
 COPY web/ /app
-COPY install.sh /app/install.sh
+COPY scripts/install.sh /app/scripts/install.sh
 
 EXPOSE 8080
 
-CMD ["gunicorn", "-w", "1", "-b", "0.0.0.0:8080", "wsgi:app"]
+CMD ["gunicorn", "-w", "1", "-b", "0.0.0.0:8080", "--timeout", "600", "wsgi:app"]

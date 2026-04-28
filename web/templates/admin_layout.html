@@ -95,12 +95,12 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
         </a>
         {% endif %}
         <div class="nav-label u-mt-2">{{ t('nav_label_settings') }}</div>
-        <button class="nav-item nav-item-parent {% if path.startswith('/admin/settings') or path == '/admin/superadmin' or path == '/admin/features' or path == '/admin/activity' %}open{% endif %}" data-nav-toggle="nav-settings-sub">
+        <button class="nav-item nav-item-parent {% if path.startswith('/admin/settings') or path == '/admin/superadmin' or path == '/admin/features' or path == '/admin/activity' or path.startswith('/admin/roles') %}open{% endif %}" data-nav-toggle="nav-settings-sub">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
             {{ t('nav_settings') }}
             <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
-        <div class="nav-subnav {% if path.startswith('/admin/settings') or path == '/admin/superadmin' or path == '/admin/features' or path == '/admin/activity' %}open{% endif %}" id="nav-settings-sub">
+        <div class="nav-subnav {% if path.startswith('/admin/settings') or path == '/admin/superadmin' or path == '/admin/features' or path == '/admin/activity' or path.startswith('/admin/roles') %}open{% endif %}" id="nav-settings-sub">
             <a href="/admin/activity" class="nav-item nav-subitem {% if path == '/admin/activity' %}active{% endif %}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                 {{ t('nav_activity') }}
@@ -152,6 +152,10 @@ window.CSRF_TOKEN = {{ csrf_token() | tojson }};
             <a href="/admin/settings#alerte-prioritaire" class="nav-item nav-subitem">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                 {{ t('superadmin_priority_alert_title') }}
+            </a>
+            <a href="/admin/roles" class="nav-item nav-subitem {% if path.startswith('/admin/roles') %}active{% endif %}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                {{ t('nav_roles') }}
             </a>
             <a href="/admin/settings#comptes-permissions" class="nav-item nav-subitem">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>

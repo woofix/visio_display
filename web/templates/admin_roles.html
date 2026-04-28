@@ -6,6 +6,8 @@
 {% block topbar_breadcrumbs %}<div class="topbar-breadcrumbs">
     <a href="/admin" class="bc-link">{{ app_name }}</a>
     <svg class="bc-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    <a href="/admin/settings" class="bc-link">{{ t('nav_settings') }}</a>
+    <svg class="bc-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
     <span class="bc-current">{{ t('roles_title') }}</span>
 </div>{% endblock %}
 {% block topbar_sub %}{{ t('roles_topbar_sub') }}{% endblock %}

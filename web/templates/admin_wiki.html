@@ -462,6 +462,7 @@
                 <li>{{ t('wiki_s7_install1') }}</li>
                 <li>{{ t('wiki_s7_install2') }}</li>
                 <li>{{ t('wiki_s7_install3') }}</li>
+                <li>{{ t('wiki_s7_install_ssh_password') }}</li>
                 <li>{{ t('wiki_s7_install4') }}</li>
                 <li>{{ t('wiki_s7_install5') }}</li>
             </ol>
@@ -809,6 +810,71 @@
             <div class="wiki-callout">{{ t('wiki_s17_log_note') }}</div>
         </section>
 
+
+        <!-- §19 Rôles RBAC -->
+        <section class="wiki-section" id="s19">
+            <div class="wiki-section-header">
+                <h2>{{ t('wiki_s19_title') }}</h2>
+            </div>
+            <p>{{ t('wiki_s19_desc') }}</p>
+            <div class="wiki-callout">
+                <strong>{{ t('wiki_right_required') }}</strong> {{ t('wiki_superadmin') }}
+            </div>
+            <h3>{{ t('wiki_s19_defaults_title') }}</h3>
+            <table class="wiki-table">
+                <thead><tr><th>{{ t('wiki_s19_col_role') }}</th><th>{{ t('wiki_s19_col_perms') }}</th></tr></thead>
+                <tbody>
+                    <tr><td><strong>{{ t('wiki_s19_role_admin') }}</strong></td><td>{{ t('wiki_s19_role_admin_desc') }}</td></tr>
+                    <tr><td><strong>{{ t('wiki_s19_role_editor') }}</strong></td><td><code>upload</code> <code>delete</code> <code>reorder</code> <code>toggle</code> <code>duration</code></td></tr>
+                    <tr><td><strong>{{ t('wiki_s19_role_viewer') }}</strong></td><td>{{ t('wiki_s19_role_viewer_desc') }}</td></tr>
+                </tbody>
+            </table>
+            <h3>{{ t('wiki_s19_create_title') }}</h3>
+            <ol class="wiki-steps">
+                <li>{{ t('wiki_s19_create1') }}</li>
+                <li>{{ t('wiki_s19_create2') }}</li>
+                <li>{{ t('wiki_s19_create3') }}</li>
+            </ol>
+            <h3>{{ t('wiki_s19_assign_title') }}</h3>
+            <p>{{ t('wiki_s19_assign_desc') }}</p>
+            <div class="wiki-callout">
+                <strong>{{ t('wiki_tip') }}</strong> {{ t('wiki_s19_cumul_note') }}
+            </div>
+            <h3>{{ t('wiki_s19_delete_title') }}</h3>
+            <p>{{ t('wiki_s19_delete_desc') }}</p>
+        </section>
+
+        <!-- §20 Fonctionnalités -->
+        <section class="wiki-section" id="s20">
+            <div class="wiki-section-header">
+                <h2>{{ t('wiki_s20_title') }}</h2>
+            </div>
+            <p>{{ t('wiki_s20_desc') }}</p>
+            <div class="wiki-callout">
+                <strong>{{ t('wiki_right_required') }}</strong> {{ t('wiki_superadmin') }}<br>
+                {{ t('wiki_s20_access') }}
+            </div>
+            <h3>{{ t('wiki_s20_modules_title') }}</h3>
+            <table class="wiki-table">
+                <thead><tr><th>{{ t('wiki_s20_col_module') }}</th><th>{{ t('wiki_s20_col_effect') }}</th></tr></thead>
+                <tbody>
+                    <tr><td><strong>{{ t('feature_upload') }}</strong></td><td>{{ t('feature_upload_desc') }}</td></tr>
+                    <tr><td><strong>{{ t('feature_videos') }}</strong></td><td>{{ t('feature_videos_desc') }}</td></tr>
+                    <tr><td><strong>{{ t('feature_delete') }}</strong></td><td>{{ t('feature_delete_desc') }}</td></tr>
+                    <tr><td><strong>{{ t('feature_compress') }}</strong></td><td>{{ t('feature_compress_desc') }}</td></tr>
+                    <tr><td><strong>{{ t('feature_ephemeris') }}</strong></td><td>{{ t('feature_ephemeris_desc') }}</td></tr>
+                    <tr><td><strong>{{ t('feature_campaigns') }}</strong></td><td>{{ t('feature_campaigns_desc') }}</td></tr>
+                    <tr><td><strong>{{ t('feature_schedule') }}</strong></td><td>{{ t('feature_schedule_desc') }}</td></tr>
+                    <tr><td><strong>{{ t('feature_groups') }}</strong></td><td>{{ t('feature_groups_desc') }}</td></tr>
+                    <tr><td><strong>{{ t('feature_screens') }}</strong></td><td>{{ t('feature_screens_desc') }}</td></tr>
+                    <tr><td><strong>{{ t('feature_priority_alert') }}</strong></td><td>{{ t('feature_priority_alert_desc') }}</td></tr>
+                    <tr><td><strong>{{ t('feature_activity') }}</strong></td><td>{{ t('feature_activity_desc') }}</td></tr>
+                </tbody>
+            </table>
+            <div class="wiki-callout warning">
+                <strong>{{ t('wiki_tip') }}</strong> {{ t('wiki_s20_warning') }}
+            </div>
+        </section>
 
     </div><!-- .wiki-body -->
 

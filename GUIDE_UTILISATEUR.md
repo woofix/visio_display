@@ -27,6 +27,9 @@ Visio-Display est une application d'**affichage dynamique** (digital signage) qu
 17. [Sauvegarder et restaurer le serveur](#17-sauvegarder-et-restaurer-le-serveur)
 18. [Campagnes temporaires](#18-campagnes-temporaires)
 19. [Recherche globale](#19-recherche-globale)
+20. [Gestion des rôles (RBAC)](#20-gestion-des-rôles-rbac)
+21. [Gestion des fonctionnalités (super-admin)](#21-gestion-des-fonctionnalités-super-admin)
+22. [À propos](#22-à-propos)
 
 ---
 
@@ -277,10 +280,12 @@ Noms réservés (interdits) : `default`, `admin`, `api`, `static`, `login`, `log
 Depuis **Paramètres > Installation client** :
 
 1. Renseignez l'hôte ou l'IP du poste client, le port SSH, l'utilisateur SSH et l'utilisateur local à configurer.
-2. Saisissez l'**URL de base du serveur** (ex. `https://cargot.tomas66.net`), pas une URL écrite en dur par écran.
-3. Renseignez le **nom d'écran** si le poste doit ouvrir un écran nommé (ex. `reception`, `cuisine`).
-4. Renseignez le **nom de la machine** cliente.
-5. Lancez l'installation.
+2. Saisissez le **mot de passe SSH** du compte distant (obligatoire — nécessite `sshpass` installé sur le serveur).
+3. Saisissez le **mot de passe admin / sudo** si différent du mot de passe SSH (laissez vide pour le réutiliser).
+4. Saisissez l'**URL de base du serveur** (ex. `https://cargot.tomas66.net`), pas une URL écrite en dur par écran.
+5. Renseignez le **nom d'écran** si le poste doit ouvrir un écran nommé (ex. `reception`, `cuisine`).
+6. Renseignez le **nom de la machine** cliente.
+7. Lancez l'installation.
 
 Le script configure automatiquement l'autologin, le mode kiosque, le nom d'hôte Linux, la veille désactivée pendant l'affichage et la remontée d'état du client vers le serveur.
 
@@ -700,6 +705,97 @@ La barre de recherche en haut de l'interface permet de retrouver rapidement n'im
 ### Page de résultats complète
 
 Le lien **Tous les résultats →** en bas du menu déroulant, ou la touche Entrée sans sélection, ouvre la page `/admin/search` avec l'ensemble des résultats groupés par catégorie.
+
+---
+
+---
+
+## 20. Gestion des rôles (RBAC)
+
+Accessible depuis **Administration → Rôles** dans le menu.
+
+> **Réservé au super-admin.**
+
+Les rôles permettent de regrouper un ensemble de permissions sous un nom réutilisable, puis d'attribuer ce rôle à un ou plusieurs utilisateurs. Les permissions effectives d'un utilisateur sont l'**union** des permissions de tous ses rôles.
+
+### Rôles prédéfinis
+
+Trois rôles sont créés automatiquement au premier démarrage :
+
+| Rôle | Permissions incluses |
+|---|---|
+| **Administrateur** | Toutes les permissions disponibles |
+| **Éditeur** | `upload`, `delete`, `reorder`, `toggle`, `duration` |
+| **Lecteur** | Aucune (accès tableau de bord uniquement) |
+
+Le rôle **Administrateur** est un rôle *système* : il ne peut pas être supprimé.
+
+### Créer un rôle
+
+1. Dans la page **Rôles**, renseignez un identifiant (lettres minuscules, chiffres, `-` et `_`, 2–64 caractères), un nom affiché et une description facultative.
+2. Cochez les permissions à inclure.
+3. Cliquez sur **Créer le rôle**.
+
+### Modifier un rôle
+
+Cliquez sur **Modifier** pour changer le nom affiché et la description. Les permissions se modifient séparément via le formulaire dédié sur la même page.
+
+### Supprimer un rôle
+
+Cliquez sur **Supprimer**. Un rôle système ne peut pas être supprimé. Supprimer un rôle retire automatiquement son attribution à tous les utilisateurs concernés.
+
+### Attribuer des rôles à un utilisateur
+
+Dans la section **Attribution des rôles** de la page, cochez les rôles souhaités pour chaque utilisateur et enregistrez. Les modifications prennent effet immédiatement à la prochaine action de l'utilisateur.
+
+> **Remarque :** les permissions directes (attribuées compte par compte dans la section Utilisateurs) et les permissions issues des rôles se cumulent.
+
+---
+
+## 21. Gestion des fonctionnalités (super-admin)
+
+Accessible depuis **Paramètres → Fonctionnalités** dans le menu de navigation.
+
+> **Réservé au super-admin.**
+
+Cette page permet d'activer ou de désactiver des modules entiers de l'application. Un module désactivé masque entièrement ses menus, ses boutons et ses points d'API pour **tous les utilisateurs**, y compris le super-admin.
+
+### Modules disponibles
+
+| Module | Ce qu'il contrôle |
+|---|---|
+| **Importation de médias** | Upload de fichiers images et PDF (et vidéos si le module Vidéos est actif) |
+| **Vidéos** | Upload, aperçus, affichage et encodage de vidéos — désactiver masque toutes les vidéos existantes |
+| **Suppression de médias** | Suppression définitive de fichiers de la médiathèque |
+| **Compression vidéo** | File d'encodage et compression des vidéos limitées au 1080p |
+| **Éphéméride** | Génération et affichage de la carte éphéméride quotidienne |
+| **Campagnes** | Création et gestion des campagnes temporaires |
+| **Plage de diffusion** | Configuration des plages horaires et dates de diffusion par média |
+| **Groupes de médias** | Organisation des médias en groupes et activation/désactivation collective |
+| **Multi-écrans** | Création et gestion d'écrans nommés indépendants |
+| **Alerte prioritaire** | Bannière d'alerte critique sur tous les écrans en temps réel |
+| **Journal d'activité** | Enregistrement et consultation du journal des actions utilisateurs |
+
+### Activer / désactiver un module
+
+Cliquez sur le bouton bascule en regard du module concerné. Le changement est immédiat et ne nécessite pas de redémarrage.
+
+> **Conseil :** désactivez un module uniquement si vous êtes sûr de ne pas en avoir besoin. La réactivation restaure l'accès au module tel qu'il était avant la désactivation.
+
+---
+
+## 22. À propos
+
+Accessible depuis **À propos** dans le menu de navigation (tous les utilisateurs connectés).
+
+La page **À propos** affiche les informations techniques de l'instance en cours d'exécution :
+
+- **Version** de l'application (lue depuis le fichier `VERSION` ou la variable d'environnement `APP_VERSION`)
+- **Commit git** associé au déploiement (si disponible)
+- **Stack technique** : backend, base de données, déploiement
+- **Licence** : lien vers le fichier `LICENSE` du projet
+
+Ces informations sont utiles pour identifier la version installée lors d'un signalement de problème ou d'une mise à jour.
 
 ---
 

@@ -86,9 +86,22 @@ Application web légère de signalétique numérique. Elle affiche un diaporama 
 - Documentation interactive couvrant toutes les fonctionnalités, disponible sans quitter l'application
 - Version Markdown fournie dans `GUIDE_UTILISATEUR.md` pour la documentation du projet
 
+**Gestion des rôles (RBAC)**
+- Créer des rôles personnalisés (identifiant, nom affiché, description, permissions) depuis `/admin/roles`
+- Trois rôles prédéfinis au démarrage : *Administrateur* (toutes les permissions), *Éditeur* (upload/suppression/réorganisation/activation/durée), *Lecteur* (aucune permission)
+- Attribuer un ou plusieurs rôles à chaque utilisateur — les permissions effectives sont l'union des permissions de tous les rôles attribués
+- Les rôles système ne peuvent pas être supprimés
+
+**Gestion des fonctionnalités**
+- Activer ou désactiver 11 modules depuis `Paramètres → Fonctionnalités` (super-admin uniquement) : importation de médias, vidéos, suppression, compression, éphéméride, campagnes, plages de diffusion, groupes, multi-écrans, alerte prioritaire, journal d'activité
+- Un module désactivé masque entièrement les menus, boutons et endpoints concernés pour tous les utilisateurs
+
+**À propos**
+- Page `/admin/about` accessible à tous les utilisateurs connectés : version de l'application, commit git, stack technique et lien vers la licence
+
 **Sécurité & accès**
 - Contrôle d'accès à deux niveaux : super-admin et utilisateurs limités
-- Permissions granulaires configurables par compte
+- Permissions granulaires configurables par compte, regroupables en rôles réutilisables
 - Restrictions d'accès par écran — un utilisateur peut gérer un ou plusieurs écrans spécifiques
 
 ### Prérequis
@@ -200,6 +213,8 @@ Depuis l'onglet **Paramètres > Installation client**, renseigner :
 - l'hôte ou l'IP du client ;
 - le port SSH ;
 - l'utilisateur SSH ;
+- le **mot de passe SSH** (requis — nécessite `sshpass` installé sur le serveur) ;
+- le **mot de passe admin / sudo** (optionnel — réutilise le mot de passe SSH si identique) ;
 - l'utilisateur local à configurer pour l'autologin ;
 - l'URL de base du serveur (ex. `https://cargot.tomas66.net`) ;
 - le nom d'écran (ex. `reception` ou `cuisine`) ;
@@ -399,6 +414,8 @@ Visio-Display/
     ├── pyproject.toml           # Config ruff
     ├── requirements.txt         # Dépendances de production
     ├── blueprints/              # Blueprints Flask
+    │   ├── about.py             # Page À propos (version, stack technique)
+    │   ├── activity.py          # Journal d'activité
     │   ├── admin.py             # Tableau de bord
     │   ├── api.py               # API JSON
     │   ├── auth.py              # Connexion / déconnexion
@@ -407,19 +424,26 @@ Visio-Display/
     │   ├── guards.py            # Helpers de contrôle d'accès
     │   ├── media.py             # Médiathèque
     │   ├── queue.py             # File d'encodage
+    │   ├── roles.py             # Gestion des rôles RBAC
     │   ├── screens.py           # Gestion des écrans
-    │   ├── settings.py          # Paramètres (thème, langue, logo, météo)
+    │   ├── search.py            # Recherche globale
+    │   ├── settings.py          # Paramètres (thème, langue, logo, météo, fonctionnalités)
     │   ├── users.py             # Gestion des utilisateurs
     │   └── wiki.py              # Page d'aide intégrée
     ├── services/                # Logique métier
+    │   ├── activity_svc.py      # Enregistrement et lecture du journal d'activité
     │   ├── backup_svc.py        # Sauvegarde/restauration Docker et web
     │   ├── campaign_svc.py      # Résolution et sélection des campagnes
     │   ├── clients_svc.py       # Heartbeat et état des clients d'affichage
     │   ├── config_svc.py        # Configuration applicative (lecture/écriture)
+    │   ├── deploy_svc.py        # Installation SSH des clients d'affichage
     │   ├── ephemeris_svc.py     # Génération de la carte éphéméride
     │   ├── i18n.py              # Internationalisation (flash messages, traductions)
     │   ├── media_svc.py         # Opérations sur les fichiers médias
     │   ├── queue_svc.py         # File d'encodage + tâches RQ
+    │   ├── rbac_svc.py          # CRUD rôles et attribution aux utilisateurs
+    │   ├── schedule_svc.py      # Logique de planification horaire/dates
+    │   ├── search_index_svc.py  # Index de recherche globale
     │   ├── server_stats_svc.py  # Statistiques CPU/RAM du serveur
     │   └── users_svc.py         # CRUD utilisateurs + permissions
     ├── static/
@@ -429,13 +453,18 @@ Visio-Display/
         ├── index.html           # Diaporama plein écran
         ├── login.html           # Page de connexion
         ├── admin_layout.html    # Gabarit partagé (sidebar, topbar, thèmes)
+        ├── admin_about.html     # Page À propos
+        ├── admin_activity.html  # Journal d'activité
         ├── admin_dashboard.html # Vue d'ensemble + espace disque
         ├── admin_campaigns.html # Campagnes temporaires
         ├── admin_media.html     # Médiathèque + réorganisation + écrans
-        ├── admin_upload.html    # Import de médias + suivi d'encodage
+        ├── admin_programming.html # Plages de diffusion (calendrier hebdomadaire)
         ├── admin_queue.html     # File d'encodage + progression
-        ├── admin_settings.html  # Logo, thème, langue, mot de passe, événements, météo
+        ├── admin_roles.html     # Gestion des rôles RBAC
+        ├── admin_search.html    # Page de résultats de la recherche globale
+        ├── admin_settings.html  # Logo, thème, langue, mot de passe, événements, météo, fonctionnalités
         ├── admin_superadmin.html # Gestion des comptes, permissions et écrans
+        ├── admin_upload.html    # Import de médias + suivi d'encodage
         └── admin_wiki.html      # Page d'aide intégrée
 ```
 
@@ -490,19 +519,27 @@ Visio-Display/
 | `/admin/settings/language`                | POST    | Connecté           | Changer la langue de l'interface (fr/en)             |
 | `/admin/settings/appname`                 | POST    | Super-admin        | Personnaliser le nom de l'application                |
 | `/admin/settings/meteo`                   | POST    | Super-admin        | Configurer la localisation météo (ville, GPS, fuseau) |
+| `/admin/features/toggle`                  | POST    | Super-admin        | Activer ou désactiver un module fonctionnel          |
 | `/admin/logo/upload`                      | POST    | `logo`             | Uploader un logo personnalisé                        |
 | `/admin/logo/reset`                       | POST    | `logo`             | Réinitialiser le logo par défaut                     |
 | `/admin/users/add`                        | POST    | Super-admin        | Créer un compte utilisateur                          |
 | `/admin/users/delete/<username>`          | POST    | Super-admin        | Supprimer un compte utilisateur                      |
-| `/admin/users/permissions/<username>`     | POST    | Super-admin        | Mettre à jour les permissions                        |
+| `/admin/users/permissions/<username>`     | POST    | Super-admin        | Mettre à jour les permissions directes               |
 | `/admin/users/screens/<username>`         | POST    | Super-admin        | Définir les écrans accessibles à un utilisateur      |
+| `/admin/users/<username>/roles`           | POST    | Super-admin        | Attribuer des rôles RBAC à un utilisateur            |
 | `/admin/users/password`                   | POST    | Connecté           | Modifier son propre mot de passe                     |
 | `/admin/users/reset_password/<username>`  | POST    | Super-admin        | Réinitialiser le mot de passe d'un utilisateur       |
+| `/admin/roles`                            | GET     | Super-admin        | Page de gestion des rôles                            |
+| `/admin/roles/create`                     | POST    | Super-admin        | Créer un rôle                                        |
+| `/admin/roles/<id>/edit`                  | POST    | Super-admin        | Modifier le nom/description d'un rôle                |
+| `/admin/roles/<id>/permissions`           | POST    | Super-admin        | Modifier les permissions d'un rôle                   |
+| `/admin/roles/<id>/delete`                | POST    | Super-admin        | Supprimer un rôle (hors rôles système)               |
 | `/admin/events/add`                       | POST    | `ephemeris`        | Ajouter un compte à rebours dans l'éphéméride        |
 | `/admin/events/delete/<idx>`              | POST    | `ephemeris`        | Supprimer un compte à rebours                        |
 | `/admin/queue/force`                      | POST    | Super-admin        | Forcer l'encodage de toute la file immédiatement     |
 | `/admin/compress/<filename>/force`        | POST    | Super-admin        | Forcer l'encodage d'un seul fichier immédiatement    |
 | `/admin/priority-alert`                   | POST    | Super-admin        | Publier ou effacer l'alerte prioritaire              |
+| `/admin/about`                            | GET     | Connecté           | Page À propos (version, stack, licence)              |
 
 #### Réponse de `/api/queue`
 
@@ -744,9 +781,22 @@ A lightweight web-based digital signage. It displays a fullscreen slideshow of i
 - Interactive documentation covering all features, available without leaving the application
 - Markdown project guide available in `GUIDE_UTILISATEUR.md`
 
+**Role management (RBAC)**
+- Create custom roles (identifier, display name, description, permissions) from `/admin/roles`
+- Three built-in roles at first boot: *Administrator* (all permissions), *Editor* (upload/delete/reorder/toggle/duration), *Viewer* (no permissions)
+- Assign one or more roles to each user — effective permissions are the union of all assigned role permissions
+- System roles cannot be deleted
+
+**Feature management**
+- Enable or disable 11 modules from `Settings → Features` (super-admin only): media import, videos, deletion, compression, ephemeris, campaigns, scheduling, groups, multi-screen, priority alert, activity log
+- A disabled module completely hides its menus, buttons and endpoints for all users
+
+**About**
+- Page `/admin/about` accessible to all logged-in users: application version, git commit, tech stack and licence link
+
 **Security & access**
 - Two-level access control: super-admin and limited users
-- Granular permissions configurable per account
+- Granular permissions configurable per account, groupable into reusable roles
 - Per-screen access restrictions — a user can manage one or several specific screens
 
 ### Requirements
@@ -860,6 +910,8 @@ From **Settings > Client installation**, provide:
 - the client host or IP;
 - the SSH port;
 - the SSH user;
+- the **SSH password** (required — `sshpass` must be installed on the server);
+- the **admin / sudo password** (optional — reuses the SSH password when identical);
 - the local user to configure for autologin;
 - the base server URL (for example `https://cargot.tomas66.net`);
 - the screen name (for example `reception` or `cuisine`);
@@ -974,6 +1026,8 @@ Visio-Display/
     ├── pyproject.toml           # Ruff config
     ├── requirements.txt         # Production dependencies
     ├── blueprints/              # Flask blueprints
+    │   ├── about.py             # About page (version, tech stack)
+    │   ├── activity.py          # Activity log
     │   ├── admin.py             # Dashboard
     │   ├── api.py               # JSON API
     │   ├── auth.py              # Login / logout
@@ -982,19 +1036,26 @@ Visio-Display/
     │   ├── guards.py            # Access control helpers
     │   ├── media.py             # Media library
     │   ├── queue.py             # Encoding queue
+    │   ├── roles.py             # RBAC role management
     │   ├── screens.py           # Screen management
-    │   ├── settings.py          # Settings (theme, language, logo, weather location)
+    │   ├── search.py            # Global search
+    │   ├── settings.py          # Settings (theme, language, logo, weather, features)
     │   ├── users.py             # User management
     │   └── wiki.py              # Built-in help page
     ├── services/                # Business logic
+    │   ├── activity_svc.py      # Activity log recording and reading
     │   ├── backup_svc.py        # Docker and web backup/restore
     │   ├── campaign_svc.py      # Campaign resolution and selection
     │   ├── clients_svc.py       # Display client heartbeat and status
     │   ├── config_svc.py        # App config (read/write)
+    │   ├── deploy_svc.py        # SSH-based display client installation
     │   ├── ephemeris_svc.py     # Ephemeris card generation
     │   ├── i18n.py              # Internationalisation (flash messages, translations)
     │   ├── media_svc.py         # Media file operations
     │   ├── queue_svc.py         # Encoding queue + RQ tasks
+    │   ├── rbac_svc.py          # Role CRUD and user assignment
+    │   ├── schedule_svc.py      # Time/date scheduling logic
+    │   ├── search_index_svc.py  # Global search index
     │   ├── server_stats_svc.py  # Server CPU/RAM stats
     │   └── users_svc.py         # User CRUD + permissions
     ├── static/
@@ -1004,13 +1065,18 @@ Visio-Display/
         ├── index.html           # Fullscreen slideshow
         ├── login.html           # Login page
         ├── admin_layout.html    # Shared layout (sidebar, topbar, themes)
+        ├── admin_about.html     # About page
+        ├── admin_activity.html  # Activity log
         ├── admin_dashboard.html # Overview + disk usage
         ├── admin_campaigns.html # Temporary campaigns
         ├── admin_media.html     # Media library + reordering + screens
-        ├── admin_upload.html    # Media import + encoding progress
+        ├── admin_programming.html # Scheduling (weekly calendar view)
         ├── admin_queue.html     # Encoding queue + progress bars
-        ├── admin_settings.html  # Logo, theme, language, password, events, weather
+        ├── admin_roles.html     # RBAC role management
+        ├── admin_search.html    # Global search results page
+        ├── admin_settings.html  # Logo, theme, language, password, events, weather, features
         ├── admin_superadmin.html # Account, permission and screen management
+        ├── admin_upload.html    # Media import + encoding progress
         └── admin_wiki.html      # Built-in help page
 ```
 
@@ -1065,19 +1131,27 @@ Visio-Display/
 | `/admin/settings/language`                | POST    | Logged in          | Change the UI language (fr/en)                          |
 | `/admin/settings/appname`                 | POST    | Super-admin        | Set the application name                                |
 | `/admin/settings/meteo`                   | POST    | Super-admin        | Configure weather location (city, GPS, timezone)        |
+| `/admin/features/toggle`                  | POST    | Super-admin        | Enable or disable a feature module                      |
 | `/admin/logo/upload`                      | POST    | `logo`             | Upload a custom logo                                    |
 | `/admin/logo/reset`                       | POST    | `logo`             | Reset to default logo                                   |
 | `/admin/users/add`                        | POST    | Super-admin        | Create a user account                                   |
 | `/admin/users/delete/<username>`          | POST    | Super-admin        | Delete a user account                                   |
-| `/admin/users/permissions/<username>`     | POST    | Super-admin        | Update a user's permissions                             |
+| `/admin/users/permissions/<username>`     | POST    | Super-admin        | Update a user's direct permissions                      |
 | `/admin/users/screens/<username>`         | POST    | Super-admin        | Set accessible screens for a user                       |
+| `/admin/users/<username>/roles`           | POST    | Super-admin        | Assign RBAC roles to a user                             |
 | `/admin/users/password`                   | POST    | Logged in          | Change own password                                     |
 | `/admin/users/reset_password/<username>`  | POST    | Super-admin        | Reset another user's password                           |
+| `/admin/roles`                            | GET     | Super-admin        | Role management page                                    |
+| `/admin/roles/create`                     | POST    | Super-admin        | Create a role                                           |
+| `/admin/roles/<id>/edit`                  | POST    | Super-admin        | Update a role name / description                        |
+| `/admin/roles/<id>/permissions`           | POST    | Super-admin        | Update a role's permissions                             |
+| `/admin/roles/<id>/delete`                | POST    | Super-admin        | Delete a role (system roles are protected)              |
 | `/admin/events/add`                       | POST    | `ephemeris`        | Add a countdown event to the ephemeris card             |
 | `/admin/events/delete/<idx>`              | POST    | `ephemeris`        | Delete a countdown event                                |
 | `/admin/queue/force`                      | POST    | Super-admin        | Force-process all pending encoding jobs immediately     |
 | `/admin/compress/<filename>/force`        | POST    | Super-admin        | Force-encode a single file immediately                  |
 | `/admin/priority-alert`                   | POST    | Super-admin        | Publish or clear the priority alert banner              |
+| `/admin/about`                            | GET     | Logged in          | About page (version, stack, licence)                    |
 
 #### `/api/queue` response
 

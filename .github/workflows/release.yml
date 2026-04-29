@@ -1,0 +1,103 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - VERSION
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(tr -d '[:space:]' < VERSION)"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid VERSION value: $version" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Check existing tag
+        id: existing_tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --tags origin "refs/tags/${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create tag
+        if: steps.existing_tag.outputs.exists == 'false'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.version.outputs.tag }}" -m "Visio-Display ${{ steps.version.outputs.version }}"
+          git push origin "${{ steps.version.outputs.tag }}"
+
+      - name: Build release notes
+        if: steps.existing_tag.outputs.exists == 'false'
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${{ steps.version.outputs.version }}"
+          tag="${{ steps.version.outputs.tag }}"
+          previous_tag="$(git tag --list --sort=-v:refname | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | grep -v "^${tag}$" | head -n 1 || true)"
+
+          {
+            echo "## Visio-Display ${version}"
+            echo
+            echo "Application web de signalétique numérique pour diffuser des images, vidéos, campagnes et informations sur plusieurs écrans."
+            echo
+            echo "### Documentation"
+            echo
+            echo "- [README](https://github.com/woofix/visio_display/blob/main/README.md)"
+            echo "- [Guide utilisateur](https://github.com/woofix/visio_display/blob/main/GUIDE_UTILISATEUR.md)"
+            echo "- [Politique de sécurité](https://github.com/woofix/visio_display/blob/main/SECURITY.md)"
+            echo
+            echo "### Mise à jour serveur"
+            echo
+            echo '```bash'
+            echo "git checkout main"
+            echo "git pull origin main"
+            echo "docker compose up -d --build"
+            echo '```'
+            echo
+            echo "### Changements inclus"
+            echo
+            if [ -n "$previous_tag" ]; then
+              git log --pretty='- %s (`%h`)' "${previous_tag}..HEAD"
+            else
+              git log --pretty='- %s (`%h`)' HEAD
+            fi
+          } > release_notes.md
+
+      - name: Create GitHub release
+        if: steps.existing_tag.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release create "${{ steps.version.outputs.tag }}" \
+            --title "Visio-Display ${{ steps.version.outputs.version }}" \
+            --notes-file release_notes.md

@@ -29,7 +29,8 @@ Visio-Display est une application d'**affichage dynamique** (digital signage) qu
 19. [Recherche globale](#19-recherche-globale)
 20. [Gestion des rôles (RBAC)](#20-gestion-des-rôles-rbac)
 21. [Gestion des fonctionnalités (super-admin)](#21-gestion-des-fonctionnalités-super-admin)
-22. [À propos](#22-à-propos)
+22. [Mise à jour (super-admin)](#22-mise-à-jour-super-admin)
+23. [À propos](#23-à-propos)
 
 ---
 
@@ -707,8 +708,6 @@ Le lien **Tous les résultats →** en bas du menu déroulant, ou la touche Entr
 
 ---
 
----
-
 ## 20. Gestion des rôles (RBAC)
 
 Accessible depuis **Administration → Rôles** dans le menu.
@@ -783,7 +782,42 @@ Cliquez sur le bouton bascule en regard du module concerné. Le changement est i
 
 ---
 
-## 22. À propos
+## 22. Mise à jour (super-admin)
+
+Accessible depuis **Paramètres → Mise à jour** dans le menu de navigation.
+
+> **Réservé au super-admin.**
+
+Cette page permet de vérifier l'état de la version installée et de la comparer à la version distante publiée. Elle est volontairement informative : elle ne lance pas l'installation d'une mise à jour.
+
+### Vérifier les mises à jour
+
+1. Ouvrez **Paramètres → Mise à jour**.
+2. Cliquez sur **Vérifier les mises à jour**.
+3. Consultez le statut affiché :
+   - **À jour** : la version installée correspond à la version distante connue.
+   - **Mise à jour disponible** : une version plus récente est détectée.
+   - **Vérification impossible** : la source distante n'a pas pu être contactée ou les versions ne peuvent pas être comparées.
+   - **État local affiché** : la page montre seulement les informations locales disponibles.
+
+### Informations affichées
+
+| Zone | Description |
+|---|---|
+| **Version installée** | Version lue depuis le fichier `VERSION` ou la variable d'environnement `APP_VERSION`. |
+| **Commit local** | Identifiant Git, branche, date et message de commit lorsque le dépôt est disponible. |
+| **Version distante** | Dernière version, tag ou commit récupéré depuis la source de mise à jour. |
+| **Retard / avance** | Nombre de commits d'écart lorsque la comparaison Git est possible. |
+
+### Bonnes pratiques
+
+- Faites une **sauvegarde complète** avant toute mise à jour manuelle.
+- Vérifiez que l'instance n'a pas de traitements lourds en cours : import massif, encodage vidéo ou restauration.
+- Si la vérification échoue, contrôlez l'accès réseau du serveur et les variables de source de mise à jour éventuelles.
+
+---
+
+## 23. À propos
 
 Accessible depuis **À propos** dans le menu de navigation (tous les utilisateurs connectés).
 

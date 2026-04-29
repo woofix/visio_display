@@ -102,7 +102,7 @@
     padding: 1px 7px;
     font-size: .74rem;
     font-weight: 700;
-    font-family: 'Courier New', monospace;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 /* Table */
@@ -140,7 +140,7 @@
     padding: 1px 6px;
     font-size: .78rem;
     color: var(--primary);
-    font-family: 'Courier New', monospace;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 /* Steps */
@@ -186,7 +186,7 @@
     padding: 0;
     font-size: .8rem;
     color: var(--text);
-    font-family: 'Courier New', monospace;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 
@@ -203,7 +203,7 @@
     border-radius: 6px;
     padding: 3px 10px;
     font-size: .78rem;
-    font-family: 'Courier New', monospace;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     color: var(--text-2);
     margin: 2px 0;
 }
@@ -219,7 +219,7 @@
     padding: 12px 14px;
 }
 .access-card-label { font-size: .68rem; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
-.access-card-url   { font-family: 'Courier New', monospace; font-size: .77rem; color: var(--primary); word-break: break-all; }
+.access-card-url   { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: .77rem; color: var(--primary); word-break: break-all; }
 
 @media (max-width: 640px) {
     .wiki-section { padding: 18px 16px; }
@@ -875,6 +875,55 @@
             <div class="wiki-callout warning">
                 <strong>{{ t('wiki_tip') }}</strong> {{ t('wiki_s20_warning') }}
             </div>
+        </section>
+
+        <!-- §21 Mise à jour -->
+        <section class="wiki-section {% if wiki_section == 's21' %}active{% endif %}" id="s21">
+            <div class="wiki-section-header">
+                <h2>{{ t('wiki_s21_title') }}</h2>
+            </div>
+            <p>{{ t('wiki_s21_desc') }}</p>
+            <div class="wiki-callout">
+                <strong>{{ t('wiki_right_required') }}</strong> {{ t('wiki_superadmin') }}<br>
+                {{ t('wiki_s21_access') }}
+            </div>
+            <h3>{{ t('wiki_s21_check_title') }}</h3>
+            <ol class="wiki-steps">
+                <li>{{ t('wiki_s21_check1') }}</li>
+                <li>{{ t('wiki_s21_check2') }}</li>
+                <li>{{ t('wiki_s21_check3') }}</li>
+            </ol>
+            <h3>{{ t('wiki_s21_info_title') }}</h3>
+            <ul>
+                <li>{{ t('wiki_s21_info1') }}</li>
+                <li>{{ t('wiki_s21_info2') }}</li>
+                <li>{{ t('wiki_s21_info3') }}</li>
+                <li>{{ t('wiki_s21_info4') }}</li>
+            </ul>
+            <div class="wiki-callout warning">
+                <strong>{{ t('wiki_tip') }}</strong> {{ t('wiki_s21_warning') }}
+            </div>
+        </section>
+
+        <!-- §22 À propos -->
+        <section class="wiki-section {% if wiki_section == 's22' %}active{% endif %}" id="s22">
+            <div class="wiki-section-header">
+                <h2>{{ t('wiki_s22_title') }}</h2>
+            </div>
+            <p>{{ t('wiki_s22_desc') }}</p>
+            <h3>{{ t('wiki_s22_app_title') }}</h3>
+            <ul>
+                <li>{{ t('wiki_s22_app1') }}</li>
+                <li>{{ t('wiki_s22_app2') }}</li>
+                <li>{{ t('wiki_s22_app3') }}</li>
+            </ul>
+            <h3>{{ t('wiki_s22_tech_title') }}</h3>
+            <ul>
+                <li>{{ t('wiki_s22_tech1') }}</li>
+                <li>{{ t('wiki_s22_tech2') }}</li>
+                <li>{{ t('wiki_s22_tech3') }}</li>
+            </ul>
+            <div class="wiki-callout">{{ t('wiki_s22_note') }}</div>
         </section>
 
     </div><!-- .wiki-body -->

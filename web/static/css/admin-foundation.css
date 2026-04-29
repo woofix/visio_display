@@ -3,6 +3,7 @@
 :root {
     --font-family-base: "Manrope", "Inter", sans-serif;
     --font-family-display: "Space Grotesk", "Manrope", sans-serif;
+    --font-family-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     --primary: #4f46e5;
     --primary-light: #8b8cff;
     --primary-dark: #312e81;
@@ -350,6 +351,16 @@ body.sidebar-open {
 
 .nav-item-parent.open .chevron {
     transform: rotate(90deg);
+}
+
+.nav-sublabel {
+    font-size: .57rem;
+    color: var(--sidebar-label);
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    font-weight: 700;
+    padding: 10px 34px 4px;
+    opacity: .65;
 }
 
 .sidebar-status {

@@ -138,6 +138,18 @@ _PAGES_FR = [
         'description': "Aide, guide d'utilisation et documentation",
         'keywords': 'wiki documentation aide guide manuel help tutoriel utilisation',
     },
+    {
+        'title': 'Mise à jour',
+        'url': '/admin/update',
+        'description': "Vérifier la version installée et l'état de mise à jour",
+        'keywords': 'mise à jour update version commit git distante release vérifier retard avance',
+    },
+    {
+        'title': 'À propos',
+        'url': '/admin/about',
+        'description': "Informations de version, licence et stack technique",
+        'keywords': 'à propos about version commit licence auteur stack technique flask postgres docker',
+    },
 ]
 
 _WIKI_FR = [
@@ -281,6 +293,20 @@ _WIKI_FR = [
         'description': "Activer ou désactiver des modules entiers de l'application",
         'keywords': 'fonctionnalités features modules activer désactiver upload vidéos campagnes écrans activité',
     },
+    {
+        'section': 's21',
+        'title': 'Mise à jour',
+        'url': '/admin/wiki/s21',
+        'description': "Vérifier la version installée et la comparer à la version distante",
+        'keywords': 'mise à jour update version commit git distante release vérifier retard avance',
+    },
+    {
+        'section': 's22',
+        'title': 'À propos',
+        'url': '/admin/wiki/s22',
+        'description': "Identifier la version, la licence et la stack technique de l'instance",
+        'keywords': 'à propos about version commit licence auteur stack technique flask postgres docker',
+    },
 ]
 
 _PAGES_EN = [
@@ -409,6 +435,18 @@ _PAGES_EN = [
         'url': '/admin/wiki',
         'description': 'Help, user guide and documentation',
         'keywords': 'wiki documentation help guide manual tutorial usage',
+    },
+    {
+        'title': 'Update',
+        'url': '/admin/update',
+        'description': 'Check the installed version and update status',
+        'keywords': 'update version commit git remote release check behind ahead',
+    },
+    {
+        'title': 'About',
+        'url': '/admin/about',
+        'description': 'Version, license and technical stack information',
+        'keywords': 'about version commit license author stack technical flask postgres docker',
     },
 ]
 
@@ -552,6 +590,20 @@ _WIKI_EN = [
         'url': '/admin/wiki/s20',
         'description': 'Enable or disable entire application modules',
         'keywords': 'features modules enable disable upload videos campaigns screens activity',
+    },
+    {
+        'section': 's21',
+        'title': 'Update',
+        'url': '/admin/wiki/s21',
+        'description': 'Check the installed version and compare it with the remote version',
+        'keywords': 'update version commit git remote release check behind ahead',
+    },
+    {
+        'section': 's22',
+        'title': 'About',
+        'url': '/admin/wiki/s22',
+        'description': 'Identify the instance version, license and technical stack',
+        'keywords': 'about version commit license author stack technical flask postgres docker',
     },
 ]
 

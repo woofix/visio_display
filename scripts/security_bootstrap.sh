@@ -1,0 +1,282 @@
+#!/bin/bash
+# Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
+
+set -u
+
+MODE="${1:-}"
+INSTALL_DIR="${2:-${VISIO_INSTALL_DIR:-$(pwd)}}"
+ENV_FILE="${VISIO_ENV_FILE:-$INSTALL_DIR/.env}"
+PLACEHOLDER_SECRET="remplace_par_une_chaine_aleatoire"
+DEFAULT_PRIVATE_DIR="$INSTALL_DIR/web/data/private"
+
+OK_COUNT=0
+FIXED_COUNT=0
+WARNING_COUNT=0
+ERROR_COUNT=0
+
+ok() {
+    OK_COUNT=$((OK_COUNT + 1))
+    echo "OK: $1"
+}
+
+fixed() {
+    FIXED_COUNT=$((FIXED_COUNT + 1))
+    echo "corrigé: $1"
+}
+
+warning() {
+    WARNING_COUNT=$((WARNING_COUNT + 1))
+    echo "warning: $1" >&2
+}
+
+error() {
+    ERROR_COUNT=$((ERROR_COUNT + 1))
+    echo "erreur: $1" >&2
+}
+
+usage() {
+    echo "Usage: $0 install|update|check [dossier_installation]" >&2
+}
+
+if [ "$MODE" != "install" ] && [ "$MODE" != "update" ] && [ "$MODE" != "check" ]; then
+    usage
+    exit 2
+fi
+
+if [ "$MODE" != "check" ]; then
+    mkdir -p "$INSTALL_DIR" 2>/dev/null || {
+        error "impossible de créer le dossier d'installation: $INSTALL_DIR"
+        exit 1
+    }
+fi
+
+ensure_env_file() {
+    if [ -f "$ENV_FILE" ]; then
+        ok "fichier .env trouvé: $ENV_FILE"
+        return 0
+    fi
+    if [ "$MODE" = "check" ]; then
+        warning "fichier .env absent: $ENV_FILE"
+        return 1
+    fi
+    : > "$ENV_FILE" 2>/dev/null || {
+        error "impossible de créer $ENV_FILE"
+        return 1
+    }
+    fixed "fichier .env créé: $ENV_FILE"
+}
+
+env_value() {
+    key="$1"
+    [ -f "$ENV_FILE" ] || return 0
+    awk -v key="$key" '
+        $0 ~ "^[[:space:]]*" key "=" {
+            sub("^[[:space:]]*" key "=", "")
+            print
+            exit
+        }
+    ' "$ENV_FILE"
+}
+
+env_has_key() {
+    key="$1"
+    [ -f "$ENV_FILE" ] && grep -Eq "^[[:space:]]*${key}=" "$ENV_FILE"
+}
+
+set_env_value() {
+    key="$1"
+    value="$2"
+    tmp_file="$(mktemp)"
+
+    if env_has_key "$key"; then
+        awk -v key="$key" -v value="$value" '
+            BEGIN { updated = 0 }
+            $0 ~ "^[[:space:]]*" key "=" && updated == 0 {
+                print key "=" value
+                updated = 1
+                next
+            }
+            { print }
+        ' "$ENV_FILE" > "$tmp_file"
+    else
+        awk '1' "$ENV_FILE" > "$tmp_file"
+        printf '%s=%s\n' "$key" "$value" >> "$tmp_file"
+    fi
+
+    if ! cat "$tmp_file" > "$ENV_FILE"; then
+        rm -f "$tmp_file"
+        return 1
+    fi
+    rm -f "$tmp_file"
+}
+
+generate_secret() {
+    if command -v python3 >/dev/null 2>&1; then
+        python3 -c 'import secrets; print(secrets.token_urlsafe(48))'
+    elif command -v python >/dev/null 2>&1; then
+        python -c 'import secrets; print(secrets.token_urlsafe(48))'
+    elif command -v openssl >/dev/null 2>&1; then
+        openssl rand -base64 48 | tr -d '\n'
+        echo
+    else
+        return 1
+    fi
+}
+
+is_weak_secret_key() {
+    value="${1:-}"
+    [ -z "$value" ] && return 0
+    [ "$value" = "$PLACEHOLDER_SECRET" ] && return 0
+    [ "$value" = "change-me" ] && return 0
+    [ "$value" = "changeme" ] && return 0
+    [ "$value" = "secret" ] && return 0
+    [ "$value" = "test-secret-key" ] && return 0
+    return 1
+}
+
+is_weak_postgres_password() {
+    value="${1:-}"
+    [ -z "$value" ] && return 0
+    [ "$value" = "visio" ] && return 0
+    [ "$value" = "postgres" ] && return 0
+    [ "$value" = "password" ] && return 0
+    [ ${#value} -lt 10 ] && return 0
+    return 1
+}
+
+ensure_secret_key() {
+    key="$1"
+    label="$2"
+    value="$(env_value "$key")"
+
+    if env_has_key "$key"; then
+        if [ -n "$value" ]; then
+            ok "$label présent"
+        else
+            warning "$label présent mais vide; valeur conservée"
+        fi
+        return 0
+    fi
+    if [ "$MODE" = "check" ]; then
+        warning "$label absent"
+        return 0
+    fi
+
+    generated_value="$(generate_secret)" || {
+        error "impossible de générer $label"
+        return 1
+    }
+    set_env_value "$key" "$generated_value" || {
+        error "impossible d'écrire $label dans $ENV_FILE"
+        return 1
+    }
+    fixed "$label généré"
+}
+
+ensure_optional_generated_key() {
+    key="$1"
+    label="$2"
+    value="$(env_value "$key")"
+
+    if env_has_key "$key"; then
+        ok "$label présent"
+        return 0
+    fi
+    if [ "$MODE" = "check" ]; then
+        warning "$label absent"
+        return 0
+    fi
+
+    generated_value="$(generate_secret)" || {
+        error "impossible de générer $label"
+        return 1
+    }
+    set_env_value "$key" "$generated_value" || {
+        error "impossible d'écrire $label dans $ENV_FILE"
+        return 1
+    }
+    fixed "$label généré"
+}
+
+ensure_permissions() {
+    if [ -f "$ENV_FILE" ]; then
+        if chmod 600 "$ENV_FILE" 2>/dev/null; then
+            ok "permissions .env à 600"
+        else
+            warning "impossible d'appliquer chmod 600 sur $ENV_FILE"
+        fi
+    fi
+
+    private_dir="$(env_value PRIVATE_DIR)"
+    [ -n "$private_dir" ] || private_dir="${VISIO_DATA_DIR:-$DEFAULT_PRIVATE_DIR}"
+    backups_dir="${private_dir%/}/backups"
+
+    if [ -d "$backups_dir" ]; then
+        ok "dossier backups présent: $backups_dir"
+    elif mkdir -p "$backups_dir" 2>/dev/null; then
+        fixed "dossier backups créé: $backups_dir"
+    else
+        if [ "$MODE" = "check" ]; then
+            warning "impossible de créer $backups_dir"
+        else
+            error "impossible de créer $backups_dir"
+        fi
+    fi
+
+    if [ -d "$private_dir" ]; then
+        if chmod 700 "$private_dir" 2>/dev/null; then
+            ok "permissions PRIVATE_DIR à 700"
+        else
+            warning "impossible d'appliquer chmod 700 sur $private_dir"
+        fi
+    fi
+
+    if [ -d "$backups_dir" ]; then
+        if chmod 700 "$backups_dir" 2>/dev/null; then
+            ok "permissions backups à 700"
+        else
+            warning "impossible d'appliquer chmod 700 sur $backups_dir"
+        fi
+    fi
+}
+
+ensure_env_file || true
+
+if [ -f "$ENV_FILE" ]; then
+    ensure_secret_key "SECRET_KEY" "SECRET_KEY"
+    ensure_secret_key "POSTGRES_PASSWORD" "POSTGRES_PASSWORD"
+    ensure_optional_generated_key "CLIENT_HEARTBEAT_TOKEN" "CLIENT_HEARTBEAT_TOKEN"
+
+    secret_key="$(env_value SECRET_KEY)"
+    postgres_password="$(env_value POSTGRES_PASSWORD)"
+
+    if is_weak_secret_key "$secret_key"; then
+        if [ "$MODE" = "install" ]; then
+            error "SECRET_KEY est vide ou utilise une valeur placeholder"
+        else
+            warning "SECRET_KEY est vide ou utilise une valeur placeholder; valeur conservée"
+        fi
+    else
+        ok "SECRET_KEY robuste"
+    fi
+
+    if is_weak_postgres_password "$postgres_password"; then
+        if [ "$MODE" = "install" ]; then
+            error "POSTGRES_PASSWORD est absent, trop court ou utilise une valeur faible"
+        else
+            warning "POSTGRES_PASSWORD est absent, trop court ou utilise une valeur faible; valeur conservée"
+        fi
+    else
+        ok "POSTGRES_PASSWORD robuste"
+    fi
+fi
+
+ensure_permissions
+
+echo "Rapport sécurité: OK=$OK_COUNT corrigé=$FIXED_COUNT warning=$WARNING_COUNT erreur=$ERROR_COUNT"
+
+if [ "$ERROR_COUNT" -gt 0 ]; then
+    exit 1
+fi
+
+exit 0

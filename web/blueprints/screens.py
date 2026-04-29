@@ -1,5 +1,7 @@
 # Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
+import copy
+
 from flask import Blueprint, jsonify, redirect, request, session, url_for
 
 from services.activity_svc import log_config_change
@@ -116,6 +118,64 @@ def update_screen_halo():
 
     save_config(cfg)
     return redirect(url_for('settings.admin_settings_page') + '?tab=application')
+
+@bp.route('/admin/screens/broadcast', methods=['POST'])
+def broadcast_screen():
+    redir = admin_guard()
+    if redir: return redir
+    redir = feature_guard('screens')
+    if redir: return redir
+
+    data   = request.get_json(silent=True) or {}
+    source = data.get('source', '').strip().lower()
+    targets = data.get('targets', [])
+
+    if not isinstance(targets, list):
+        return jsonify({'ok': False, 'error': 'targets invalides'})
+
+    cfg     = load_config()
+    screens = cfg.get('screens', {})
+
+    if not has_screen_access(source):
+        return jsonify({'ok': False, 'error': 'Accès refusé à l\'écran source'})
+    if source != '' and source not in screens:
+        return jsonify({'ok': False, 'error': 'Écran source introuvable'})
+
+    valid_targets = [
+        str(t).strip().lower() for t in targets
+        if str(t).strip().lower() in screens and has_screen_access(str(t).strip().lower())
+    ]
+    if not valid_targets:
+        return jsonify({'ok': False, 'error': 'Aucune cible valide'})
+
+    src = cfg if source == '' else screens[source]
+    for t in valid_targets:
+        for key in ('order', 'disabled', 'disabled_groups', 'durations', 'schedules'):
+            screens[t][key] = copy.deepcopy(src.get(key, [] if key not in ('durations', 'schedules') else {}))
+
+    cfg.setdefault('broadcast_links', {})[source] = valid_targets
+    save_config(cfg)
+    log_config_change(session.get('user'), f'diffusion écran {source} → {", ".join(valid_targets)}')
+    return jsonify({'ok': True, 'targets': valid_targets})
+
+
+@bp.route('/admin/screens/broadcast/stop', methods=['POST'])
+def broadcast_stop():
+    redir = admin_guard()
+    if redir: return redir
+
+    data   = request.get_json(silent=True) or {}
+    source = data.get('source', '').strip().lower()
+
+    if not has_screen_access(source):
+        return jsonify({'ok': False, 'error': 'Accès refusé'})
+
+    cfg = load_config()
+    cfg.setdefault('broadcast_links', {}).pop(source, None)
+    save_config(cfg)
+    log_config_change(session.get('user'), f'diffusion arrêtée:{source}')
+    return jsonify({'ok': True})
+
 
 @bp.route('/screen_assign/<path:filename>', methods=['POST'])
 def screen_assign(filename):

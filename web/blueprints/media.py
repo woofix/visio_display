@@ -1,5 +1,6 @@
 # Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
+import copy
 import json
 import os
 from datetime import datetime, timedelta
@@ -54,6 +55,19 @@ def _get_uploaded_file_size(file_storage):
         return size
     except (AttributeError, OSError):
         return 0
+
+
+def _propagate_broadcast(source, cfg):
+    targets = cfg.get('broadcast_links', {}).get(source, [])
+    if not targets:
+        return
+    screens = cfg.get('screens', {})
+    src = cfg if source == '' else screens.get(source, {})
+    for t in targets:
+        if t in screens:
+            for key in ('order', 'disabled', 'disabled_groups', 'durations', 'schedules'):
+                default = {} if key in ('durations', 'schedules') else []
+                screens[t][key] = copy.deepcopy(src.get(key, default))
 
 
 def _get_schedule_bucket(cfg, screen):
@@ -256,6 +270,10 @@ def admin_media():
     group_states = collect_group_states(files, effective_cfg, screen=screen)
     disabled_map = {f: is_media_disabled(f, effective_cfg) for f in files}
 
+    broadcast_links = cfg.get('broadcast_links', {})
+    active_broadcast_targets = broadcast_links.get(screen, [])
+    broadcast_source = next((src for src, tgts in broadcast_links.items() if screen in tgts), None)
+
     return render_template('admin_media.html',
         files=files, unassigned=unassigned, infos=infos, cfg=view_cfg, queued=queued,
         schedules=schedules, current_screen=screen, screens=screens,
@@ -265,7 +283,9 @@ def admin_media():
         users=list(users.keys()), current_user=session.get('user'),
         logo_path=get_logo_path(), can_toggle=has_permission('toggle'),
         can_schedule=has_permission('schedule'),
-        current_user_is_superadmin=is_superadmin())
+        current_user_is_superadmin=is_superadmin(),
+        active_broadcast_targets=active_broadcast_targets,
+        broadcast_source=broadcast_source)
 
 
 @bp.route('/admin/programming')
@@ -540,6 +560,7 @@ def toggle_file(filename):
         disabled.append(filename)
         state = "disabled"
 
+    _propagate_broadcast(screen, cfg)
     save_config(cfg)
     details = state + (' → ' + screen if screen else '')
     log_activity(session.get('user'), 'toggle', filename=filename, details=details)
@@ -659,6 +680,7 @@ def toggle_group(group_name):
         disabled_groups.append(normalized_group)
         state = "disabled"
 
+    _propagate_broadcast(screen, cfg)
     save_config(cfg)
     details = state + ' (groupe: ' + normalized_group + ')' + (' → ' + screen if screen else '')
     log_activity(session.get('user'), 'toggle', filename=None, details=details)
@@ -687,6 +709,7 @@ def set_duration(filename):
     else:
         cfg.setdefault('durations', {})[filename] = duration
 
+    _propagate_broadcast(screen, cfg)
     save_config(cfg)
     log_activity(session.get('user'), 'config', filename=filename,
                  details=f'durée={duration}s ({_scope_details(screen)})')
@@ -713,6 +736,7 @@ def reorder():
     else:
         cfg['order'] = order
 
+    _propagate_broadcast(screen, cfg)
     save_config(cfg)
     log_activity(session.get('user'), 'config', details=f'ordre mis à jour ({len(order)} médias, {_scope_details(screen)})')
     return jsonify({"ok": True})
@@ -742,6 +766,7 @@ def set_schedule(filename):
         schedules[filename] = sched
     elif filename in schedules:
         del schedules[filename]
+    _propagate_broadcast(screen, cfg)
     save_config(cfg)
     log_activity(session.get('user'), 'config', filename=filename,
                  details=f'programmation mise à jour ({_scope_details(screen)}): {_schedule_details(sched)}')

@@ -6,6 +6,7 @@ set -euo pipefail
 REPO_URL="https://github.com/woofix/visio_display.git"
 DEFAULT_INSTALL_DIR="$(pwd)/visio_display"
 DEFAULT_PORT="8081"
+RUN_UPDATE=0
 
 # ── Couleurs ──────────────────────────────────────────────────────────────────
 BOLD='\033[1m'
@@ -40,6 +41,7 @@ if [ -d "$INSTALL_DIR/.git" ]; then
     if [[ "$UPDATE_EXISTING" =~ ^[oOyY]$ ]]; then
         git -C "$INSTALL_DIR" pull --ff-only
         ok "Dépôt mis à jour."
+        RUN_UPDATE=1
     fi
 elif [ -d "$INSTALL_DIR" ] && [ -n "$(ls -A "$INSTALL_DIR" 2>/dev/null)" ]; then
     die "Le dossier $INSTALL_DIR existe et n'est pas vide. Choisissez un autre dossier."
@@ -50,6 +52,15 @@ else
 fi
 
 cd "$INSTALL_DIR"
+
+if [ "$RUN_UPDATE" -eq 1 ]; then
+    header "Durcissement sécurité"
+    ./scripts/security_bootstrap.sh update "$INSTALL_DIR"
+    docker compose pull --quiet 2>/dev/null || true
+    docker compose up -d --build
+    ok "Mise à jour terminée sans remplacer les secrets existants."
+    exit 0
+fi
 
 # ── Compte administrateur ─────────────────────────────────────────────────────
 header "Création du compte administrateur"
@@ -145,6 +156,10 @@ EOF
 
 chmod 600 "$INSTALL_DIR/.env"
 ok "Fichier .env généré."
+
+# ── Durcissement sécurité ─────────────────────────────────────────────────────
+header "Durcissement sécurité"
+./scripts/security_bootstrap.sh install "$INSTALL_DIR"
 
 # ── Lancement ─────────────────────────────────────────────────────────────────
 header "Lancement des containers"

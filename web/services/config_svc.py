@@ -95,6 +95,7 @@ def _default_config():
         "groups": {},
         "group_pools": {},
         "group_screens": {},
+        "broadcast_links": {},
         "disabled_groups": [],
         "default_screen_name": "",
         "default_halo_color": DEFAULT_HALO_COLOR,
@@ -119,6 +120,11 @@ def normalize_config(cfg):
     merged["groups"] = cfg.get("groups", {}) if isinstance(cfg.get("groups"), dict) else {}
     merged["group_pools"] = cfg.get("group_pools", {}) if isinstance(cfg.get("group_pools"), dict) else {}
     merged["group_screens"] = cfg.get("group_screens", {}) if isinstance(cfg.get("group_screens"), dict) else {}
+    raw_bl = cfg.get("broadcast_links", {})
+    merged["broadcast_links"] = {
+        str(k): [str(t) for t in v] if isinstance(v, list) else []
+        for k, v in raw_bl.items()
+    } if isinstance(raw_bl, dict) else {}
     merged["campaigns"] = cfg.get("campaigns", []) if isinstance(cfg.get("campaigns"), list) else []
     merged["hidden_recent_jobs"] = [
         str(job_id) for job_id in cfg.get("hidden_recent_jobs", [])

@@ -256,6 +256,63 @@ class AppSmokeTests(unittest.TestCase):
             self.assertIsNotNone(get_user("operator"))
             self.assertTrue(verify_user_password("operator", "operator-pass-123"))
 
+    def test_superadmin_can_create_user_with_role_permissions_visible(self):
+        with self.app.app_context():
+            from services.rbac_svc import get_role_by_name
+
+            admin_role = get_role_by_name("admin")
+            self.assertIsNotNone(admin_role)
+
+        with self.client.session_transaction() as session:
+            session["user"] = "admin"
+            session["_csrf_token"] = "create-role-token"
+            token = session["_csrf_token"]
+
+        response = self.client.post(
+            "/admin/users/add",
+            data={
+                "username": "operator",
+                "password": "operator-pass-123",
+                "role_id": str(admin_role.id),
+                "_csrf_token": token,
+            },
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 302)
+
+        with self.app.app_context():
+            from constants import ALL_PERMISSIONS
+            from services.rbac_svc import get_effective_permissions_for_user
+
+            expected_permissions = {key for key, _ in ALL_PERMISSIONS}
+            self.assertEqual(get_effective_permissions_for_user("operator"), expected_permissions)
+
+        page = self.client.get("/admin/settings/comptes-permissions")
+        self.assertEqual(page.status_code, 200)
+        body = page.get_data(as_text=True)
+        self.assertIn("9 permission(s) active(s)", body)
+        self.assertIn("via rôle", body)
+
+    def test_search_hides_superadmin_links_for_regular_users(self):
+        with self.app.app_context():
+            from services.users_svc import create_user
+
+            create_user("operator", "operator-pass-123", permissions=[])
+
+        with self.client.session_transaction() as session:
+            session["user"] = "operator"
+
+        response = self.client.get("/api/search?q=utilisateurs")
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        urls = {item["url"] for item in payload["pages"]}
+        config_urls = {item["url"] for item in payload["config"]}
+
+        self.assertNotIn("/admin/settings/comptes-permissions", urls)
+        self.assertNotIn("/admin/roles", urls)
+        self.assertNotIn("/admin/settings/gestion-ecrans", config_urls)
+
     def test_save_config_normalizes_missing_sections(self):
         with self.app.app_context():
             from services.config_svc import load_config, save_config

@@ -85,6 +85,12 @@ _PAGES_FR = [
         'keywords': 'gestion utilisateurs comptes administrateurs permissions droits accès mot de passe compte créer supprimer',
     },
     {
+        'title': 'Rôles et permissions',
+        'url': '/admin/roles',
+        'description': 'Créer des rôles et attribuer leurs permissions aux utilisateurs',
+        'keywords': 'rôles role permissions droits utilisateurs attribution profil administrateur éditeur lecteur',
+    },
+    {
         'title': 'Gestion des écrans',
         'url': '/admin/settings/gestion-ecrans',
         'description': 'Ajouter et gérer les écrans connectés',
@@ -335,6 +341,12 @@ _PAGES_EN = [
         'url': '/admin/settings/comptes-permissions',
         'description': 'Manage administrator accounts and permissions',
         'keywords': 'user management accounts administrators permissions rights access password create delete',
+    },
+    {
+        'title': 'Roles and permissions',
+        'url': '/admin/roles',
+        'description': 'Create roles and assign their permissions to users',
+        'keywords': 'roles permissions rights users assignment profile administrator editor viewer',
     },
     {
         'title': 'Display Screens',

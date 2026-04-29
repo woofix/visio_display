@@ -19,7 +19,29 @@ MAX_PER_CATEGORY = 20
 
 _URL_PERMISSION_MAP = [
     ('/admin/upload', 'upload'),
+    ('/admin/programming', 'schedule'),
 ]
+
+_URL_FEATURE_MAP = [
+    ('/admin/upload', 'upload'),
+    ('/admin/campaigns', 'campaigns'),
+    ('/admin/programming', 'schedule'),
+    ('/admin/activity', 'activity'),
+]
+
+_URL_SUPERADMIN_PREFIXES = (
+    '/admin/roles',
+    '/admin/update',
+    '/admin/settings/administration',
+    '/admin/settings/comptes-permissions',
+    '/admin/settings/ajouter-compte',
+    '/admin/settings/gestion-ecrans',
+    '/admin/settings/alerte-prioritaire',
+    '/admin/settings/sauvegardes',
+    '/admin/settings/meteo',
+    '/admin/settings/fonctionnalites',
+    '/admin/settings/installation',
+)
 
 _CANONICAL_URL_ALIASES = {
     '/admin/settings#logo': '/admin/settings/logo',
@@ -45,11 +67,21 @@ def _canonical_url(url):
     return _CANONICAL_URL_ALIASES.get(url, url)
 
 
-def _split_restricted(pages, has_perm_fn):
+def _is_url_available(url, *, superadmin=False, feature_enabled_fn=None):
+    feature_enabled_fn = feature_enabled_fn or (lambda _feature: True)
+    if not superadmin and any(url.startswith(prefix) for prefix in _URL_SUPERADMIN_PREFIXES):
+        return False
+    required_feature = next((feature for prefix, feature in _URL_FEATURE_MAP if url.startswith(prefix)), None)
+    return not (required_feature and not feature_enabled_fn(required_feature))
+
+
+def _split_restricted(pages, has_perm_fn, *, superadmin=False, feature_enabled_fn=None):
     accessible, restricted = [], []
     for page in pages:
         url = _canonical_url(page.get('url', ''))
         page = {**page, 'url': url}
+        if not _is_url_available(url, superadmin=superadmin, feature_enabled_fn=feature_enabled_fn):
+            continue
         required = next((p for prefix, p in _URL_PERMISSION_MAP if url.startswith(prefix)), None)
         if required and not has_perm_fn(required):
             restricted.append({**page, 'required_perm': required})
@@ -255,14 +287,23 @@ def _run_search(query, cfg, lang='fr', superadmin=False, has_perm_fn=None):
         has_perm_fn = lambda p: True
 
     all_pages = _search_index(query, lang, 'page')
-    accessible_pages, restricted_pages = _split_restricted(all_pages, has_perm_fn)
+    from services.config_svc import is_feature_enabled
+    accessible_pages, restricted_pages = _split_restricted(
+        all_pages,
+        has_perm_fn,
+        superadmin=superadmin,
+        feature_enabled_fn=is_feature_enabled,
+    )
 
     results = {
         'pages':      accessible_pages,
         'wiki':       _search_index(query, lang, 'wiki'),
         'media':      _search_media(query, cfg),
         'campaigns':  _search_campaigns(query, cfg),
-        'config':     _search_config(query, cfg),
+        'config':     [
+            item for item in _search_config(query, cfg)
+            if _is_url_available(item.get('url', ''), superadmin=superadmin, feature_enabled_fn=is_feature_enabled)
+        ],
         'activity':   _search_activity(query),
         'restricted': restricted_pages,
     }

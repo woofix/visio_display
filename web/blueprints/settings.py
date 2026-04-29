@@ -24,7 +24,7 @@ from services.backup_svc import (
 )
 from services.clients_svc import list_known_clients
 from services.config_svc import load_config, save_config
-from services.rbac_svc import get_all_roles, get_user_roles
+from services.rbac_svc import get_all_roles, get_effective_permissions_for_user, get_user_roles
 from services.users_svc import (
     has_permission,
     has_screen_access,
@@ -199,6 +199,14 @@ def _build_settings_context(tab='logo', install_defaults=None, install_result=No
     active_tab = _normalize_settings_tab(tab)
     if active_tab in {'installation', 'sauvegardes', 'administration', 'priority-alert', 'accounts', 'add-account', 'screens', 'features', 'meteo'} and not is_sa:
         active_tab = 'logo'
+    effective_permissions_map = {}
+    role_permissions_map = {}
+    if is_sa:
+        for account_name, account_entry in users.items():
+            direct_permissions = set(account_entry.get('permissions', [])) if isinstance(account_entry, dict) else set()
+            role_permissions = set(get_effective_permissions_for_user(account_name))
+            role_permissions_map[account_name] = sorted(role_permissions)
+            effective_permissions_map[account_name] = sorted(direct_permissions | role_permissions)
     return dict(
         cfg=cfg,
         users=users,
@@ -243,6 +251,8 @@ def _build_settings_context(tab='logo', install_defaults=None, install_result=No
         all_screens=['', *cfg.get('screens', {}).keys()] if is_sa else [],
         all_roles=get_all_roles() if is_sa else [],
         user_roles_map={u: [r.display_name for r in get_user_roles(u)] for u in users.keys()} if is_sa else {},
+        user_effective_permissions_map=effective_permissions_map,
+        user_role_permissions_map=role_permissions_map,
         manageable_screens=manageable_screens,
         priority_alert=cfg.get('priority_alert', {}) if is_sa else {},
         tab=active_tab,

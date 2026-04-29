@@ -1246,18 +1246,25 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                                 {% if entry.superadmin %}
                                     {{ t('superadmin_all_perms') }}
                                 {% else %}
-                                    {% set perms = entry.permissions | default([]) %}
-                                    {% if perms|length == 0 %}{{ t('superadmin_no_perm') }}{% else %}{{ t('superadmin_n_perms', n=perms|length) }}{% endif %}
+                                    {% set direct_perms = entry.permissions | default([]) %}
+                                    {% set effective_perms = user_effective_permissions_map.get(username, direct_perms) if user_effective_permissions_map is defined else direct_perms %}
+                                    {% if effective_perms|length == 0 %}{{ t('superadmin_no_perm') }}{% else %}{{ t('superadmin_n_perms', n=effective_perms|length) }}{% endif %}
                                 {% endif %}
                             </div>
                             {% if not entry.superadmin and user_roles_map is defined %}
                             {% set uroles = user_roles_map.get(username, []) %}
+                            {% set role_perms = user_role_permissions_map.get(username, []) if user_role_permissions_map is defined else [] %}
                             <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;align-items:center">
                                 {% for rname in uroles %}
                                 <span style="font-size:.65rem;padding:1px 7px;border-radius:8px;background:var(--primary-bg);color:var(--primary);font-weight:600">{{ rname }}</span>
                                 {% endfor %}
                                 <a href="/admin/roles" style="font-size:.65rem;color:var(--primary);text-decoration:underline;margin-left:2px">{{ t('nav_roles') }}</a>
                             </div>
+                            {% if role_perms %}
+                            <div style="font-size:.68rem;color:var(--text-3);margin-top:5px">
+                                {{ t('superadmin_role_perms_hint', n=role_perms|length) }}
+                            </div>
+                            {% endif %}
                             {% endif %}
                         </div>
                         {% if not entry.superadmin %}
@@ -1280,10 +1287,12 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                         <form action="/admin/users/permissions/{{ username }}" method="post">
                             <div class="perm-grid">
                                 {% for perm_key, perm_label in all_permissions %}
+                                {% set direct_perms = entry.permissions | default([]) %}
+                                {% set role_perms = user_role_permissions_map.get(username, []) if user_role_permissions_map is defined else [] %}
                                 <div class="perm-item">
                                     <input type="checkbox" name="perm_{{ perm_key }}" id="perm_{{ username }}_{{ perm_key }}"
-                                           {% if perm_key in (entry.permissions | default([])) %}checked{% endif %}>
-                                    <label for="perm_{{ username }}_{{ perm_key }}">{{ perm_label }}</label>
+                                           {% if perm_key in direct_perms %}checked{% endif %}>
+                                    <label for="perm_{{ username }}_{{ perm_key }}">{{ perm_label }}{% if perm_key in role_perms and perm_key not in direct_perms %} <span style="font-size:.65rem;color:var(--text-3)">({{ t('superadmin_inherited_perm') }})</span>{% endif %}</label>
                                 </div>
                                 {% endfor %}
                             </div>

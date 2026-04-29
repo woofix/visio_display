@@ -33,7 +33,7 @@ bp = Blueprint('users', __name__)
 def admin_superadmin_page():
     g = superadmin_guard()
     if g: return g
-    return redirect('/admin/settings#superadmin')
+    return redirect('/admin/settings/administration')
 
 
 @bp.route('/admin/users/add', methods=['POST'])
@@ -44,23 +44,23 @@ def add_user():
     password = request.form.get('password', '').strip()
     if not username or not password:
         _flash('flash_user_pass_required', 'error')
-        return redirect('/admin/settings#superadmin')
+        return redirect('/admin/settings/ajouter-compte')
     if not is_valid_username(username):
         _flash('flash_invalid_username', 'error')
-        return redirect('/admin/settings#superadmin')
+        return redirect('/admin/settings/ajouter-compte')
     if not is_valid_password(password):
         _flash('flash_password_too_short', 'error')
-        return redirect('/admin/settings#superadmin')
+        return redirect('/admin/settings/ajouter-compte')
     if user_exists(username):
         _flash('flash_user_exists', 'error', username=username)
-        return redirect('/admin/settings#superadmin')
+        return redirect('/admin/settings/ajouter-compte')
     create_user(username, password, superadmin=False, permissions=[])
     role_id = request.form.get('role_id', '').strip()
     if role_id.isdigit():
         set_user_roles(username, [int(role_id)])
     log_config_change(session.get('user'), f'utilisateur créé:{username}')
     _flash('flash_user_created', 'success', username=username)
-    return redirect('/admin/settings#superadmin')
+    return redirect('/admin/settings/comptes-permissions')
 
 
 @bp.route('/admin/users/delete/<username>', methods=['POST'])
@@ -70,14 +70,14 @@ def delete_user(username):
     user = get_user(username)
     if user is not None and user.superadmin:
         _flash('flash_cannot_delete_superadmin', 'error')
-        return redirect('/admin/settings#superadmin')
+        return redirect('/admin/settings/comptes-permissions')
     if user is None:
         _flash('flash_user_not_found', 'error')
-        return redirect('/admin/settings#superadmin')
+        return redirect('/admin/settings/comptes-permissions')
     delete_user_account(username)
     log_config_change(session.get('user'), f'utilisateur supprimé:{username}')
     _flash('flash_user_deleted', 'success', username=username)
-    return redirect('/admin/settings#superadmin')
+    return redirect('/admin/settings/comptes-permissions')
 
 
 @bp.route('/admin/users/password', methods=['POST'])
@@ -89,14 +89,14 @@ def change_password():
     username = session.get('user')
     if not verify_user_password(username, current):
         _flash('flash_wrong_password', 'error')
-        return redirect('/admin/settings#admins')
+        return redirect('/admin/settings/mot-de-passe')
     if not is_valid_password(new_pwd):
         _flash('flash_new_password_too_short', 'error')
-        return redirect('/admin/settings#admins')
+        return redirect('/admin/settings/mot-de-passe')
     set_user_password(username, new_pwd)
     log_config_change(username, 'mot de passe modifié')
     _flash('flash_password_updated', 'success')
-    return redirect('/admin/settings#admins')
+    return redirect('/admin/settings/mot-de-passe')
 
 
 @bp.route('/admin/users/reset_password/<username>', methods=['POST'])
@@ -116,15 +116,15 @@ def _reset_user_password_for(username):
     user = get_user(username)
     if user is None:
         _flash('flash_user_not_found', 'error')
-        return redirect('/admin/settings#superadmin')
+        return redirect('/admin/settings/comptes-permissions')
     new_pwd = request.form.get('new_password', '').strip()
     if not is_valid_password(new_pwd):
         _flash('flash_new_password_too_short', 'error')
-        return redirect('/admin/settings#superadmin')
+        return redirect('/admin/settings/comptes-permissions')
     set_user_password(username, new_pwd)
     log_config_change(session.get('user'), f'mot de passe réinitialisé:{username}')
     _flash('flash_user_password_reset', 'success', username=username)
-    return redirect('/admin/settings#superadmin')
+    return redirect('/admin/settings/comptes-permissions')
 
 
 @bp.route('/admin/users/permissions/<username>', methods=['POST'])
@@ -134,15 +134,15 @@ def set_permissions(username):
     user = get_user(username)
     if user is None:
         _flash('flash_user_not_found', 'error')
-        return redirect('/admin/settings#superadmin')
+        return redirect('/admin/settings/comptes-permissions')
     if user.superadmin:
         _flash('flash_superadmin_perms_locked', 'error')
-        return redirect('/admin/settings#superadmin')
+        return redirect('/admin/settings/comptes-permissions')
     perms = [p for p, _ in ALL_PERMISSIONS if request.form.get(f'perm_{p}')]
     update_user_permissions(username, perms)
     log_config_change(session.get('user'), f'permissions {username}: {", ".join(perms) if perms else "aucune"}')
     _flash('flash_permissions_updated', 'success', username=username)
-    return redirect('/admin/settings#superadmin')
+    return redirect('/admin/settings/comptes-permissions')
 
 
 @bp.route('/admin/users/screens/<username>', methods=['POST'])
@@ -152,17 +152,17 @@ def set_user_screens(username):
     user = get_user(username)
     if user is None:
         _flash('flash_user_not_found', 'error')
-        return redirect('/admin/settings#superadmin')
+        return redirect('/admin/settings/comptes-permissions')
     if user.superadmin:
         _flash('flash_superadmin_perms_locked', 'error')
-        return redirect('/admin/settings#superadmin')
+        return redirect('/admin/settings/comptes-permissions')
     cfg         = load_config()
     all_screens = ['', *cfg.get('screens', {}).keys()]
     selected    = [s for s in all_screens if request.form.get(f'screen_{s}')]
     update_user_screens(username, selected)
     log_config_change(session.get('user'), f'écrans {username}: {", ".join(selected) if selected else "tous"}')
     _flash('flash_screens_updated', 'success', username=username)
-    return redirect('/admin/settings#superadmin')
+    return redirect('/admin/settings/comptes-permissions')
 
 
 @bp.route('/admin/priority-alert', methods=['POST'])

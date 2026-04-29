@@ -244,7 +244,7 @@
     </div>
     <div class="search-results-grid">
         {% for item in results.media %}
-        <a href="/admin/media#{{ item.filename }}" class="search-media-card {% if item.disabled %}search-media-disabled{% endif %}">
+        <a href="/admin/media" class="search-media-card {% if item.disabled %}search-media-disabled{% endif %}">
             {% if item.thumb_url %}
             <div class="search-media-thumb"><img src="{{ item.thumb_url }}" alt="{{ item.filename }}" loading="lazy"></div>
             {% else %}
@@ -346,11 +346,11 @@
         </svg>
         <span class="search-cat-title">Utilisateurs</span>
         <span class="search-cat-count">{{ results.users|length }}</span>
-        <a href="/admin/settings#admins" class="search-cat-link">Gérer les comptes →</a>
+        <a href="/admin/settings/admins" class="search-cat-link">Gérer les comptes →</a>
     </div>
     <div class="search-list">
         {% for u in results.users %}
-        <a href="/admin/settings#admins" class="search-list-item">
+        <a href="/admin/settings/admins" class="search-list-item">
             <div class="search-list-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             </div>

@@ -11,10 +11,18 @@ bp = Blueprint('wiki', __name__)
 
 @bp.route('/admin/wiki')
 def wiki_page():
+    return wiki_section_page('s1')
+
+
+@bp.route('/admin/wiki/<section>')
+def wiki_section_page(section='s1'):
     redir = admin_guard()
     if redir: return redir
+    if section not in {f's{i}' for i in range(1, 19)}:
+        section = 's1'
     cfg = load_config()
     return render_template('admin_wiki.html',
         cfg=cfg,
+        wiki_section=section,
         current_user=session.get('user'),
         logo_path=get_logo_path())

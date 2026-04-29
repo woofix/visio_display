@@ -141,7 +141,7 @@
             <div class="hero-stat-link">{{ t('stat_manage_files') }} <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>
         </a>
         {% if is_feature_enabled('videos') and is_feature_enabled('compress') %}
-        <a class="hero-stat" href="/admin/upload#encoding-queue">
+        <a class="hero-stat" href="/admin/queue">
             <div class="hero-stat-icon orange">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
             </div>
@@ -222,7 +222,7 @@
         <div class="quick-card-arrow">{{ t('quick_access') }} <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:12px;height:12px"><polyline points="9 18 15 12 9 6"/></svg></div>
     </a>
     {% if is_feature_enabled('videos') and is_feature_enabled('compress') %}
-    <a class="quick-card" href="/admin/upload#encoding-queue">
+    <a class="quick-card" href="/admin/queue">
         <div class="quick-card-icon blue">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
         </div>

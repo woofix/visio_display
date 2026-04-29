@@ -66,6 +66,7 @@ if ! git -C "$ROOT_DIR" diff --quiet -- VERSION; then
 fi
 
 current_version="$(tr -d '[:space:]' < "$VERSION_FILE")"
+
 IFS=.
 set -- $current_version
 IFS=' '
@@ -102,8 +103,44 @@ case "$BUMP_KIND" in
 esac
 
 new_version="$major.$minor.$patch"
-printf '%s\n' "$new_version" > "$VERSION_FILE"
+
+echo "pre-commit: version actuelle: $current_version"
+echo "pre-commit: version proposée: $new_version"
+echo "pre-commit: type détecté: $BUMP_KIND"
+
+if [ -t 0 ]; then
+    printf "Valider la version ? [Y/n/e=éditer] : "
+    read -r answer
+
+    case "$answer" in
+        ""|y|Y)
+            final_version="$new_version"
+            ;;
+        e|E)
+            printf "Entrer la version voulue (MAJOR.MINOR.PATCH) : "
+            read -r manual_version
+
+            if ! printf '%s' "$manual_version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+                echo "pre-commit: version invalide: $manual_version" >&2
+                exit 1
+            fi
+
+            final_version="$manual_version"
+            ;;
+        n|N)
+            echo "pre-commit: commit annulé."
+            exit 1
+            ;;
+        *)
+            echo "pre-commit: réponse invalide."
+            exit 1
+            ;;
+    esac
+else
+    final_version="$new_version"
+fi
+
+printf '%s\n' "$final_version" > "$VERSION_FILE"
 git -C "$ROOT_DIR" add VERSION
 
-echo "pre-commit: version $current_version -> $new_version"
-echo "pre-commit: type détecté: $BUMP_KIND"
+echo "pre-commit: version $current_version -> $final_version"

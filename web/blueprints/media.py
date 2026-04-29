@@ -533,7 +533,7 @@ def upload_file():
 
     redirect_url = "/admin/media"
     if queued_video_files:
-        redirect_url = "/admin/upload#encoding-queue"
+        redirect_url = "/admin/queue"
     return jsonify({"ok": True, "queued_files": queued_video_files, "redirect": redirect_url})
 
 

@@ -569,7 +569,7 @@ TRANSLATIONS = {
         'perm_duration': "Modifier la durée d'affichage",
         'perm_compress': 'Compresser des vidéos',
         'perm_logo': 'Changer le logo',
-        'perm_ephemeris': "Régénérer l'éphéméride",
+        'perm_ephemeris': "Gérer les événements de l'éphéméride",
         'perm_schedule': "Programmer l'affichage des médias",
 
         # ── Flash messages ──
@@ -980,7 +980,7 @@ TRANSLATIONS = {
         'wiki_perm_duration': 'Modifier la durée d\'affichage',
         'wiki_perm_compress': 'Mettre en file d\'encodage, annuler une tâche',
         'wiki_perm_logo': 'Changer ou réinitialiser le logo de l\'application',
-        'wiki_perm_ephemeris': 'Régénérer la carte éphéméride, gérer les comptes à rebours',
+        'wiki_perm_ephemeris': "Gérer les comptes à rebours de l'éphéméride",
         'wiki_perm_schedule': 'Définir des planifications horaires et de dates',
         'wiki_s12_superadmin': 'Le super-admin dispose de toutes les permissions et peut en plus : créer/supprimer des comptes, créer/supprimer des écrans, personnaliser le nom de l\'application, configurer la localisation météo, publier une alerte prioritaire et forcer l\'encodage hors fenêtre nocturne.',
         'wiki_s12_note': "Les permissions peuvent être combinées librement. Donnez seulement les droits nécessaires à la tâche de l'utilisateur.",
@@ -1779,7 +1779,7 @@ TRANSLATIONS = {
         'perm_duration': 'Change display duration',
         'perm_compress': 'Compress videos',
         'perm_logo': 'Change logo',
-        'perm_ephemeris': 'Regenerate ephemeris',
+        'perm_ephemeris': 'Manage ephemeris events',
         'perm_schedule': 'Schedule media display',
 
         # ── Flash messages ──
@@ -2177,7 +2177,7 @@ TRANSLATIONS = {
         'wiki_perm_duration': 'Change display duration',
         'wiki_perm_compress': 'Queue for encoding, cancel a job',
         'wiki_perm_logo': 'Change or reset the application logo',
-        'wiki_perm_ephemeris': 'Regenerate the ephemeris card, manage countdowns',
+        'wiki_perm_ephemeris': 'Manage ephemeris countdowns',
         'wiki_perm_schedule': 'Define time and date schedules',
         'wiki_s12_superadmin': 'The super-admin has all permissions and can additionally: create/delete accounts, create/delete screens, customise the application name, configure the weather location, publish a priority alert and force encoding outside the nightly window.',
         'wiki_s12_note': "Permissions can be combined freely. Give only the rights necessary for the user's task.",

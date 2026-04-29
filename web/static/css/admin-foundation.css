@@ -616,6 +616,25 @@ body.sidebar-open {
     margin: 0 auto;
 }
 
+.admin-site-footer {
+    position: relative;
+    z-index: 1;
+    padding: 0 28px 24px;
+    color: var(--text-4);
+    font-size: .72rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+.admin-site-footer a {
+    color: var(--primary);
+    text-decoration: none;
+}
+
+.admin-site-footer a:hover {
+    text-decoration: underline;
+}
+
 .page-header {
     margin-bottom: 22px;
     display: flex;
@@ -1327,6 +1346,10 @@ body.sidebar-open {
         padding: 18px 16px 42px;
     }
 
+    .admin-site-footer {
+        padding: 0 16px 20px;
+    }
+
     .mobile-nav-toggle {
         display: inline-flex;
     }
@@ -1356,6 +1379,10 @@ body.sidebar-open {
     }
 
     .content {
+        padding-inline: 12px;
+    }
+
+    .admin-site-footer {
         padding-inline: 12px;
     }
 

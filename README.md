@@ -394,7 +394,6 @@ L'interface conserve automatiquement uniquement les **5 sauvegardes les plus ré
 | `duration`    | Modifier la durée d'affichage par média                                  |
 | `compress`    | Mettre des vidéos en file de compression                                 |
 | `logo`        | Changer ou réinitialiser le logo                                         |
-| `ephemeris`   | Gérer les comptes à rebours de l'éphéméride et sa régénération automatique |
 | `schedule`    | Programmer l'affichage des médias (horaires / dates)                     |
 
 ### Restrictions d'écrans par utilisateur
@@ -528,7 +527,7 @@ Visio-Display/
 | `/set_group_screens/<group_name>`         | POST    | `toggle`           | Lier un groupe à des écrans spécifiques (liste vide = global) |
 | `/compress/<filename>`                    | POST    | `compress`         | Mettre une vidéo en file de compression              |
 | `/queue/cancel/<job_id>`                  | POST    | `compress`         | Annuler un job en attente                            |
-| `/regen_ephemeride`                       | POST    | `ephemeris`        | Déclencher manuellement la régénération de l'éphéméride (compatibilité / usage interne) |
+| `/regen_ephemeride`                       | POST    | Super-admin        | Déclencher manuellement la régénération de l'éphéméride (compatibilité / usage interne) |
 | `/schedule/<filename>`                    | POST    | `schedule`         | Définir la programmation horaire/date d'un média     |
 | `/screen_assign/<filename>`               | POST    | `toggle`           | Assigner / retirer un média d'un écran nommé         |
 | `/admin/screens/add`                      | POST    | Connecté           | Créer un écran nommé                                 |
@@ -568,8 +567,8 @@ Visio-Display/
 | `/admin/roles/<id>/edit`                  | POST    | Super-admin        | Modifier le nom/description d'un rôle                |
 | `/admin/roles/<id>/permissions`           | POST    | Super-admin        | Modifier les permissions d'un rôle                   |
 | `/admin/roles/<id>/delete`                | POST    | Super-admin        | Supprimer un rôle (hors rôles système)               |
-| `/admin/events/add`                       | POST    | `ephemeris`        | Ajouter un compte à rebours dans l'éphéméride        |
-| `/admin/events/delete/<idx>`              | POST    | `ephemeris`        | Supprimer un compte à rebours                        |
+| `/admin/events/add`                       | POST    | Super-admin        | Ajouter un compte à rebours dans l'éphéméride        |
+| `/admin/events/delete/<idx>`              | POST    | Super-admin        | Supprimer un compte à rebours                        |
 | `/admin/queue/force`                      | POST    | Super-admin        | Forcer l'encodage de toute la file immédiatement     |
 | `/admin/compress/<filename>/force`        | POST    | Super-admin        | Forcer l'encodage d'un seul fichier immédiatement    |
 | `/admin/priority-alert`                   | POST    | Super-admin        | Publier ou effacer l'alerte prioritaire              |
@@ -1040,7 +1039,6 @@ If there is only one super-admin account, you can omit `--user <super-admin-name
 | `duration`    | Set custom display duration per item                                  |
 | `compress`    | Queue videos for compression                                          |
 | `logo`        | Change or reset the application logo                                  |
-| `ephemeris`   | Manage ephemeris countdown events and its automatic regeneration      |
 | `schedule`    | Schedule media display by time of day and/or date range               |
 
 ### Per-screen access restrictions
@@ -1174,7 +1172,7 @@ Visio-Display/
 | `/set_group_screens/<group_name>`         | POST    | `toggle`           | Link a group to specific screens (empty list = global)  |
 | `/compress/<filename>`                    | POST    | `compress`         | Queue a video for compression                           |
 | `/queue/cancel/<job_id>`                  | POST    | `compress`         | Cancel a pending compression job                        |
-| `/regen_ephemeride`                       | POST    | `ephemeris`        | Manually trigger ephemeris card regeneration (compatibility / internal use) |
+| `/regen_ephemeride`                       | POST    | Super-admin        | Manually trigger ephemeris card regeneration (compatibility / internal use) |
 | `/schedule/<filename>`                    | POST    | `schedule`         | Set time/date scheduling for a media item               |
 | `/screen_assign/<filename>`               | POST    | `toggle`           | Assign / remove a media item from a named screen        |
 | `/admin/screens/add`                      | POST    | Logged in          | Create a named screen                                   |
@@ -1214,8 +1212,8 @@ Visio-Display/
 | `/admin/roles/<id>/edit`                  | POST    | Super-admin        | Update a role name / description                        |
 | `/admin/roles/<id>/permissions`           | POST    | Super-admin        | Update a role's permissions                             |
 | `/admin/roles/<id>/delete`                | POST    | Super-admin        | Delete a role (system roles are protected)              |
-| `/admin/events/add`                       | POST    | `ephemeris`        | Add a countdown event to the ephemeris card             |
-| `/admin/events/delete/<idx>`              | POST    | `ephemeris`        | Delete a countdown event                                |
+| `/admin/events/add`                       | POST    | Super-admin        | Add a countdown event to the ephemeris card             |
+| `/admin/events/delete/<idx>`              | POST    | Super-admin        | Delete a countdown event                                |
 | `/admin/queue/force`                      | POST    | Super-admin        | Force-process all pending encoding jobs immediately     |
 | `/admin/compress/<filename>/force`        | POST    | Super-admin        | Force-encode a single file immediately                  |
 | `/admin/priority-alert`                   | POST    | Super-admin        | Publish or clear the priority alert banner              |

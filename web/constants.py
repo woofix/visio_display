@@ -103,7 +103,6 @@ ALL_PERMISSIONS = [
     ("duration",  "perm_duration"),
     ("compress",  "perm_compress"),
     ("logo",      "perm_logo"),
-    ("ephemeris", "perm_ephemeris"),
     ("schedule",  "perm_schedule"),
 ]
 

@@ -64,6 +64,9 @@ _CANONICAL_URL_ALIASES = {
 
 
 def _canonical_url(url):
+    wiki_hash_match = re.fullmatch(r'(/admin/wiki)#(s\d+)', url or '')
+    if wiki_hash_match:
+        return f'{wiki_hash_match.group(1)}/{wiki_hash_match.group(2)}'
     return _CANONICAL_URL_ALIASES.get(url, url)
 
 

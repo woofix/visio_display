@@ -8,14 +8,14 @@ from services.activity_svc import log_config_change
 from services.config_svc import load_config, save_config
 from services.ephemeris_svc import generate_ephemeride_image
 from services.i18n import _flash
-from blueprints.guards import feature_guard_json, perm_guard, permission_redirect_guard
+from blueprints.guards import feature_guard_json, superadmin_guard, superadmin_guard_json
 
 bp = Blueprint('ephemeris', __name__)
 
 
 @bp.route('/regen_ephemeride', methods=['POST'])
 def regen_ephemeride():
-    g = perm_guard('ephemeris')
+    g = superadmin_guard_json()
     if g: return g
     g = feature_guard_json('ephemeris')
     if g: return g
@@ -25,7 +25,7 @@ def regen_ephemeride():
 
 @bp.route('/admin/events/add', methods=['POST'])
 def add_event():
-    redir = permission_redirect_guard('ephemeris', 'settings.admin_settings_section_page', section='meteo')
+    redir = superadmin_guard()
     if redir:
         return redir
     label    = request.form.get('label', '').strip()
@@ -49,7 +49,7 @@ def add_event():
 
 @bp.route('/admin/events/delete/<int:idx>', methods=['POST'])
 def delete_event(idx):
-    redir = permission_redirect_guard('ephemeris', 'settings.admin_settings_section_page', section='meteo')
+    redir = superadmin_guard()
     if redir:
         return redir
     cfg    = load_config()

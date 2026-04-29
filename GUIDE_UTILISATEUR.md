@@ -338,7 +338,7 @@ La carte éphéméride est une image générée automatiquement qui s'intègre d
 
 ### Gérer les événements datés
 
-> **Permission requise :** `ephemeris`
+> **Accès requis :** super-admin
 
 Seuls les **prochains événements à venir** sont affichés sur la carte. Le libellé saisi dans les paramètres est repris tel quel.
 
@@ -486,7 +486,6 @@ L'alerte prioritaire permet de diffuser **immédiatement** un message en banniè
 | `duration` | Modifier la durée d'affichage |
 | `compress` | Mettre en file d'encodage, annuler une tâche |
 | `logo` | Changer ou réinitialiser le logo de l'application |
-| `ephemeris` | Régénérer la carte éphéméride, gérer les événements datés |
 | `schedule` | Définir des planifications horaires et de dates |
 
 ### Rôles et limites

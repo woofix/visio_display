@@ -55,7 +55,7 @@ cd "$INSTALL_DIR"
 
 if [ "$RUN_UPDATE" -eq 1 ]; then
     header "Durcissement sécurité"
-    ./scripts/security_bootstrap.sh update "$INSTALL_DIR"
+    bash ./scripts/security_bootstrap.sh update "$INSTALL_DIR"
     docker compose pull --quiet 2>/dev/null || true
     docker compose up -d --build
     ok "Mise à jour terminée sans remplacer les secrets existants."
@@ -159,7 +159,7 @@ ok "Fichier .env généré."
 
 # ── Durcissement sécurité ─────────────────────────────────────────────────────
 header "Durcissement sécurité"
-./scripts/security_bootstrap.sh install "$INSTALL_DIR"
+bash ./scripts/security_bootstrap.sh install "$INSTALL_DIR"
 
 # ── Lancement ─────────────────────────────────────────────────────────────────
 header "Lancement des containers"

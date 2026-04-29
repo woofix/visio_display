@@ -3,12 +3,21 @@
 import os
 import json
 import subprocess
+import threading
+import time
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
+
+from constants import PRIVATE_DATA_DIR
 
 
 SERVICE_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_REPO_CWD = os.path.normpath(os.path.join(SERVICE_DIR, "..", ".."))
+UPDATE_SCRIPT = os.path.join(DEFAULT_REPO_CWD, "scripts", "update.sh")
+UPDATE_STATE_FILE = os.path.join(PRIVATE_DATA_DIR, "update_state.json")
+UPDATE_LOG_FILE = os.path.join(PRIVATE_DATA_DIR, "update.log")
+UPDATE_LOCK_FILE = os.path.join(PRIVATE_DATA_DIR, "update.lock")
+MAINTENANCE_FILE = os.path.join(PRIVATE_DATA_DIR, "maintenance.flag")
 DEFAULT_VERSION_URL = "https://raw.githubusercontent.com/woofix/visio_display/main/VERSION"
 DEFAULT_LATEST_RELEASE_URL = "https://api.github.com/repos/woofix/visio_display/releases/latest"
 DEFAULT_TAGS_URL = "https://api.github.com/repos/woofix/visio_display/tags?per_page=100"
@@ -207,6 +216,7 @@ def _version_status(fetch=False, base_info=None):
         "has_local_changes": False,
         "local_version": _read_local_version(),
         "remote_version": "",
+        "can_update": False,
         "check_mode": "version",
     }
     if base_info:
@@ -241,6 +251,7 @@ def _version_status(fetch=False, base_info=None):
 
     info["fetch_ok"] = True
     comparison = _compare_versions(info["local_version"], remote_version)
+    info["can_update"] = comparison > 0
     if comparison > 0:
         info.update({
             "status": "update_available",
@@ -302,6 +313,7 @@ def get_update_status(fetch=False):
         "remotes": remotes,
         "local_version": _read_local_version(),
         "remote_version": "",
+        "can_update": False,
         "check_mode": "git",
     })
 
@@ -352,6 +364,7 @@ def get_update_status(fetch=False):
         "remote_version": _clean_version(remote_version_result["stdout"]) if remote_version_result["ok"] else "",
         "remote_source": "git",
     })
+    info["can_update"] = _compare_versions(info["local_version"], info["remote_version"]) > 0
 
     counts_result = _run_git(["rev-list", "--left-right", "--count", f"HEAD...{tracking_ref}"], repo_path, timeout=3)
     ahead = 0
@@ -381,10 +394,16 @@ def get_update_status(fetch=False):
             "status_label": "Version locale en avance",
             "status_tone": "info",
         })
-    elif behind:
+    elif behind and info["can_update"]:
         info.update({
             "status": "update_available",
             "status_label": "Mise à jour disponible",
+            "status_tone": "success",
+        })
+    elif behind:
+        info.update({
+            "status": "up_to_date",
+            "status_label": "Visio est à jour",
             "status_tone": "success",
         })
     else:
@@ -402,3 +421,196 @@ def get_update_status(fetch=False):
         })
 
     return info
+
+
+def _now():
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def _write_json(path, payload):
+    tmp_path = f"{path}.tmp"
+    with open(tmp_path, "w", encoding="utf-8") as handle:
+        json.dump(payload, handle, ensure_ascii=False, indent=2)
+    os.replace(tmp_path, path)
+
+
+def _read_json(path, default):
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            return json.load(handle)
+    except (OSError, ValueError, TypeError):
+        return dict(default)
+
+
+def _append_log(message):
+    line = str(message or "").rstrip()
+    with open(UPDATE_LOG_FILE, "a", encoding="utf-8") as handle:
+        handle.write(f"{line}\n")
+
+
+def _set_update_state(status, message, **extra):
+    state = get_runtime_update_state()
+    state.update({
+        "status": status,
+        "message": message,
+        "updated_at": _now(),
+    })
+    state.update(extra)
+    _write_json(UPDATE_STATE_FILE, state)
+    return state
+
+
+def _resolve_repo_path():
+    repo_cwd = os.environ.get("VISIO_GIT_ROOT", "").strip() or DEFAULT_REPO_CWD
+    root_result = _run_git(["rev-parse", "--show-toplevel"], repo_cwd, timeout=2)
+    if not root_result["ok"]:
+        return "", _first_line(root_result["stderr"]) or "dépôt Git introuvable"
+    return root_result["stdout"], ""
+
+
+def is_maintenance_mode():
+    return os.path.exists(MAINTENANCE_FILE)
+
+
+def enable_maintenance_mode():
+    with open(MAINTENANCE_FILE, "w", encoding="utf-8") as handle:
+        handle.write(_now())
+
+
+def disable_maintenance_mode():
+    try:
+        os.remove(MAINTENANCE_FILE)
+    except FileNotFoundError:
+        pass
+
+
+def _lock_exists():
+    return os.path.exists(UPDATE_LOCK_FILE)
+
+
+def get_runtime_update_state():
+    default = {
+        "status": "idle",
+        "message": "",
+        "started_at": "",
+        "updated_at": "",
+        "finished_at": "",
+        "target_version": "",
+        "returncode": None,
+    }
+    state = _read_json(UPDATE_STATE_FILE, default)
+    if _lock_exists() and state.get("status") not in {"running"}:
+        state["status"] = "running"
+        state["message"] = state.get("message") or "Mise à jour en cours"
+    if not _lock_exists() and state.get("status") == "running":
+        state["status"] = "error"
+        state["message"] = "Mise à jour interrompue"
+    state["maintenance"] = is_maintenance_mode()
+    state["logs"] = read_update_logs()
+    return state
+
+
+def read_update_logs():
+    try:
+        with open(UPDATE_LOG_FILE, "r", encoding="utf-8", errors="replace") as handle:
+            return handle.read()
+    except OSError:
+        return ""
+
+
+def _acquire_lock():
+    try:
+        fd = os.open(UPDATE_LOCK_FILE, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    except FileExistsError:
+        return None
+    os.write(fd, str(os.getpid()).encode("utf-8"))
+    return fd
+
+
+def _release_lock(fd):
+    try:
+        if fd is not None:
+            os.close(fd)
+    finally:
+        try:
+            os.remove(UPDATE_LOCK_FILE)
+        except FileNotFoundError:
+            pass
+
+
+def start_update():
+    if _lock_exists():
+        return {"status": "running", "message": "Mise à jour déjà en cours", "logs": read_update_logs()}, 409
+
+    status = get_update_status(fetch=True)
+    if status.get("has_local_changes"):
+        return {"status": "error", "message": "Dépôt Git non propre", "logs": read_update_logs()}, 409
+    if status.get("status") != "update_available" or not status.get("can_update"):
+        return {"status": "error", "message": "Déjà à jour", "logs": read_update_logs()}, 400
+
+    repo_path, repo_error = _resolve_repo_path()
+    if repo_error:
+        return {"status": "error", "message": repo_error, "logs": read_update_logs()}, 400
+
+    if not os.path.isfile(UPDATE_SCRIPT):
+        return {"status": "error", "message": "Script de mise à jour introuvable", "logs": read_update_logs()}, 500
+
+    lock_fd = _acquire_lock()
+    if lock_fd is None:
+        return {"status": "running", "message": "Mise à jour déjà en cours", "logs": read_update_logs()}, 409
+
+    target_version = status.get("remote_version", "")
+    with open(UPDATE_LOG_FILE, "w", encoding="utf-8") as handle:
+        handle.write("")
+    _append_log(f"[{_now()}] Préparation de la mise à jour vers {target_version or 'main'}")
+    enable_maintenance_mode()
+    _write_json(UPDATE_STATE_FILE, {
+        "status": "running",
+        "message": "Mise à jour en cours",
+        "started_at": _now(),
+        "updated_at": _now(),
+        "finished_at": "",
+        "target_version": target_version,
+        "returncode": None,
+    })
+
+    thread = threading.Thread(
+        target=_run_update_process,
+        args=(lock_fd, repo_path, target_version),
+        daemon=True,
+    )
+    thread.start()
+    return {"status": "running", "message": "Mise à jour en cours", "logs": read_update_logs()}, 202
+
+
+def _run_update_process(lock_fd, repo_path, target_version):
+    returncode = 1
+    try:
+        _append_log(f"[{_now()}] Démarrage de la mise à jour vers {target_version or 'main'}")
+        process = subprocess.Popen(
+            [UPDATE_SCRIPT, target_version],
+            cwd=repo_path,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+        )
+        for line in process.stdout or []:
+            _append_log(line)
+            _set_update_state("running", "Mise à jour en cours")
+        returncode = process.wait()
+        if returncode == 0:
+            _append_log(f"[{_now()}] Mise à jour terminée")
+            _set_update_state("success", "Mise à jour terminée", finished_at=_now(), returncode=returncode)
+        else:
+            _append_log(f"[{_now()}] Échec de la mise à jour ({returncode})")
+            _set_update_state("error", "Échec de la mise à jour", finished_at=_now(), returncode=returncode)
+    except FileNotFoundError:
+        _append_log("Script de mise à jour introuvable")
+        _set_update_state("error", "Script de mise à jour introuvable", finished_at=_now(), returncode=127)
+    except OSError as exc:
+        _append_log(str(exc))
+        _set_update_state("error", "Échec de la mise à jour", finished_at=_now(), returncode=returncode)
+    finally:
+        disable_maintenance_mode()
+        _release_lock(lock_fd)

@@ -67,6 +67,19 @@
                 {{ t('update_check_btn') }}
             </button>
         </form>
+        <button
+            type="button"
+            class="btn success"
+            id="update-start-btn"
+            {% if not update_status.can_update %}disabled{% endif %}
+            data-ready="{% if update_status.can_update %}1{% else %}0{% endif %}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-15">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            <span id="update-start-label">{% if update_status.can_update %}Mettre à jour{% else %}Déjà à jour{% endif %}</span>
+        </button>
     </section>
 
     {% if update_status.fetch_requested and update_status.fetch_ok == false and update_status.fetch_error %}
@@ -86,28 +99,10 @@
                     <dt>{{ t('update_version_label') }}</dt>
                     <dd><strong>{{ update_status.local_version or '—' }}</strong></dd>
                 </div>
-                {% if update_status.local_sha %}
-                <div>
-                    <dt>{{ t('update_commit_label') }}</dt>
-                    <dd><code>{{ update_status.local_sha }}</code></dd>
-                </div>
-                {% endif %}
                 {% if update_status.branch %}
                 <div>
                     <dt>{{ t('update_branch_label') }}</dt>
                     <dd>{{ update_status.branch }}</dd>
-                </div>
-                {% endif %}
-                {% if update_status.local_commit_date %}
-                <div>
-                    <dt>{{ t('update_commit_date_label') }}</dt>
-                    <dd>{{ update_status.local_commit_date }}</dd>
-                </div>
-                {% endif %}
-                {% if update_status.local_commit_subject %}
-                <div>
-                    <dt>{{ t('update_commit_subject_label') }}</dt>
-                    <dd>{{ update_status.local_commit_subject }}</dd>
                 </div>
                 {% endif %}
             </dl>
@@ -124,16 +119,10 @@
                         {% if update_status.remote_version %}
                         <strong>{{ update_status.remote_version }}</strong>
                         {% else %}
-                        <code>{{ update_status.remote_short_sha or '—' }}</code>
+                        —
                         {% endif %}
                     </dd>
                 </div>
-                {% if update_status.remote_sha %}
-                <div>
-                    <dt>{{ t('update_commit_label') }}</dt>
-                    <dd><code>{{ update_status.remote_sha }}</code></dd>
-                </div>
-                {% endif %}
                 {% if update_status.tracking_ref %}
                 <div>
                     <dt>{{ t('update_tracking_label') }}</dt>
@@ -148,6 +137,13 @@
                 {% endif %}
             </dl>
         </section>
+    </div>
+</div>
+
+<div class="update-overlay" id="update-overlay" hidden>
+    <div class="update-overlay-panel">
+        <div class="update-overlay-title" id="update-overlay-title">Mise à jour en cours…</div>
+        <pre class="update-log" id="update-log"></pre>
     </div>
 </div>
 
@@ -224,6 +220,12 @@
     align-items: center;
     flex-wrap: wrap;
 }
+.update-actions .btn:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
 .update-warning {
     display: flex;
     gap: 10px;
@@ -276,6 +278,45 @@
     color: var(--primary-dark);
     font-size: .78rem;
 }
+.update-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: color-mix(in srgb, var(--bg) 72%, transparent);
+    backdrop-filter: blur(8px);
+}
+.update-overlay[hidden] {
+    display: none;
+}
+.update-overlay-panel {
+    width: min(920px, 100%);
+    max-height: min(72vh, 680px);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+}
+.update-overlay-title {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    font-weight: 800;
+}
+.update-log {
+    margin: 0;
+    min-height: 260px;
+    max-height: calc(min(72vh, 680px) - 50px);
+    overflow: auto;
+    padding: 14px 16px;
+    color: var(--text);
+    background: var(--bg);
+    font-size: .82rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+}
 @media (max-width: 900px) {
     .update-hero,
     .update-grid {
@@ -287,4 +328,98 @@
     }
 }
 </style>
+
+<script>
+(function() {
+    const startBtn = document.getElementById('update-start-btn');
+    const startLabel = document.getElementById('update-start-label');
+    const overlay = document.getElementById('update-overlay');
+    const overlayTitle = document.getElementById('update-overlay-title');
+    const logBox = document.getElementById('update-log');
+    let running = false;
+    let stream = null;
+    let pollTimer = null;
+
+    function setRunning(value) {
+        running = value;
+        if (overlay) overlay.hidden = !value;
+        if (startBtn) startBtn.disabled = value || startBtn.dataset.ready !== '1';
+        if (startLabel) startLabel.textContent = value ? 'Mise à jour en cours…' : (startBtn?.dataset.ready === '1' ? 'Mettre à jour' : 'Déjà à jour');
+        document.body.style.pointerEvents = value ? 'none' : '';
+        if (overlay) overlay.style.pointerEvents = 'auto';
+    }
+
+    function renderState(state) {
+        if (!state) return;
+        const logs = state.logs || (state.status === 'running' ? state.message || 'Mise à jour en cours…' : '');
+        if (logBox && logBox.textContent !== logs) {
+            logBox.textContent = logs;
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+        if (overlayTitle) overlayTitle.textContent = state.message || 'Mise à jour en cours…';
+        if (state.status === 'running') {
+            setRunning(true);
+        } else if (state.status === 'success' || state.status === 'error') {
+            setRunning(false);
+            stopPolling();
+            if (overlay) overlay.hidden = false;
+        }
+    }
+
+    function startPolling() {
+        stopPolling();
+        pollTimer = setInterval(refreshState, 1000);
+    }
+
+    function stopPolling() {
+        if (!pollTimer) return;
+        clearInterval(pollTimer);
+        pollTimer = null;
+    }
+
+    function openStream() {
+        if (stream) stream.close();
+        stream = new EventSource('/api/update/stream');
+        stream.onmessage = (event) => {
+            const state = JSON.parse(event.data);
+            renderState(state);
+            if (state.status === 'success' || state.status === 'error' || state.status === 'idle') {
+                stream.close();
+                stopPolling();
+            }
+        };
+        stream.onerror = () => startPolling();
+    }
+
+    async function refreshState() {
+        const response = await fetch('/api/update');
+        if (!response.ok) return;
+        const state = await response.json();
+        renderState(state);
+        if (state.status === 'running') {
+            openStream();
+            startPolling();
+        }
+    }
+
+    startBtn?.addEventListener('click', async () => {
+        if (startBtn.dataset.ready !== '1') return;
+        if (!confirm('Confirmer le lancement de la mise à jour ?')) return;
+        setRunning(true);
+        const response = await fetch('/api/update', { method: 'POST' });
+        const state = await response.json().catch(() => ({}));
+        renderState(state);
+        openStream();
+        startPolling();
+    });
+
+    window.addEventListener('beforeunload', (event) => {
+        if (!running) return;
+        event.preventDefault();
+        event.returnValue = '';
+    });
+
+    refreshState();
+})();
+</script>
 {% endblock %}

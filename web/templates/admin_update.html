@@ -86,6 +86,30 @@
                     <dt>{{ t('update_version_label') }}</dt>
                     <dd><strong>{{ update_status.local_version or '—' }}</strong></dd>
                 </div>
+                {% if update_status.local_sha %}
+                <div>
+                    <dt>{{ t('update_commit_label') }}</dt>
+                    <dd><code>{{ update_status.local_sha }}</code></dd>
+                </div>
+                {% endif %}
+                {% if update_status.branch %}
+                <div>
+                    <dt>{{ t('update_branch_label') }}</dt>
+                    <dd>{{ update_status.branch }}</dd>
+                </div>
+                {% endif %}
+                {% if update_status.local_commit_date %}
+                <div>
+                    <dt>{{ t('update_commit_date_label') }}</dt>
+                    <dd>{{ update_status.local_commit_date }}</dd>
+                </div>
+                {% endif %}
+                {% if update_status.local_commit_subject %}
+                <div>
+                    <dt>{{ t('update_commit_subject_label') }}</dt>
+                    <dd>{{ update_status.local_commit_subject }}</dd>
+                </div>
+                {% endif %}
             </dl>
         </section>
 
@@ -95,7 +119,7 @@
             </div>
             <dl class="update-details">
                 <div>
-                    <dt>{{ t('update_remote_commit_label') }}</dt>
+                    <dt>{{ t('update_version_label') }}</dt>
                     <dd>
                         {% if update_status.remote_version %}
                         <strong>{{ update_status.remote_version }}</strong>
@@ -104,6 +128,24 @@
                         {% endif %}
                     </dd>
                 </div>
+                {% if update_status.remote_sha %}
+                <div>
+                    <dt>{{ t('update_commit_label') }}</dt>
+                    <dd><code>{{ update_status.remote_sha }}</code></dd>
+                </div>
+                {% endif %}
+                {% if update_status.tracking_ref %}
+                <div>
+                    <dt>{{ t('update_tracking_label') }}</dt>
+                    <dd>{{ update_status.tracking_ref }}</dd>
+                </div>
+                {% endif %}
+                {% if update_status.behind %}
+                <div>
+                    <dt>{{ t('update_commits_behind_label') }}</dt>
+                    <dd>{{ update_status.behind }} {{ t('update_commits_behind') }}</dd>
+                </div>
+                {% endif %}
             </dl>
         </section>
     </div>

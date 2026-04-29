@@ -36,7 +36,25 @@ def admin_superadmin_page():
     return redirect('/admin/settings/administration')
 
 
+@bp.route('/admin/users')
+def admin_users_page():
+    g = superadmin_guard()
+    if g: return g
+    return redirect('/admin/settings/comptes-permissions')
+
+
+@bp.route('/admin/users/add', methods=['GET'])
+@bp.route('/admin/users/create', methods=['GET'])
+@bp.route('/admin/users/new', methods=['GET'])
+def admin_add_user_page():
+    g = superadmin_guard()
+    if g: return g
+    return redirect('/admin/settings/ajouter-compte')
+
+
 @bp.route('/admin/users/add', methods=['POST'])
+@bp.route('/admin/users/create', methods=['POST'])
+@bp.route('/admin/users', methods=['POST'])
 def add_user():
     g = superadmin_guard()
     if g: return g

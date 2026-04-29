@@ -218,6 +218,44 @@ class AppSmokeTests(unittest.TestCase):
 
             self.assertTrue(verify_user_password("operator", "selected-pass-123"))
 
+    def test_superadmin_user_routes_redirect_to_settings_sections(self):
+        with self.client.session_transaction() as session:
+            session["user"] = "admin"
+
+        list_response = self.client.get("/admin/users", follow_redirects=False)
+        self.assertEqual(list_response.status_code, 302)
+        self.assertTrue(list_response.headers["Location"].endswith("/admin/settings/comptes-permissions"))
+
+        for path in ("/admin/users/add", "/admin/users/create", "/admin/users/new"):
+            response = self.client.get(path, follow_redirects=False)
+            self.assertEqual(response.status_code, 302)
+            self.assertTrue(response.headers["Location"].endswith("/admin/settings/ajouter-compte"))
+
+    def test_superadmin_can_create_user_from_alias_routes(self):
+        with self.client.session_transaction() as session:
+            session["user"] = "admin"
+            session["_csrf_token"] = "create-token"
+            token = session["_csrf_token"]
+
+        response = self.client.post(
+            "/admin/users/create",
+            data={
+                "username": "operator",
+                "password": "operator-pass-123",
+                "_csrf_token": token,
+            },
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.headers["Location"].endswith("/admin/settings/comptes-permissions"))
+
+        with self.app.app_context():
+            from services.users_svc import get_user, verify_user_password
+
+            self.assertIsNotNone(get_user("operator"))
+            self.assertTrue(verify_user_password("operator", "operator-pass-123"))
+
     def test_save_config_normalizes_missing_sections(self):
         with self.app.app_context():
             from services.config_svc import load_config, save_config

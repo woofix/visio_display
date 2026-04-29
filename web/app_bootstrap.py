@@ -328,6 +328,7 @@ def register_blueprints(app):
     from blueprints.screens import bp as screens_bp
     from blueprints.search import bp as search_bp
     from blueprints.settings import bp as settings_bp
+    from blueprints.update import bp as update_bp
     from blueprints.users import bp as users_bp
     from blueprints.wiki import bp as wiki_bp
     from blueprints.about import bp as about_bp
@@ -342,6 +343,7 @@ def register_blueprints(app):
         ephemeris_bp,
         users_bp,
         settings_bp,
+        update_bp,
         roles_bp,
         search_bp,
         api_bp,

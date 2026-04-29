@@ -1,0 +1,248 @@
+{% extends 'admin_layout.html' %}
+
+{% block title %}{{ t('update_title') }}{% endblock %}
+
+{% block topbar_icon %}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+    <path d="M3 21v-5h5"/>
+    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+    <path d="M16 8h5V3"/>
+</svg>
+{% endblock %}
+
+{% block topbar_breadcrumbs %}
+<div class="topbar-breadcrumbs">
+    <a href="/admin" class="bc-link">{{ app_name }}</a>
+    <svg class="bc-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <polyline points="9 18 15 12 9 6"/>
+    </svg>
+    <span class="bc-current">{{ t('update_title') }}</span>
+</div>
+{% endblock %}
+
+{% block topbar_sub %}{{ t('update_topbar_sub') }}{% endblock %}
+
+{% block content %}
+<div class="update-page">
+    <section class="update-hero">
+        <div>
+            <div class="update-kicker">{{ t('update_readonly_badge') }}</div>
+            <h1>{{ t('update_title') }}</h1>
+            <p>{{ t('update_intro') }}</p>
+        </div>
+        <div class="update-status-card" data-tone="{{ update_status.status_tone }}">
+            <span class="update-status-dot"></span>
+            <div>
+                <div class="update-status-label">{{ update_status.status_label }}</div>
+                <div class="update-status-sub">
+                    {% if update_status.status == 'update_available' %}
+                    {{ t('update_available_hint') }}
+                    {% elif update_status.status == 'up_to_date' %}
+                    {{ t('update_up_to_date_hint') }}
+                    {% elif update_status.status == 'check_failed' %}
+                    {{ t('update_check_failed_hint') }}
+                    {% elif update_status.ahead %}
+                    {{ update_status.ahead }} {{ t('update_commits_ahead') }}
+                    {% elif update_status.fetch_requested and update_status.fetch_ok %}
+                    {{ t('update_check_done') }}
+                    {% else %}
+                    {{ t('update_local_snapshot') }}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="update-actions">
+        <form method="post" action="/admin/update/check">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-15">
+                    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                    <path d="M3 21v-5h5"/>
+                    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                    <path d="M16 8h5V3"/>
+                </svg>
+                {{ t('update_check_btn') }}
+            </button>
+        </form>
+    </section>
+
+    {% if update_status.fetch_requested and update_status.fetch_ok == false and update_status.fetch_error %}
+    <div class="update-warning">
+        <strong>{{ t('update_fetch_error_title') }}</strong>
+        <span>{{ update_status.fetch_error }}</span>
+    </div>
+    {% endif %}
+
+    <div class="update-grid">
+        <section class="update-panel">
+            <div class="update-panel-header">
+                <h2>{{ t('update_installed_title') }}</h2>
+            </div>
+            <dl class="update-details">
+                <div>
+                    <dt>{{ t('update_version_label') }}</dt>
+                    <dd><strong>{{ update_status.local_version or '—' }}</strong></dd>
+                </div>
+            </dl>
+        </section>
+
+        <section class="update-panel">
+            <div class="update-panel-header">
+                <h2>{{ t('update_available_title') }}</h2>
+            </div>
+            <dl class="update-details">
+                <div>
+                    <dt>{{ t('update_remote_commit_label') }}</dt>
+                    <dd>
+                        {% if update_status.remote_version %}
+                        <strong>{{ update_status.remote_version }}</strong>
+                        {% else %}
+                        <code>{{ update_status.remote_short_sha or '—' }}</code>
+                        {% endif %}
+                    </dd>
+                </div>
+            </dl>
+        </section>
+    </div>
+</div>
+
+<style>
+.update-page {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+.update-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
+    gap: 18px;
+    align-items: stretch;
+}
+.update-hero h1 {
+    margin: 6px 0 8px;
+    font-size: 1.65rem;
+}
+.update-hero p {
+    max-width: 780px;
+    margin: 0;
+    color: var(--text-2);
+    line-height: 1.55;
+}
+.update-kicker {
+    color: var(--primary);
+    font-size: .78rem;
+    font-weight: 800;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+.update-status-card,
+.update-panel,
+.update-warning {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: 8px;
+}
+.update-status-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 18px;
+}
+.update-status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+    background: var(--primary);
+    box-shadow: 0 0 0 5px var(--primary-bg);
+    flex: 0 0 auto;
+}
+.update-status-card[data-tone="warning"] .update-status-dot {
+    background: var(--warning-color);
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--warning-color) 16%, transparent);
+}
+.update-status-card[data-tone="success"] .update-status-dot {
+    background: var(--success-color);
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--success-color) 16%, transparent);
+}
+.update-status-label {
+    font-weight: 800;
+}
+.update-status-sub,
+.update-soon {
+    margin-top: 3px;
+    color: var(--text-2);
+    font-size: .84rem;
+}
+.update-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.update-warning {
+    display: flex;
+    gap: 10px;
+    padding: 12px 14px;
+    color: var(--warning-text);
+    background: var(--warning-bg);
+}
+.update-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+}
+.update-panel {
+    overflow: hidden;
+}
+.update-panel-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+}
+.update-panel-header h2 {
+    margin: 0;
+    font-size: 1rem;
+}
+.update-details {
+    margin: 0;
+}
+.update-details div {
+    display: grid;
+    grid-template-columns: 170px minmax(0, 1fr);
+    gap: 12px;
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--border);
+}
+.update-details div:last-child {
+    border-bottom: none;
+}
+.update-details dt {
+    color: var(--text-2);
+    font-weight: 700;
+}
+.update-details dd {
+    margin: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.update-details code {
+    padding: 2px 7px;
+    border-radius: 5px;
+    background: var(--primary-bg);
+    color: var(--primary-dark);
+    font-size: .78rem;
+}
+@media (max-width: 900px) {
+    .update-hero,
+    .update-grid {
+        grid-template-columns: 1fr;
+    }
+    .update-details div {
+        grid-template-columns: 1fr;
+        gap: 4px;
+    }
+}
+</style>
+{% endblock %}

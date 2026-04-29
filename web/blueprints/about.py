@@ -12,6 +12,7 @@ from services.media_svc import get_logo_path
 bp = Blueprint('about', __name__)
 
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DEFAULT_RELEASES_URL = 'https://github.com/woofix/visio_display/releases/tag'
 
 
 def _get_version():
@@ -41,6 +42,14 @@ def _get_git_commit():
     return os.environ.get('GIT_COMMIT', '').strip() or None
 
 
+def _get_release_url(version):
+    clean_version = str(version or '').strip()
+    if not clean_version:
+        return None
+    releases_url = os.environ.get('APP_RELEASES_URL', DEFAULT_RELEASES_URL).strip().rstrip('/')
+    return f'{releases_url}/{clean_version}'
+
+
 def _license_exists():
     return os.path.isfile(os.path.normpath(os.path.join(_BASE_DIR, '..', 'LICENSE')))
 
@@ -51,12 +60,14 @@ def about_page():
     if redir:
         return redir
     cfg = load_config()
+    app_version = _get_version()
     return render_template(
         'admin_about.html',
         cfg=cfg,
         current_user=session.get('user'),
         logo_path=get_logo_path(),
-        app_version=_get_version(),
+        app_version=app_version,
+        app_release_url=_get_release_url(app_version),
         git_commit=_get_git_commit(),
         license_exists=_license_exists(),
     )

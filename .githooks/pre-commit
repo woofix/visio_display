@@ -1,0 +1,109 @@
+#!/bin/sh
+# Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
+
+set -eu
+
+ROOT_DIR="$(git rev-parse --show-toplevel)"
+VERSION_FILE="$ROOT_DIR/VERSION"
+BUMP_KIND="${VISIO_VERSION_BUMP:-auto}"
+
+detect_bump_kind() {
+    changed_names="$(git -C "$ROOT_DIR" diff --cached --name-only --diff-filter=ACMRT)"
+    deleted_names="$(git -C "$ROOT_DIR" diff --cached --name-only --diff-filter=D)"
+
+    if [ -n "$deleted_names" ]; then
+        printf '%s\n' "major"
+        return
+    fi
+
+    if printf '%s\n' "$changed_names" | grep -Eq '^(web/db\.py|docker-compose\.yml|Dockerfile|web/requirements(-dev)?\.txt)$'; then
+        printf '%s\n' "major"
+        return
+    fi
+
+    if printf '%s\n' "$changed_names" | grep -Eq '^web/(blueprints|services|templates|static/css|tools)/|^scripts/|^server-install\.sh$'; then
+        printf '%s\n' "minor"
+        return
+    fi
+
+    if git -C "$ROOT_DIR" diff --cached --name-status --diff-filter=A | grep -Eq '^[A][[:space:]]+'; then
+        printf '%s\n' "minor"
+        return
+    fi
+
+    printf '%s\n' "patch"
+}
+
+case "$BUMP_KIND" in
+    none|skip)
+        exit 0
+        ;;
+    auto)
+        BUMP_KIND="$(detect_bump_kind)"
+        ;;
+    major|minor|patch)
+        ;;
+    *)
+        echo "pre-commit: VISIO_VERSION_BUMP doit valoir auto, major, minor, patch ou none." >&2
+        exit 1
+        ;;
+esac
+
+if [ ! -f "$VERSION_FILE" ]; then
+    echo "pre-commit: fichier VERSION introuvable." >&2
+    exit 1
+fi
+
+if ! git -C "$ROOT_DIR" diff --cached --quiet -- VERSION; then
+    echo "pre-commit: VERSION est déjà préparé, incrément automatique ignoré."
+    exit 0
+fi
+
+if ! git -C "$ROOT_DIR" diff --quiet -- VERSION; then
+    echo "pre-commit: VERSION contient des changements non préparés." >&2
+    echo "pre-commit: préparez-les avec git add VERSION ou annulez-les avant de recommitter." >&2
+    exit 1
+fi
+
+current_version="$(tr -d '[:space:]' < "$VERSION_FILE")"
+IFS=.
+set -- $current_version
+IFS=' '
+
+if [ "$#" -ne 3 ]; then
+    echo "pre-commit: VERSION doit utiliser le format numérique MAJOR.MINOR.PATCH, reçu: $current_version" >&2
+    exit 1
+fi
+
+major="${1:-}"
+minor="${2:-}"
+patch="${3:-}"
+
+case "$major:$minor:$patch" in
+    *[!0123456789:]*|::*|*::|*:|:*)
+        echo "pre-commit: VERSION doit utiliser le format numérique MAJOR.MINOR.PATCH, reçu: $current_version" >&2
+        exit 1
+        ;;
+esac
+
+case "$BUMP_KIND" in
+    major)
+        major=$((major + 1))
+        minor=0
+        patch=0
+        ;;
+    minor)
+        minor=$((minor + 1))
+        patch=0
+        ;;
+    patch)
+        patch=$((patch + 1))
+        ;;
+esac
+
+new_version="$major.$minor.$patch"
+printf '%s\n' "$new_version" > "$VERSION_FILE"
+git -C "$ROOT_DIR" add VERSION
+
+echo "pre-commit: version $current_version -> $new_version"
+echo "pre-commit: type détecté: $BUMP_KIND"

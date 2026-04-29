@@ -21,11 +21,35 @@ _URL_PERMISSION_MAP = [
     ('/admin/upload', 'upload'),
 ]
 
+_CANONICAL_URL_ALIASES = {
+    '/admin/settings#logo': '/admin/settings/logo',
+    '/admin/settings#theme': '/admin/settings/theme',
+    '/admin/settings#language': '/admin/settings/language',
+    '/admin/settings#admins': '/admin/settings/comptes-permissions',
+    '/admin/settings/admins': '/admin/settings/comptes-permissions',
+    '/admin/settings#comptes-permissions': '/admin/settings/comptes-permissions',
+    '/admin/settings#ajouter-compte': '/admin/settings/ajouter-compte',
+    '/admin/settings#gestion-ecrans': '/admin/settings/gestion-ecrans',
+    '/admin/settings#alerte-prioritaire': '/admin/settings/alerte-prioritaire',
+    '/admin/settings#sauvegardes': '/admin/settings/sauvegardes',
+    '/admin/settings#meteo': '/admin/settings/meteo',
+    '/admin/settings#fonctionnalites': '/admin/settings/fonctionnalites',
+    '/admin/settings#installation': '/admin/settings/installation',
+    '/admin/settings#mot-de-passe': '/admin/settings/mot-de-passe',
+    '/admin/superadmin': '/admin/settings/administration',
+    '/admin/features': '/admin/settings/fonctionnalites',
+}
+
+
+def _canonical_url(url):
+    return _CANONICAL_URL_ALIASES.get(url, url)
+
 
 def _split_restricted(pages, has_perm_fn):
     accessible, restricted = [], []
     for page in pages:
-        url = page.get('url', '')
+        url = _canonical_url(page.get('url', ''))
+        page = {**page, 'url': url}
         required = next((p for prefix, p in _URL_PERMISSION_MAP if url.startswith(prefix)), None)
         if required and not has_perm_fn(required):
             restricted.append({**page, 'required_perm': required})
@@ -49,7 +73,7 @@ def _search_index(query, lang, category):
             'title':       r.title,
             'description': r.description or '',
             'keywords':    r.keywords or '',
-            'url':         r.url,
+            'url':         _canonical_url(r.url),
             'desc':        r.description or '',
         }
         for r in rows

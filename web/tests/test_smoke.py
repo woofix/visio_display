@@ -182,7 +182,7 @@ class AppSmokeTests(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 302)
-        self.assertTrue(response.headers["Location"].endswith("/admin/superadmin"))
+        self.assertTrue(response.headers["Location"].endswith("/admin/settings/comptes-permissions"))
 
         with self.app.app_context():
             from services.users_svc import verify_user_password

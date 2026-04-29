@@ -117,7 +117,7 @@ window.__flashMessages = [{% for cat, msg in _fm %}{% set tone = cat if cat in [
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
                 {{ t('nav_logo') }}
             </a>
-            <a href="/admin/settings/admins" class="nav-item nav-subitem {% if settings_path == '/admin/settings/admins' %}active{% endif %}">
+            <a href="/admin/settings/mot-de-passe" class="nav-item nav-subitem {% if settings_path in ['/admin/settings/admins', '/admin/settings/mot-de-passe'] %}active{% endif %}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
                 {{ t('nav_admins') }}
             </a>

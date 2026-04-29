@@ -29,7 +29,7 @@ Visio-Display est une application d'**affichage dynamique** (digital signage) qu
 19. [Recherche globale](#19-recherche-globale)
 20. [Gestion des rôles (RBAC)](#20-gestion-des-rôles-rbac)
 21. [Gestion des fonctionnalités (super-admin)](#21-gestion-des-fonctionnalités-super-admin)
-22. [Mise à jour (super-admin)](#22-mise-à-jour-super-admin)
+22. [Version (super-admin)](#22-version-super-admin)
 23. [À propos](#23-à-propos)
 
 ---
@@ -782,44 +782,32 @@ Cliquez sur le bouton bascule en regard du module concerné. Le changement est i
 
 ---
 
-## 22. Mise à jour (super-admin)
+## 22. Version (super-admin)
 
-Accessible depuis **Paramètres → Mise à jour** dans le menu de navigation.
+Accessible depuis **Paramètres → Version** dans le menu de navigation.
 
 > **Réservé au super-admin.**
 
-Cette page permet de vérifier l'état de la version installée, de la comparer à la version distante publiée, puis de lancer l'installation d'une mise à jour disponible. Par défaut, Visio suit la branche `main`; pour une instance de test réel, définissez `VISIO_UPDATE_BRANCH=dev` dans `.env` puis redémarrez la stack.
+Cette page compare la version installée avec la version distante publiée sur GitHub. Elle est en lecture seule et ne lance aucune action système.
 
-### Vérifier les mises à jour
+### Vérifier l'état de version
 
-1. Ouvrez **Paramètres → Mise à jour**.
-2. Cliquez sur **Vérifier les mises à jour**.
-3. Consultez le statut affiché :
+1. Ouvrez **Paramètres → Version**.
+2. Consultez le statut affiché :
    - **À jour** : la version installée correspond à la version distante connue.
    - **Mise à jour disponible** : une version plus récente est détectée.
    - **Vérification impossible** : la source distante n'a pas pu être contactée ou les versions ne peuvent pas être comparées.
-   - **État local affiché** : la page montre seulement les informations locales disponibles.
-
-### Installer une mise à jour
-
-1. Après vérification, si **Mise à jour disponible** s'affiche, cliquez sur **Mettre à jour**.
-2. Confirmez le lancement de la mise à jour.
-3. Laissez la fenêtre de progression ouverte pendant l'installation. Visio récupère les tags et la branche configurée, installe la version distante détectée, synchronise le code applicatif du conteneur puis redémarre le service web.
 
 ### Informations affichées
 
 | Zone | Description |
 |---|---|
 | **Version installée** | Version lue depuis le fichier `VERSION` ou la variable d'environnement `APP_VERSION`. |
-| **Commit local** | Identifiant Git, branche, date et message de commit lorsque le dépôt est disponible. |
-| **Version distante** | Dernière version, tag ou commit récupéré depuis la source de mise à jour. |
-| **Retard / avance** | Nombre de commits d'écart lorsque la comparaison Git est possible. |
+| **Version distante** | Version publiée lue depuis GitHub. |
 
 ### Bonnes pratiques
 
-- Faites une **sauvegarde complète** avant toute mise à jour.
-- Vérifiez que l'instance n'a pas de traitements lourds en cours : import massif, encodage vidéo ou restauration.
-- Si la vérification échoue, contrôlez l'accès réseau du serveur et les variables de source de mise à jour éventuelles.
+- Si la vérification échoue, contrôlez l'accès réseau du serveur.
 
 ---
 

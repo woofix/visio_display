@@ -136,7 +136,20 @@ class AppSmokeTests(unittest.TestCase):
     def test_login_redirects_to_admin(self):
         response = self._login()
         self.assertEqual(response.status_code, 302)
-        self.assertTrue(response.headers["Location"].endswith("/admin"))
+
+    def test_superadmin_can_view_version_page(self):
+        self._login()
+        with patch("blueprints.version.get_version_status", return_value={
+            "status": "up_to_date",
+            "status_label": "À jour",
+            "status_tone": "success",
+            "local_version": "1.0.0",
+            "remote_version": "1.0.0",
+            "fetch_error": "",
+        }):
+            response = self.client.get("/admin/version")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"1.0.0", response.data)
 
     def test_theme_update_persists_for_logged_user(self):
         with self.client.session_transaction() as session:

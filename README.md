@@ -124,14 +124,6 @@ docker compose up -d --build
 
 L'application est disponible sur `http://<hôte>:8081`.
 
-Pour installer une instance de test qui suit la branche `dev`, lancez l'installateur avec :
-
-```bash
-VISIO_REPO_BRANCH=dev ./server-install.sh
-```
-
-ou ajoutez `VISIO_UPDATE_BRANCH=dev` dans `.env` sur une installation existante avant de relancer la stack.
-
 **SECRET_KEY du serveur (obligatoire) :**
 
 Cette clé sert à signer les sessions Flask du serveur. Elle reste nécessaire même si les clients sont ensuite installés à distance via SSH.
@@ -186,7 +178,6 @@ VISIO_VERSION_BUMP=none git commit -m "..."
 | `SECRET_KEY`     | Clé de signature des sessions Flask (obligatoire)                  |
 | `POSTGRES_PASSWORD` | Mot de passe du rôle PostgreSQL `visio` utilisé par la stack Docker |
 | `CLIENT_HEARTBEAT_TOKEN` | Jeton partagé optionnel exigé par `/api/client-heartbeat` lorsqu'il est défini |
-| `VISIO_UPDATE_BRANCH` | Branche Git suivie par la page **Mise à jour** (défaut : `main`, utiliser `dev` pour les tests réels) |
 | `SESSION_COOKIE_SECURE` | Force le cookie de session en mode `Secure` (recommandé derrière HTTPS) |
 | `SESSION_COOKIE_NAME` | Nom du cookie de session Flask (défaut : `visio_session`) |
 | `SESSION_LIFETIME_MINUTES` | Durée de vie maximale d’une session connectée (défaut : `480`) |
@@ -581,6 +572,7 @@ Visio-Display/
 | `/admin/queue/force`                      | POST    | Super-admin        | Forcer l'encodage de toute la file immédiatement     |
 | `/admin/compress/<filename>/force`        | POST    | Super-admin        | Forcer l'encodage d'un seul fichier immédiatement    |
 | `/admin/priority-alert`                   | POST    | Super-admin        | Publier ou effacer l'alerte prioritaire              |
+| `/admin/version`                          | GET     | Super-admin        | Comparer la version installée avec la version distante |
 | `/admin/about`                            | GET     | Connecté           | Page À propos (version, stack, licence)              |
 
 #### Réponse de `/api/queue`
@@ -861,14 +853,6 @@ docker compose up -d --build
 
 The application will be available at `http://<host>:8081`.
 
-To install a test instance that follows the `dev` branch, run:
-
-```bash
-VISIO_REPO_BRANCH=dev ./server-install.sh
-```
-
-or add `VISIO_UPDATE_BRANCH=dev` to `.env` on an existing installation before restarting the stack.
-
 **Server SECRET_KEY (required):**
 
 This key signs the Flask sessions used by the server. It is still required even if display clients are later installed remotely over SSH.
@@ -923,7 +907,6 @@ VISIO_VERSION_BUMP=none git commit -m "..."
 | `SECRET_KEY`     | Flask session signing key (required)                              |
 | `POSTGRES_PASSWORD` | Password for the PostgreSQL `visio` role used by the Docker stack |
 | `CLIENT_HEARTBEAT_TOKEN` | Optional shared token required by `/api/client-heartbeat` when set |
-| `VISIO_UPDATE_BRANCH` | Git branch followed by the **Update** page (default: `main`, use `dev` for real-world tests) |
 | `SESSION_COOKIE_SECURE` | Forces the session cookie to use `Secure` (recommended behind HTTPS) |
 | `SESSION_COOKIE_NAME` | Flask session cookie name (default: `visio_session`) |
 | `SESSION_LIFETIME_MINUTES` | Maximum lifetime of an authenticated session (default: `480`) |
@@ -1235,6 +1218,7 @@ Visio-Display/
 | `/admin/queue/force`                      | POST    | Super-admin        | Force-process all pending encoding jobs immediately     |
 | `/admin/compress/<filename>/force`        | POST    | Super-admin        | Force-encode a single file immediately                  |
 | `/admin/priority-alert`                   | POST    | Super-admin        | Publish or clear the priority alert banner              |
+| `/admin/version`                          | GET     | Super-admin        | Compare the installed version with the remote version   |
 | `/admin/about`                            | GET     | Logged in          | About page (version, stack, licence)                    |
 
 #### `/api/queue` response

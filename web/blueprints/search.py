@@ -31,7 +31,7 @@ _URL_FEATURE_MAP = [
 
 _URL_SUPERADMIN_PREFIXES = (
     '/admin/roles',
-    '/admin/update',
+    '/admin/version',
     '/admin/settings/administration',
     '/admin/settings/comptes-permissions',
     '/admin/settings/ajouter-compte',

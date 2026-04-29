@@ -4,10 +4,8 @@
 set -euo pipefail
 
 REPO_URL="https://github.com/woofix/visio_display.git"
-REPO_BRANCH="${VISIO_REPO_BRANCH:-main}"
 DEFAULT_INSTALL_DIR="$(pwd)/visio_display"
 DEFAULT_PORT="8081"
-RUN_UPDATE=0
 
 # ── Couleurs ──────────────────────────────────────────────────────────────────
 BOLD='\033[1m'
@@ -21,37 +19,6 @@ header() { echo -e "\n${CYAN}${BOLD}==> $1${NC}"; }
 ok()     { echo -e "${GREEN}✓ $1${NC}"; }
 warn()   { echo -e "${YELLOW}⚠ $1${NC}"; }
 die()    { echo -e "${RED}✗ $1${NC}" >&2; exit 1; }
-
-while [ $# -gt 0 ]; do
-    case "$1" in
-        --branch)
-            shift
-            REPO_BRANCH="${1:-}"
-            ;;
-        --branch=*)
-            REPO_BRANCH="${1#*=}"
-            ;;
-        -h|--help)
-            cat <<'EOF'
-Usage: server-install.sh [--branch BRANCHE]
-
-Options:
-  --branch BRANCHE  Branche Git à installer et suivre pour les mises à jour (défaut: main)
-EOF
-            exit 0
-            ;;
-        *)
-            die "Option inconnue : $1"
-            ;;
-    esac
-    shift
-done
-
-case "$REPO_BRANCH" in
-    ""| -*|*..*|*[[:space:]~^:?*\\[]*)
-        die "Branche Git invalide : $REPO_BRANCH"
-        ;;
-esac
 
 # ── Vérifications préalables ──────────────────────────────────────────────────
 header "Vérification des prérequis"
@@ -68,33 +35,16 @@ read -rp "Dossier d'installation [${DEFAULT_INSTALL_DIR}] : " INSTALL_DIR
 INSTALL_DIR="${INSTALL_DIR:-$DEFAULT_INSTALL_DIR}"
 
 if [ -d "$INSTALL_DIR/.git" ]; then
-    warn "Le dossier $INSTALL_DIR contient déjà un dépôt Git."
-    read -rp "Mettre à jour le dépôt existant ? [o/N] : " UPDATE_EXISTING
-    if [[ "$UPDATE_EXISTING" =~ ^[oOyY]$ ]]; then
-        git -C "$INSTALL_DIR" fetch --tags --prune
-        git -C "$INSTALL_DIR" checkout "$REPO_BRANCH"
-        git -C "$INSTALL_DIR" pull --ff-only origin "$REPO_BRANCH"
-        ok "Dépôt mis à jour."
-        RUN_UPDATE=1
-    fi
+    die "Le dossier $INSTALL_DIR contient déjà un dépôt Git. Choisissez un autre dossier."
 elif [ -d "$INSTALL_DIR" ] && [ -n "$(ls -A "$INSTALL_DIR" 2>/dev/null)" ]; then
     die "Le dossier $INSTALL_DIR existe et n'est pas vide. Choisissez un autre dossier."
 else
     header "Clonage du dépôt"
-    git clone --branch "$REPO_BRANCH" "$REPO_URL" "$INSTALL_DIR"
+    git clone --branch main "$REPO_URL" "$INSTALL_DIR"
     ok "Dépôt cloné dans $INSTALL_DIR."
 fi
 
 cd "$INSTALL_DIR"
-
-if [ "$RUN_UPDATE" -eq 1 ]; then
-    header "Durcissement sécurité"
-    bash ./scripts/security_bootstrap.sh update "$INSTALL_DIR"
-    docker compose pull --quiet 2>/dev/null || true
-    docker compose up -d --build
-    ok "Mise à jour terminée sans remplacer les secrets existants."
-    exit 0
-fi
 
 # ── Compte administrateur ─────────────────────────────────────────────────────
 header "Création du compte administrateur"
@@ -186,7 +136,6 @@ PRIVATE_DIR=${PRIVATE_DIR}
 POSTGRES_USER=visio
 POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
 POSTGRES_DB=visio
-VISIO_UPDATE_BRANCH=${REPO_BRANCH}
 EOF
 
 chmod 600 "$INSTALL_DIR/.env"

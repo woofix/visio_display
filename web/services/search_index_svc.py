@@ -139,10 +139,10 @@ _PAGES_FR = [
         'keywords': 'wiki documentation aide guide manuel help tutoriel utilisation',
     },
     {
-        'title': 'Mise à jour',
-        'url': '/admin/update',
-        'description': "Vérifier la version installée et l'état de mise à jour",
-        'keywords': 'mise à jour update version commit git distante release vérifier retard avance',
+        'title': 'Version',
+        'url': '/admin/version',
+        'description': "Comparer la version installée avec la version distante",
+        'keywords': 'version commit git distante release vérifier',
     },
     {
         'title': 'À propos',
@@ -295,10 +295,10 @@ _WIKI_FR = [
     },
     {
         'section': 's21',
-        'title': 'Mise à jour',
+        'title': 'Version',
         'url': '/admin/wiki/s21',
         'description': "Vérifier la version installée et la comparer à la version distante",
-        'keywords': 'mise à jour update version commit git distante release vérifier retard avance',
+        'keywords': 'version commit git distante release vérifier',
     },
     {
         'section': 's22',
@@ -437,10 +437,10 @@ _PAGES_EN = [
         'keywords': 'wiki documentation help guide manual tutorial usage',
     },
     {
-        'title': 'Update',
-        'url': '/admin/update',
-        'description': 'Check the installed version and update status',
-        'keywords': 'update version commit git remote release check behind ahead',
+        'title': 'Version',
+        'url': '/admin/version',
+        'description': 'Compare the installed version with the remote version',
+        'keywords': 'version commit git remote release check',
     },
     {
         'title': 'About',
@@ -593,10 +593,10 @@ _WIKI_EN = [
     },
     {
         'section': 's21',
-        'title': 'Update',
+        'title': 'Version',
         'url': '/admin/wiki/s21',
         'description': 'Check the installed version and compare it with the remote version',
-        'keywords': 'update version commit git remote release check behind ahead',
+        'keywords': 'version commit git remote release check',
     },
     {
         'section': 's22',

@@ -78,14 +78,6 @@ jobs:
             echo "- [Guide utilisateur](${docs_url}/GUIDE_UTILISATEUR.md)"
             echo "- [Politique de sécurité](${docs_url}/SECURITY.md)"
             echo
-            echo "### Mise à jour serveur"
-            echo
-            echo '```bash'
-            echo "git checkout main"
-            echo "git pull origin main"
-            echo "docker compose up -d --build"
-            echo '```'
-            echo
             echo "### Changements inclus"
             echo
             if [ -n "$previous_tag" ]; then
@@ -105,14 +97,6 @@ jobs:
             echo "- [README](${docs_url}/README.md)"
             echo "- [User guide](${docs_url}/GUIDE_UTILISATEUR.md)"
             echo "- [Security policy](${docs_url}/SECURITY.md)"
-            echo
-            echo "### Server update"
-            echo
-            echo '```bash'
-            echo "git checkout main"
-            echo "git pull origin main"
-            echo "docker compose up -d --build"
-            echo '```'
             echo
             echo "### Included changes"
             echo

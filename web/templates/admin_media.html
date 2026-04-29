@@ -341,9 +341,9 @@
 <div class="screen-bar">
     <span class="screen-bar-label">{{ t('media_screen_label') }}</span>
     <div class="screen-tabs">
-        {% if has_default_screen %}<a href="/admin/media" class="screen-tab {% if not current_screen %}active{% endif %} {% if (active_broadcast_targets and not current_screen) or broadcast_source == '' or '' in active_broadcast_targets %}sync-active{% endif %}" data-screen="">{{ default_screen_name }}</a>{% endif %}
+        {% if has_default_screen %}<a href="/admin/media" class="screen-tab {% if not current_screen %}active{% endif %}" data-screen="">{{ default_screen_name }}</a>{% endif %}
         {% for s in screens %}
-        <a href="/admin/media?screen={{ s }}" class="screen-tab {% if current_screen == s %}active{% endif %} {% if s in active_broadcast_targets or broadcast_source == s %}sync-active{% endif %}" data-screen="{{ s }}">{{ s }}</a>
+        <a href="/admin/media?screen={{ s }}" class="screen-tab {% if current_screen == s %}active{% endif %}" data-screen="{{ s }}">{{ s }}</a>
         {% if current_screen == s and current_user_is_superadmin %}
         <form method="post" action="/admin/screens/delete/{{ s }}" style="display:inline"
               data-confirm="{{ t('media_screen_delete_confirm') | replace('{name}', s) }}"
@@ -355,22 +355,6 @@
         {% endif %}
         {% endfor %}
     </div>
-    {% set broadcast_targets = (([''] if has_default_screen and current_screen != '' else []) + (screens | reject('equalto', current_screen) | list)) %}
-    {% if broadcast_targets %}
-    <button class="btn-broadcast-screen" id="btn-broadcast-screen"
-            title="{{ t('action_broadcast') }}"
-            style="display:flex;align-items:center;gap:6px;">
-        {% if active_broadcast_targets %}<span class="broadcast-live-dot"></span>{% endif %}
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41 2 2 0 0 1 3.6 1.24h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.08 6.08l1.82-1.82a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-        {{ t('action_broadcast') }}
-    </button>
-    {% if active_broadcast_targets %}
-    <button class="btn-broadcast-stop" id="btn-broadcast-stop" title="{{ t('broadcast_stop') }}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
-        {{ t('broadcast_stop') }}
-    </button>
-    {% endif %}
-    {% endif %}
     <button class="btn-preview-screen" id="btn-preview-screen"
             title="{% if current_screen %}Prévisualiser « {{ current_screen }} »{% else %}Prévisualiser « {{ default_screen_name }} »{% endif %}"
             style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-shrink:0">
@@ -609,44 +593,6 @@
     </div>
 </div>
 
-<!-- Broadcast modal -->
-{% set broadcast_targets = (([''] if has_default_screen and current_screen != '' else []) + (screens | reject('equalto', current_screen) | list)) %}
-{% if broadcast_targets %}
-<div class="modal-overlay theme-dialog-overlay" id="broadcast-modal">
-    <div class="modal-box theme-dialog">
-        <button class="modal-close theme-dialog-close" id="broadcast-modal-close" title="Fermer" aria-label="Fermer">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-        <div class="theme-dialog-header" style="padding-right:64px">
-            <div class="theme-dialog-icon" data-tone="info" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41 2 2 0 0 1 3.6 1.24h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.08 6.08l1.82-1.82a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-            </div>
-            <div>
-                <div class="theme-dialog-title">{{ t('broadcast_modal_title') }}</div>
-                <p class="modal-sub theme-dialog-copy">{{ t('broadcast_modal_sub').replace('{screen}', current_screen) }}</p>
-            </div>
-        </div>
-        <div class="theme-dialog-body">
-            <div class="broadcast-hint">{{ t('broadcast_modal_hint') }}</div>
-            <div class="broadcast-select-all-row">
-                <button class="broadcast-select-all-btn" id="broadcast-select-all">{{ t('broadcast_select_all') }}</button>
-            </div>
-            <div class="broadcast-screen-list">
-                {% for s in broadcast_targets %}
-                <div class="broadcast-screen-item" onclick="this.querySelector('input').click()">
-                    <input type="checkbox" id="bcast-{{ s }}" value="{{ s }}" onclick="event.stopPropagation()">
-                    <label for="bcast-{{ s }}" onclick="event.stopPropagation()">{{ default_screen_name if s == '' else s }}</label>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-        <div class="modal-footer theme-dialog-actions">
-            <button class="btn secondary sm" id="broadcast-cancel-btn">{{ t('modal_clear') }}</button>
-            <button class="btn sm" id="broadcast-confirm-btn">{{ t('broadcast_btn_confirm') }}</button>
-        </div>
-    </div>
-</div>
-{% endif %}
 
 <!-- Schedule modal -->
 <div class="modal-overlay theme-dialog-overlay" id="schedule-modal">
@@ -1267,110 +1213,6 @@ document.querySelectorAll('.btn-remove-from-screen').forEach(btn => {
     });
 });
 
-/* ── Broadcast modal ── */
-const JS_BROADCAST_SUCCESS    = {{ t('js_broadcast_success') | tojson }};
-const JS_BROADCAST_ERROR      = {{ t('js_broadcast_error') | tojson }};
-const JS_BROADCAST_NONE       = {{ t('broadcast_none_selected') | tojson }};
-const JS_BROADCAST_STOPPED    = {{ t('js_broadcast_stopped') | tojson }};
-const ACTIVE_BROADCAST_TARGETS = {{ active_broadcast_targets | tojson }};
-
-(function() {
-    const btn = document.getElementById('btn-broadcast-screen');
-    if (!btn) return;
-    const modal      = document.getElementById('broadcast-modal');
-    const closeBtn   = document.getElementById('broadcast-modal-close');
-    const cancelBtn  = document.getElementById('broadcast-cancel-btn');
-    const confirmBtn = document.getElementById('broadcast-confirm-btn');
-    const selectAll  = document.getElementById('broadcast-select-all');
-
-    btn.addEventListener('click', () => {
-        modal.querySelectorAll('input[type=checkbox]').forEach(c => {
-            c.checked = ACTIVE_BROADCAST_TARGETS.includes(c.value);
-        });
-        modal.classList.add('open');
-    });
-    closeBtn.addEventListener('click', () => modal.classList.remove('open'));
-    cancelBtn.addEventListener('click', () => modal.classList.remove('open'));
-    modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('open'); });
-
-    selectAll.addEventListener('click', () => {
-        const boxes = modal.querySelectorAll('input[type=checkbox]');
-        const allChecked = [...boxes].every(c => c.checked);
-        boxes.forEach(c => c.checked = !allChecked);
-    });
-
-    function applySyncActive(targets) {
-        document.querySelectorAll('.screen-tab[data-screen]').forEach(tab => {
-            const s = tab.dataset.screen;
-            tab.classList.toggle('sync-active', targets.length > 0 && (s === CURRENT_SCREEN || targets.includes(s)));
-        });
-        const stopBtn = document.getElementById('btn-broadcast-stop');
-        const dot = btn.querySelector('.broadcast-live-dot');
-        if (targets.length > 0) {
-            if (!dot) { const d = document.createElement('span'); d.className = 'broadcast-live-dot'; btn.prepend(d); }
-            if (stopBtn) stopBtn.style.display = '';
-        } else {
-            dot?.remove();
-            if (stopBtn) stopBtn.style.display = 'none';
-        }
-    }
-
-    confirmBtn.addEventListener('click', async () => {
-        const targets = [...modal.querySelectorAll('input[type=checkbox]:checked')].map(c => c.value);
-        if (!targets.length) { showFlash(JS_BROADCAST_NONE, 'error'); return; }
-        confirmBtn.disabled = true;
-        try {
-            const res  = await fetch('/admin/screens/broadcast', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN },
-                body: JSON.stringify({ source: CURRENT_SCREEN, targets })
-            });
-            const data = await res.json();
-            if (data.ok) {
-                showFlash(JS_BROADCAST_SUCCESS.replace('{screens}', data.targets.join(', ')), 'success');
-                modal.classList.remove('open');
-                applySyncActive(data.targets);
-                const synced = new Set([CURRENT_SCREEN, ...data.targets]);
-                document.querySelectorAll('.screen-tab[data-screen]').forEach(tab => {
-                    if (synced.has(tab.dataset.screen)) {
-                        tab.classList.remove('sync-flash'); void tab.offsetWidth;
-                        tab.classList.add('sync-flash');
-                        tab.addEventListener('animationend', () => tab.classList.remove('sync-flash'), { once: true });
-                    }
-                });
-            } else {
-                showFlash(data.error || JS_BROADCAST_ERROR, 'error');
-            }
-        } catch {
-            showFlash(JS_BROADCAST_ERROR, 'error');
-        }
-        confirmBtn.disabled = false;
-    });
-
-    const stopBtn = document.getElementById('btn-broadcast-stop');
-    if (stopBtn) {
-        stopBtn.addEventListener('click', async () => {
-            stopBtn.disabled = true;
-            try {
-                const res  = await fetch('/admin/screens/broadcast/stop', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN },
-                    body: JSON.stringify({ source: CURRENT_SCREEN })
-                });
-                const data = await res.json();
-                if (data.ok) {
-                    showFlash(JS_BROADCAST_STOPPED, 'success');
-                    applySyncActive([]);
-                } else {
-                    showFlash(data.error || JS_BROADCAST_ERROR, 'error');
-                }
-            } catch {
-                showFlash(JS_BROADCAST_ERROR, 'error');
-            }
-            stopBtn.disabled = false;
-        });
-    }
-})();
 
 /* ── Drag & drop reorder ── */
 (function() {

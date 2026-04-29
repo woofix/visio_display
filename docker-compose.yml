@@ -13,7 +13,7 @@ services:
     environment:
       - POSTGRES_DB=visio
       - POSTGRES_USER=visio
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-visio}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD absent. Lancez scripts/security_bootstrap.sh install . ou renseignez .env.}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -29,7 +29,7 @@ services:
     environment:
       - REDIS_URL=redis://redis:6379
       - VISIO_DATA_DIR=/app/data
-      - DATABASE_URL=postgresql://visio:${POSTGRES_PASSWORD:-visio}@postgres:5432/visio
+      - DATABASE_URL=postgresql://visio:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD absent. Lancez scripts/security_bootstrap.sh install . ou renseignez .env.}@postgres:5432/visio
     volumes:
       - ./.env:/app/.env:ro
       - ${MEDIA_DIR:-./web/static/data}:/app/static/data
@@ -54,7 +54,7 @@ services:
     environment:
       - REDIS_URL=redis://redis:6379
       - VISIO_DATA_DIR=/app/data
-      - DATABASE_URL=postgresql://visio:${POSTGRES_PASSWORD:-visio}@postgres:5432/visio
+      - DATABASE_URL=postgresql://visio:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD absent. Lancez scripts/security_bootstrap.sh install . ou renseignez .env.}@postgres:5432/visio
     volumes:
       - ./.env:/app/.env:ro
       - ${MEDIA_DIR:-./web/static/data}:/app/static/data

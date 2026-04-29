@@ -117,7 +117,8 @@ Application web légère de signalétique numérique. Elle affiche un diaporama 
 git clone <url-du-dépôt>
 cd Visio-Display
 cp .env.example .env
-# Éditer .env : renseigner ADMIN_USER, ADMIN_PASSWORD et SECRET_KEY
+# Éditer .env : renseigner ADMIN_USER, ADMIN_PASSWORD, puis durcir les secrets
+./scripts/security_bootstrap.sh install .
 docker compose up -d --build
 ```
 
@@ -148,13 +149,16 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 | `ADMIN_PASSWORD` | Mot de passe du super-admin (10 caractères minimum)                |
 | `SECRET_KEY`     | Clé de signature des sessions Flask (obligatoire)                  |
 | `POSTGRES_PASSWORD` | Mot de passe du rôle PostgreSQL `visio` utilisé par la stack Docker |
+| `CLIENT_HEARTBEAT_TOKEN` | Jeton partagé optionnel exigé par `/api/client-heartbeat` lorsqu'il est défini |
 | `SESSION_COOKIE_SECURE` | Force le cookie de session en mode `Secure` (recommandé derrière HTTPS) |
 | `SESSION_COOKIE_NAME` | Nom du cookie de session Flask (défaut : `visio_session`) |
 | `SESSION_LIFETIME_MINUTES` | Durée de vie maximale d’une session connectée (défaut : `480`) |
 | `TRUSTED_HOSTS` | Liste d’hôtes autorisés séparés par des virgules pour filtrer l’en-tête `Host` |
 | `TRUST_PROXY_COUNT` | Nombre de proxies inverse de confiance pour interpréter `X-Forwarded-*` |
 
-> Ces variables ne sont lues qu'une seule fois, lors du premier démarrage (base de données absente).
+`scripts/security_bootstrap.sh install .` crée les secrets absents, refuse les valeurs faibles pendant une installation, applique `chmod 600` sur `.env`, crée `PRIVATE_DIR/backups` et applique `chmod 700` sur `PRIVATE_DIR` et ses sauvegardes. En mise à jour, `scripts/security_bootstrap.sh update .` ajoute uniquement les clés manquantes et signale les valeurs faibles sans remplacer `SECRET_KEY` ni `POSTGRES_PASSWORD`. Le conteneur exécute aussi un contrôle non bloquant au démarrage et affiche des warnings utiles si `.env` ou les volumes sont en lecture seule.
+
+> Ces variables d'initialisation applicative ne sont lues qu'une seule fois, lors du premier démarrage (base de données absente).
 >
 > `POSTGRES_PASSWORD` ne recrée pas automatiquement l'utilisateur PostgreSQL si le volume `postgres_data` existe déjà. Si vous voyez `password authentication failed for user "visio"`, le mot de passe stocké dans le volume Postgres ne correspond plus à celui de votre `.env`.
 
@@ -172,6 +176,8 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 - Protection CSRF sur toutes les requêtes d'écriture (`POST`, JSON et formulaires)
 - Déconnexion réalisée en `POST` protégé par CSRF, pas en simple lien `GET`
 - Filtrage d'hôtes via `TRUSTED_HOSTS` et prise en charge d'un reverse proxy via `TRUST_PROXY_COUNT`
+- `CLIENT_HEARTBEAT_TOKEN` protège l'endpoint de heartbeat client lorsqu'il est renseigné côté serveur
+- Les sauvegardes dans `PRIVATE_DIR/backups` peuvent contenir des données sensibles et sont verrouillées en `chmod 700`
 - En-têtes de sécurité appliqués: CSP, HSTS en HTTPS, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `Cross-Origin-Opener-Policy` et `Cross-Origin-Resource-Policy`
 
 **Localisation météo** — configurable depuis l'interface (`/admin/settings?tab=meteo`, super-admin) :
@@ -812,7 +818,8 @@ A lightweight web-based digital signage. It displays a fullscreen slideshow of i
 git clone <repository-url>
 cd Visio-Display
 cp .env.example .env
-# Edit .env: set ADMIN_USER, ADMIN_PASSWORD and SECRET_KEY
+# Edit .env: set ADMIN_USER, ADMIN_PASSWORD, then harden secrets
+./scripts/security_bootstrap.sh install .
 docker compose up -d --build
 ```
 
@@ -843,13 +850,16 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 | `ADMIN_PASSWORD` | Super-admin password (minimum 10 characters)                      |
 | `SECRET_KEY`     | Flask session signing key (required)                              |
 | `POSTGRES_PASSWORD` | Password for the PostgreSQL `visio` role used by the Docker stack |
+| `CLIENT_HEARTBEAT_TOKEN` | Optional shared token required by `/api/client-heartbeat` when set |
 | `SESSION_COOKIE_SECURE` | Forces the session cookie to use `Secure` (recommended behind HTTPS) |
 | `SESSION_COOKIE_NAME` | Flask session cookie name (default: `visio_session`) |
 | `SESSION_LIFETIME_MINUTES` | Maximum lifetime of an authenticated session (default: `480`) |
 | `TRUSTED_HOSTS` | Comma-separated allowlist of hostnames accepted from the `Host` header |
 | `TRUST_PROXY_COUNT` | Number of trusted reverse proxies for `X-Forwarded-*` headers |
 
-> These variables are only read once, on first boot (when the database does not yet exist).
+`scripts/security_bootstrap.sh install .` creates missing secrets, rejects weak values during installation, applies `chmod 600` to `.env`, creates `PRIVATE_DIR/backups`, and applies `chmod 700` to `PRIVATE_DIR` and its backups. During updates, `scripts/security_bootstrap.sh update .` only adds missing keys and reports weak values without replacing `SECRET_KEY` or `POSTGRES_PASSWORD`. The container also runs a non-blocking startup check and prints useful warnings when `.env` or volumes are read-only.
+
+> These application initialization variables are only read once, on first boot (when the database does not yet exist).
 >
 > `POSTGRES_PASSWORD` does not recreate the PostgreSQL user automatically when the `postgres_data` volume already exists. If you see `password authentication failed for user "visio"`, the password stored in the existing Postgres volume no longer matches your `.env` file.
 
@@ -867,6 +877,8 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 - CSRF protection is enforced on all state-changing requests (`POST`, JSON and form submissions)
 - Logout is performed through a CSRF-protected `POST`, not a plain `GET` link
 - Host header filtering is available through `TRUSTED_HOSTS`, with reverse-proxy awareness via `TRUST_PROXY_COUNT`
+- `CLIENT_HEARTBEAT_TOKEN` protects the client heartbeat endpoint when configured on the server
+- Backups in `PRIVATE_DIR/backups` can contain sensitive data and are locked down with `chmod 700`
 - Security headers are applied: CSP, HSTS on HTTPS, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `Cross-Origin-Opener-Policy`, and `Cross-Origin-Resource-Policy`
 
 **Weather location** — configurable from the UI (`/admin/settings?tab=meteo`, super-admin only):

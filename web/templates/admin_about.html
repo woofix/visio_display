@@ -39,7 +39,11 @@
                 <tr>
                     <th>{{ t('about_version_label') }}</th>
                     <td>
+                        {% if app_release_url %}
+                        <a class="about-version" href="{{ app_release_url }}" target="_blank" rel="noopener noreferrer">{{ app_version }}</a>
+                        {% else %}
                         <span class="about-version">{{ app_version }}</span>
+                        {% endif %}
                         {% if git_commit %}
                         <span class="about-commit">{{ git_commit }}</span>
                         {% endif %}
@@ -123,6 +127,12 @@
 .about-version {
     font-weight: 700;
     color: var(--primary);
+}
+a.about-version {
+    text-decoration: none;
+}
+a.about-version:hover {
+    text-decoration: underline;
 }
 .about-commit {
     display: inline-block;

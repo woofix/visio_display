@@ -61,18 +61,22 @@ jobs:
           set -euo pipefail
           version="${{ steps.version.outputs.version }}"
           tag="${{ steps.version.outputs.tag }}"
+          repo_url="https://github.com/${GITHUB_REPOSITORY}"
+          docs_url="${repo_url}/tree/${tag}"
           previous_tag="$(git tag --list --sort=-v:refname | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | grep -v "^${tag}$" | head -n 1 || true)"
 
           {
             echo "## Visio-Display ${version}"
             echo
+            echo "### Français"
+            echo
             echo "Application web de signalétique numérique pour diffuser des images, vidéos, campagnes et informations sur plusieurs écrans."
             echo
             echo "### Documentation"
             echo
-            echo "- [README](https://github.com/woofix/visio_display/blob/main/README.md)"
-            echo "- [Guide utilisateur](https://github.com/woofix/visio_display/blob/main/GUIDE_UTILISATEUR.md)"
-            echo "- [Politique de sécurité](https://github.com/woofix/visio_display/blob/main/SECURITY.md)"
+            echo "- [README](${docs_url}/README.md)"
+            echo "- [Guide utilisateur](${docs_url}/GUIDE_UTILISATEUR.md)"
+            echo "- [Politique de sécurité](${docs_url}/SECURITY.md)"
             echo
             echo "### Mise à jour serveur"
             echo
@@ -83,6 +87,34 @@ jobs:
             echo '```'
             echo
             echo "### Changements inclus"
+            echo
+            if [ -n "$previous_tag" ]; then
+              git log --pretty='- %s (`%h`)' "${previous_tag}..HEAD"
+            else
+              git log --pretty='- %s (`%h`)' HEAD
+            fi
+            echo
+            echo "---"
+            echo
+            echo "### English"
+            echo
+            echo "Lightweight web-based digital signage application for displaying images, videos, campaigns and information across multiple screens."
+            echo
+            echo "### Documentation"
+            echo
+            echo "- [README](${docs_url}/README.md)"
+            echo "- [User guide](${docs_url}/GUIDE_UTILISATEUR.md)"
+            echo "- [Security policy](${docs_url}/SECURITY.md)"
+            echo
+            echo "### Server update"
+            echo
+            echo '```bash'
+            echo "git checkout main"
+            echo "git pull origin main"
+            echo "docker compose up -d --build"
+            echo '```'
+            echo
+            echo "### Included changes"
             echo
             if [ -n "$previous_tag" ]; then
               git log --pretty='- %s (`%h`)' "${previous_tag}..HEAD"

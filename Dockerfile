@@ -17,6 +17,7 @@ RUN pip install --upgrade "pip==24.3.1" \
 
 # Application code
 COPY web/ /app
+COPY VERSION /VERSION
 COPY scripts/ /app/scripts/
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod +x /app/docker-entrypoint.sh /app/scripts/*.sh

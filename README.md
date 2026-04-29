@@ -154,7 +154,6 @@ Ensuite, chaque `git commit` incrémente automatiquement le fichier `VERSION` et
 Le type de version est détecté à partir des fichiers préparés :
 
 - changement courant : patch (`1.0.0` → `1.0.1`)
-- nouvelle route, service, template, CSS, script ou nouveau fichier : mineur (`1.0.0` → `1.1.0`)
 - changement sensible (`web/db.py`, `Dockerfile`, `docker-compose.yml`, dépendances) ou suppression de fichier : majeur (`1.0.0` → `2.0.0`)
 
 Pour une montée ponctuelle de version mineure ou majeure :
@@ -884,7 +883,6 @@ After that, each `git commit` automatically bumps the `VERSION` file and stages 
 The version bump is detected from the staged files:
 
 - regular change: patch (`1.0.0` → `1.0.1`)
-- new route, service, template, CSS, script or new file: minor (`1.0.0` → `1.1.0`)
 - sensitive change (`web/db.py`, `Dockerfile`, `docker-compose.yml`, dependencies) or deleted file: major (`1.0.0` → `2.0.0`)
 
 For a one-off minor or major version bump:

@@ -21,16 +21,6 @@ detect_bump_kind() {
         return
     fi
 
-    if printf '%s\n' "$changed_names" | grep -Eq '^web/(blueprints|services|templates|static/css|tools)/|^scripts/|^server-install\.sh$'; then
-        printf '%s\n' "minor"
-        return
-    fi
-
-    if git -C "$ROOT_DIR" diff --cached --name-status --diff-filter=A | grep -Eq '^[A][[:space:]]+'; then
-        printf '%s\n' "minor"
-        return
-    fi
-
     printf '%s\n' "patch"
 }
 

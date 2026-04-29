@@ -356,6 +356,31 @@ def register_blueprints(app):
 
 def register_request_hooks(app):
     @app.before_request
+    def block_admin_during_maintenance():
+        from services.update_svc import is_maintenance_mode
+
+        if not is_maintenance_mode():
+            return None
+        allowed_paths = {"/admin/update", "/api/update", "/api/update/stream"}
+        viewer_api_paths = {
+            "/api/images",
+            "/api/durations",
+            "/api/pools",
+            "/api/screens",
+            "/api/halo",
+            "/api/priority-alert",
+            "/api/client-policy",
+            "/api/client-heartbeat",
+        }
+        if request.path in allowed_paths or request.endpoint == "static":
+            return None
+        if request.path.startswith("/api/") and request.path not in viewer_api_paths:
+            return jsonify({"error": "maintenance"}), 503
+        if request.path.startswith("/admin"):
+            return "Maintenance en cours", 503
+        return None
+
+    @app.before_request
     def protect_from_csrf():
         if request.method in {"GET", "HEAD", "OPTIONS", "TRACE"}:
             return None

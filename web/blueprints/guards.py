@@ -30,6 +30,12 @@ def superadmin_guard_json():
     return None
 
 
+def admin_guard_json():
+    if not is_admin():
+        return jsonify({"error": "unauthorized"}), 401
+    return None
+
+
 def permission_redirect_guard(perm, endpoint, **values):
     redir = admin_guard()
     if redir:

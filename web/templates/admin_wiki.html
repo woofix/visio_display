@@ -23,7 +23,9 @@
     margin-bottom: 16px;
     box-shadow: var(--shadow-sm);
     scroll-margin-top: 78px;
+    display: none;
 }
+.wiki-section.active { display: block; }
 .wiki-section-header {
     display: flex;
     align-items: center;
@@ -245,7 +247,7 @@
 <div class="wiki-body">
 
         <!-- §1 Access -->
-        <section class="wiki-section active" id="s1">
+        <section class="wiki-section {% if wiki_section == 's1' %}active{% endif %}" id="s1">
             <div class="wiki-section-header">
                 <h2>{{ t('wiki_s1_title') }}</h2>
             </div>
@@ -267,7 +269,7 @@
         </section>
 
         <!-- §2 Affichage public -->
-        <section class="wiki-section" id="s2">
+        <section class="wiki-section {% if wiki_section == 's2' %}active{% endif %}" id="s2">
             <div class="wiki-section-header">
                 <h2>{{ t('wiki_s2_title') }}</h2>
             </div>
@@ -290,7 +292,7 @@
         </section>
 
         <!-- §3 Connexion -->
-        <section class="wiki-section" id="s3">
+        <section class="wiki-section {% if wiki_section == 's3' %}active{% endif %}" id="s3">
             <div class="wiki-section-header">
                 <h2>{{ t('wiki_s3_title') }}</h2>
             </div>
@@ -317,7 +319,7 @@
         </section>
 
         <!-- §4 Add media -->
-        <section class="wiki-section" id="s4">
+        <section class="wiki-section {% if wiki_section == 's4' %}active{% endif %}" id="s4">
             <div class="wiki-section-header">
                 <h2>{{ t('wiki_s4_title') }}</h2>
             </div>
@@ -351,7 +353,7 @@
         </section>
 
         <!-- §5 Media library -->
-        <section class="wiki-section" id="s5">
+        <section class="wiki-section {% if wiki_section == 's5' %}active{% endif %}" id="s5">
             <div class="wiki-section-header">
                 <h2>{{ t('wiki_s5_title') }}</h2>
             </div>
@@ -387,7 +389,7 @@
         </section>
 
         <!-- §6 Plage de diffusion -->
-        <section class="wiki-section" id="s6">
+        <section class="wiki-section {% if wiki_section == 's6' %}active{% endif %}" id="s6">
             <div class="wiki-section-header">
                 <h2>{{ t('wiki_s6_title') }}</h2>
             </div>
@@ -430,7 +432,7 @@
         </section>
 
         <!-- §7 Multiple screens -->
-        <section class="wiki-section" id="s7">
+        <section class="wiki-section {% if wiki_section == 's7' %}active{% endif %}" id="s7">
             <div class="wiki-section-header">
                 <h2>{{ t('wiki_s7_title') }}</h2>
             </div>
@@ -485,7 +487,7 @@
         </section>
 
         <!-- §8 Ephemeris -->
-        <section class="wiki-section" id="s8">
+        <section class="wiki-section {% if wiki_section == 's8' %}active{% endif %}" id="s8">
             <div class="wiki-section-header">
                 <h2>{{ t('wiki_s8_title') }}</h2>
             </div>
@@ -517,7 +519,7 @@
         </section>
 
         <!-- §9 Settings -->
-        <section class="wiki-section" id="s9">
+        <section class="wiki-section {% if wiki_section == 's9' %}active{% endif %}" id="s9">
             <div class="wiki-section-header">
                 <h2>{{ t('wiki_s9_title') }}</h2>
             </div>
@@ -553,7 +555,7 @@
         </section>
 
         <!-- §10 Gestion utilisateurs -->
-        <section class="wiki-section" id="s10">
+        <section class="wiki-section {% if wiki_section == 's10' %}active{% endif %}" id="s10">
             <div class="wiki-section-header">
                 <h2>{{ t('wiki_s10_title') }}</h2>
             </div>
@@ -588,7 +590,7 @@
         </section>
 
         <!-- §11 File encodage -->
-        <section class="wiki-section" id="s11">
+        <section class="wiki-section {% if wiki_section == 's11' %}active{% endif %}" id="s11">
             <div class="wiki-section-header">
                 <h2>{{ t('wiki_s11_title') }}</h2>
             </div>
@@ -610,7 +612,7 @@
         </section>
 
         <!-- §12 Permissions -->
-        <section class="wiki-section" id="s12">
+        <section class="wiki-section {% if wiki_section == 's12' %}active{% endif %}" id="s12">
             <div class="wiki-section-header">
                 <h2>{{ t('wiki_s12_title') }}</h2>
             </div>
@@ -641,7 +643,7 @@
         </section>
 
         <!-- §13 Media groups -->
-        <section class="wiki-section" id="s13">
+        <section class="wiki-section {% if wiki_section == 's13' %}active{% endif %}" id="s13">
             <div class="wiki-section-header">
                 <h2>{{ t('wiki_s13_title') }}</h2>
             </div>
@@ -665,7 +667,7 @@
         </section>
 
         <!-- §14 Alerte prioritaire -->
-        <section class="wiki-section" id="s14">
+        <section class="wiki-section {% if wiki_section == 's14' %}active{% endif %}" id="s14">
             <div class="wiki-section-header">
                 <h2>{{ t('wiki_s14_title') }}</h2>
             </div>
@@ -686,7 +688,7 @@
         </section>
 
         <!-- §15 Activity log -->
-        <section class="wiki-section" id="s15">
+        <section class="wiki-section {% if wiki_section == 's15' %}active{% endif %}" id="s15">
             <div class="wiki-section-header">
                 <h2>{{ t('wiki_s15_title') }}</h2>
             </div>
@@ -713,7 +715,7 @@
         </section>
 
         <!-- §16 Backups -->
-        <section class="wiki-section" id="s16">
+        <section class="wiki-section {% if wiki_section == 's16' %}active{% endif %}" id="s16">
             <div class="wiki-section-header">
                 <h2>{{ t('wiki_s16_title') }}</h2>
             </div>
@@ -748,7 +750,7 @@
         </section>
 
         <!-- §18 Global search -->
-        <section class="wiki-section" id="s18">
+        <section class="wiki-section {% if wiki_section == 's18' %}active{% endif %}" id="s18">
             <div class="wiki-section-header">
                 <h2>{{ t('wiki_s18_title') }}</h2>
             </div>
@@ -773,7 +775,7 @@
         </section>
 
         <!-- §17 Temporary campaigns -->
-        <section class="wiki-section" id="s17">
+        <section class="wiki-section {% if wiki_section == 's17' %}active{% endif %}" id="s17">
             <div class="wiki-section-header">
                 <h2>{{ t('wiki_s17_title') }}</h2>
             </div>
@@ -812,7 +814,7 @@
 
 
         <!-- §19 Rôles RBAC -->
-        <section class="wiki-section" id="s19">
+        <section class="wiki-section {% if wiki_section == 's19' %}active{% endif %}" id="s19">
             <div class="wiki-section-header">
                 <h2>{{ t('wiki_s19_title') }}</h2>
             </div>
@@ -845,7 +847,7 @@
         </section>
 
         <!-- §20 Fonctionnalités -->
-        <section class="wiki-section" id="s20">
+        <section class="wiki-section {% if wiki_section == 's20' %}active{% endif %}" id="s20">
             <div class="wiki-section-header">
                 <h2>{{ t('wiki_s20_title') }}</h2>
             </div>

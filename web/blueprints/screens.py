@@ -21,6 +21,17 @@ from blueprints.guards import admin_guard, superadmin_guard, perm_guard, feature
 bp = Blueprint('screens', __name__)
 
 
+def _settings_screens_url():
+    return url_for('settings.admin_settings_section_page', section='gestion-ecrans')
+
+
+def _redirect_after_screen_change(default_url):
+    referrer = request.referrer or ''
+    if '/admin/settings/gestion-ecrans' in referrer or '/admin/settings/administration' in referrer:
+        return redirect(_settings_screens_url())
+    return redirect(default_url)
+
+
 @bp.route('/admin/screens/add', methods=['POST'])
 def add_screen():
     redir = superadmin_guard()
@@ -30,12 +41,12 @@ def add_screen():
     name = request.form.get('screen_name', '').strip().lower()
     if not valid_screen_name(name):
         _flash('flash_screen_name_invalid', 'error')
-        return redirect(url_for('media.admin_media'))
+        return _redirect_after_screen_change(url_for('media.admin_media'))
     cfg     = load_config()
     screens = cfg.setdefault('screens', {})
     if name in screens:
         _flash('flash_screen_exists', 'error', name=name)
-        return redirect(url_for('media.admin_media'))
+        return _redirect_after_screen_change(url_for('media.admin_media'))
     default_halo_color = normalize_halo_color(cfg.get('default_halo_color', DEFAULT_HALO_COLOR))
     screens[name] = {
         "order": [],
@@ -47,7 +58,7 @@ def add_screen():
     }
     save_config(cfg)
     log_config_change(session.get('user'), f'écran ajouté:{name}')
-    return redirect(url_for('media.admin_media') + f'?screen={name}')
+    return _redirect_after_screen_change(url_for('media.admin_media') + f'?screen={name}')
 
 
 @bp.route('/admin/screens/delete/<name>', methods=['POST'])
@@ -64,7 +75,7 @@ def delete_screen(name):
         save_config(cfg)
         log_config_change(session.get('user'), f'écran supprimé:{name}')
         _flash('flash_screen_deleted', 'success', name=name)
-    return redirect(url_for('media.admin_media'))
+    return _redirect_after_screen_change(url_for('media.admin_media'))
 
 
 @bp.route('/admin/screens/default-name', methods=['POST'])
@@ -87,7 +98,7 @@ def update_default_screen_name():
         _flash('flash_default_screen_name_updated', 'success', name=new_name)
     else:
         _flash('flash_default_screen_name_cleared', 'success')
-    return redirect(url_for('users.admin_superadmin_page'))
+    return redirect(_settings_screens_url())
 
 
 @bp.route('/admin/screens/halo', methods=['POST'])
@@ -104,10 +115,10 @@ def update_screen_halo():
     if screen_name:
         if screen_name not in cfg.get('screens', {}):
             _flash('flash_screen_not_found', 'error')
-            return redirect(url_for('settings.admin_settings_page') + '?tab=application')
+            return redirect(url_for('settings.admin_settings_section_page', section='application'))
         if not has_screen_access(screen_name):
             _flash('flash_no_perm', 'error')
-            return redirect(url_for('settings.admin_settings_page') + '?tab=application')
+            return redirect(url_for('settings.admin_settings_section_page', section='application'))
         cfg['screens'][screen_name]['halo_color'] = halo_color
         log_config_change(session.get('user'), f'halo écran {screen_name}:{halo_color}')
         _flash('flash_screen_halo_updated', 'success', name=screen_name, color=halo_color)
@@ -117,7 +128,7 @@ def update_screen_halo():
         _flash('flash_default_screen_halo_updated', 'success', color=halo_color)
 
     save_config(cfg)
-    return redirect(url_for('settings.admin_settings_page') + '?tab=application')
+    return redirect(url_for('settings.admin_settings_section_page', section='application'))
 
 @bp.route('/admin/screens/broadcast', methods=['POST'])
 def broadcast_screen():

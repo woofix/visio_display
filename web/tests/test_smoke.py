@@ -149,7 +149,7 @@ class AppSmokeTests(unittest.TestCase):
             follow_redirects=False,
         )
         self.assertEqual(response.status_code, 302)
-        self.assertIn("?tab=theme", response.headers["Location"])
+        self.assertTrue(response.headers["Location"].endswith("/admin/settings/theme"))
 
         with self.app.app_context():
             from services.users_svc import get_user
@@ -619,7 +619,7 @@ class AppSmokeTests(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 302)
-        self.assertIn("?tab=application", response.headers["Location"])
+        self.assertTrue(response.headers["Location"].endswith("/admin/settings/application"))
 
         with self.app.app_context():
             from services.config_svc import load_config
@@ -660,7 +660,7 @@ class AppSmokeTests(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 302)
-        self.assertIn("?tab=application", response.headers["Location"])
+        self.assertTrue(response.headers["Location"].endswith("/admin/settings/application"))
 
         with self.app.app_context():
             from services.config_svc import load_config
@@ -690,12 +690,12 @@ class AppSmokeTests(unittest.TestCase):
         with self.client.session_transaction() as session:
             session["user"] = "editor"
 
-        response = self.client.get("/admin/settings?tab=application")
+        response = self.client.get("/admin/settings/application")
 
         self.assertEqual(response.status_code, 200)
         html = response.get_data(as_text=True)
-        self.assertRegex(html, r'id="tab-application" class="[^"]*\bactive\b')
-        self.assertIn('href="/admin/settings?tab=application"', html)
+        self.assertIn('id="application" class="admin-section"', html)
+        self.assertIn('href="/admin/settings/application"', html)
 
     def test_activity_log_retention_trims_old_and_excess_rows(self):
         with self.app.app_context():
@@ -936,7 +936,7 @@ class AppSmokeTests(unittest.TestCase):
                 os.utime(backup_path, (ts, ts))
 
                 self._login()
-                response = self.client.get("/admin/settings?tab=sauvegardes")
+                response = self.client.get("/admin/settings/sauvegardes")
 
                 self.assertEqual(response.status_code, 200)
                 body = response.get_data(as_text=True)

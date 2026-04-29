@@ -337,6 +337,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
 <div class="card">
 
     <!-- ── LOGO ── -->
+    {% if tab == 'logo' %}
     <div id="logo" class="admin-section">
         <div class="admin-section-title">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
@@ -373,8 +374,10 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
             </div>
         </div>
     </div>
+    {% endif %}
 
     <!-- ── THEME ── -->
+    {% if tab == 'theme' %}
     <div id="theme" class="admin-section">
         <div class="admin-section-title">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20"/><path d="M2 12h10"/></svg>
@@ -459,8 +462,9 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
             </div>
         </form>
     </div>
+    {% endif %}
 
-    {% if current_user_is_superadmin %}
+    {% if current_user_is_superadmin and tab == 'installation' %}
     <!-- ── INSTALLATION ── -->
     <div id="installation" class="admin-section">
         <div class="admin-section-title">
@@ -770,6 +774,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
     {% endif %}
 
     <!-- ── ADMINISTRATEURS ── -->
+    {% if tab in ['admins', 'password'] %}
     <div id="admins" class="admin-section">
         <div class="admin-section-title">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
@@ -778,11 +783,12 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
         <div class="admins-layout">
 
             {% if current_user_is_superadmin %}
+            {% if tab == 'admins' %}
             <div class="admin-block full-col">
                 <h3>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
                     {{ t('admins_active_accounts') }}
-                    <a href="/admin/settings#superadmin" class="btn sm" style="margin-left:auto;font-size:.72rem">
+                    <a href="/admin/settings/administration" class="btn sm" style="margin-left:auto;font-size:.72rem">
                         {{ t('admins_manage_perms') }}
                     </a>
                 </h3>
@@ -826,7 +832,9 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                     {% endfor %}
                 </ul>
             </div>
+            {% endif %}
             {% else %}
+            {% if tab == 'admins' %}
             <div class="admin-block full-col">
                 <h3>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
@@ -834,6 +842,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                 </h3>
                 <p style="font-size:.83rem;color:var(--text-3)">{{ t('admins_no_management') }}</p>
             </div>
+            {% endif %}
             {% endif %}
 
             <!-- Changer mot de passe — visible pour tous -->
@@ -851,8 +860,9 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
 
         </div>
     </div>
+    {% endif %}
 
-    {% if current_user_is_superadmin %}
+    {% if current_user_is_superadmin and tab == 'sauvegardes' %}
     <!-- ── SAUVEGARDES ── -->
     <div id="sauvegardes" class="admin-section">
         <div class="admin-section-title">
@@ -990,6 +1000,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
     {% endif %}
 
     <!-- ── APPLICATION ── -->
+    {% if tab == 'application' %}
     <div id="application" class="admin-section">
         <div class="admin-section-title">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
@@ -1046,8 +1057,9 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
         </div>
 
     </div>
+    {% endif %}
 
-    {% if current_user_is_superadmin %}
+    {% if current_user_is_superadmin and tab == 'meteo' %}
     <!-- ── MÉTÉO ── -->
     <div id="meteo" class="admin-section">
         <div class="admin-section-title">
@@ -1136,6 +1148,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
     {% endif %}
 
     <!-- ── LANGUE ── -->
+    {% if tab == 'language' %}
     <div id="language" class="admin-section">
         <div class="admin-section-title">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
@@ -1161,8 +1174,9 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
             <button type="submit" class="btn sm">{{ t('language_apply') }}</button>
         </form>
     </div>
+    {% endif %}
 
-    {% if current_user_is_superadmin %}
+    {% if current_user_is_superadmin and tab in ['administration', 'priority-alert', 'accounts', 'add-account', 'screens'] %}
     <!-- ── SUPER-ADMIN ── -->
     <div id="superadmin" class="admin-section">
         <div class="admin-section-title">
@@ -1172,6 +1186,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
 
         <div class="sa-grid">
 
+            {% if tab == 'priority-alert' %}
             <div class="sa-block full-col" id="alerte-prioritaire">
                 <h3>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -1195,7 +1210,9 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                     </div>
                 </div>
             </div>
+            {% endif %}
 
+            {% if tab in ['administration', 'accounts'] %}
             <div class="sa-block full-col" id="comptes-permissions">
                 <h3>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -1320,7 +1337,9 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                 </div>
                 {% endfor %}
             </div>
+            {% endif %}
 
+            {% if tab == 'add-account' %}
             <div class="sa-block" id="ajouter-compte">
                 <h3>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
@@ -1341,7 +1360,9 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                     <div><button type="submit" class="btn success sm">{{ t('superadmin_create') }}</button></div>
                 </form>
             </div>
+            {% endif %}
 
+            {% if tab == 'screens' %}
             <div class="sa-block" id="gestion-ecrans">
                 <h3>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
@@ -1380,23 +1401,14 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                     <div><button type="submit" class="btn success sm">{{ t('superadmin_screens_create') }}</button></div>
                 </form>
             </div>
-
-            <div class="sa-block">
-                <h3>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                    {{ t('superadmin_my_password') }}
-                </h3>
-                <form action="/admin/users/password" method="post" class="add-user-form">
-                    <input type="password" name="current_password" placeholder="{{ t('admins_current_password') }}" required>
-                    <input type="password" name="new_password"     placeholder="{{ t('admins_new_password') }}" required>
-                    <div><button type="submit" class="btn sm">{{ t('admins_update') }}</button></div>
-                </form>
-            </div>
+            {% endif %}
 
         </div>
     </div>
+    {% endif %}
 
     <!-- ── FONCTIONNALITÉS ── -->
+    {% if current_user_is_superadmin and tab == 'features' %}
     <div id="fonctionnalites" class="admin-section">
         <div class="admin-section-title">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>

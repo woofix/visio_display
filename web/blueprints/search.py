@@ -171,7 +171,7 @@ def _config_items(cfg):
             'description': "Écran d'affichage",
             'keywords':    'ecran display moniteur affichage kiosk',
             'type':        'screen',
-            'url':         '/admin/settings#gestion-ecrans',
+            'url':         '/admin/settings/gestion-ecrans',
             'desc':        "Écran d'affichage",
         })
     groups_seen = set()
@@ -194,7 +194,7 @@ def _config_items(cfg):
             'description': "Nom de l'application",
             'keywords':    'application nom configuration',
             'type':        'app',
-            'url':         '/admin/settings#application',
+            'url':         '/admin/settings/application',
             'desc':        "Nom de l'application",
         })
     return items

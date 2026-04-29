@@ -2,6 +2,7 @@
 
 import os
 import json
+import signal
 import subprocess
 import threading
 import time
@@ -13,15 +14,16 @@ from constants import PRIVATE_DATA_DIR
 
 SERVICE_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_REPO_CWD = os.path.normpath(os.path.join(SERVICE_DIR, "..", ".."))
-UPDATE_SCRIPT = os.path.join(DEFAULT_REPO_CWD, "scripts", "update.sh")
+DEFAULT_UPDATE_SCRIPT = os.path.join(DEFAULT_REPO_CWD, "scripts", "update.sh")
 UPDATE_STATE_FILE = os.path.join(PRIVATE_DATA_DIR, "update_state.json")
 UPDATE_LOG_FILE = os.path.join(PRIVATE_DATA_DIR, "update.log")
 UPDATE_LOCK_FILE = os.path.join(PRIVATE_DATA_DIR, "update.lock")
 MAINTENANCE_FILE = os.path.join(PRIVATE_DATA_DIR, "maintenance.flag")
-DEFAULT_VERSION_URL = "https://raw.githubusercontent.com/woofix/visio_display/main/VERSION"
 DEFAULT_LATEST_RELEASE_URL = "https://api.github.com/repos/woofix/visio_display/releases/latest"
 DEFAULT_TAGS_URL = "https://api.github.com/repos/woofix/visio_display/tags?per_page=100"
-DEFAULT_BRANCH_COMMIT_URL = "https://api.github.com/repos/woofix/visio_display/commits/main"
+DEFAULT_UPDATE_BRANCH = "main"
+DEFAULT_REPO_RAW_BASE_URL = "https://raw.githubusercontent.com/woofix/visio_display"
+DEFAULT_REPO_API_BASE_URL = "https://api.github.com/repos/woofix/visio_display"
 
 
 def _run_git(args, cwd, timeout=5):
@@ -61,6 +63,28 @@ def _clean_version(version):
     return str(version or "").strip().lstrip("v")
 
 
+def _clean_branch(branch):
+    branch = str(branch or "").strip()
+    if not branch or branch.startswith("-") or ".." in branch:
+        return DEFAULT_UPDATE_BRANCH
+    if any(char in branch for char in " \t\r\n~^:?*[\\"):
+        return DEFAULT_UPDATE_BRANCH
+    return branch
+
+
+def _get_update_branch():
+    return _clean_branch(os.environ.get("VISIO_UPDATE_BRANCH", DEFAULT_UPDATE_BRANCH))
+
+
+def _uses_release_channel(branch):
+    raw = os.environ.get("VISIO_UPDATE_USE_RELEASES", "").strip().lower()
+    if raw in {"1", "true", "yes", "on"}:
+        return True
+    if raw in {"0", "false", "no", "off"}:
+        return False
+    return branch == DEFAULT_UPDATE_BRANCH
+
+
 def _version_parts(version):
     parts = []
     for item in _clean_version(version).split("."):
@@ -86,6 +110,17 @@ def _compare_versions(local_version, remote_version):
     return 0
 
 
+def _latest_semver_tag(cwd):
+    result = _run_git(["tag", "--list", "--sort=-version:refname"], cwd, timeout=3)
+    if not result["ok"]:
+        return "", ""
+    for tag in result["stdout"].splitlines():
+        version = _clean_version(tag)
+        if _version_parts(version):
+            return version, tag
+    return "", ""
+
+
 def _read_local_version():
     env_version = os.environ.get("APP_VERSION", "").strip()
     if env_version:
@@ -99,7 +134,9 @@ def _read_local_version():
 
 
 def _read_remote_version(timeout=6):
-    version_url = os.environ.get("VISIO_UPDATE_VERSION_URL", "").strip() or DEFAULT_VERSION_URL
+    branch = _get_update_branch()
+    default_version_url = f"{DEFAULT_REPO_RAW_BASE_URL}/{branch}/VERSION"
+    version_url = os.environ.get("VISIO_UPDATE_VERSION_URL", "").strip() or default_version_url
     try:
         with urlopen(version_url, timeout=timeout) as response:
             return response.read(128).decode("utf-8", errors="replace").strip(), ""
@@ -121,51 +158,53 @@ def _read_json_url(url, timeout=6):
 
 
 def _read_remote_release_info(timeout=6):
-    release_url = (
-        os.environ.get("VISIO_UPDATE_LATEST_RELEASE_URL", "").strip()
-        or DEFAULT_LATEST_RELEASE_URL
-    )
+    branch = _get_update_branch()
     release_tag_name = ""
-    try:
-        release = _read_json_url(release_url, timeout=timeout)
-        release_tag_name = str(release.get("tag_name", "") or "")
-    except HTTPError as exc:
-        if exc.code not in {404, 403}:
-            return None, f"source indisponible ({exc.code})"
-    except (URLError, OSError):
-        pass
-    except (ValueError, TypeError):
-        pass
+    if _uses_release_channel(branch):
+        release_url = (
+            os.environ.get("VISIO_UPDATE_LATEST_RELEASE_URL", "").strip()
+            or DEFAULT_LATEST_RELEASE_URL
+        )
+        try:
+            release = _read_json_url(release_url, timeout=timeout)
+            release_tag_name = str(release.get("tag_name", "") or "")
+        except HTTPError as exc:
+            if exc.code not in {404, 403}:
+                return None, f"source indisponible ({exc.code})"
+        except (URLError, OSError):
+            pass
+        except (ValueError, TypeError):
+            pass
 
-    tags_url = os.environ.get("VISIO_UPDATE_TAGS_URL", "").strip() or DEFAULT_TAGS_URL
-    try:
-        tags = _read_json_url(tags_url, timeout=timeout)
-        latest_tag = {}
-        if isinstance(tags, list) and tags:
-            latest_tag = tags[0]
-            for tag in tags:
-                if release_tag_name and tag.get("name") == release_tag_name:
-                    latest_tag = tag
-                    break
-        tag_name = latest_tag.get("name", "")
-        commit = latest_tag.get("commit") if isinstance(latest_tag.get("commit"), dict) else {}
-        sha = str(commit.get("sha", "") or "")
-        if release_tag_name or tag_name:
-            return {
-                "version": _clean_version(release_tag_name or tag_name),
-                "sha": sha,
-                "short_sha": _short_sha(sha),
-                "source": "release" if release_tag_name else "tag",
-            }, ""
-    except HTTPError as exc:
-        if exc.code not in {404, 403}:
-            return None, f"source indisponible ({exc.code})"
-    except (URLError, OSError):
-        pass
-    except (ValueError, TypeError):
-        pass
+        tags_url = os.environ.get("VISIO_UPDATE_TAGS_URL", "").strip() or DEFAULT_TAGS_URL
+        try:
+            tags = _read_json_url(tags_url, timeout=timeout)
+            latest_tag = {}
+            if isinstance(tags, list) and tags:
+                latest_tag = tags[0]
+                for tag in tags:
+                    if release_tag_name and tag.get("name") == release_tag_name:
+                        latest_tag = tag
+                        break
+            tag_name = latest_tag.get("name", "")
+            commit = latest_tag.get("commit") if isinstance(latest_tag.get("commit"), dict) else {}
+            sha = str(commit.get("sha", "") or "")
+            if release_tag_name or tag_name:
+                return {
+                    "version": _clean_version(release_tag_name or tag_name),
+                    "sha": sha,
+                    "short_sha": _short_sha(sha),
+                    "source": "release" if release_tag_name else "tag",
+                }, ""
+        except HTTPError as exc:
+            if exc.code not in {404, 403}:
+                return None, f"source indisponible ({exc.code})"
+        except (URLError, OSError):
+            pass
+        except (ValueError, TypeError):
+            pass
 
-    if release_tag_name:
+    if _uses_release_channel(branch) and release_tag_name:
         return {
             "version": _clean_version(release_tag_name),
             "sha": "",
@@ -175,7 +214,7 @@ def _read_remote_release_info(timeout=6):
 
     commit_url = (
         os.environ.get("VISIO_UPDATE_BRANCH_COMMIT_URL", "").strip()
-        or DEFAULT_BRANCH_COMMIT_URL
+        or f"{DEFAULT_REPO_API_BASE_URL}/commits/{branch}"
     )
     try:
         commit = _read_json_url(commit_url, timeout=timeout)
@@ -216,6 +255,7 @@ def _version_status(fetch=False, base_info=None):
         "has_local_changes": False,
         "local_version": _read_local_version(),
         "remote_version": "",
+        "update_branch": _get_update_branch(),
         "can_update": False,
         "check_mode": "version",
     }
@@ -313,13 +353,14 @@ def get_update_status(fetch=False):
         "remotes": remotes,
         "local_version": _read_local_version(),
         "remote_version": "",
+        "update_branch": _get_update_branch(),
         "can_update": False,
         "check_mode": "git",
     })
 
     if fetch:
         if remotes:
-            fetch_result = _run_git(["fetch", "--prune"], repo_path, timeout=20)
+            fetch_result = _run_git(["fetch", "--tags", "--prune"], repo_path, timeout=30)
             info["fetch_ok"] = fetch_result["ok"]
             if not fetch_result["ok"]:
                 info["fetch_error"] = _first_line(fetch_result["stderr"]) or "git fetch a échoué"
@@ -340,6 +381,12 @@ def get_update_status(fetch=False):
         timeout=2,
     )
     tracking_ref = tracking_result["stdout"] if tracking_result["ok"] else ""
+    update_branch = _get_update_branch()
+    if "origin" in remotes and update_branch:
+        candidate = f"origin/{update_branch}"
+        candidate_result = _run_git(["rev-parse", "--verify", candidate], repo_path, timeout=2)
+        if candidate_result["ok"] and (not tracking_ref or update_branch != branch):
+            tracking_ref = candidate
     if not tracking_ref and branch and branch != "HEAD" and "origin" in remotes:
         candidate = f"origin/{branch}"
         candidate_result = _run_git(["rev-parse", "--verify", candidate], repo_path, timeout=2)
@@ -355,16 +402,26 @@ def get_update_status(fetch=False):
             "git_error": "branche distante non configurée",
         })
 
+    latest_tag_version, latest_tag_name = _latest_semver_tag(repo_path)
     remote_sha_result = _run_git(["rev-parse", tracking_ref], repo_path, timeout=2)
     remote_sha = remote_sha_result["stdout"] if remote_sha_result["ok"] else ""
     remote_version_result = _run_git(["show", f"{tracking_ref}:VERSION"], repo_path, timeout=2)
+    tracking_version = _clean_version(remote_version_result["stdout"]) if remote_version_result["ok"] else ""
+    remote_version = tracking_version
+    remote_source = "git"
+    if _uses_release_channel(_get_update_branch()) and _compare_versions(tracking_version, latest_tag_version) > 0:
+        remote_version = latest_tag_version
+        remote_source = "tag"
+        tag_sha_result = _run_git(["rev-list", "-n", "1", latest_tag_name], repo_path, timeout=2)
+        if tag_sha_result["ok"]:
+            remote_sha = tag_sha_result["stdout"]
     info.update({
         "remote_sha": remote_sha,
         "remote_short_sha": _short_sha(remote_sha),
-        "remote_version": _clean_version(remote_version_result["stdout"]) if remote_version_result["ok"] else "",
-        "remote_source": "git",
+        "remote_version": remote_version,
+        "remote_source": remote_source,
     })
-    info["can_update"] = _compare_versions(info["local_version"], info["remote_version"]) > 0
+    version_update_available = _compare_versions(info["local_version"], info["remote_version"]) > 0
 
     counts_result = _run_git(["rev-list", "--left-right", "--count", f"HEAD...{tracking_ref}"], repo_path, timeout=3)
     ahead = 0
@@ -375,6 +432,7 @@ def get_update_status(fetch=False):
             ahead = int(parts[0])
             behind = int(parts[1])
     info.update({"ahead": ahead, "behind": behind})
+    info["can_update"] = version_update_available or behind > 0
 
     if info["has_local_changes"]:
         info.update({
@@ -394,16 +452,10 @@ def get_update_status(fetch=False):
             "status_label": "Version locale en avance",
             "status_tone": "info",
         })
-    elif behind and info["can_update"]:
+    elif info["can_update"]:
         info.update({
             "status": "update_available",
             "status_label": "Mise à jour disponible",
-            "status_tone": "success",
-        })
-    elif behind:
-        info.update({
-            "status": "up_to_date",
-            "status_label": "Visio est à jour",
             "status_tone": "success",
         })
     else:
@@ -466,6 +518,18 @@ def _resolve_repo_path():
     if not root_result["ok"]:
         return "", _first_line(root_result["stderr"]) or "dépôt Git introuvable"
     return root_result["stdout"], ""
+
+
+def _resolve_update_script(repo_path):
+    candidates = [
+        os.path.join(repo_path, "scripts", "update.sh"),
+        os.path.join(os.path.dirname(SERVICE_DIR), "scripts", "update.sh"),
+        DEFAULT_UPDATE_SCRIPT,
+    ]
+    for candidate in candidates:
+        if os.path.isfile(candidate):
+            return candidate
+    return ""
 
 
 def is_maintenance_mode():
@@ -588,14 +652,16 @@ def _prepare_and_run_update_process(lock_fd):
             _append_log("Aucune mise à jour disponible")
             _set_update_state("error", "Déjà à jour", finished_at=_now(), returncode=1)
             return
-        if not os.path.isfile(UPDATE_SCRIPT):
+        update_script = _resolve_update_script(repo_path)
+        if not update_script:
             _append_log("Erreur: script de mise à jour introuvable")
             _set_update_state("error", "Script de mise à jour introuvable", finished_at=_now(), returncode=127)
             return
 
         target_version = status.get("remote_version", "")
+        update_target = target_version if status.get("remote_source") in {"release", "tag"} else ""
         _set_update_state("running", "Mise à jour en cours", target_version=target_version)
-        _run_update_process(lock_fd, repo_path, target_version, release_lock=False)
+        _run_update_process(lock_fd, repo_path, update_target, update_script, release_lock=False)
         lock_fd = None
     finally:
         if lock_fd is not None:
@@ -603,12 +669,12 @@ def _prepare_and_run_update_process(lock_fd):
             _release_lock(lock_fd)
 
 
-def _run_update_process(lock_fd, repo_path, target_version, release_lock=True):
+def _run_update_process(lock_fd, repo_path, target_version, update_script, release_lock=True):
     returncode = 1
     try:
-        _append_log(f"[{_now()}] Démarrage de la mise à jour vers {target_version or 'main'}")
+        _append_log(f"[{_now()}] Démarrage de la mise à jour vers {target_version or _get_update_branch()}")
         process = subprocess.Popen(
-            [UPDATE_SCRIPT, target_version],
+            [update_script, target_version],
             cwd=repo_path,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -622,6 +688,7 @@ def _run_update_process(lock_fd, repo_path, target_version, release_lock=True):
         if returncode == 0:
             _append_log(f"[{_now()}] Mise à jour terminée")
             _set_update_state("success", "Mise à jour terminée", finished_at=_now(), returncode=returncode)
+            _schedule_restart_after_update()
         else:
             _append_log(f"[{_now()}] Échec de la mise à jour ({returncode})")
             _set_update_state("error", "Échec de la mise à jour", finished_at=_now(), returncode=returncode)
@@ -638,3 +705,17 @@ def _run_update_process(lock_fd, repo_path, target_version, release_lock=True):
         else:
             disable_maintenance_mode()
             _release_lock(lock_fd)
+
+
+def _schedule_restart_after_update():
+    if os.environ.get("VISIO_RESTART_AFTER_UPDATE", "1").strip().lower() in {"0", "false", "no"}:
+        return
+
+    def restart():
+        _append_log(f"[{_now()}] Redémarrage du service web")
+        try:
+            os.kill(os.getppid(), signal.SIGTERM)
+        except OSError as exc:
+            _append_log(f"Redémarrage impossible: {exc}")
+
+    threading.Timer(2.0, restart).start()

@@ -788,7 +788,7 @@ Accessible depuis **Paramètres → Mise à jour** dans le menu de navigation.
 
 > **Réservé au super-admin.**
 
-Cette page permet de vérifier l'état de la version installée et de la comparer à la version distante publiée. Elle est volontairement informative : elle ne lance pas l'installation d'une mise à jour.
+Cette page permet de vérifier l'état de la version installée, de la comparer à la version distante publiée, puis de lancer l'installation d'une mise à jour disponible. Par défaut, Visio suit la branche `main`; pour une instance de test réel, définissez `VISIO_UPDATE_BRANCH=dev` dans `.env` puis redémarrez la stack.
 
 ### Vérifier les mises à jour
 
@@ -799,6 +799,12 @@ Cette page permet de vérifier l'état de la version installée et de la compare
    - **Mise à jour disponible** : une version plus récente est détectée.
    - **Vérification impossible** : la source distante n'a pas pu être contactée ou les versions ne peuvent pas être comparées.
    - **État local affiché** : la page montre seulement les informations locales disponibles.
+
+### Installer une mise à jour
+
+1. Après vérification, si **Mise à jour disponible** s'affiche, cliquez sur **Mettre à jour**.
+2. Confirmez le lancement de la mise à jour.
+3. Laissez la fenêtre de progression ouverte pendant l'installation. Visio récupère les tags et la branche configurée, installe la version distante détectée, synchronise le code applicatif du conteneur puis redémarre le service web.
 
 ### Informations affichées
 
@@ -811,7 +817,7 @@ Cette page permet de vérifier l'état de la version installée et de la compare
 
 ### Bonnes pratiques
 
-- Faites une **sauvegarde complète** avant toute mise à jour manuelle.
+- Faites une **sauvegarde complète** avant toute mise à jour.
 - Vérifiez que l'instance n'a pas de traitements lourds en cours : import massif, encodage vidéo ou restauration.
 - Si la vérification échoue, contrôlez l'accès réseau du serveur et les variables de source de mise à jour éventuelles.
 

@@ -2,6 +2,15 @@
 set -euo pipefail
 
 TARGET_VERSION="${1:-}"
+APP_DIR="${VISIO_APP_DIR:-/app}"
+UPDATE_BRANCH="${VISIO_UPDATE_BRANCH:-main}"
+
+case "$UPDATE_BRANCH" in
+  ""| -*|*..*|*[[:space:]~^:?*\\[]*)
+    echo "Erreur: branche de mise à jour invalide: $UPDATE_BRANCH"
+    exit 1
+    ;;
+esac
 
 echo "Répertoire: $(pwd)"
 echo "Vérification du dépôt Git"
@@ -28,12 +37,27 @@ if [ -n "$TARGET_VERSION" ]; then
     echo "Checkout du tag v$TARGET_VERSION"
     git checkout "v$TARGET_VERSION"
   else
-    echo "Tag $TARGET_VERSION introuvable, pull origin main"
-    git pull --ff-only origin main
+    echo "Tag $TARGET_VERSION introuvable, pull origin $UPDATE_BRANCH"
+    git pull --ff-only origin "$UPDATE_BRANCH"
   fi
 else
-  echo "Pull origin main"
-  git pull --ff-only origin main
+  echo "Pull origin $UPDATE_BRANCH"
+  git pull --ff-only origin "$UPDATE_BRANCH"
+fi
+
+if [ -d "$APP_DIR" ] && [ -d "web" ] && [ "$(CDPATH= cd -- "$APP_DIR" && pwd)" != "$(pwd)" ]; then
+  echo "Synchronisation du code applicatif vers $APP_DIR"
+  cp -a web/. "$APP_DIR"/
+  cp -f VERSION /VERSION 2>/dev/null || true
+  if [ -d scripts ]; then
+    mkdir -p "$APP_DIR/scripts"
+    cp -a scripts/. "$APP_DIR/scripts"/
+    chmod +x "$APP_DIR"/scripts/*.sh 2>/dev/null || true
+  fi
+  if [ -f "$APP_DIR/requirements.txt" ]; then
+    echo "Vérification des dépendances Python"
+    python -m pip install --no-cache-dir -r "$APP_DIR/requirements.txt"
+  fi
 fi
 
 echo "Version installée: $(cat VERSION 2>/dev/null || true)"

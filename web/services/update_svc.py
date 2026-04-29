@@ -542,27 +542,13 @@ def start_update():
     if _lock_exists():
         return {"status": "running", "message": "Mise à jour déjà en cours", "logs": read_update_logs()}, 409
 
-    status = get_update_status(fetch=True)
-    if status.get("has_local_changes"):
-        return {"status": "error", "message": "Dépôt Git non propre", "logs": read_update_logs()}, 409
-    if status.get("status") != "update_available" or not status.get("can_update"):
-        return {"status": "error", "message": "Déjà à jour", "logs": read_update_logs()}, 400
-
-    repo_path, repo_error = _resolve_repo_path()
-    if repo_error:
-        return {"status": "error", "message": repo_error, "logs": read_update_logs()}, 400
-
-    if not os.path.isfile(UPDATE_SCRIPT):
-        return {"status": "error", "message": "Script de mise à jour introuvable", "logs": read_update_logs()}, 500
-
     lock_fd = _acquire_lock()
     if lock_fd is None:
         return {"status": "running", "message": "Mise à jour déjà en cours", "logs": read_update_logs()}, 409
 
-    target_version = status.get("remote_version", "")
     with open(UPDATE_LOG_FILE, "w", encoding="utf-8") as handle:
         handle.write("")
-    _append_log(f"[{_now()}] Préparation de la mise à jour vers {target_version or 'main'}")
+    _append_log(f"[{_now()}] Préparation de la mise à jour")
     enable_maintenance_mode()
     _write_json(UPDATE_STATE_FILE, {
         "status": "running",
@@ -570,20 +556,54 @@ def start_update():
         "started_at": _now(),
         "updated_at": _now(),
         "finished_at": "",
-        "target_version": target_version,
+        "target_version": "",
         "returncode": None,
     })
 
     thread = threading.Thread(
-        target=_run_update_process,
-        args=(lock_fd, repo_path, target_version),
+        target=_prepare_and_run_update_process,
+        args=(lock_fd,),
         daemon=True,
     )
     thread.start()
     return {"status": "running", "message": "Mise à jour en cours", "logs": read_update_logs()}, 202
 
 
-def _run_update_process(lock_fd, repo_path, target_version):
+def _prepare_and_run_update_process(lock_fd):
+    try:
+        _append_log(f"[{_now()}] Vérification du dépôt")
+        repo_path, repo_error = _resolve_repo_path()
+        if repo_error:
+            _append_log(f"Erreur: {repo_error}")
+            _set_update_state("error", repo_error, finished_at=_now(), returncode=1)
+            return
+
+        _append_log(f"[{_now()}] Vérification de la version distante")
+        status = get_update_status(fetch=True)
+        if status.get("has_local_changes"):
+            _append_log("Erreur: dépôt Git non propre")
+            _set_update_state("error", "Dépôt Git non propre", finished_at=_now(), returncode=1)
+            return
+        if status.get("status") != "update_available" or not status.get("can_update"):
+            _append_log("Aucune mise à jour disponible")
+            _set_update_state("error", "Déjà à jour", finished_at=_now(), returncode=1)
+            return
+        if not os.path.isfile(UPDATE_SCRIPT):
+            _append_log("Erreur: script de mise à jour introuvable")
+            _set_update_state("error", "Script de mise à jour introuvable", finished_at=_now(), returncode=127)
+            return
+
+        target_version = status.get("remote_version", "")
+        _set_update_state("running", "Mise à jour en cours", target_version=target_version)
+        _run_update_process(lock_fd, repo_path, target_version, release_lock=False)
+        lock_fd = None
+    finally:
+        if lock_fd is not None:
+            disable_maintenance_mode()
+            _release_lock(lock_fd)
+
+
+def _run_update_process(lock_fd, repo_path, target_version, release_lock=True):
     returncode = 1
     try:
         _append_log(f"[{_now()}] Démarrage de la mise à jour vers {target_version or 'main'}")
@@ -612,5 +632,9 @@ def _run_update_process(lock_fd, repo_path, target_version):
         _append_log(str(exc))
         _set_update_state("error", "Échec de la mise à jour", finished_at=_now(), returncode=returncode)
     finally:
-        disable_maintenance_mode()
-        _release_lock(lock_fd)
+        if release_lock:
+            disable_maintenance_mode()
+            _release_lock(lock_fd)
+        else:
+            disable_maintenance_mode()
+            _release_lock(lock_fd)

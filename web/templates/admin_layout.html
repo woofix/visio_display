@@ -627,8 +627,17 @@ setInterval(updateQueueBadge, 30000);
 
     window.appUI = {
         showFlash(messageText, type = 'info', options = {}) {
+            if (!options.blocking) {
+                showToast(messageText, type);
+                return Promise.resolve(true);
+            }
             const titles = { success: 'Succès', error: 'Erreur', warning: 'Avertissement', info: 'Information' };
             return openDialog({ kind: 'alert', messageText, tone: type, titleText: titles[type] || 'Information', confirmLabel: 'Fermer', ...options });
+        },
+        showFlashAfterReload(messageText, type = 'info') {
+            try {
+                window.sessionStorage.setItem('app.pendingFlash', JSON.stringify({ msg: messageText, tone: type }));
+            } catch {}
         },
         confirm(options) {
             const normalized = typeof options === 'string' ? { messageText: options } : options;
@@ -657,6 +666,17 @@ setInterval(updateQueueBadge, 30000);
         list.appendChild(item);
         setTimeout(() => { item.style.opacity = '0'; item.style.transform = 'translateY(6px)'; setTimeout(() => item.remove(), 220); }, 4000);
     }
+
+    try {
+        const pendingFlash = window.sessionStorage.getItem('app.pendingFlash');
+        if (pendingFlash) {
+            window.sessionStorage.removeItem('app.pendingFlash');
+            const parsed = JSON.parse(pendingFlash);
+            if (parsed && parsed.msg) {
+                showToast(parsed.msg, parsed.tone || 'info');
+            }
+        }
+    } catch {}
 
     if (window.__flashMessages && window.__flashMessages.length) {
         const blocking = window.__flashMessages.filter(f => f.tone === 'error' || f.tone === 'warning');

@@ -7,7 +7,7 @@ import re
 import subprocess
 from datetime import date, datetime, time as dtime
 
-from PIL import Image
+from PIL import Image, ImageOps
 from unidecode import unidecode
 
 from constants import (
@@ -285,7 +285,7 @@ def delete_video_variants(filename):
 
 
 def _fit_and_pad_thumbnail(img):
-    frame = img.convert('RGB')
+    frame = ImageOps.exif_transpose(img).convert('RGB')
     frame.thumbnail(THUMB_SIZE, Image.Resampling.LANCZOS)
     canvas = Image.new('RGB', THUMB_SIZE, 'black')
     offset = ((THUMB_SIZE[0] - frame.width) // 2, (THUMB_SIZE[1] - frame.height) // 2)
@@ -294,7 +294,7 @@ def _fit_and_pad_thumbnail(img):
 
 
 def _thumbnail_to_fit(img, width, height):
-    frame = img.convert('RGB')
+    frame = ImageOps.exif_transpose(img).convert('RGB')
     frame.thumbnail((width, height), Image.Resampling.LANCZOS)
     return frame
 
@@ -339,7 +339,7 @@ def generate_image_variant(source_path, filename, width, height):
     variant_path = get_image_variant_path(filename, width, height)
     try:
         with Image.open(source_path) as img:
-            frame = img.convert('RGB')
+            frame = ImageOps.exif_transpose(img).convert('RGB')
             frame.thumbnail((width, height), Image.Resampling.LANCZOS)
             frame.save(variant_path, 'JPEG', quality=86, optimize=True)
         return variant_path
@@ -509,6 +509,7 @@ def get_image_dimensions(filename):
         return 0, 0
     try:
         with Image.open(source_path) as img:
+            img = ImageOps.exif_transpose(img)
             return _normalize_dimension(img.width), _normalize_dimension(img.height)
     except Exception:
         return 0, 0
@@ -745,6 +746,43 @@ def get_media_groups(filename, cfg=None):
     return normalized
 
 
+def collect_defined_group_names(cfg):
+    groups_map = cfg.get("groups", {})
+    if not isinstance(groups_map, dict):
+        return set()
+    names = set()
+    for groups in groups_map.values():
+        if not isinstance(groups, list):
+            continue
+        for group in groups:
+            group_name = normalize_group_name(group)
+            if group_name:
+                names.add(group_name)
+    return names
+
+
+def cleanup_orphan_group_metadata(cfg):
+    active_groups = collect_defined_group_names(cfg)
+    cfg["disabled_groups"] = [
+        group for group in cfg.get("disabled_groups", [])
+        if normalize_group_name(group) in active_groups
+    ]
+    for screen_cfg in cfg.get("screens", {}).values():
+        if not isinstance(screen_cfg, dict):
+            continue
+        screen_cfg["disabled_groups"] = [
+            group for group in screen_cfg.get("disabled_groups", [])
+            if normalize_group_name(group) in active_groups
+        ]
+    for key in ("group_pools", "group_screens"):
+        entries = cfg.get(key, {})
+        if isinstance(entries, dict):
+            cfg[key] = {
+                group: value for group, value in entries.items()
+                if normalize_group_name(group) in active_groups
+            }
+
+
 def is_media_disabled(filename, cfg):
     if filename in cfg.get("disabled", []):
         return True
@@ -871,6 +909,7 @@ def get_file_info(filename):
     if ext in IMAGE_EXTS:
         try:
             with Image.open(path) as img:
+                img = ImageOps.exif_transpose(img)
                 w, h = img.size
         except Exception:
             w, h = 0, 0

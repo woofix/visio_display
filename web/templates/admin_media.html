@@ -823,7 +823,7 @@ document.querySelectorAll('.btn-save-groups').forEach(btn => {
             });
             const data = await res.json();
             if (data.ok) {
-                showFlash(JS_GROUPS_SAVED.replace('{file}', file), 'success');
+                window.appUI.showFlashAfterReload(JS_GROUPS_SAVED.replace('{file}', file), 'success');
                 window.location.reload();
             } else {
                 showFlash(data.error || JS_SAVE_ERROR, 'error');
@@ -857,9 +857,9 @@ document.querySelectorAll('.btn-toggle-group').forEach(btn => {
             });
             const data = await res.json();
             if (data.state === 'disabled') {
-                showFlash(JS_GROUP_DISABLED.replace('{group}', group), 'success');
+                window.appUI.showFlashAfterReload(JS_GROUP_DISABLED.replace('{group}', group), 'success');
             } else if (data.state === 'enabled') {
-                showFlash(JS_GROUP_ENABLED.replace('{group}', group), 'success');
+                window.appUI.showFlashAfterReload(JS_GROUP_ENABLED.replace('{group}', group), 'success');
             } else {
                 showFlash(data.error || JS_SAVE_ERROR, 'error');
                 btn.disabled = false;

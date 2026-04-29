@@ -15,6 +15,7 @@ from services.media_svc import (
     get_all_media, get_file_info, get_logo_path,
     clean_filename, get_media_groups,
     collect_group_states, is_media_disabled, normalize_group_name,
+    cleanup_orphan_group_metadata,
     ensure_unique_filename, is_valid_uploaded_image,
     delete_image_variants, delete_media_thumbnail, delete_video_variants,
     generate_standard_renditions,
@@ -403,6 +404,7 @@ def delete_file(filename):
         cfg["durations"].pop(filename, None)
         cfg.get("groups", {}).pop(filename, None)
         cfg.get("schedules", {}).pop(filename, None)
+        cleanup_orphan_group_metadata(cfg)
         save_campaigns_to_config(cfg, cleanup_campaigns_for_deleted_media(get_campaigns(cfg), filename))
         for scfg in cfg.get('screens', {}).values():
             scfg['order']    = [f for f in scfg.get('order', [])    if f != filename]
@@ -597,6 +599,7 @@ def set_groups(filename):
         groups_map[filename] = groups
     elif filename in groups_map:
         del groups_map[filename]
+    cleanup_orphan_group_metadata(cfg)
 
     save_config(cfg)
     details = f'groupes={", ".join(groups)}' if groups else 'groupes supprimés'

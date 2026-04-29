@@ -654,6 +654,87 @@ class AppSmokeTests(unittest.TestCase):
         target = next(item for item in payload if item["path"])
         self.assertIn("/static/data/variants/screen__jpg__medium.jpg", target["path"])
 
+    def test_group_metadata_is_removed_when_last_media_leaves_group(self):
+        with self.app.app_context():
+            from services.config_svc import save_config
+
+            save_config({
+                "groups": {"poster.jpg": ["Menu"]},
+                "group_pools": {"Menu": 2},
+                "group_screens": {"Menu": ["hall"]},
+                "disabled_groups": ["Menu"],
+                "screens": {
+                    "hall": {"disabled_groups": ["Menu"]},
+                },
+            })
+
+        with self.client.session_transaction() as session:
+            session["user"] = "admin"
+            session["_csrf_token"] = "group-token"
+
+        response = self.client.post(
+            "/set_groups/poster.jpg",
+            json={"groups": [], "_csrf_token": "group-token"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()["ok"])
+
+        with self.app.app_context():
+            from services.config_svc import load_config
+
+            cfg = load_config()
+            self.assertNotIn("poster.jpg", cfg["groups"])
+            self.assertNotIn("Menu", cfg["group_pools"])
+            self.assertNotIn("Menu", cfg["group_screens"])
+            self.assertNotIn("Menu", cfg["disabled_groups"])
+            self.assertNotIn("Menu", cfg["screens"]["hall"]["disabled_groups"])
+
+    def test_recreated_group_name_does_not_inherit_deleted_group_state(self):
+        with self.app.app_context():
+            from services.config_svc import save_config
+
+            save_config({
+                "groups": {"poster.jpg": ["Menu"]},
+                "group_pools": {"Menu": 2},
+                "group_screens": {"Menu": ["hall"]},
+                "disabled_groups": ["Menu"],
+                "screens": {
+                    "hall": {"disabled_groups": ["Menu"]},
+                },
+            })
+
+        with self.client.session_transaction() as session:
+            session["user"] = "admin"
+            session["_csrf_token"] = "group-token"
+
+        remove_response = self.client.post(
+            "/set_groups/poster.jpg",
+            json={"groups": [], "_csrf_token": "group-token"},
+        )
+        create_response = self.client.post(
+            "/set_groups/poster.jpg",
+            json={"groups": ["Menu"], "_csrf_token": "group-token"},
+        )
+
+        self.assertEqual(remove_response.status_code, 200)
+        self.assertEqual(create_response.status_code, 200)
+
+        with self.app.app_context():
+            from services.config_svc import load_config
+            from services.media_svc import collect_group_states
+
+            cfg = load_config()
+            self.assertEqual(cfg["groups"]["poster.jpg"], ["Menu"])
+            self.assertEqual(cfg["group_pools"], {})
+            self.assertEqual(cfg["group_screens"], {})
+            self.assertEqual(cfg["disabled_groups"], [])
+            self.assertEqual(cfg["screens"]["hall"]["disabled_groups"], [])
+            self.assertEqual(
+                collect_group_states(["poster.jpg"], cfg, screen=""),
+                [{"name": "Menu", "count": 1, "disabled": False, "pool_size": 0, "screens": []}],
+            )
+
     def test_add_screen_inherits_current_default_halo_color(self):
         with self.app.app_context():
             from services.config_svc import save_config
@@ -1128,6 +1209,27 @@ class AppSmokeTests(unittest.TestCase):
                 args = copy_mock.call_args[0]
                 self.assertEqual(args[0], backup_path)
                 self.assertEqual(args[1], "visio-backup-20260101-010203.tar.gz")
+
+    def test_uploaded_phone_photo_rendition_honors_exif_orientation(self):
+        from PIL import Image
+        import services.media_svc as media_svc
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            source_path = os.path.join(tmp_dir, "phone.jpg")
+            rendition_dir = os.path.join(tmp_dir, "variants")
+            os.makedirs(rendition_dir)
+
+            image = Image.new("RGB", (40, 20), "red")
+            exif = Image.Exif()
+            exif[274] = 6
+            image.save(source_path, "JPEG", exif=exif)
+
+            with patch.object(media_svc, "IMAGE_VARIANT_FOLDER", rendition_dir):
+                rendition_path = media_svc.generate_image_rendition(source_path, "phone.jpg", "thumb")
+
+            self.assertIsNotNone(rendition_path)
+            with Image.open(rendition_path) as rendered:
+                self.assertEqual(rendered.size, (20, 40))
 
 
 if __name__ == "__main__":

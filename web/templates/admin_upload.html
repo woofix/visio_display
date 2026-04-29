@@ -163,9 +163,39 @@
 }
 
 #file-preview { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
-#file-preview .prev-item { width: 80px; height: 80px; border-radius: 9px; overflow: hidden; background: var(--surface-alt); position: relative; border: 1px solid var(--border); }
-#file-preview .prev-item img, #file-preview .prev-item video { width: 100%; height: 100%; object-fit: cover; }
-#file-preview .prev-item span { position: absolute; bottom: 0; left: 0; right: 0; background: var(--lightbox-overlay); color: var(--lightbox-text); font-size: .57rem; padding: 2px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#file-preview .prev-item {
+    width: 88px; height: 88px; border-radius: 9px; overflow: hidden;
+    background: var(--surface-alt); position: relative; border: 1px solid var(--border);
+    display: grid; place-items: center;
+}
+#file-preview .prev-item img,
+#file-preview .prev-item video {
+    position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+    opacity: 0; transition: opacity .16s;
+}
+#file-preview .prev-item.has-preview img,
+#file-preview .prev-item.has-preview video { opacity: 1; }
+#file-preview .prev-icon {
+    width: 44px; height: 44px; border-radius: 12px;
+    display: grid; place-items: center; color: var(--primary);
+    background: var(--primary-bg); border: 1px solid color-mix(in srgb, var(--primary) 18%, transparent);
+}
+#file-preview .prev-icon svg { width: 24px; height: 24px; }
+#file-preview .prev-item[data-kind="video"] .prev-icon {
+    color: var(--blue); background: color-mix(in srgb, var(--blue) 12%, var(--surface));
+    border-color: color-mix(in srgb, var(--blue) 24%, transparent);
+}
+#file-preview .prev-ext {
+    position: absolute; top: 5px; left: 5px; z-index: 2;
+    background: rgba(15, 23, 42, .72); color: #fff; border-radius: 6px;
+    font-size: .52rem; font-weight: 800; line-height: 1; letter-spacing: .04em;
+    padding: 3px 5px; max-width: calc(100% - 10px); overflow: hidden; text-overflow: ellipsis;
+}
+#file-preview .prev-name {
+    position: absolute; bottom: 0; left: 0; right: 0; z-index: 2;
+    background: var(--lightbox-overlay); color: var(--lightbox-text);
+    font-size: .57rem; padding: 3px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 
 .progress-wrap { background: var(--primary-bg); border-radius: 6px; height: 7px; overflow: hidden; margin: 10px 0; display: none; }
 .progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--primary-light)); width: 0; transition: width .3s; border-radius: 6px; }
@@ -494,6 +524,39 @@ let conflictDialogState = null;
 
 function getExt(name) { return name.slice(name.lastIndexOf('.')).toLowerCase(); }
 
+function getPreviewKind(file) {
+    const ext = getExt(file.name);
+    if (['.jpg', '.jpeg', '.png'].includes(ext)) return 'image';
+    if (['.mp4', '.webm', '.mov', '.avi', '.mkv'].includes(ext)) return 'video';
+    if (ext === '.pdf') return 'pdf';
+    return 'file';
+}
+
+function previewIcon(kind) {
+    if (kind === 'video') {
+        return `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="5" width="14" height="14" rx="2"></rect>
+                <path d="m17 9 4-2v10l-4-2"></path>
+            </svg>`;
+    }
+    if (kind === 'pdf') {
+        return `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <path d="M14 2v6h6"></path>
+                <path d="M8 16h8"></path>
+                <path d="M8 12h3"></path>
+            </svg>`;
+    }
+    return `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+            <path d="m21 15-5-5L5 21"></path>
+        </svg>`;
+}
+
 function filterFiles(files) {
     const valid = [], rejected = [];
     [...files].forEach(f => (ACCEPTED_EXTS.has(getExt(f.name)) ? valid : rejected).push(f));
@@ -526,7 +589,8 @@ uploadArea.addEventListener('drop', e => {
 });
 fileInput.addEventListener('change', () => {
     const { valid, rejected } = filterFiles(fileInput.files);
-    droppedFiles = valid;
+    droppedFiles = [...droppedFiles, ...valid];
+    fileInput.value = '';
     showRejectedBanner(rejected);
     showPreviews(droppedFiles);
 });
@@ -534,13 +598,33 @@ fileInput.addEventListener('change', () => {
 function showPreviews(files) {
     preview.innerHTML = '';
     [...files].forEach(file => {
-        const item = document.createElement('div'); item.className = 'prev-item';
-        if (file.type.startsWith('image/')) {
-            const img = document.createElement('img'); img.src = URL.createObjectURL(file); item.appendChild(img);
-        } else if (file.type.startsWith('video/')) {
-            const vid = document.createElement('video'); vid.src = URL.createObjectURL(file); vid.muted = true; item.appendChild(vid);
+        const item = document.createElement('div');
+        const kind = getPreviewKind(file);
+        const ext = getExt(file.name).replace('.', '').toUpperCase() || 'FILE';
+        item.className = 'prev-item';
+        item.dataset.kind = kind;
+        item.innerHTML = `
+            <div class="prev-icon" aria-hidden="true">${previewIcon(kind)}</div>
+            <span class="prev-ext">${escapeHtml(ext)}</span>
+            <span class="prev-name" title="${escapeHtmlAttr(file.name)}">${escapeHtml(file.name)}</span>
+        `;
+        if (kind === 'image') {
+            const img = document.createElement('img');
+            img.alt = '';
+            img.addEventListener('load', () => item.classList.add('has-preview'), { once: true });
+            img.addEventListener('error', () => item.classList.remove('has-preview'), { once: true });
+            img.src = URL.createObjectURL(file);
+            item.appendChild(img);
+        } else if (kind === 'video') {
+            const vid = document.createElement('video');
+            vid.muted = true;
+            vid.playsInline = true;
+            vid.preload = 'metadata';
+            vid.addEventListener('loadeddata', () => item.classList.add('has-preview'), { once: true });
+            vid.addEventListener('error', () => item.classList.remove('has-preview'), { once: true });
+            vid.src = URL.createObjectURL(file);
+            item.appendChild(vid);
         }
-        const name = document.createElement('span'); name.textContent = file.name; item.appendChild(name);
         preview.appendChild(item);
     });
 }

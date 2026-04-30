@@ -50,6 +50,7 @@ Application web légère de signalétique numérique. Elle affiche un diaporama 
 - Définir une période de diffusion, une priorité et les écrans concernés
 - La campagne active la plus prioritaire remplace temporairement la rotation normale sur ses écrans cibles
 - Duplication, activation/désactivation rapide, archivage et restauration depuis l'interface
+- Affichage mobile lisible : écrans ciblés en lignes pleine largeur et vignettes de médias agrandies
 
 **Alerte prioritaire**
 - Diffusion instantanée d'un message en bannière sur l'écran d'affichage (super-admin uniquement)
@@ -62,6 +63,7 @@ Application web légère de signalétique numérique. Elle affiche un diaporama 
 - Validation des formats à la sélection : bannière d'erreur listant les fichiers refusés (extension non supportée) avec rappel des formats acceptés
 - Activation / désactivation des médias sans suppression
 - Réorganisation par glisser-déposer (vues grille et liste) — désactivée automatiquement lors d'une recherche ou d'un filtre actif
+- Vues mobile différenciées : grandes vignettes en grille, liste compacte avec miniature et actions
 - Durée d'affichage personnalisée par média
 - Programmation horaire et/ou par dates par média
 - Assignation des médias aux écrans nommés par bouton — l'item devient immédiatement actif sur l'écran cible
@@ -71,8 +73,9 @@ Application web légère de signalétique numérique. Elle affiche un diaporama 
 - Visionneuse plein écran au clic
 - Nom de l'application personnalisable
 - Choix de la langue de l'interface (français / anglais)
-- Choix du thème de l'interface : Violet, Sombre, Bleu — prévisualisation en temps réel au survol
-- Recherche globale instantanée (`Cmd+K` / `Ctrl+K`) : médias, campagnes, utilisateurs, configuration, journal d'activité
+- Choix du thème de l'interface : Violet, Sombre, Bleu — le thème mobile suit automatiquement le choix utilisateur
+- Navigation responsive : la barre latérale reste visible en desktop ; le bouton de menu mobile n'apparaît qu'en largeur cellulaire
+- Recherche globale instantanée (`Cmd+K` / `Ctrl+K`) : médias, campagnes, utilisateurs, configuration, journal d'activité — visible aussi en topbar mobile
 
 **Journal d'activité**
 - Enregistre les actions d'exploitation et d'administration : uploads, suppressions, connexions/déconnexions, activations/désactivations, compressions vidéo, changements de configuration et actions sur les campagnes
@@ -80,6 +83,7 @@ Application web légère de signalétique numérique. Elle affiche un diaporama 
 - Filtres par type d'action, par utilisateur et recherche libre (`Upload`, `Suppression`, `Connexion`, `Déconnexion`, `Activation`, `Compression`, `Configuration`, `Campagne`)
 - Les compressions automatiques nocturnes sont tracées sous l'utilisateur `system`
 - Purge automatique des anciennes entrées + plafond de lignes + compactage SQLite périodique pour éviter l'explosion de l'espace disque
+- Sur mobile, le journal est présenté en cartes empilées pour éviter les débordements horizontaux
 
 **Wiki intégré**
 - Page d'aide accessible depuis l'interface d'administration (`/admin/wiki`)
@@ -779,6 +783,7 @@ A lightweight web-based digital signage. It displays a fullscreen slideshow of i
 - Set a broadcast period, a priority and the targeted screens
 - The active campaign with the highest priority temporarily replaces the normal rotation on its target screens
 - Duplicate, quick-enable/disable, archive and restore campaigns from the interface
+- Mobile-friendly target screen rows and larger media thumbnails
 
 **Priority alert**
 - Instantly broadcast a message as a banner on the display screen (super-admin only)
@@ -791,6 +796,7 @@ A lightweight web-based digital signage. It displays a fullscreen slideshow of i
 - Format validation on file selection: error banner listing rejected files (unsupported extension) with a reminder of accepted formats
 - Enable / disable media without deleting it
 - Drag-and-drop reordering (grid and list views) — automatically disabled when a search or filter is active
+- Mobile grid/list views are visually distinct: large thumbnail cards vs compact rows
 - Custom display duration per media item
 - Time and/or date scheduling per media item
 - Media assignment to named screens via button — item is immediately active on the target screen
@@ -800,8 +806,9 @@ A lightweight web-based digital signage. It displays a fullscreen slideshow of i
 - Fullscreen media viewer on click
 - Customizable application name
 - UI language selection (French / English)
-- UI theme selection: Violet, Dark, Blue — live preview on selection
-- Instant global search (`Cmd+K` / `Ctrl+K`): media, campaigns, users, configuration, activity log
+- UI theme selection: Violet, Dark, Blue — the mobile UI automatically follows the user's theme
+- Responsive navigation: the sidebar remains visible on desktop; the mobile menu button only appears at phone width
+- Instant global search (`Cmd+K` / `Ctrl+K`): media, campaigns, users, configuration, activity log — also visible in the mobile topbar
 
 **Activity log**
 - Records operations and admin changes: uploads, deletions, logins/logouts, enable/disable actions, video compressions, configuration changes, and campaign actions
@@ -809,6 +816,7 @@ A lightweight web-based digital signage. It displays a fullscreen slideshow of i
 - Filters by action type, by user, and free-text search (`Upload`, `Delete`, `Login`, `Logout`, `Toggle`, `Compression`, `Configuration`, `Campaign`)
 - Automatic overnight compressions are logged under the `system` user
 - Automatic retention + row cap + periodic SQLite compaction prevent the log database from growing forever
+- Mobile layout renders entries as stacked cards to avoid horizontal overflow
 
 **Built-in wiki**
 - Help page accessible from the admin interface (`/admin/wiki`)

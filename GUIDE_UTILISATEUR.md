@@ -163,6 +163,7 @@ Les médias non assignés apparaissent dans une section séparée en bas de page
 - La **recherche** et les **filtres** permettent d'isoler rapidement les médias actifs, désactivés ou d'un type précis.
 - Les **badges** visibles sur une carte signalent notamment un média désactivé, une plage enregistrée ou un groupe désactivé.
 - La vue dépend de **l'écran sélectionné** : vérifiez toujours l'onglet d'écran avant de modifier l'ordre ou les affectations.
+- Sur cellulaire, la vue **Vignettes** privilégie les grands aperçus, tandis que la vue **Liste** devient compacte avec miniature à gauche, informations et actions à droite.
 
 ---
 
@@ -365,6 +366,10 @@ Choisissez entre trois thèmes visuels pour votre session :
 
 Ce réglage est **personnel** : il ne modifie pas l'affichage des autres utilisateurs.
 
+Sur cellulaire, l'interface s'adapte automatiquement au thème choisi pour votre session : Violet, Sombre ou Bleu. Il n'y a pas de thème mobile séparé à sélectionner.
+
+La navigation s'adapte aussi à la largeur d'écran : sur ordinateur, le menu latéral reste affiché directement ; sur cellulaire seulement, un bouton de menu permet d'ouvrir ou fermer la navigation.
+
 ### Langue de l'interface
 
 Choisissez entre **Français (FR)** et **Anglais (EN)**.
@@ -509,6 +514,8 @@ Accessible depuis **Journal d'activité** dans le menu de navigation.
 Le journal sert d'**historique d'exploitation** : il permet de vérifier rapidement qui a fait quoi avant de conclure à un dysfonctionnement.
 
 Le journal retrace les actions effectuées sur l'application par les utilisateurs connectés, ainsi que certaines opérations système automatiques.
+
+Sur cellulaire, les entrées du journal sont affichées sous forme de cartes verticales afin d'éviter le débordement horizontal des tableaux.
 
 Les opérations sensibles d'administration utilisent une session authentifiée protégée par cookie sécurisé côté serveur, contrôle CSRF sur les formulaires et appels d'écriture, et déconnexion confirmée par action `POST`.
 
@@ -662,6 +669,7 @@ Les campagnes permettent de prendre temporairement la main sur la rotation norma
 - Une campagne peut cibler des groupes, des médias isolés, ou les deux.
 - Les campagnes respectent les restrictions d'écrans de l'utilisateur connecté.
 - Une campagne archivée ne peut pas être activée tant qu'elle n'est pas restaurée.
+- Sur cellulaire, les écrans ciblés sont affichés en lignes pleine largeur avec le nom complet de l'écran, et les médias ciblés utilisent des vignettes agrandies.
 
 ### Propriété des campagnes
 
@@ -690,6 +698,7 @@ La barre de recherche en haut de l'interface permet de retrouver rapidement n'im
 - Cliquez sur la barre de recherche dans la topbar, ou appuyez sur **Cmd+K** (Mac) / **Ctrl+K** (Windows/Linux) depuis n'importe quelle page.
 - Tapez au moins 2 caractères — les résultats apparaissent en temps réel dans un menu déroulant.
 - Utilisez **↑ ↓** pour naviguer dans les résultats et **Entrée** pour ouvrir la sélection. **Échap** ferme le menu.
+- Sur cellulaire, la recherche reste accessible dans la topbar sous forme de champ pleine largeur sous le titre.
 
 ### Périmètre de la recherche
 

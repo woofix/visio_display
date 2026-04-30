@@ -455,7 +455,6 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                         </div>
                     </div>
                 </label>
-
             </div>
             <div style="margin-top:20px">
                 <button type="submit" class="btn sm">{{ t('theme_apply') }}</button>
@@ -1808,7 +1807,11 @@ document.querySelectorAll('.theme-card input[type=radio]').forEach(radio => {
     radio.addEventListener('change', () => {
         document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('selected'));
         radio.closest('.theme-card').classList.add('selected');
-        document.documentElement.dataset.theme = radio.value;
+        if (typeof window.applyThemePreference === 'function') {
+            window.applyThemePreference(radio.value);
+        } else {
+            document.documentElement.dataset.theme = radio.value;
+        }
     });
 });
 

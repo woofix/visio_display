@@ -488,11 +488,11 @@ window.__flashMessages = [{% for cat, msg in _fm %}{% set tone = cat if cat in [
         });
         mobileBackdrop.addEventListener('click', () => setSidebarOpen(false));
         window.addEventListener('resize', () => {
-            if (window.innerWidth > 900) setSidebarOpen(false);
+            if (window.innerWidth > 640) setSidebarOpen(false);
         });
         document.querySelectorAll('.sidebar a, .sidebar button[type="submit"]').forEach(el => {
             el.addEventListener('click', () => {
-                if (window.innerWidth <= 900) setSidebarOpen(false);
+                if (window.innerWidth <= 640) setSidebarOpen(false);
             });
         });
     }

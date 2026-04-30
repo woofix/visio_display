@@ -627,7 +627,7 @@ body.sidebar-open {
     min-width: 0;
 }
 
-.mobile-nav-toggle {
+.btn-icon.mobile-nav-toggle {
     display: none;
 }
 
@@ -1429,7 +1429,7 @@ body.sidebar-open {
     }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 640px) {
     .sidebar {
         left: 0;
         transform: translateX(-100%);
@@ -1462,7 +1462,7 @@ body.sidebar-open {
         padding: 0 16px 20px;
     }
 
-    .mobile-nav-toggle {
+    .btn-icon.mobile-nav-toggle {
         display: inline-flex;
     }
 

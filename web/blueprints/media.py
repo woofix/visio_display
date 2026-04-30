@@ -175,7 +175,7 @@ def _resolve_custom_rename(file_index, filename, rename_map):
 
 
 def _scope_details(screen):
-    return f'écran:{screen}' if screen else 'global'
+    return f'screen:{screen}' if screen else 'global'
 
 
 def _schedule_details(sched):
@@ -184,7 +184,7 @@ def _schedule_details(sched):
         value = sched.get(key)
         if value:
             parts.append(f'{key}={value}')
-    return ', '.join(parts) if parts else 'aucune règle'
+    return ', '.join(parts) if parts else 'no rule'
 
 
 def _build_schedule_payload(data):
@@ -481,7 +481,7 @@ def upload_file():
                         "upload_index": file_index,
                         "filename": filename,
                     }],
-                    "message": f"Le nom choisi existe déjà : {rename_map.get(str(file_index), filename)}",
+                    "message": f"The chosen name already exists: {rename_map.get(str(file_index), filename)}",
                 }), 409
             filename = renamed_filename
         elif conflict_strategy == 'overwrite' and path_exists:
@@ -602,7 +602,7 @@ def set_groups(filename):
     cleanup_orphan_group_metadata(cfg)
 
     save_config(cfg)
-    details = f'groupes={", ".join(groups)}' if groups else 'groupes supprimés'
+    details = f'groups={", ".join(groups)}' if groups else 'groups removed'
     log_activity(session.get('user'), 'config', filename=filename, details=details)
     return jsonify({"ok": True, "groups": groups})
 
@@ -627,7 +627,7 @@ def set_group_screens(group_name):
     else:
         group_screens.pop(normalized, None)
     save_config(cfg)
-    details = f'affectation groupe {normalized}: {", ".join(screens_list) if screens_list else "tous les écrans"}'
+    details = f'group assignment {normalized}: {", ".join(screens_list) if screens_list else "all screens"}'
     log_activity(session.get('user'), 'config', details=details)
     return jsonify({"ok": True, "group": normalized, "screens": screens_list})
 
@@ -651,7 +651,7 @@ def set_group_pool(group_name):
     else:
         group_pools.pop(normalized, None)
     save_config(cfg)
-    details = f'pool groupe {normalized}: {pool_size}' if pool_size > 0 else f'pool groupe {normalized} supprimé'
+    details = f'group pool {normalized}: {pool_size}' if pool_size > 0 else f'group pool {normalized} removed'
     log_activity(session.get('user'), 'config', details=details)
     return jsonify({"ok": True, "group": normalized, "pool_size": pool_size})
 
@@ -715,7 +715,7 @@ def set_duration(filename):
     _propagate_broadcast(screen, cfg)
     save_config(cfg)
     log_activity(session.get('user'), 'config', filename=filename,
-                 details=f'durée={duration}s ({_scope_details(screen)})')
+                 details=f'duration={duration}s ({_scope_details(screen)})')
     return jsonify({"ok": True})
 
 
@@ -741,7 +741,7 @@ def reorder():
 
     _propagate_broadcast(screen, cfg)
     save_config(cfg)
-    log_activity(session.get('user'), 'config', details=f'ordre mis à jour ({len(order)} médias, {_scope_details(screen)})')
+    log_activity(session.get('user'), 'config', details=f'order updated ({len(order)} media, {_scope_details(screen)})')
     return jsonify({"ok": True})
 
 
@@ -772,7 +772,7 @@ def set_schedule(filename):
     _propagate_broadcast(screen, cfg)
     save_config(cfg)
     log_activity(session.get('user'), 'config', filename=filename,
-                 details=f'programmation mise à jour ({_scope_details(screen)}): {_schedule_details(sched)}')
+                 details=f'schedule updated ({_scope_details(screen)}): {_schedule_details(sched)}')
     return jsonify({"ok": True})
 
 
@@ -818,7 +818,7 @@ def save_programming():
         session.get('user'),
         'config',
         filename=filename,
-        details=f'programmation enregistrée ({_scope_details(screen)}): {_schedule_details(sched)}',
+        details=f'schedule saved ({_scope_details(screen)}): {_schedule_details(sched)}',
     )
     return jsonify({"ok": True})
 
@@ -848,5 +848,5 @@ def delete_programming():
     bucket.pop(filename, None)
     save_config(cfg)
     log_activity(session.get('user'), 'config', filename=filename,
-                 details=f'programmation supprimée ({_scope_details(screen)})')
+                 details=f'schedule deleted ({_scope_details(screen)})')
     return jsonify({"ok": True})

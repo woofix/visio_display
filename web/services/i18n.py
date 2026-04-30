@@ -10,7 +10,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def get_language(users_svc=None):
-    """Retourne la langue de l'utilisateur connecté, sinon la langue globale de config.json."""
+    """Return the language of the logged-in user, or the global language from config.json."""
     try:
         from services.users_svc import load_users
         from services.config_svc import load_config

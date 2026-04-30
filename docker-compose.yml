@@ -29,8 +29,10 @@ services:
     environment:
       - REDIS_URL=redis://redis:6379
       - VISIO_DATA_DIR=/app/data
+      - VISIO_GIT_ROOT=/opt/visio-display
       - DATABASE_URL=postgresql://visio:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD absent. Lancez scripts/security_bootstrap.sh install . ou renseignez .env.}@postgres:5432/visio
     volumes:
+      - .:/opt/visio-display
       - ./.env:/app/.env:ro
       - ${MEDIA_DIR:-./web/static/data}:/app/static/data
       - ${PRIVATE_DIR:-./web/data/private}:/app/data
@@ -54,8 +56,10 @@ services:
     environment:
       - REDIS_URL=redis://redis:6379
       - VISIO_DATA_DIR=/app/data
+      - VISIO_GIT_ROOT=/opt/visio-display
       - DATABASE_URL=postgresql://visio:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD absent. Lancez scripts/security_bootstrap.sh install . ou renseignez .env.}@postgres:5432/visio
     volumes:
+      - .:/opt/visio-display
       - ./.env:/app/.env:ro
       - ${MEDIA_DIR:-./web/static/data}:/app/static/data
       - ${PRIVATE_DIR:-./web/data/private}:/app/data

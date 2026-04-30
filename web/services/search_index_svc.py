@@ -7,8 +7,8 @@ from db import SearchIndex, db
 LOGGER = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Données d'index — pages de l'administration et sections du wiki
-# Reseedé à chaque démarrage (table légère ~80 lignes).
+# Search index data — admin pages and wiki sections.
+# Reseeded on every startup (lightweight table, ~80 rows).
 # ---------------------------------------------------------------------------
 
 _PAGES_FR = [

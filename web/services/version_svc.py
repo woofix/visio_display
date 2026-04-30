@@ -2,6 +2,8 @@
 
 import json
 import os
+import shutil
+import subprocess
 import time
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -68,6 +70,33 @@ def _read_local_version():
         return ""
 
 
+def _read_remote_version_with_curl(version_url, timeout=6):
+    curl_path = shutil.which("curl")
+    if not curl_path:
+        return "", "source de version inaccessible"
+    try:
+        result = subprocess.run(
+            [
+                curl_path,
+                "-fsSL",
+                "--max-time",
+                str(timeout),
+                "-A",
+                "visio-display-version-check",
+                version_url,
+            ],
+            capture_output=True,
+            check=False,
+            text=True,
+            timeout=timeout + 1,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return "", "source de version inaccessible"
+    if result.returncode != 0:
+        return "", "source de version inaccessible"
+    return result.stdout[:128].strip(), ""
+
+
 def _read_remote_version(timeout=6):
     version_url = os.environ.get("VISIO_VERSION_URL", "").strip() or DEFAULT_VERSION_URL
     request = Request(version_url, headers={"User-Agent": "visio-display-version-check"})
@@ -77,7 +106,7 @@ def _read_remote_version(timeout=6):
     except HTTPError as exc:
         return "", f"source indisponible ({exc.code})"
     except URLError:
-        return "", "source de version inaccessible"
+        return _read_remote_version_with_curl(version_url, timeout=timeout)
     except OSError as exc:
         return "", str(exc)
 
@@ -105,23 +134,30 @@ def get_version_status():
     local_version = _read_local_version()
     cached = _read_cache()
     fetched_at = int(cached.get("fetched_at") or 0)
-    if cached and _now() - fetched_at < _cache_ttl_seconds():
+    cached_remote_version = _clean_version(cached.get("remote_version", ""))
+    cached_fetch_error = cached.get("fetch_error", "")
+    has_usable_cache = bool(cached_remote_version or not cached_fetch_error)
+    if cached and has_usable_cache and _now() - fetched_at < _cache_ttl_seconds():
         remote_version = cached.get("remote_version", "")
         fetch_error = cached.get("fetch_error", "")
         fetched_from_cache = True
     else:
+        previous_remote_version = cached_remote_version
         remote_version, fetch_error = _read_remote_version()
+        remote_version = _clean_version(remote_version)
+        cached_remote_version = remote_version or previous_remote_version
         fetched_from_cache = False
         _write_cache({
-            "remote_version": _clean_version(remote_version),
+            "remote_version": cached_remote_version,
             "fetch_error": fetch_error,
             "fetched_at": _now(),
         })
+        remote_version = cached_remote_version
 
     remote_version = _clean_version(remote_version)
     info = {
         "status": "check_failed",
-        "status_label": "Vérification impossible",
+        "status_label": "Check failed",
         "status_tone": "warning",
         "local_version": local_version,
         "remote_version": remote_version,
@@ -129,26 +165,26 @@ def get_version_status():
         "fetched_from_cache": fetched_from_cache,
         "fetched_at": fetched_at if fetched_from_cache else _now(),
     }
-    if fetch_error or not remote_version:
+    if not remote_version:
         return info
 
     comparison = _compare_versions(local_version, remote_version)
     if comparison > 0:
         info.update({
             "status": "update_available",
-            "status_label": "Mise à jour disponible",
+            "status_label": "Update available",
             "status_tone": "warning",
         })
     elif comparison < 0:
         info.update({
             "status": "local_ahead",
-            "status_label": "Version locale plus récente",
+            "status_label": "Local version ahead",
             "status_tone": "info",
         })
     else:
         info.update({
             "status": "up_to_date",
-            "status_label": "À jour",
+            "status_label": "Up to date",
             "status_tone": "success",
         })
     return info

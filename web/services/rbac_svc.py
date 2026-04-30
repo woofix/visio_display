@@ -11,22 +11,22 @@ _ROLE_NAME_RE  = re.compile(r'^[a-z0-9_-]{2,64}$')
 _DEFAULT_ROLES = [
     {
         'name':         'admin',
-        'display_name': 'Administrateur',
-        'description':  'Accès complet à toutes les fonctionnalités',
+        'display_name': 'Administrator',
+        'description':  'Full access to all features',
         'is_system':    True,
         'permissions':  _ALL_PERM_KEYS,
     },
     {
         'name':         'editor',
-        'display_name': 'Éditeur',
-        'description':  'Peut ajouter, supprimer et modifier les médias',
+        'display_name': 'Editor',
+        'description':  'Can add, delete and edit media',
         'is_system':    False,
         'permissions':  ['upload', 'delete', 'reorder', 'toggle', 'duration'],
     },
     {
         'name':         'viewer',
-        'display_name': 'Lecteur',
-        'description':  'Accès en lecture seule au tableau de bord',
+        'display_name': 'Viewer',
+        'description':  'Read-only access to the dashboard',
         'is_system':    False,
         'permissions':  [],
     },

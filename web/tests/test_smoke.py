@@ -141,7 +141,7 @@ class AppSmokeTests(unittest.TestCase):
         self._login()
         version_status = {
             "status": "up_to_date",
-            "status_label": "À jour",
+            "status_label": "Up to date",
             "status_tone": "success",
             "local_version": "1.0.0",
             "remote_version": "1.0.0",
@@ -159,7 +159,7 @@ class AppSmokeTests(unittest.TestCase):
         self._login()
         with patch("services.version_svc.get_version_status", return_value={
             "status": "update_available",
-            "status_label": "Mise à jour disponible",
+            "status_label": "Update available",
             "status_tone": "warning",
             "local_version": "1.0.0",
             "remote_version": "1.1.0",
@@ -193,7 +193,7 @@ class AppSmokeTests(unittest.TestCase):
 
             logs = get_activity_log(limit=10)
             self.assertTrue(any(
-                entry["action"] == "config" and entry["details"] == "thème:bleu"
+                entry["action"] == "config" and entry["details"] == "theme:bleu"
                 for entry in logs
             ))
 
@@ -1004,7 +1004,7 @@ class AppSmokeTests(unittest.TestCase):
 
             logs = get_activity_log(limit=5)
             self.assertTrue(any(
-                entry["action"] == "config" and "journal activité:" in (entry["details"] or "")
+                entry["action"] == "config" and "activity log:" in (entry["details"] or "")
                 for entry in logs
             ))
 

@@ -74,9 +74,9 @@ def update_activity_settings():
     log_config_change(
         session.get('user'),
         (
-            'journal activité: '
-            f"suppression_auto={'oui' if cfg['activity_log']['auto_delete_enabled'] else 'non'}, "
-            f"conservation={retention_days}j, limite={max_rows}, purge={deleted}"
+            'activity log: '
+            f"auto_delete={'yes' if cfg['activity_log']['auto_delete_enabled'] else 'no'}, "
+            f"retention={retention_days}d, limit={max_rows}, purged={deleted}"
         ),
     )
     _flash('flash_activity_settings_saved', 'success')
@@ -98,10 +98,10 @@ def purge_activity():
             _flash('flash_activity_purge_invalid', 'error')
             return redirect(url_for('activity.activity_page'))
         deleted = purge_activity_log(older_than_days=older_than_days)
-        log_config_change(session.get('user'), f'journal activité purgé: plus de {older_than_days} jours ({deleted} entrées)')
+        log_config_change(session.get('user'), f'activity log purged: older than {older_than_days} days ({deleted} entries)')
     elif purge_scope == 'all':
         deleted = purge_activity_log()
-        log_config_change(session.get('user'), f'journal activité purgé intégralement ({deleted} entrées)')
+        log_config_change(session.get('user'), f'activity log fully purged ({deleted} entries)')
     else:
         _flash('flash_activity_purge_invalid', 'error')
         return redirect(url_for('activity.activity_page'))

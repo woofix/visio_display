@@ -27,8 +27,8 @@ except ModuleNotFoundError:
         env["VISIO_RESET_BOOTSTRAPPED"] = "1"
         os.execve(str(venv_python), [str(venv_python), __file__, *sys.argv[1:]], env)
     raise SystemExit(
-        "Les dépendances Python sont introuvables. Lancez le script avec l'environnement virtuel du projet "
-        f"({venv_python}) ou installez les dépendances Python."
+        "Python dependencies not found. Run the script with the project virtual environment "
+        f"({venv_python}) or install the Python dependencies."
     )
 
 def build_parser() -> argparse.ArgumentParser:
@@ -72,7 +72,7 @@ def configure_database_env(database_url: str | None) -> str:
         return current
 
     raise SystemExit(
-        "DATABASE_URL est obligatoire. Ce projet fonctionne maintenant uniquement avec PostgreSQL."
+        "DATABASE_URL is required. This project now requires PostgreSQL."
     )
 
 
@@ -83,42 +83,42 @@ def list_superadmins() -> list[str]:
 
 def resolve_target(requested_user: str | None, superadmins: list[str]) -> str:
     if not superadmins:
-        raise SystemExit("Aucun compte super-admin n'existe dans la base.")
+        raise SystemExit("No super-admin account exists in the database.")
     if requested_user:
         if requested_user not in superadmins:
             available = ", ".join(superadmins)
             raise SystemExit(
-                f'Le compte "{requested_user}" n\'est pas un super-admin connu. '
-                f"Comptes disponibles : {available}"
+                f'Account "{requested_user}" is not a known super-admin. '
+                f"Available accounts: {available}"
             )
         return requested_user
     if len(superadmins) == 1:
         return superadmins[0]
     available = ", ".join(superadmins)
     raise SystemExit(
-        "Plusieurs comptes super-admin existent. "
-        f"Précisez --user. Comptes disponibles : {available}"
+        "Multiple super-admin accounts exist. "
+        f"Specify --user. Available accounts: {available}"
     )
 
 
 def read_password_from_prompt() -> str:
-    pwd = getpass.getpass("Nouveau mot de passe : ")
-    confirm = getpass.getpass("Confirmer le mot de passe : ")
+    pwd = getpass.getpass("New password: ")
+    confirm = getpass.getpass("Confirm password: ")
     if pwd != confirm:
-        raise SystemExit("Les mots de passe saisis ne correspondent pas.")
+        raise SystemExit("Passwords do not match.")
     return pwd
 
 
 def read_password_from_stdin() -> str:
     pwd = sys.stdin.read().rstrip("\r\n")
     if not pwd:
-        raise SystemExit("Aucun mot de passe reçu sur l'entrée standard.")
+        raise SystemExit("No password received on standard input.")
     return pwd
 
 
 def validate_password(password: str) -> None:
     if len(password) < 10:
-        raise SystemExit("Le mot de passe doit contenir au moins 10 caractères.")
+        raise SystemExit("Password must be at least 10 characters long.")
 
 
 def main() -> int:
@@ -132,10 +132,10 @@ def main() -> int:
         superadmins = list_superadmins()
         if args.list:
             if not superadmins:
-                print("Aucun compte super-admin n'existe dans la base.")
+                print("No super-admin account exists in the database.")
             else:
-                print(f"Base : {database_label}")
-                print("Comptes super-admin :")
+                print(f"Database: {database_label}")
+                print("Super-admin accounts:")
                 for username in superadmins:
                     print(f"- {username}")
             return 0
@@ -146,12 +146,12 @@ def main() -> int:
 
         user = User.query.filter_by(username=target_user, superadmin=True).first()
         if user is None:
-            raise SystemExit(f'Le compte "{target_user}" ne peut pas être modifié.')
+            raise SystemExit(f'Account "{target_user}" cannot be modified.')
         get_redis().ping()
         set_user_password(target_user, password)
 
-    print(f'Base : {database_label}')
-    print(f'Mot de passe Redis mis à jour pour le super-admin "{target_user}".')
+    print(f'Database: {database_label}')
+    print(f'Redis password updated for super-admin "{target_user}".')
     return 0
 
 

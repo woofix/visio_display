@@ -41,7 +41,7 @@ def add_event():
     cfg = load_config()
     cfg.setdefault("events", []).append({"label": label, "date": date_str})
     save_config(cfg)
-    log_config_change(session.get('user'), f'événement ajouté:{label} ({date_str})')
+    log_config_change(session.get('user'), f'event added:{label} ({date_str})')
     generate_ephemeride_image(force=True)
     _flash('flash_event_added', 'success', label=label)
     return redirect('/admin/settings/meteo')
@@ -58,7 +58,7 @@ def delete_event(idx):
         removed = events.pop(idx)
         cfg["events"] = events
         save_config(cfg)
-        log_config_change(session.get('user'), f'événement supprimé:{removed["label"]} ({removed["date"]})')
+        log_config_change(session.get('user'), f'event deleted:{removed["label"]} ({removed["date"]})')
         generate_ephemeride_image(force=True)
         _flash('flash_event_deleted', 'success', label=removed['label'])
     return redirect('/admin/settings/meteo')

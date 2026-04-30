@@ -65,7 +65,7 @@
             }
         }
 
-        // Initialiser la première image et démarrer le cycle
+        // Initialize the first image and start the cycle
         updateImage();
         setInterval(updateCountdown, 1000);
     </script>

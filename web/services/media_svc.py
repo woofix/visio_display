@@ -793,12 +793,12 @@ def is_media_disabled(filename, cfg):
 
 
 def get_group_active_screens(group_name, cfg):
-    """Retourne la liste des écrans auxquels ce groupe est lié (vide = global)."""
+    """Return the list of screens this group is linked to (empty = global)."""
     return cfg.get("group_screens", {}).get(group_name, [])
 
 
 def is_group_active_on_screen(group_name, cfg, screen):
-    """True si le groupe est actif sur l'écran donné (global ou explicitement lié)."""
+    """True if the group is active on the given screen (globally or explicitly linked)."""
     screens = get_group_active_screens(group_name, cfg)
     return not screens or screen in screens
 

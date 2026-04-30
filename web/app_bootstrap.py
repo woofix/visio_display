@@ -488,6 +488,11 @@ def register_template_context(app):
 
             admin_update_status = get_version_status()
 
+        current_user_must_change_password = False
+        if username:
+            _u = get_user(username)
+            current_user_must_change_password = bool(_u and _u.must_change_password)
+
         return dict(
             admin_update_status=admin_update_status,
             current_user_is_superadmin=is_superadmin(),

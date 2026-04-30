@@ -290,7 +290,7 @@ def _rq_compress_job(encode_job_id):
         out = os.path.splitext(src)[0] + '.mp4'
 
         from services.activity_svc import log_activity
-        log_activity('system', 'compress', filename=job['filename'], details='démarrage')
+        log_activity('system', 'compress', filename=job['filename'], details='started')
         ok = _reencode_with_progress(src, tmp, compress=True, job_id=encode_job_id)
         if ok:
             os.replace(tmp, out)

@@ -87,26 +87,26 @@ fi
 
 if [ -n "$USER_NAME_INPUT" ]; then
     USER_NAME="$USER_NAME_INPUT"
-    echo "==> Utilisateur preconfigure : $USER_NAME"
+    echo "==> Pre-configured user: $USER_NAME"
 else
-    echo "==> Choix de l'utilisateur à configurer"
-    read -rp "Nom de l'utilisateur local pour l'autologin/kiosk : " USER_NAME
+    echo "==> Select the user to configure"
+    read -rp "Local username for autologin/kiosk: " USER_NAME
 fi
 
 if [ -z "$USER_NAME" ] || [ "$USER_NAME" = "root" ]; then
-    echo "Utilisateur invalide."
+    echo "Invalid user."
     exit 1
 fi
 
 if ! id "$USER_NAME" >/dev/null 2>&1; then
-    echo "Utilisateur introuvable : $USER_NAME"
+    echo "User not found: $USER_NAME"
     exit 1
 fi
 
 if [ -n "$MACHINE_NAME_INPUT" ]; then
     MACHINE_NAME_INPUT="$(printf '%s' "$MACHINE_NAME_INPUT" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9-]+/-/g; s/^-+//; s/-+$//; s/-+/-/g' | cut -c1-63)"
     if [ -z "$MACHINE_NAME_INPUT" ]; then
-        echo "Nom de machine invalide."
+        echo "Invalid machine name."
         exit 1
     fi
 fi
@@ -116,16 +116,16 @@ VISIO_DIR="/opt/visio"
 CONFIG_DIR="/etc/visio"
 CONFIG_FILE="$CONFIG_DIR/client.conf"
 
-echo "==> Désactivation dépôt cdrom si présent"
+echo "==> Disabling cdrom repository if present"
 [ -f /etc/apt/sources.list ] && sed -i 's|^deb cdrom:|#deb cdrom:|g' /etc/apt/sources.list
 
-echo "==> Installation des paquets"
+echo "==> Installing packages"
 apt update
 apt install -y \
   curl xorg xinit openbox firefox-esr xterm unclutter \
   xserver-xorg-legacy x11-xserver-utils polkitd
 
-echo "==> Création des dossiers"
+echo "==> Creating directories"
 mkdir -p \
   "$VISIO_DIR" \
   "$CONFIG_DIR" \
@@ -133,13 +133,13 @@ mkdir -p \
   /etc/X11 \
   /etc/polkit-1/rules.d
 
-echo "==> Préparation du fichier de configuration"
+echo "==> Preparing configuration file"
 touch "$CONFIG_FILE"
 chown "$USER_NAME:$USER_NAME" "$CONFIG_FILE"
 chmod 664 "$CONFIG_FILE"
 
 if [ -n "$MACHINE_NAME_INPUT" ]; then
-    echo "==> Configuration du nom de machine : $MACHINE_NAME_INPUT"
+    echo "==> Setting machine name: $MACHINE_NAME_INPUT"
     hostnamectl set-hostname "$MACHINE_NAME_INPUT" 2>/dev/null || echo "$MACHINE_NAME_INPUT" > /etc/hostname
     if [ -f /etc/hosts ]; then
         sed -i -E "s/^127\.0\.1\.1[[:space:]]+.*/127.0.1.1\t$MACHINE_NAME_INPUT/" /etc/hosts || true
@@ -150,7 +150,7 @@ if [ -n "$MACHINE_NAME_INPUT" ]; then
 fi
 
 if [ -n "$SERVER_URL_INPUT" ]; then
-    echo "==> Préconfiguration du client"
+    echo "==> Pre-configuring client"
     cat > "$CONFIG_FILE" <<EOC
 SERVER_URL=$SERVER_URL_INPUT
 SCREEN_NAME=$SCREEN_NAME_INPUT
@@ -161,13 +161,13 @@ FIREFOX_RESTART_INTERVAL_SECONDS=21600
 EOC
 fi
 
-echo "==> Configuration Xwrapper"
+echo "==> Configuring Xwrapper"
 cat > /etc/X11/Xwrapper.config <<'EOF'
 allowed_users=anybody
 needs_root_rights=yes
 EOF
 
-echo "==> Autorisation reboot/poweroff pour $USER_NAME"
+echo "==> Allowing reboot/poweroff for $USER_NAME"
 cat > /etc/polkit-1/rules.d/49-visio-power.rules <<EOF
 polkit.addRule(function(action, subject) {
     if ((action.id == "org.freedesktop.login1.power-off" ||
@@ -179,7 +179,7 @@ polkit.addRule(function(action, subject) {
 EOF
 chmod 644 /etc/polkit-1/rules.d/49-visio-power.rules
 
-echo "==> Création bootstrap.sh"
+echo "==> Creating bootstrap.sh"
 cat > "$VISIO_DIR/bootstrap.sh" <<'EOF'
 #!/bin/bash
 
@@ -220,7 +220,7 @@ EOF
 
 chmod +x "$VISIO_DIR/bootstrap.sh"
 
-echo "==> Création kiosk.sh"
+echo "==> Creating kiosk.sh"
 cat > "$VISIO_DIR/kiosk.sh" <<'EOF'
 #!/bin/bash
 
@@ -428,7 +428,7 @@ EOF
 
 chmod +x "$VISIO_DIR/kiosk.sh"
 
-echo "==> Création client-heartbeat.sh"
+echo "==> Creating client-heartbeat.sh"
 cat > "$VISIO_DIR/client-heartbeat.sh" <<'EOF'
 #!/bin/bash
 
@@ -649,7 +649,7 @@ EOF
 
 chmod +x "$VISIO_DIR/client-heartbeat.sh"
 
-echo "==> Création client-watchdog.sh"
+echo "==> Creating client-watchdog.sh"
 cat > "$VISIO_DIR/client-watchdog.sh" <<'EOF'
 #!/bin/bash
 
@@ -803,7 +803,7 @@ EOF
 
 chmod +x "$VISIO_DIR/client-watchdog.sh"
 
-echo "==> Création .xinitrc"
+echo "==> Creating .xinitrc"
 cat > "$USER_HOME/.xinitrc" <<'EOF'
 #!/bin/bash
 exec /opt/visio/kiosk.sh
@@ -811,7 +811,7 @@ EOF
 chmod +x "$USER_HOME/.xinitrc"
 chown "$USER_NAME:$USER_NAME" "$USER_HOME/.xinitrc"
 
-echo "==> Création .bash_profile"
+echo "==> Creating .bash_profile"
 cat > "$USER_HOME/.bash_profile" <<'EOF'
 if [ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
     startx
@@ -819,7 +819,7 @@ fi
 EOF
 chown "$USER_NAME:$USER_NAME" "$USER_HOME/.bash_profile"
 
-echo "==> Activation autologin tty1"
+echo "==> Enabling autologin tty1"
 cat > /etc/systemd/system/getty@tty1.service.d/override.conf <<EOF
 [Service]
 ExecStart=
@@ -827,7 +827,7 @@ ExecStart=-/sbin/agetty --autologin $USER_NAME --noclear %I \$TERM
 Type=idle
 EOF
 
-echo "==> Service premier reboot"
+echo "==> First boot service"
 cat > /etc/systemd/system/visio-firstboot.service <<'EOF'
 [Unit]
 Description=Premier reboot apres installation Visio
@@ -841,7 +841,7 @@ ExecStart=/bin/bash -c '/bin/systemctl disable visio-firstboot.service; rm -f /e
 WantedBy=multi-user.target
 EOF
 
-echo "==> Service heartbeat client"
+echo "==> Client heartbeat service"
 cat > /etc/systemd/system/visio-client-heartbeat.service <<'EOF'
 [Unit]
 Description=Heartbeat du client Visio vers le serveur
@@ -866,7 +866,7 @@ Unit=visio-client-heartbeat.service
 WantedBy=timers.target
 EOF
 
-echo "==> Service watchdog client"
+echo "==> Client watchdog service"
 cat > /etc/systemd/system/visio-client-watchdog.service <<'EOF'
 [Unit]
 Description=Surveillance du kiosque Visio
@@ -898,12 +898,12 @@ EOF
 /bin/systemctl enable --now visio-client-watchdog.timer
 /bin/systemctl start visio-client-watchdog.service || true
 
-echo "Installation terminée."
-echo "Utilisateur configuré : $USER_NAME"
+echo "Installation complete."
+echo "Configured user: $USER_NAME"
 if [ "$AUTO_REBOOT" -eq 1 ]; then
-    echo "Redémarrage automatique dans 3 secondes..."
+    echo "Auto-reboot in 3 seconds..."
     sleep 3
     /bin/systemctl reboot
 else
-    echo "Redémarrage automatique désactivé (--no-reboot)."
+    echo "Auto-reboot disabled (--no-reboot)."
 fi

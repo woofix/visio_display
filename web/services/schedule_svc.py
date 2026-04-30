@@ -103,11 +103,11 @@ def schedule_summary(entry):
     if entry.get("has_time"):
         parts.append(f'{entry.get("time_start") or "00:00"} - {entry.get("time_end") or "24:00"}')
     else:
-        parts.append("Toute la journée")
+        parts.append("All day")
     if entry.get("date_start") or entry.get("date_end"):
         parts.append(f'{entry.get("date_start") or "..." } -> {entry.get("date_end") or "..."}')
     else:
-        parts.append("Sans limite de dates")
+        parts.append("No date limit")
     return " · ".join(parts)
 
 

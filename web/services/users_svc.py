@@ -191,8 +191,8 @@ def init_users():
         pwd  = os.environ.get('ADMIN_PASSWORD', '').strip()
         if not user or not pwd:
             raise RuntimeError(
-                "Aucun utilisateur trouvé. "
-                "Définissez ADMIN_USER et ADMIN_PASSWORD pour le premier démarrage."
+                "No user found. "
+                "Set ADMIN_USER and ADMIN_PASSWORD for the first startup."
             )
         db.session.add(User(
             username=user,

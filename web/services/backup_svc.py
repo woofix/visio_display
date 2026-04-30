@@ -102,18 +102,18 @@ def _run_command(command, *, env=None, missing_binary_message=None, failure_mess
     try:
         subprocess.run(command, check=True, env=env)
     except FileNotFoundError as exc:
-        binary = command[0] if command else "commande inconnue"
+        binary = command[0] if command else "unknown command"
         raise RuntimeError(
             missing_binary_message or (
-                f"Outil système introuvable: {binary}. "
-                "Reconstruisez les conteneurs Docker pour installer les outils PostgreSQL "
-                "puis relancez la sauvegarde/restauration."
+                f"System tool not found: {binary}. "
+                "Rebuild Docker containers to install PostgreSQL tools "
+                "then retry the backup/restore."
             )
         ) from exc
     except subprocess.CalledProcessError as exc:
-        binary = command[0] if command else "commande inconnue"
+        binary = command[0] if command else "unknown command"
         raise RuntimeError(
-            failure_message or f"La commande {binary} a échoué avec le code {exc.returncode}."
+            failure_message or f"Command {binary} failed with exit code {exc.returncode}."
         ) from exc
 
 
@@ -132,7 +132,7 @@ def _parse_postgres_major(version_value):
     version_text = str(version_value or "").strip()
     match = re.match(r"^(\d+)", version_text)
     if not match:
-        raise RuntimeError(f"Version PostgreSQL illisible: {version_text or 'inconnue'}")
+        raise RuntimeError(f"Unreadable PostgreSQL version: {version_text or 'unknown'}")
     return int(match.group(1))
 
 
@@ -151,13 +151,13 @@ def _client_binary_version(binary_name):
         )
     except FileNotFoundError as exc:
         raise RuntimeError(
-            f"Outil système introuvable: {binary_name}. "
-            "Reconstruisez les conteneurs Docker pour installer les outils PostgreSQL "
-            "puis relancez la sauvegarde/restauration."
+            f"System tool not found: {binary_name}. "
+            "Rebuild Docker containers to install PostgreSQL tools "
+            "then retry the backup/restore."
         ) from exc
     except subprocess.CalledProcessError as exc:
         raise RuntimeError(
-            f"Impossible de lire la version de {binary_name} (code {exc.returncode})."
+            f"Unable to read the version of {binary_name} (code {exc.returncode})."
         ) from exc
     return (result.stdout or result.stderr or "").strip()
 
@@ -181,10 +181,10 @@ def _ensure_supported_runtime():
     runtime = _build_runtime_compatibility()
     if runtime["server_major"] != SUPPORTED_POSTGRES_MAJOR:
         raise RuntimeError(
-            "Version PostgreSQL incompatible pour la sauvegarde/restauration: "
-            f"serveur={runtime['server_version']}, "
-            f"majeure attendue={SUPPORTED_POSTGRES_MAJOR}. "
-            f"Mettez à niveau le service postgres vers {SUPPORTED_POSTGRES_IMAGE} avant de continuer."
+            "Incompatible PostgreSQL version for backup/restore: "
+            f"server={runtime['server_version']}, "
+            f"expected major={SUPPORTED_POSTGRES_MAJOR}. "
+            f"Upgrade the postgres service to {SUPPORTED_POSTGRES_IMAGE} before continuing."
         )
     return runtime
 
@@ -273,7 +273,7 @@ def _archive_directory(source_dir, archive_path, *, progress_callback=None, excl
     exclude_dirs = {os.path.abspath(path) for path in (exclude_dirs or [])}
     base_dir = os.path.abspath(source_dir)
     if not os.path.isdir(base_dir):
-        _emit_progress(progress_callback, f"Source absente, section ignorée: {source_dir}")
+        _emit_progress(progress_callback, f"Source missing, section skipped: {source_dir}")
         return False
 
     with tarfile.open(archive_path, "w:gz") as archive:
@@ -318,26 +318,26 @@ def _build_backup_payload(target_dir, progress_callback=None):
     media_archive_path = os.path.join(target_dir, BACKUP_MEDIA_ARCHIVE)
     private_archive_path = os.path.join(target_dir, BACKUP_PRIVATE_ARCHIVE)
 
-    _emit_progress(progress_callback, "Export PostgreSQL...")
+    _emit_progress(progress_callback, "PostgreSQL export...")
     _dump_postgres_database(db_dump_path)
-    _emit_progress(progress_callback, "Dump PostgreSQL terminé.")
+    _emit_progress(progress_callback, "PostgreSQL dump complete.")
 
-    _emit_progress(progress_callback, "Archivage des médias...")
+    _emit_progress(progress_callback, "Archiving media...")
     _archive_directory(C.STATIC_MEDIA_DIR, media_archive_path, progress_callback=progress_callback)
-    _emit_progress(progress_callback, "Médias archivés.")
+    _emit_progress(progress_callback, "Media archived.")
 
-    _emit_progress(progress_callback, "Archivage des fichiers privés...")
+    _emit_progress(progress_callback, "Archiving private files...")
     _archive_directory(
         C.PRIVATE_DATA_DIR,
         private_archive_path,
         progress_callback=progress_callback,
         exclude_dirs=[BACKUP_DIR],
     )
-    _emit_progress(progress_callback, "Fichiers privés archivés.")
+    _emit_progress(progress_callback, "Private files archived.")
 
     if os.path.isfile(ENV_FILE):
         shutil.copy2(ENV_FILE, os.path.join(target_dir, BACKUP_ENV_FILE))
-        _emit_progress(progress_callback, "Copie du .env ajoutée.")
+        _emit_progress(progress_callback, ".env copy added.")
 
     _write_manifest(target_dir, runtime)
 
@@ -345,17 +345,17 @@ def _build_backup_payload(target_dir, progress_callback=None):
 def _add_tree_to_archive(archive, source_path, archive_name, progress_callback=None):
     if not os.path.exists(source_path):
         return
-    _emit_progress(progress_callback, f"Ajout de {archive_name} à l'archive...")
+    _emit_progress(progress_callback, f"Adding {archive_name} to archive...")
     archive.add(source_path, arcname=archive_name)
-    _emit_progress(progress_callback, f"Section archivée: {archive_name}")
+    _emit_progress(progress_callback, f"Section archived: {archive_name}")
 
 
 def create_backup_archive(progress_callback=None):
     _ensure_backup_dir()
     filename = _timestamped_backup_name()
     archive_file = os.path.join(BACKUP_DIR, filename)
-    _emit_progress(progress_callback, "Initialisation de la sauvegarde...")
-    _emit_progress(progress_callback, f"Archive cible: {filename}")
+    _emit_progress(progress_callback, "Initializing backup...")
+    _emit_progress(progress_callback, f"Target archive: {filename}")
 
     with tempfile.TemporaryDirectory(prefix="visio-backup-build-") as tmp_dir:
         _build_backup_payload(tmp_dir, progress_callback=progress_callback)
@@ -369,25 +369,25 @@ def create_backup_archive(progress_callback=None):
                     progress_callback=progress_callback,
                 )
 
-    _emit_progress(progress_callback, "Nettoyage des anciennes sauvegardes...")
+    _emit_progress(progress_callback, "Cleaning up old backups...")
     _prune_old_backups()
     stat = os.stat(archive_file)
     backup = _backup_metadata(filename, stat)
     backup["path"] = archive_file
-    _emit_progress(progress_callback, "Sauvegarde finalisée.")
+    _emit_progress(progress_callback, "Backup complete.")
     return backup
 
 
 def _parse_smb_url(raw_url):
     parsed = urlparse(str(raw_url or "").strip())
     if parsed.scheme.lower() != "smb":
-        raise RuntimeError("Lien SMB invalide: utilisez une adresse de type smb://serveur/partage/dossier.")
+        raise RuntimeError("Invalid SMB link: use an address like smb://server/share/folder.")
     if not parsed.hostname:
-        raise RuntimeError("Lien SMB invalide: le nom du serveur est requis.")
+        raise RuntimeError("Invalid SMB link: server name is required.")
 
     path_parts = [unquote(part) for part in parsed.path.split("/") if part]
     if not path_parts:
-        raise RuntimeError("Lien SMB invalide: le nom du partage est requis.")
+        raise RuntimeError("Invalid SMB link: share name is required.")
 
     return {
         "server": parsed.hostname,
@@ -442,16 +442,16 @@ def copy_backup_to_smb(source_path, backup_filename, remote_settings, progress_c
         _run_command(
             command,
             missing_binary_message=(
-                "Outil système introuvable: smbclient. "
-                "Installez le client SMB/CIFS dans le conteneur puis relancez la copie de sauvegarde."
+                "System tool not found: smbclient. "
+                "Install the SMB/CIFS client in the container then retry the backup copy."
             ),
             failure_message=(
-                "La copie SMB de la sauvegarde a échoué. "
-                "Vérifiez le lien smb://, les identifiants et que le dossier distant existe."
+                "SMB backup copy failed. "
+                "Check the smb:// link, credentials, and that the remote folder exists."
             ),
         )
 
-    _emit_progress(progress_callback, f"Copie SMB terminée: {backup_filename}")
+    _emit_progress(progress_callback, f"SMB copy complete: {backup_filename}")
 
 
 def delete_backup_archive(filename):
@@ -523,7 +523,7 @@ def _restore_env_file(extracted_root):
 def _load_manifest(extracted_root):
     manifest_path = os.path.join(extracted_root, BACKUP_MANIFEST)
     if not os.path.isfile(manifest_path):
-        raise RuntimeError("Sauvegarde invalide: manifest.json est introuvable.")
+        raise RuntimeError("Invalid backup: manifest.json not found.")
     with open(manifest_path, "r", encoding="utf-8") as handle:
         return json.load(handle)
 
@@ -532,23 +532,23 @@ def _validate_manifest(manifest):
     backup_version = int(manifest.get("version") or 0)
     if backup_version != BACKUP_FORMAT_VERSION:
         raise RuntimeError(
-            "Format de sauvegarde incompatible: "
-            f"archive={backup_version}, attendu={BACKUP_FORMAT_VERSION}."
+            "Incompatible backup format: "
+            f"archive={backup_version}, expected={BACKUP_FORMAT_VERSION}."
         )
 
     backup_major = int(manifest.get("postgres_supported_major") or 0)
     if backup_major != SUPPORTED_POSTGRES_MAJOR:
         raise RuntimeError(
-            "Sauvegarde incompatible avec cette image: "
-            f"majeure PostgreSQL archive={backup_major}, "
-            f"majeure attendue={SUPPORTED_POSTGRES_MAJOR}."
+            "Backup incompatible with this image: "
+            f"archive PostgreSQL major={backup_major}, "
+            f"expected major={SUPPORTED_POSTGRES_MAJOR}."
         )
 
     runtime = _ensure_supported_runtime()
     if runtime["server_major"] != backup_major:
         raise RuntimeError(
-            "Serveur PostgreSQL incompatible avec la sauvegarde: "
-            f"serveur={runtime['server_version']}, archive={backup_major}."
+            "PostgreSQL server incompatible with backup: "
+            f"server={runtime['server_version']}, archive={backup_major}."
         )
     return runtime
 
@@ -575,11 +575,11 @@ def restore_backup_archive(uploaded_file):
         db_dump_path = os.path.join(tmp_dir, BACKUP_DB_DUMP)
 
         if not os.path.isfile(db_dump_path):
-            raise RuntimeError("Sauvegarde invalide: le dump PostgreSQL est introuvable.")
+            raise RuntimeError("Invalid backup: PostgreSQL dump not found.")
         if not os.path.isfile(media_archive_path):
-            raise RuntimeError("Sauvegarde invalide: l'archive des médias est introuvable.")
+            raise RuntimeError("Invalid backup: media archive not found.")
         if not os.path.isfile(private_archive_path):
-            raise RuntimeError("Sauvegarde invalide: l'archive des fichiers privés est introuvable.")
+            raise RuntimeError("Invalid backup: private files archive not found.")
 
         if os.path.isfile(media_archive_path):
             extracted_media_dir = os.path.join(tmp_dir, "restore-media")

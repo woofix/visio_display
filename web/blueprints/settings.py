@@ -326,7 +326,7 @@ def set_client_watchdog():
         ),
     }
     save_config(cfg)
-    log_config_change(session.get('user'), f'watchdog client mis à jour: interval={cfg["client_watchdog"]["check_interval_seconds"]}s, grâce={cfg["client_watchdog"]["grace_period_seconds"]}s, échecs={cfg["client_watchdog"]["consecutive_failures_before_reboot"]}')
+    log_config_change(session.get('user'), f'client watchdog updated: interval={cfg["client_watchdog"]["check_interval_seconds"]}s, grace={cfg["client_watchdog"]["grace_period_seconds"]}s, failures={cfg["client_watchdog"]["consecutive_failures_before_reboot"]}')
     _flash('flash_client_watchdog_updated', 'success')
     return redirect(settings_section_url('installation'))
 
@@ -349,7 +349,7 @@ def create_backup():
         return redir
 
     backup = create_backup_archive()
-    log_config_change(session.get('user'), f"sauvegarde créée: {backup['filename']}")
+    log_config_change(session.get('user'), f"backup created: {backup['filename']}")
     _flash('flash_backup_created', 'success', filename=backup['filename'])
     return redirect(settings_section_url('sauvegardes'))
 
@@ -373,7 +373,7 @@ def save_backup_remote():
     save_config(cfg)
     log_config_change(
         session.get('user'),
-        f"destination SMB des sauvegardes mise à jour: active={'oui' if remote_settings['enabled'] else 'non'}, url={remote_settings['url'] or '-'}",
+        f"backup SMB destination updated: active={'yes' if remote_settings['enabled'] else 'no'}, url={remote_settings['url'] or '-'}",
     )
     _flash('flash_backup_remote_saved', 'success')
     return redirect(settings_section_url('sauvegardes'))
@@ -405,7 +405,7 @@ def create_backup_stream():
         try:
             with app.app_context():
                 backup = create_backup_archive(progress_callback=lambda message: emit('log', message=message))
-                log_config_change(username, f"sauvegarde créée: {backup['filename']}")
+                log_config_change(username, f"backup created: {backup['filename']}")
             emit('done', backup=serialize_backup(backup))
         except Exception as exc:
             emit('error', message=str(exc) or exc.__class__.__name__)
@@ -417,7 +417,7 @@ def create_backup_stream():
 
     @stream_with_context
     def generate():
-        yield json.dumps({'type': 'log', 'message': 'Connexion au moteur de sauvegarde...'}) + '\n'
+        yield json.dumps({'type': 'log', 'message': 'Connecting to backup engine...'}) + '\n'
         while not done.is_set() or not events.empty():
             try:
                 payload = events.get(timeout=0.2)
@@ -457,7 +457,7 @@ def copy_backup(filename):
     except Exception as exc:
         flash(str(exc) or _t('backup_stream_error'), 'error')
     else:
-        log_config_change(session.get('user'), f"sauvegarde copiée vers SMB: {filename}")
+        log_config_change(session.get('user'), f"backup copied to SMB: {filename}")
         _flash('flash_backup_copied', 'success', filename=filename)
     return redirect(settings_section_url('sauvegardes'))
 
@@ -473,7 +473,7 @@ def delete_backup(filename):
     except FileNotFoundError:
         _flash('flash_backup_delete_missing', 'error')
     else:
-        log_config_change(session.get('user'), f"sauvegarde supprimée: {filename}")
+        log_config_change(session.get('user'), f"backup deleted: {filename}")
         _flash('flash_backup_deleted', 'success', filename=filename)
     return redirect(settings_section_url('sauvegardes'))
 
@@ -495,7 +495,7 @@ def restore_backup():
         flash(str(exc) or _t('flash_backup_restore_failed'), 'error')
         return redirect(settings_section_url('sauvegardes'))
 
-    log_config_change(session.get('user'), f"sauvegarde restaurée: {uploaded.filename}")
+    log_config_change(session.get('user'), f"backup restored: {uploaded.filename}")
     _flash('flash_backup_restored', 'success', filename=uploaded.filename)
     return redirect(settings_section_url('sauvegardes'))
 
@@ -545,7 +545,7 @@ def install_client():
     install_result['summary'] = _t(install_result.get('summary_key', ''))
 
     if install_result.get('ok'):
-        log_config_change(session.get('user'), f'installation client lancée:{host} ({machine_name})')
+        log_config_change(session.get('user'), f'client install started:{host} ({machine_name})')
         _flash('flash_install_success', 'success', host=host)
     else:
         _flash('flash_install_failed', 'error', host=host)
@@ -717,7 +717,7 @@ def set_meteo_location():
     cfg['meteo_tz']    = tz
     cfg['school_zone'] = school_zone
     save_config(cfg)
-    log_config_change(session.get('user'), f'météo:{ville} ({lat_f},{lng_f}) tz={tz} zone={school_zone}')
+    log_config_change(session.get('user'), f'weather:{ville} ({lat_f},{lng_f}) tz={tz} zone={school_zone}')
     # Regenerate the ephemeris with the new location
     from services.ephemeris_svc import generate_ephemeride_image
     generate_ephemeride_image(force=True)
@@ -735,7 +735,7 @@ def set_theme():
     username = session.get('user')
     if username:
         update_user_theme(username, theme)
-        log_config_change(username, f'thème:{theme}')
+        log_config_change(username, f'theme:{theme}')
     _flash('flash_theme_updated', 'success')
     return redirect(settings_section_url('theme'))
 
@@ -777,7 +777,7 @@ def toggle_feature():
     features[feature] = not bool(features.get(feature, True))
     cfg['features'] = features
     save_config(cfg)
-    log_config_change(session.get('user'), f'fonctionnalité {feature}: {features[feature]}')
+    log_config_change(session.get('user'), f'feature {feature}: {features[feature]}')
     _flash('flash_feature_updated', 'success')
     return redirect(settings_section_url('features'))
 
@@ -812,7 +812,7 @@ def upload_logo():
     cfg = load_config()
     cfg['logo'] = filename
     save_config(cfg)
-    log_config_change(session.get('user'), f'logo mis à jour:{filename}')
+    log_config_change(session.get('user'), f'logo updated:{filename}')
     _flash('flash_logo_updated', 'success')
     return redirect(settings_section_url('logo'))
 
@@ -827,6 +827,6 @@ def reset_logo():
     cfg = load_config()
     cfg['logo'] = DEFAULT_LOGO
     save_config(cfg)
-    log_config_change(session.get('user'), 'logo réinitialisé')
+    log_config_change(session.get('user'), 'logo reset')
     _flash('flash_logo_reset', 'success')
     return redirect(settings_section_url('logo'))

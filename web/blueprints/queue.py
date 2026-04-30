@@ -95,11 +95,11 @@ def cancel_job(job_id):
     if job['status'] == 'pending':
         q.remove(job)
         save_queue(q)
-        log_activity(session.get('user'), 'compress', filename=job['filename'], details='tâche annulée')
+        log_activity(session.get('user'), 'compress', filename=job['filename'], details='task cancelled')
     else:
         q.remove(job)
         save_queue(q)
-        log_activity(session.get('user'), 'compress', filename=job['filename'], details='job supprimé')
+        log_activity(session.get('user'), 'compress', filename=job['filename'], details='job removed')
     return jsonify({"ok": True})
 
 
@@ -120,7 +120,7 @@ def force_encode():
         save_queue(q)
         for job in pending:
             _compress_q().enqueue(_rq_compress_job, job['id'], job_timeout=3600)
-        log_activity(session.get('user'), 'compress', details=f'lancement forcé de {len(pending)} tâche(s)')
+        log_activity(session.get('user'), 'compress', details=f'forced start of {len(pending)} task(s)')
     _flash('flash_force_encode_started', 'success')
     return redirect('/admin/queue')
 
@@ -164,7 +164,7 @@ def force_compress_single(filename):
         job['started'] = datetime.now().isoformat()
         save_queue(q)
         _compress_q().enqueue(_rq_compress_job, job['id'], job_timeout=3600)
-        log_activity(session.get('user'), 'compress', filename=filename, details='compression forcée')
+        log_activity(session.get('user'), 'compress', filename=filename, details='forced compression')
 
     return jsonify({"ok": True, "job_id": job["id"]})
 
@@ -182,7 +182,7 @@ def clear_recent_jobs():
     q = [j for j in q if j['status'] not in ('done', 'error')]
     save_queue(q)
     if removed:
-        log_activity(session.get('user'), 'compress', details=f'{len(removed)} encodage(s) récent(s) supprimé(s)')
+        log_activity(session.get('user'), 'compress', details=f'{len(removed)} recent encoding(s) removed')
     return jsonify({"ok": True, "removed": len(removed)})
 
 

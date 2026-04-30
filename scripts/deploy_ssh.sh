@@ -68,7 +68,7 @@ profile_exists() {
 load_profile() {
     name="$1"
     if ! profile_exists "$name"; then
-        echo "Profil introuvable: $name" >&2
+        echo "Profile not found: $name" >&2
         exit 1
     fi
     line="$(awk -F '\t' -v name="$name" '$1 == name { printf "%s\t%s\t%s\t%s\t%s\n", $2, $3, $4, $5, $6; exit }' "$SERVER_STORE")"
@@ -116,7 +116,7 @@ save_profile() {
 list_profiles() {
     ensure_store_dir
     if ! [ -s "$SERVER_STORE" ]; then
-        echo "Aucun profil enregistré."
+        echo "No saved profiles."
         exit 0
     fi
     awk -F '\t' '{ printf "%d) %s -> %s@%s:%s %s%s\n", NR, $1, $3, $2, $4, $5, ($6 == "1" ? " [password]" : "") }' "$SERVER_STORE"
@@ -143,15 +143,15 @@ prompt_value() {
 interactive_select_profile() {
     ensure_store_dir
     if [ -s "$SERVER_STORE" ]; then
-        echo "Serveurs enregistrés :" >&2
+        echo "Saved servers:" >&2
         awk -F '\t' '{ printf "  %d) %s -> %s@%s:%s %s%s\n", NR, $1, $3, $2, $4, $5, ($6 == "1" ? " [password]" : "") }' "$SERVER_STORE" >&2
-        printf "Choisir un profil (numéro) ou appuyer sur Entrée pour en créer un nouveau: " >&2
+        printf "Choose a profile (number) or press Enter to create a new one: " >&2
         IFS= read -r choice || exit 1
         choice="$(trim "$choice")"
         if [ -n "$choice" ]; then
             line="$(awk -F '\t' -v idx="$choice" 'NR == idx { printf "%s\t%s\t%s\t%s\t%s\t%s\n", $1, $2, $3, $4, $5, $6; exit }' "$SERVER_STORE")"
             if [ -z "$line" ]; then
-                echo "Sélection invalide." >&2
+                echo "Invalid selection." >&2
                 exit 1
             fi
             old_ifs=$IFS
@@ -170,13 +170,13 @@ interactive_select_profile() {
         fi
     fi
 
-    HOST="$(prompt_value "Hôte SSH" "$HOST")"
-    USER_NAME="$(prompt_value "Utilisateur SSH" "$USER_NAME")"
-    PORT="$(prompt_value "Port SSH" "$PORT")"
-    REMOTE_DIR="$(prompt_value "Dossier distant" "$REMOTE_DIR")"
-    password_answer="$(prompt_value "Authentification SSH par mot de passe ? (o/N)" "")"
+    HOST="$(prompt_value "SSH host" "$HOST")"
+    USER_NAME="$(prompt_value "SSH user" "$USER_NAME")"
+    PORT="$(prompt_value "SSH port" "$PORT")"
+    REMOTE_DIR="$(prompt_value "Remote directory" "$REMOTE_DIR")"
+    password_answer="$(prompt_value "SSH password authentication? (y/N)" "")"
     case "$password_answer" in
-        o|O|oui|Oui|y|Y|yes|Yes)
+        y|Y|yes|Yes)
             PASSWORD_AUTH=1
             ;;
         *)
@@ -184,10 +184,10 @@ interactive_select_profile() {
             ;;
     esac
 
-    save_answer="$(prompt_value "Enregistrer ce serveur ? (o/N)" "")"
+    save_answer="$(prompt_value "Save this server? (y/N)" "")"
     case "$save_answer" in
-        o|O|oui|Oui|y|Y|yes|Yes)
-            profile_answer="$(prompt_value "Nom du profil" "$HOST")"
+        y|Y|yes|Yes)
+            profile_answer="$(prompt_value "Profile name" "$HOST")"
             if [ -n "$profile_answer" ]; then
                 SAVE_PROFILE_NAME="$profile_answer"
                 PROFILE_NAME="$profile_answer"
@@ -198,7 +198,7 @@ interactive_select_profile() {
 
 validate_required_values() {
     if [ -z "$HOST" ] || [ -z "$USER_NAME" ]; then
-        echo "Hôte SSH et utilisateur requis." >&2
+        echo "SSH host and user are required." >&2
         exit 1
     fi
 }
@@ -281,7 +281,7 @@ while [ $# -gt 0 ]; do
             exit 0
             ;;
         *)
-            echo "Option inconnue: $1" >&2
+            echo "Unknown option: $1" >&2
             usage >&2
             exit 1
             ;;
@@ -299,7 +299,7 @@ if [ -z "$HOST" ] || [ -z "$USER_NAME" ]; then
     if [ -t 0 ]; then
         interactive_select_profile
     else
-        echo "Hôte SSH et utilisateur requis. Utilise --host/--user ou un profil enregistré." >&2
+        echo "SSH host and user are required. Use --host/--user or a saved profile." >&2
         usage >&2
         exit 1
     fi
@@ -309,16 +309,16 @@ validate_required_values
 
 if [ -n "$SAVE_PROFILE_NAME" ]; then
     save_profile "$SAVE_PROFILE_NAME"
-    echo "Profil enregistré: $SAVE_PROFILE_NAME" >&2
+    echo "Profile saved: $SAVE_PROFILE_NAME" >&2
 fi
 
 if ! command -v ssh >/dev/null 2>&1; then
-    echo "Commande manquante: ssh" >&2
+    echo "Missing command: ssh" >&2
     exit 1
 fi
 
 if ! command -v rsync >/dev/null 2>&1; then
-    echo "Commande manquante: rsync" >&2
+    echo "Missing command: rsync" >&2
     exit 1
 fi
 
@@ -332,10 +332,10 @@ else
     SSH_OPTS="$SSH_OPTS -o BatchMode=yes"
 fi
 
-echo "==> Vérification du serveur SSH"
+echo "==> Checking SSH server"
 ssh $SSH_OPTS "$TARGET" "mkdir -p '$REMOTE_DIR'"
 
-echo "==> Synchronisation des fichiers"
+echo "==> Syncing files"
 rsync -az --delete \
   -e "ssh $SSH_OPTS" \
   --exclude ".git/" \
@@ -356,7 +356,7 @@ REMOTE_CMD=$(cat <<EOF
 set -eu
 cd '$REMOTE_DIR'
 if ! command -v docker >/dev/null 2>&1; then
-    echo "Docker est introuvable sur le serveur." >&2
+    echo "Docker not found on the server." >&2
     exit 1
 fi
 if docker compose version >/dev/null 2>&1; then
@@ -364,14 +364,14 @@ if docker compose version >/dev/null 2>&1; then
 elif command -v docker-compose >/dev/null 2>&1; then
     COMPOSE_CMD='docker-compose'
 else
-    echo "Docker Compose est introuvable sur le serveur." >&2
+    echo "Docker Compose not found on the server." >&2
     exit 1
 fi
 \$COMPOSE_CMD -f '$COMPOSE_FILE' up -d $BUILD_FLAG $PRUNE_FLAG
 EOF
 )
 
-echo "==> Redémarrage de l'application distante"
+echo "==> Restarting remote application"
 ssh $SSH_OPTS "$TARGET" "$REMOTE_CMD"
 
 if [ "$WAIT_FOR_APP" -eq 1 ]; then
@@ -385,24 +385,24 @@ else
 fi
 cid=\$(\$COMPOSE_CMD -f '$COMPOSE_FILE' ps -q '$APP_SERVICE')
 if [ -z "\$cid" ]; then
-    echo "Service $APP_SERVICE introuvable." >&2
+    echo "Service $APP_SERVICE not found." >&2
     exit 1
 fi
 for _ in \$(seq 1 30); do
     status=\$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "\$cid" 2>/dev/null || true)
     if [ "\$status" = "healthy" ] || [ "\$status" = "running" ]; then
-        echo "Service $APP_SERVICE prêt (\$status)."
+        echo "Service $APP_SERVICE ready (\$status)."
         exit 0
     fi
     sleep 2
 done
-echo "Le service $APP_SERVICE n'est pas prêt à temps." >&2
+echo "Service $APP_SERVICE did not become ready in time." >&2
 docker inspect --format '{{json .State}}' "\$cid" || true
 exit 1
 EOF
 )
-    echo "==> Vérification du service distant"
+    echo "==> Checking remote service"
     ssh $SSH_OPTS "$TARGET" "$WAIT_CMD"
 fi
 
-echo "Déploiement terminé sur $TARGET:$REMOTE_DIR"
+echo "Deployment complete: $TARGET:$REMOTE_DIR"

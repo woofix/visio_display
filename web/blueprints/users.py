@@ -77,7 +77,7 @@ def add_user():
     role_id = request.form.get('role_id', '').strip()
     if role_id.isdigit():
         set_user_roles(username, [int(role_id)])
-    log_config_change(session.get('user'), f'utilisateur créé:{username}')
+    log_config_change(session.get('user'), f'user created:{username}')
     _flash('flash_user_created', 'success', username=username)
     return redirect('/admin/settings/comptes-permissions')
 
@@ -94,7 +94,7 @@ def delete_user(username):
         _flash('flash_user_not_found', 'error')
         return redirect('/admin/settings/comptes-permissions')
     delete_user_account(username)
-    log_config_change(session.get('user'), f'utilisateur supprimé:{username}')
+    log_config_change(session.get('user'), f'user deleted:{username}')
     _flash('flash_user_deleted', 'success', username=username)
     return redirect('/admin/settings/comptes-permissions')
 
@@ -114,7 +114,7 @@ def change_password():
         return redirect('/admin/settings/mot-de-passe')
     set_user_password(username, new_pwd)
     set_must_change_password(username, False)
-    log_config_change(username, 'mot de passe modifié')
+    log_config_change(username, 'password changed')
     _flash('flash_password_updated', 'success')
     return redirect('/admin/settings/mot-de-passe')
 
@@ -143,7 +143,7 @@ def _reset_user_password_for(username):
         return redirect('/admin/settings/comptes-permissions')
     set_user_password(username, new_pwd)
     set_must_change_password(username, True)
-    log_config_change(session.get('user'), f'mot de passe réinitialisé:{username}')
+    log_config_change(session.get('user'), f'password reset:{username}')
     _flash('flash_user_password_reset', 'success', username=username)
     return redirect('/admin/settings/comptes-permissions')
 
@@ -161,7 +161,7 @@ def set_permissions(username):
         return redirect('/admin/settings/comptes-permissions')
     perms = [p for p, _ in ALL_PERMISSIONS if request.form.get(f'perm_{p}')]
     update_user_permissions(username, perms)
-    log_config_change(session.get('user'), f'permissions {username}: {", ".join(perms) if perms else "aucune"}')
+    log_config_change(session.get('user'), f'permissions {username}: {", ".join(perms) if perms else "none"}')
     _flash('flash_permissions_updated', 'success', username=username)
     return redirect('/admin/settings/comptes-permissions')
 
@@ -181,7 +181,7 @@ def set_user_screens(username):
     all_screens = ['', *cfg.get('screens', {}).keys()]
     selected    = [s for s in all_screens if request.form.get(f'screen_{s}')]
     update_user_screens(username, selected)
-    log_config_change(session.get('user'), f'écrans {username}: {", ".join(selected) if selected else "tous"}')
+    log_config_change(session.get('user'), f'screens {username}: {", ".join(selected) if selected else "all"}')
     _flash('flash_screens_updated', 'success', username=username)
     return redirect('/admin/settings/comptes-permissions')
 
@@ -202,7 +202,7 @@ def set_priority_alert():
         'updated_at': datetime.now(UTC).isoformat(timespec='seconds'),
     }
     save_config(cfg)
-    detail = 'alerte prioritaire supprimée' if not message else f'alerte prioritaire:{message}'
+    detail = 'priority alert cleared' if not message else f'priority alert:{message}'
     log_config_change(session.get('user'), detail)
 
     return jsonify({

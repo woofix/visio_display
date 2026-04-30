@@ -227,11 +227,11 @@ def _config_items(cfg):
     for screen_name in cfg.get('screens', {}).keys():
         items.append({
             'title':       screen_name,
-            'description': "Écran d'affichage",
-            'keywords':    'ecran display moniteur affichage kiosk',
+            'description': "Display screen",
+            'keywords':    'screen display monitor kiosk',
             'type':        'screen',
             'url':         '/admin/settings/gestion-ecrans',
-            'desc':        "Écran d'affichage",
+            'desc':        "Display screen",
         })
     groups_seen = set()
     for groups in cfg.get('groups', {}).values():
@@ -240,21 +240,21 @@ def _config_items(cfg):
                 groups_seen.add(group)
                 items.append({
                     'title':       group,
-                    'description': 'Groupe de médias',
-                    'keywords':    'groupe tag media organiser',
+                    'description': 'Media group',
+                    'keywords':    'group tag media organise',
                     'type':        'group',
                     'url':         '/admin/media',
-                    'desc':        'Groupe de médias',
+                    'desc':        'Media group',
                 })
     app_name = cfg.get('app_name', '')
     if app_name:
         items.append({
             'title':       app_name,
-            'description': "Nom de l'application",
-            'keywords':    'application nom configuration',
+            'description': "Application name",
+            'keywords':    'application name configuration',
             'type':        'app',
             'url':         '/admin/settings/application',
-            'desc':        "Nom de l'application",
+            'desc':        "Application name",
         })
     return items
 

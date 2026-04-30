@@ -6,7 +6,7 @@ set -u
 MODE="${1:-}"
 INSTALL_DIR="${2:-${VISIO_INSTALL_DIR:-$(pwd)}}"
 ENV_FILE="${VISIO_ENV_FILE:-$INSTALL_DIR/.env}"
-PLACEHOLDER_SECRET="remplace_par_une_chaine_aleatoire"
+PLACEHOLDER_SECRET="replace_with_a_random_string"
 DEFAULT_PRIVATE_DIR="$INSTALL_DIR/web/data/private"
 
 OK_COUNT=0
@@ -21,7 +21,7 @@ ok() {
 
 fixed() {
     FIXED_COUNT=$((FIXED_COUNT + 1))
-    echo "corrigé: $1"
+    echo "fixed: $1"
 }
 
 warning() {
@@ -31,11 +31,11 @@ warning() {
 
 error() {
     ERROR_COUNT=$((ERROR_COUNT + 1))
-    echo "erreur: $1" >&2
+    echo "error: $1" >&2
 }
 
 usage() {
-    echo "Usage: $0 install|update|check [dossier_installation]" >&2
+    echo "Usage: $0 install|update|check [install_dir]" >&2
 }
 
 if [ "$MODE" != "install" ] && [ "$MODE" != "update" ] && [ "$MODE" != "check" ]; then
@@ -45,25 +45,25 @@ fi
 
 if [ "$MODE" != "check" ]; then
     mkdir -p "$INSTALL_DIR" 2>/dev/null || {
-        error "impossible de créer le dossier d'installation: $INSTALL_DIR"
+        error "cannot create install directory: $INSTALL_DIR"
         exit 1
     }
 fi
 
 ensure_env_file() {
     if [ -f "$ENV_FILE" ]; then
-        ok "fichier .env trouvé: $ENV_FILE"
+        ok ".env file found: $ENV_FILE"
         return 0
     fi
     if [ "$MODE" = "check" ]; then
-        warning "fichier .env absent: $ENV_FILE"
+        warning ".env file missing: $ENV_FILE"
         return 1
     fi
     : > "$ENV_FILE" 2>/dev/null || {
-        error "impossible de créer $ENV_FILE"
+        error "cannot create $ENV_FILE"
         return 1
     }
-    fixed "fichier .env créé: $ENV_FILE"
+    fixed ".env file created: $ENV_FILE"
 }
 
 env_value() {
@@ -151,26 +151,26 @@ ensure_secret_key() {
 
     if env_has_key "$key"; then
         if [ -n "$value" ]; then
-            ok "$label présent"
+            ok "$label present"
         else
-            warning "$label présent mais vide; valeur conservée"
+            warning "$label present but empty; existing value kept"
         fi
         return 0
     fi
     if [ "$MODE" = "check" ]; then
-        warning "$label absent"
+        warning "$label missing"
         return 0
     fi
 
     generated_value="$(generate_secret)" || {
-        error "impossible de générer $label"
+        error "cannot generate $label"
         return 1
     }
     set_env_value "$key" "$generated_value" || {
-        error "impossible d'écrire $label dans $ENV_FILE"
+        error "cannot write $label to $ENV_FILE"
         return 1
     }
-    fixed "$label généré"
+    fixed "$label generated"
 }
 
 ensure_optional_generated_key() {
@@ -179,31 +179,31 @@ ensure_optional_generated_key() {
     value="$(env_value "$key")"
 
     if env_has_key "$key"; then
-        ok "$label présent"
+        ok "$label present"
         return 0
     fi
     if [ "$MODE" = "check" ]; then
-        warning "$label absent"
+        warning "$label missing"
         return 0
     fi
 
     generated_value="$(generate_secret)" || {
-        error "impossible de générer $label"
+        error "cannot generate $label"
         return 1
     }
     set_env_value "$key" "$generated_value" || {
-        error "impossible d'écrire $label dans $ENV_FILE"
+        error "cannot write $label to $ENV_FILE"
         return 1
     }
-    fixed "$label généré"
+    fixed "$label generated"
 }
 
 ensure_permissions() {
     if [ -f "$ENV_FILE" ]; then
         if chmod 600 "$ENV_FILE" 2>/dev/null; then
-            ok "permissions .env à 600"
+            ok ".env permissions set to 600"
         else
-            warning "impossible d'appliquer chmod 600 sur $ENV_FILE"
+            warning "cannot apply chmod 600 to $ENV_FILE"
         fi
     fi
 
@@ -212,30 +212,30 @@ ensure_permissions() {
     backups_dir="${private_dir%/}/backups"
 
     if [ -d "$backups_dir" ]; then
-        ok "dossier backups présent: $backups_dir"
+        ok "backups directory exists: $backups_dir"
     elif mkdir -p "$backups_dir" 2>/dev/null; then
-        fixed "dossier backups créé: $backups_dir"
+        fixed "backups directory created: $backups_dir"
     else
         if [ "$MODE" = "check" ]; then
-            warning "impossible de créer $backups_dir"
+            warning "cannot create $backups_dir"
         else
-            error "impossible de créer $backups_dir"
+            error "cannot create $backups_dir"
         fi
     fi
 
     if [ -d "$private_dir" ]; then
         if chmod 700 "$private_dir" 2>/dev/null; then
-            ok "permissions PRIVATE_DIR à 700"
+            ok "PRIVATE_DIR permissions set to 700"
         else
-            warning "impossible d'appliquer chmod 700 sur $private_dir"
+            warning "cannot apply chmod 700 to $private_dir"
         fi
     fi
 
     if [ -d "$backups_dir" ]; then
         if chmod 700 "$backups_dir" 2>/dev/null; then
-            ok "permissions backups à 700"
+            ok "backups permissions set to 700"
         else
-            warning "impossible d'appliquer chmod 700 sur $backups_dir"
+            warning "cannot apply chmod 700 to $backups_dir"
         fi
     fi
 }
@@ -252,28 +252,28 @@ if [ -f "$ENV_FILE" ]; then
 
     if is_weak_secret_key "$secret_key"; then
         if [ "$MODE" = "install" ]; then
-            error "SECRET_KEY est vide ou utilise une valeur placeholder"
+            error "SECRET_KEY is empty or uses a placeholder value"
         else
-            warning "SECRET_KEY est vide ou utilise une valeur placeholder; valeur conservée"
+            warning "SECRET_KEY is empty or uses a placeholder value; existing value kept"
         fi
     else
-        ok "SECRET_KEY robuste"
+        ok "SECRET_KEY is strong"
     fi
 
     if is_weak_postgres_password "$postgres_password"; then
         if [ "$MODE" = "install" ]; then
-            error "POSTGRES_PASSWORD est absent, trop court ou utilise une valeur faible"
+            error "POSTGRES_PASSWORD is missing, too short, or uses a weak value"
         else
-            warning "POSTGRES_PASSWORD est absent, trop court ou utilise une valeur faible; valeur conservée"
+            warning "POSTGRES_PASSWORD is missing, too short, or uses a weak value; existing value kept"
         fi
     else
-        ok "POSTGRES_PASSWORD robuste"
+        ok "POSTGRES_PASSWORD is strong"
     fi
 fi
 
 ensure_permissions
 
-echo "Rapport sécurité: OK=$OK_COUNT corrigé=$FIXED_COUNT warning=$WARNING_COUNT erreur=$ERROR_COUNT"
+echo "Security report: OK=$OK_COUNT fixed=$FIXED_COUNT warning=$WARNING_COUNT error=$ERROR_COUNT"
 
 if [ "$ERROR_COUNT" -gt 0 ]; then
     exit 1

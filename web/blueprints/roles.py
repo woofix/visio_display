@@ -59,7 +59,7 @@ def create_role_route():
         return redirect(_REDIRECT)
     try:
         role = create_role(name, display_name, description, permissions)
-        log_config_change(session.get('user'), f'rôle créé: {role.name}')
+        log_config_change(session.get('user'), f'role created: {role.name}')
         _flash('flash_role_created', 'success', name=role.display_name)
     except ValueError as exc:
         _flash(str(exc), 'error')
@@ -78,7 +78,7 @@ def edit_role_route(role_id):
         return redirect(_REDIRECT)
     try:
         role = update_role(role_id, display_name, description)
-        log_config_change(session.get('user'), f'rôle modifié: {role.name}')
+        log_config_change(session.get('user'), f'role updated: {role.name}')
         _flash('flash_role_updated', 'success', name=role.display_name)
     except ValueError as exc:
         _flash(str(exc), 'error')
@@ -95,7 +95,7 @@ def set_role_permissions_route(role_id):
         set_role_permissions(role_id, permissions)
         from services.rbac_svc import get_role
         role = get_role(role_id)
-        log_config_change(session.get('user'), f'permissions rôle {role.name}: {", ".join(permissions) or "aucune"}')
+        log_config_change(session.get('user'), f'role permissions {role.name}: {", ".join(permissions) or "none"}')
         _flash('flash_role_perms_updated', 'success', name=role.display_name)
     except ValueError as exc:
         _flash(str(exc), 'error')
@@ -115,7 +115,7 @@ def delete_role_route(role_id):
             return redirect(_REDIRECT)
         role_name = role.display_name
         delete_role(role_id)
-        log_config_change(session.get('user'), f'rôle supprimé: {role.name}')
+        log_config_change(session.get('user'), f'role deleted: {role.name}')
         _flash('flash_role_deleted', 'success', name=role_name)
     except ValueError as exc:
         key = str(exc)
@@ -142,6 +142,6 @@ def set_user_roles_route(username):
         if request.form.get(f'role_{role.id}'):
             role_ids.append(role.id)
     set_user_roles(username, role_ids)
-    log_config_change(session.get('user'), f'rôles {username}: {", ".join(str(r) for r in role_ids) or "aucun"}')
+    log_config_change(session.get('user'), f'roles {username}: {", ".join(str(r) for r in role_ids) or "none"}')
     _flash('flash_user_roles_updated', 'success', username=username)
     return redirect(_REDIRECT)

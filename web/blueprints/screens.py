@@ -57,7 +57,7 @@ def add_screen():
         "halo_color": default_halo_color,
     }
     save_config(cfg)
-    log_config_change(session.get('user'), f'écran ajouté:{name}')
+    log_config_change(session.get('user'), f'screen added:{name}')
     return _redirect_after_screen_change(url_for('media.admin_media') + f'?screen={name}')
 
 
@@ -73,7 +73,7 @@ def delete_screen(name):
         del screens[name]
         save_campaigns_to_config(cfg, cleanup_campaigns_for_deleted_screen(get_campaigns(cfg), name))
         save_config(cfg)
-        log_config_change(session.get('user'), f'écran supprimé:{name}')
+        log_config_change(session.get('user'), f'screen deleted:{name}')
         _flash('flash_screen_deleted', 'success', name=name)
     return _redirect_after_screen_change(url_for('media.admin_media'))
 
@@ -90,9 +90,9 @@ def update_default_screen_name():
     cfg['default_screen_name'] = new_name
     save_config(cfg)
     if new_name:
-        log_config_change(session.get('user'), f'nom écran par défaut:{new_name}')
+        log_config_change(session.get('user'), f'default screen name:{new_name}')
     else:
-        log_config_change(session.get('user'), 'nom écran par défaut réinitialisé')
+        log_config_change(session.get('user'), 'default screen name reset')
 
     if new_name:
         _flash('flash_default_screen_name_updated', 'success', name=new_name)
@@ -120,11 +120,11 @@ def update_screen_halo():
             _flash('flash_no_perm', 'error')
             return redirect(url_for('settings.admin_settings_section_page', section='application'))
         cfg['screens'][screen_name]['halo_color'] = halo_color
-        log_config_change(session.get('user'), f'halo écran {screen_name}:{halo_color}')
+        log_config_change(session.get('user'), f'screen halo {screen_name}:{halo_color}')
         _flash('flash_screen_halo_updated', 'success', name=screen_name, color=halo_color)
     else:
         cfg['default_halo_color'] = halo_color
-        log_config_change(session.get('user'), f'halo écran par défaut:{halo_color}')
+        log_config_change(session.get('user'), f'default screen halo:{halo_color}')
         _flash('flash_default_screen_halo_updated', 'success', color=halo_color)
 
     save_config(cfg)
@@ -142,22 +142,22 @@ def broadcast_screen():
     targets = data.get('targets', [])
 
     if not isinstance(targets, list):
-        return jsonify({'ok': False, 'error': 'targets invalides'})
+        return jsonify({'ok': False, 'error': 'invalid targets'})
 
     cfg     = load_config()
     screens = cfg.get('screens', {})
 
     if not has_screen_access(source):
-        return jsonify({'ok': False, 'error': 'Accès refusé à l\'écran source'})
+        return jsonify({'ok': False, 'error': 'Access denied to source screen'})
     if source != '' and source not in screens:
-        return jsonify({'ok': False, 'error': 'Écran source introuvable'})
+        return jsonify({'ok': False, 'error': 'Source screen not found'})
 
     valid_targets = [
         str(t).strip().lower() for t in targets
         if str(t).strip().lower() in screens and has_screen_access(str(t).strip().lower())
     ]
     if not valid_targets:
-        return jsonify({'ok': False, 'error': 'Aucune cible valide'})
+        return jsonify({'ok': False, 'error': 'No valid target'})
 
     src = cfg if source == '' else screens[source]
     for t in valid_targets:
@@ -166,7 +166,7 @@ def broadcast_screen():
 
     cfg.setdefault('broadcast_links', {})[source] = valid_targets
     save_config(cfg)
-    log_config_change(session.get('user'), f'diffusion écran {source} → {", ".join(valid_targets)}')
+    log_config_change(session.get('user'), f'screen broadcast {source} → {", ".join(valid_targets)}')
     return jsonify({'ok': True, 'targets': valid_targets})
 
 
@@ -179,12 +179,12 @@ def broadcast_stop():
     source = data.get('source', '').strip().lower()
 
     if not has_screen_access(source):
-        return jsonify({'ok': False, 'error': 'Accès refusé'})
+        return jsonify({'ok': False, 'error': 'Access denied'})
 
     cfg = load_config()
     cfg.setdefault('broadcast_links', {}).pop(source, None)
     save_config(cfg)
-    log_config_change(session.get('user'), f'diffusion arrêtée:{source}')
+    log_config_change(session.get('user'), f'broadcast stopped:{source}')
     return jsonify({'ok': True})
 
 
@@ -201,11 +201,11 @@ def screen_assign(filename):
     if not has_screen_access(screen):
         return jsonify({'ok': False, 'error': 'screen access denied'})
     if not valid_screen_name(screen):
-        return jsonify({'ok': False, 'error': 'Écran invalide'})
+        return jsonify({'ok': False, 'error': 'Invalid screen'})
 
     cfg = load_config()
     if screen not in cfg.get('screens', {}):
-        return jsonify({'ok': False, 'error': 'Écran introuvable'})
+        return jsonify({'ok': False, 'error': 'Screen not found'})
 
     scfg  = cfg['screens'][screen]
     order = scfg.setdefault('order', [])
@@ -220,6 +220,6 @@ def screen_assign(filename):
             disabled.remove(filename)
 
     save_config(cfg)
-    verb = 'affecté' if action == 'add' else 'retiré'
-    log_config_change(session.get('user'), f'{filename} {verb} écran:{screen}', filename=filename)
+    verb = 'assigned' if action == 'add' else 'removed'
+    log_config_change(session.get('user'), f'{filename} {verb} screen:{screen}', filename=filename)
     return jsonify({'ok': True})

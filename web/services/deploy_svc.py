@@ -124,13 +124,13 @@ def deploy_client_install(host, port, ssh_user, kiosk_user, server_url='',
         return {
             'ok': False,
             'summary_key': 'install_summary_missing_tools',
-            'output': "Commandes manquantes : " + ', '.join(missing),
+            'output': "Missing commands: " + ', '.join(missing),
         }
     if not _supports_password_mode():
         return {
             'ok': False,
             'summary_key': 'install_summary_missing_sshpass',
-            'output': "Commande manquante : sshpass",
+            'output': "Missing command: sshpass",
         }
 
     if not INSTALL_SCRIPT.exists():
@@ -191,7 +191,7 @@ def deploy_client_install(host, port, ssh_user, kiosk_user, server_url='',
     ]
     run_res = _run_command(ssh_cmd)
     output = _join_output(run_res.stdout, run_res.stderr)
-    install_finished = "Installation terminée." in output
+    install_finished = "Installation complete." in output
     remote_reboot_disconnect = _contains_any(output, (
         'connection to ',
         'closed by remote host',
@@ -207,7 +207,7 @@ def deploy_client_install(host, port, ssh_user, kiosk_user, server_url='',
             if ok else
             'install_summary_run_failed'
         ),
-        'output': output or '(aucune sortie)',
+        'output': output or '(no output)',
         'commands': build_manual_install_commands(
             host, port, ssh_user, kiosk_user, server_url, screen_name, machine_name
         ),
@@ -220,13 +220,13 @@ def deploy_client_power_action(host, port, ssh_user, action, ssh_password='', su
         return {
             'ok': False,
             'summary_key': 'install_summary_missing_tools',
-            'output': "Commandes manquantes : " + ', '.join(missing),
+            'output': "Missing commands: " + ', '.join(missing),
         }
     if not _supports_password_mode():
         return {
             'ok': False,
             'summary_key': 'install_summary_missing_sshpass',
-            'output': "Commande manquante : sshpass",
+            'output': "Missing command: sshpass",
         }
 
     action = 'shutdown' if action == 'shutdown' else 'restart'
@@ -281,7 +281,7 @@ def deploy_client_power_action(host, port, ssh_user, action, ssh_password='', su
     return {
         'ok': ok,
         'summary_key': summary_key,
-        'output': output or '(aucune sortie)',
+        'output': output or '(no output)',
         'commands': build_manual_power_commands(host, port, ssh_user, action),
     }
 
@@ -292,13 +292,13 @@ def deploy_client_update(host, port, ssh_user, ssh_password='', sudo_password=''
         return {
             'ok': False,
             'summary_key': 'install_summary_missing_tools',
-            'output': "Commandes manquantes : " + ', '.join(missing),
+            'output': "Missing commands: " + ', '.join(missing),
         }
     if not _supports_password_mode():
         return {
             'ok': False,
             'summary_key': 'install_summary_missing_sshpass',
-            'output': "Commande manquante : sshpass",
+            'output': "Missing command: sshpass",
         }
     if not INSTALL_SCRIPT.exists():
         return {
@@ -340,7 +340,7 @@ def deploy_client_update(host, port, ssh_user, ssh_password='', sudo_password=''
         return {
             'ok': False,
             'summary_key': 'client_control_summary_update_failed',
-            'output': detect_output or 'Impossible de détecter l’utilisateur kiosk existant.',
+            'output': detect_output or 'Unable to detect existing kiosk user.',
         }
 
     remote_script = f"/tmp/visio-install-{int(time.time())}.sh"
@@ -381,7 +381,7 @@ def deploy_client_update(host, port, ssh_user, ssh_password='', sudo_password=''
     ]
     run_res = _run_command(ssh_cmd)
     output = _join_output(run_res.stdout, run_res.stderr)
-    install_finished = "Installation terminée." in output
+    install_finished = "Installation complete." in output
     remote_reboot_disconnect = _contains_any(output, (
         'connection to ',
         'closed by remote host',
@@ -397,7 +397,7 @@ def deploy_client_update(host, port, ssh_user, ssh_password='', sudo_password=''
             if ok else
             'client_control_summary_update_failed'
         ),
-        'output': output or '(aucune sortie)',
+        'output': output or '(no output)',
         'commands': build_manual_update_commands(host, port, ssh_user, kiosk_user),
     }
 
@@ -408,13 +408,13 @@ def deploy_client_os_update(host, port, ssh_user, ssh_password='', sudo_password
         return {
             'ok': False,
             'summary_key': 'install_summary_missing_tools',
-            'output': "Commandes manquantes : " + ', '.join(missing),
+            'output': "Missing commands: " + ', '.join(missing),
         }
     if not _supports_password_mode():
         return {
             'ok': False,
             'summary_key': 'install_summary_missing_sshpass',
-            'output': "Commande manquante : sshpass",
+            'output': "Missing command: sshpass",
         }
 
     target = f'{ssh_user}@{host}'
@@ -464,6 +464,6 @@ def deploy_client_os_update(host, port, ssh_user, ssh_password='', sudo_password
             if ok else
             'client_control_summary_os_update_failed'
         ),
-        'output': output or '(aucune sortie)',
+        'output': output or '(no output)',
         'commands': build_manual_os_update_commands(host, port, ssh_user),
     }

@@ -90,6 +90,7 @@ def create_user(username, password, *, superadmin=False, permissions=None, scree
         screens=json.dumps(list(screens)) if screens is not None else None,
         theme=theme,
         language=language,
+        must_change_password=True,
     )
     db.session.add(user)
     db.session.commit()
@@ -130,6 +131,15 @@ def update_user_permissions(username, permissions):
     if user is None:
         return False
     user.permissions = json.dumps(list(permissions or []))
+    db.session.commit()
+    return True
+
+
+def set_must_change_password(username, value: bool):
+    user = get_user(username)
+    if user is None:
+        return False
+    user.must_change_password = value
     db.session.commit()
     return True
 

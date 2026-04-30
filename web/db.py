@@ -57,8 +57,9 @@ class User(db.Model):
     superadmin    = db.Column(db.Boolean, default=False, nullable=False)
     permissions   = db.Column(db.Text, default='[]', nullable=False)
     screens       = db.Column(db.Text, nullable=True)
-    theme         = db.Column(db.String(32), default='violet', nullable=False)
-    language      = db.Column(db.String(8), default='fr', nullable=False)
+    theme                = db.Column(db.String(32), default='violet', nullable=False)
+    language             = db.Column(db.String(8), default='fr', nullable=False)
+    must_change_password = db.Column(db.Boolean, default=False, nullable=False, server_default='false')
 
     def to_dict(self):
         return {

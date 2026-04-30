@@ -1,6 +1,8 @@
 <!-- GNU General Public License v3.0 (GPL-3.0) - Copyright (c) 2026 Eric TOMAS and Jean-michel TOMAS -->
 <!DOCTYPE html>
-<html lang="fr" data-theme="{{ theme|default('violet') }}">
+{% set theme_pref = theme|default('violet') %}
+{% set initial_theme = theme_pref if theme_pref in ['bleu', 'sombre'] else 'violet' %}
+<html lang="fr" data-theme="{{ initial_theme }}" data-theme-preference="{{ theme_pref }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,6 +15,22 @@
 <body>
 <script>
 window.CSRF_TOKEN = {{ csrf_token() | tojson }};
+
+(function() {
+    const root = document.documentElement;
+
+    function resolveTheme(preference) {
+        return ['violet', 'bleu', 'sombre'].includes(preference) ? preference : 'violet';
+    }
+
+    function applyThemePreference(preference) {
+        root.dataset.themePreference = preference || 'violet';
+        root.dataset.theme = resolveTheme(root.dataset.themePreference);
+    }
+
+    window.applyThemePreference = applyThemePreference;
+    applyThemePreference(root.dataset.themePreference);
+})();
 
 {% with _fm = get_flashed_messages(with_categories=true) %}
 {% if _fm %}
@@ -316,6 +334,24 @@ window.__flashMessages = [{% for cat, msg in _fm %}{% set tone = cat if cat in [
             </div>
         </div>
         <div class="topbar-right">
+            {% if admin_update_status and admin_update_status.status == 'update_available' %}
+            <div class="topbar-update-notice">
+                <button type="button" class="topbar-update-bell" aria-label="{{ t('admin_update_alert_title') }}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                    </svg>
+                    <span class="topbar-update-dot" aria-hidden="true"></span>
+                </button>
+                <div class="topbar-update-popover" role="status">
+                    <strong>{{ t('admin_update_alert_title') }}</strong>
+                    <span>{{ t('admin_update_alert_body', local=admin_update_status.local_version or '-', remote=admin_update_status.remote_version or '-') }}</span>
+                    {% if current_user_is_superadmin %}
+                    <a href="/admin/version">{{ t('admin_update_alert_cta') }}</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
             {% block topbar_actions %}{% endblock %}
 
             <!-- ── Barre de recherche globale ── -->
@@ -340,7 +376,7 @@ window.__flashMessages = [{% for cat, msg in _fm %}{% set tone = cat if cat in [
             <div class="user-menu-wrap">
                 <button class="user-menu-btn" id="user-menu-btn">
                     <div class="avatar">{{ current_user[0].upper() }}</div>
-                    {{ current_user }}
+                    <span class="user-menu-name">{{ current_user }}</span>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="u-icon-11"><polyline points="6 9 12 15 18 9"/></svg>
                 </button>
                 <div class="dropdown-menu drop-down u-right-0 u-minw-195" id="user-dropdown">
@@ -371,6 +407,14 @@ window.__flashMessages = [{% for cat, msg in _fm %}{% set tone = cat if cat in [
             </div>
         </div>
     </header>
+
+    {% if current_user_must_change_password %}
+    <div class="must-change-password-banner">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M12 3 2 21h20L12 3z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span>{{ t('flash_must_change_password') }}</span>
+        <a href="/admin/settings/mot-de-passe">{{ t('user_menu_change_password') }}</a>
+    </div>
+    {% endif %}
 
     <div class="content">
         <div class="content-shell">
@@ -452,11 +496,11 @@ window.__flashMessages = [{% for cat, msg in _fm %}{% set tone = cat if cat in [
         });
         mobileBackdrop.addEventListener('click', () => setSidebarOpen(false));
         window.addEventListener('resize', () => {
-            if (window.innerWidth > 900) setSidebarOpen(false);
+            if (window.innerWidth > 640) setSidebarOpen(false);
         });
         document.querySelectorAll('.sidebar a, .sidebar button[type="submit"]').forEach(el => {
             el.addEventListener('click', () => {
-                if (window.innerWidth <= 900) setSidebarOpen(false);
+                if (window.innerWidth <= 640) setSidebarOpen(false);
             });
         });
     }

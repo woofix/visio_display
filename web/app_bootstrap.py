@@ -34,7 +34,7 @@ from services.config_svc import (
 )
 from services.i18n import _flash, _trans, get_language
 from services.rbac_svc import init_rbac
-from services.users_svc import has_permission, init_users, is_superadmin, load_users
+from services.users_svc import get_user, has_permission, init_users, is_superadmin, load_users
 from translations import TRANSLATIONS
 
 
@@ -303,12 +303,31 @@ def configure_proxy(app):
     )
 
 
+def migrate_users_schema():
+    try:
+        inspector = inspect(db.engine)
+        existing_columns = {col["name"] for col in inspector.get_columns("users")}
+    except Exception:
+        LOGGER.exception("Unable to inspect users schema")
+        return
+    if "must_change_password" not in existing_columns:
+        try:
+            db.session.execute(
+                text("ALTER TABLE users ADD COLUMN must_change_password BOOLEAN NOT NULL DEFAULT false")
+            )
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            LOGGER.exception("Unable to add column must_change_password to users")
+
+
 def initialize_database(app):
     from services.search_index_svc import reseed_search_index
     db.init_app(app)
     with app.app_context():
         db.create_all()
         migrate_client_heartbeats_schema()
+        migrate_users_schema()
         reseed_search_index()
         init_users()
         init_rbac()
@@ -463,9 +482,21 @@ def register_template_context(app):
         cfg = load_config()
         default_screen_name = get_default_screen_name(cfg) or t("media_screen_default")
         translated_permissions = [(key, t(label_key)) for key, label_key in ALL_PERMISSIONS]
+        admin_update_status = None
+        if session.get("user") and request.path.startswith("/admin"):
+            from services.version_svc import get_version_status
+
+            admin_update_status = get_version_status()
+
+        current_user_must_change_password = False
+        if username:
+            _u = get_user(username)
+            current_user_must_change_password = bool(_u and _u.must_change_password)
 
         return dict(
+            admin_update_status=admin_update_status,
             current_user_is_superadmin=is_superadmin(),
+            current_user_must_change_password=current_user_must_change_password,
             has_permission=has_permission,
             is_feature_enabled=is_feature_enabled,
             theme=user_theme,

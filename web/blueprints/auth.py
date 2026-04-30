@@ -86,6 +86,10 @@ def login():
             session['_csrf_token'] = secrets.token_urlsafe(32)
             _clear_login_failures(username)
             log_activity(username, 'login')
+            from services.users_svc import get_user as _get_user
+            _user_obj = _get_user(username)
+            if _user_obj and _user_obj.must_change_password:
+                _flash('flash_must_change_password', 'warning')
             return redirect(url_for('admin.admin_page'))
         _record_login_failure(username)
         _flash('flash_wrong_credentials', 'error')

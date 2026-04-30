@@ -15,6 +15,7 @@ from services.users_svc import (
     is_valid_username,
     load_users,
     normalize_username,
+    set_must_change_password,
     set_user_password,
     update_user_permissions,
     update_user_screens,
@@ -112,6 +113,7 @@ def change_password():
         _flash('flash_new_password_too_short', 'error')
         return redirect('/admin/settings/mot-de-passe')
     set_user_password(username, new_pwd)
+    set_must_change_password(username, False)
     log_config_change(username, 'mot de passe modifié')
     _flash('flash_password_updated', 'success')
     return redirect('/admin/settings/mot-de-passe')
@@ -140,6 +142,7 @@ def _reset_user_password_for(username):
         _flash('flash_new_password_too_short', 'error')
         return redirect('/admin/settings/comptes-permissions')
     set_user_password(username, new_pwd)
+    set_must_change_password(username, True)
     log_config_change(session.get('user'), f'mot de passe réinitialisé:{username}')
     _flash('flash_user_password_reset', 'success', username=username)
     return redirect('/admin/settings/comptes-permissions')

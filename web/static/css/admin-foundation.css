@@ -522,6 +522,107 @@ body.sidebar-open {
     gap: 8px;
 }
 
+.topbar-update-notice {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.topbar-update-bell {
+    position: relative;
+    width: 38px;
+    height: 38px;
+    border: 1px solid var(--warning-border);
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--warning-bg);
+    color: var(--warning-text);
+    cursor: pointer;
+    transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+
+.topbar-update-bell:hover,
+.topbar-update-bell:focus-visible {
+    transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--orange) 45%, var(--border));
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--orange) 14%, transparent);
+    outline: none;
+}
+
+.topbar-update-bell svg {
+    width: 17px;
+    height: 17px;
+}
+
+.topbar-update-dot {
+    position: absolute;
+    top: 7px;
+    right: 8px;
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--red);
+    box-shadow: 0 0 0 2px var(--surface);
+}
+
+.topbar-update-popover {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    z-index: 160;
+    width: min(320px, calc(100vw - 24px));
+    padding: 13px 14px;
+    border: 1px solid var(--warning-border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: var(--shadow);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-4px);
+    pointer-events: none;
+    transition: opacity .15s ease, transform .15s ease, visibility .15s ease;
+}
+
+.topbar-update-notice:hover .topbar-update-popover,
+.topbar-update-notice:focus-within .topbar-update-popover {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.topbar-update-popover strong,
+.topbar-update-popover span {
+    display: block;
+}
+
+.topbar-update-popover strong {
+    font-size: .86rem;
+    margin-bottom: 4px;
+}
+
+.topbar-update-popover span {
+    color: var(--text-2);
+    font-size: .78rem;
+    line-height: 1.45;
+}
+
+.topbar-update-popover a {
+    display: inline-flex;
+    margin-top: 9px;
+    color: var(--primary);
+    font-size: .78rem;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.topbar-update-popover a:hover {
+    text-decoration: underline;
+}
+
 .topbar-text {
     min-width: 0;
 }
@@ -1389,6 +1490,96 @@ body.sidebar-open {
         font-size: 14px;
     }
 
+    html {
+        --radius-sm: 10px;
+        --radius: 14px;
+        --radius-lg: 18px;
+    }
+
+    body {
+        background: var(--bg);
+    }
+
+    .topbar {
+        min-height: 58px;
+        padding: 10px 12px;
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .topbar-search-wrap {
+        display: none !important;
+    }
+
+    .topbar-icon,
+    .topbar-sub,
+    .user-menu-name {
+        display: none;
+    }
+
+    .topbar-title,
+    .bc-current {
+        font-size: .95rem;
+    }
+
+    .topbar-left {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .topbar-right {
+        width: auto;
+        flex: 0 0 auto;
+        margin-left: auto;
+        justify-content: flex-end;
+    }
+
+    .topbar-right > :not(.user-menu-wrap):not(.topbar-update-notice) {
+        display: none;
+    }
+
+    .content {
+        padding: 12px 10px 34px;
+    }
+
+    .page-header {
+        padding: 14px;
+        border-radius: var(--radius);
+        margin-bottom: 14px;
+    }
+
+    .btn,
+    .btn-icon,
+    input,
+    select,
+    textarea {
+        min-height: 44px;
+    }
+
+    .user-menu-btn {
+        display: inline-flex;
+        width: 44px;
+        min-width: 44px;
+        height: 44px;
+        padding: 0;
+        justify-content: center;
+    }
+
+    .user-menu-btn .avatar {
+        width: 28px;
+        height: 28px;
+    }
+
+    .user-menu-wrap {
+        display: block;
+        margin-left: 0;
+    }
+
+    .admin-site-footer {
+        font-size: .68rem;
+    }
+
     .content {
         padding-inline: 12px;
     }
@@ -1457,8 +1648,10 @@ body.sidebar-open {
         width: 100%;
     }
 
-    .user-menu-btn {
-        max-width: 100%;
+    .topbar-vsep,
+    .bc-link,
+    .bc-sep {
+        display: none;
     }
 
     .user-menu-btn svg:last-child,

@@ -1240,6 +1240,9 @@ TRANSLATIONS = {
         'version_installed_title': 'Version installée',
         'version_remote_title': 'Version distante',
         'version_label': 'Version',
+        'admin_update_alert_title': 'Mise à jour Visio-Display disponible',
+        'admin_update_alert_body': 'Version installée : {local}. Dernière version : {remote}.',
+        'admin_update_alert_cta': 'Voir la version',
     },
 
     'en': {
@@ -2455,6 +2458,9 @@ TRANSLATIONS = {
         'version_installed_title': 'Installed version',
         'version_remote_title': 'Remote version',
         'version_label': 'Version',
+        'admin_update_alert_title': 'Visio-Display update available',
+        'admin_update_alert_body': 'Installed version: {local}. Latest version: {remote}.',
+        'admin_update_alert_cta': 'View version',
     },
 }
 

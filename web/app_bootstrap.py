@@ -463,8 +463,14 @@ def register_template_context(app):
         cfg = load_config()
         default_screen_name = get_default_screen_name(cfg) or t("media_screen_default")
         translated_permissions = [(key, t(label_key)) for key, label_key in ALL_PERMISSIONS]
+        admin_update_status = None
+        if session.get("user") and request.path.startswith("/admin"):
+            from services.version_svc import get_version_status
+
+            admin_update_status = get_version_status()
 
         return dict(
+            admin_update_status=admin_update_status,
             current_user_is_superadmin=is_superadmin(),
             has_permission=has_permission,
             is_feature_enabled=is_feature_enabled,

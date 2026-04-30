@@ -139,17 +139,37 @@ class AppSmokeTests(unittest.TestCase):
 
     def test_superadmin_can_view_version_page(self):
         self._login()
-        with patch("blueprints.version.get_version_status", return_value={
+        version_status = {
             "status": "up_to_date",
             "status_label": "À jour",
             "status_tone": "success",
             "local_version": "1.0.0",
             "remote_version": "1.0.0",
             "fetch_error": "",
-        }):
+        }
+        with patch("blueprints.version.get_version_status", return_value=version_status), patch(
+            "services.version_svc.get_version_status",
+            return_value=version_status,
+        ):
             response = self.client.get("/admin/version")
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"1.0.0", response.data)
+
+    def test_admin_update_alert_appears_only_when_update_available(self):
+        self._login()
+        with patch("services.version_svc.get_version_status", return_value={
+            "status": "update_available",
+            "status_label": "Mise à jour disponible",
+            "status_tone": "warning",
+            "local_version": "1.0.0",
+            "remote_version": "1.1.0",
+            "fetch_error": "",
+        }):
+            response = self.client.get("/admin")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Mise à jour Visio-Display disponible".encode("utf-8"), response.data)
+        self.assertIn(b"1.1.0", response.data)
 
     def test_theme_update_persists_for_logged_user(self):
         with self.client.session_transaction() as session:

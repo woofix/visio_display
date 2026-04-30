@@ -1,6 +1,6 @@
 # Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
-from flask import Blueprint, render_template, session
+from flask import Blueprint, render_template, request, session
 
 from blueprints.guards import superadmin_guard
 from services.config_svc import load_config
@@ -22,5 +22,5 @@ def version_page():
         cfg=load_config(),
         current_user=session.get("user"),
         logo_path=get_logo_path(),
-        version_status=get_version_status(),
+        version_status=get_version_status(force_refresh=request.args.get("refresh") == "1"),
     )

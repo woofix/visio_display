@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import time
@@ -14,8 +15,10 @@ from constants import PRIVATE_DATA_DIR
 SERVICE_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_REPO_CWD = os.path.normpath(os.path.join(SERVICE_DIR, "..", ".."))
 VERSION_CACHE_FILE = os.path.join(PRIVATE_DATA_DIR, "version_check.json")
-DEFAULT_VERSION_URL = "https://raw.githubusercontent.com/woofix/visio_display/main/VERSION"
+DEFAULT_VERSION_URL = "https://api.github.com/repos/woofix/visio_display/releases/latest"
 DEFAULT_CACHE_SECONDS = 1800
+DEFAULT_FAILURE_CACHE_SECONDS = 300
+VERSION_PATTERN = re.compile(r"^v?(\d+(?:\.\d+){1,3})$")
 
 
 def _now():
@@ -29,8 +32,33 @@ def _cache_ttl_seconds():
         return DEFAULT_CACHE_SECONDS
 
 
+def _version_url():
+    return os.environ.get("VISIO_VERSION_URL", "").strip() or DEFAULT_VERSION_URL
+
+
 def _clean_version(version):
-    return str(version or "").strip().lstrip("v")
+    value = str(version or "").strip()
+    match = VERSION_PATTERN.match(value)
+    if not match:
+        return ""
+    return match.group(1)
+
+
+def _extract_remote_version(payload):
+    value = str(payload or "").strip()
+    if not value:
+        return ""
+    try:
+        data = json.loads(value)
+    except (TypeError, ValueError):
+        return _clean_version(value)
+    if not isinstance(data, dict):
+        return ""
+    for key in ("tag_name", "name"):
+        remote_version = _clean_version(data.get(key, ""))
+        if remote_version:
+            return remote_version
+    return ""
 
 
 def _version_parts(version):
@@ -94,15 +122,21 @@ def _read_remote_version_with_curl(version_url, timeout=6):
         return "", "source de version inaccessible"
     if result.returncode != 0:
         return "", "source de version inaccessible"
-    return result.stdout[:128].strip(), ""
+    remote_version = _extract_remote_version(result.stdout[:8192])
+    if not remote_version:
+        return "", "version distante illisible"
+    return remote_version, ""
 
 
 def _read_remote_version(timeout=6):
-    version_url = os.environ.get("VISIO_VERSION_URL", "").strip() or DEFAULT_VERSION_URL
+    version_url = _version_url()
     request = Request(version_url, headers={"User-Agent": "visio-display-version-check"})
     try:
         with urlopen(request, timeout=timeout) as response:
-            return response.read(128).decode("utf-8", errors="replace").strip(), ""
+            remote_version = _extract_remote_version(response.read(8192).decode("utf-8", errors="replace"))
+            if not remote_version:
+                return "", "version distante illisible"
+            return remote_version, ""
     except HTTPError as exc:
         return "", f"source indisponible ({exc.code})"
     except URLError:
@@ -123,34 +157,60 @@ def _read_cache():
 
 
 def _write_cache(payload):
-    os.makedirs(os.path.dirname(VERSION_CACHE_FILE), exist_ok=True)
-    tmp_path = f"{VERSION_CACHE_FILE}.tmp"
-    with open(tmp_path, "w", encoding="utf-8") as handle:
-        json.dump(payload, handle, ensure_ascii=False, indent=2)
-    os.replace(tmp_path, VERSION_CACHE_FILE)
+    try:
+        os.makedirs(os.path.dirname(VERSION_CACHE_FILE), exist_ok=True)
+        tmp_path = f"{VERSION_CACHE_FILE}.{os.getpid()}.tmp"
+        with open(tmp_path, "w", encoding="utf-8") as handle:
+            json.dump(payload, handle, ensure_ascii=False, indent=2)
+        os.replace(tmp_path, VERSION_CACHE_FILE)
+    except OSError:
+        return False
+    return True
 
 
-def get_version_status():
-    local_version = _read_local_version()
-    cached = _read_cache()
-    fetched_at = int(cached.get("fetched_at") or 0)
+def _cache_fetched_at(cached):
+    try:
+        return int(cached.get("fetched_at") or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _cache_is_fresh(cached, now):
+    if cached.get("source_url") != _version_url():
+        return False
+    fetched_at = _cache_fetched_at(cached)
+    if fetched_at <= 0 or fetched_at > now + 60:
+        return False
+    ttl = _cache_ttl_seconds()
     cached_remote_version = _clean_version(cached.get("remote_version", ""))
     cached_fetch_error = cached.get("fetch_error", "")
-    has_usable_cache = bool(cached_remote_version or not cached_fetch_error)
-    if cached and has_usable_cache and _now() - fetched_at < _cache_ttl_seconds():
-        remote_version = cached.get("remote_version", "")
+    if not cached_remote_version and cached_fetch_error:
+        ttl = DEFAULT_FAILURE_CACHE_SECONDS
+    return now - fetched_at < ttl
+
+
+def get_version_status(force_refresh=False):
+    now = _now()
+    version_url = _version_url()
+    local_version = _read_local_version()
+    cached = _read_cache()
+    fetched_at = _cache_fetched_at(cached)
+    source_matches_cache = cached.get("source_url") == version_url
+    cached_remote_version = _clean_version(cached.get("remote_version", "")) if source_matches_cache else ""
+    if not force_refresh and cached and _cache_is_fresh(cached, now):
+        remote_version = cached_remote_version
         fetch_error = cached.get("fetch_error", "")
         fetched_from_cache = True
     else:
         previous_remote_version = cached_remote_version
         remote_version, fetch_error = _read_remote_version()
-        remote_version = _clean_version(remote_version)
         cached_remote_version = remote_version or previous_remote_version
         fetched_from_cache = False
         _write_cache({
             "remote_version": cached_remote_version,
             "fetch_error": fetch_error,
-            "fetched_at": _now(),
+            "fetched_at": now,
+            "source_url": version_url,
         })
         remote_version = cached_remote_version
 
@@ -163,7 +223,7 @@ def get_version_status():
         "remote_version": remote_version,
         "fetch_error": fetch_error,
         "fetched_from_cache": fetched_from_cache,
-        "fetched_at": fetched_at if fetched_from_cache else _now(),
+        "fetched_at": fetched_at if fetched_from_cache else now,
     }
     if not remote_version:
         return info

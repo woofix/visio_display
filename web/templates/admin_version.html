@@ -29,6 +29,7 @@
             <div class="version-kicker">{{ t('version_readonly_badge') }}</div>
             <h1>{{ t('version_title') }}</h1>
             <p>{{ t('version_intro') }}</p>
+            <a class="btn sm version-refresh-btn" href="/admin/version?refresh=1">{{ t('version_refresh') }}</a>
         </div>
         <div class="version-status-card" data-tone="{{ version_status.status_tone }}">
             <span class="version-status-dot"></span>
@@ -104,6 +105,9 @@
     margin: 0;
     color: var(--text-2);
     line-height: 1.55;
+}
+.version-refresh-btn {
+    margin-top: 14px;
 }
 .version-kicker {
     color: var(--primary);

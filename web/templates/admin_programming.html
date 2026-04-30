@@ -6,11 +6,11 @@
 {% block topbar_breadcrumbs %}<div class="topbar-breadcrumbs">
     <a href="/admin" class="bc-link">{{ app_name }}</a>
     <svg class="bc-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-    <a href="/admin/media" class="bc-link">Contenus</a>
+    <a href="/admin/media" class="bc-link">{{ t('nav_label_contents') }}</a>
     <svg class="bc-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
     <span class="bc-current">{{ t('nav_programming') }}</span>
 </div>{% endblock %}
-{% block topbar_sub %}Vue liste, filtres et calendrier hebdomadaire{% endblock %}
+{% block topbar_sub %}{{ t('programming_topbar_sub') }}{% endblock %}
 
 {% block styles %}
 .programming-shell { display:grid; gap:18px; }
@@ -110,16 +110,47 @@
 }
 @media(max-width:720px) {
     .filter-grid, .summary-grid, .modal-grid { grid-template-columns:1fr; }
+    .programming-panel { padding:14px; }
     .calendar-wrap { overflow-x:unset; }
-    .calendar-grid { display:flex; flex-direction:column; min-width:0; }
+    .calendar-grid { display:flex; flex-direction:column; min-width:0; gap:8px; }
     .calendar-head.desktop-only { display:none; }
-    .calendar-label, .calendar-cell { min-height:auto; }
+    .calendar-label, .calendar-cell { min-height:auto; border-radius:12px; }
+    .calendar-label { margin-top:8px; background:var(--surface-alt); }
+    .calendar-label:first-of-type { margin-top:0; }
+    .calendar-cell { padding:12px; }
+    .calendar-cell > .muted:first-child {
+        color:var(--primary);
+        font-size:.73rem;
+        text-transform:uppercase;
+        letter-spacing:.06em;
+    }
+    .event-pill { padding:9px 10px; }
     .list-table { min-width:760px; }
 }
 @media(max-width:640px) {
     .week-nav .btn, .row-actions .btn, .toolbar-actions .btn, .modal-footer .btn { width:auto; }
     .week-nav { gap:6px; }
     .panel-head { gap:10px; }
+    .week-badge { width:100%; text-align:center; order:-1; }
+    .week-nav .btn { flex:1 1 140px; justify-content:center; }
+    .media-chip {
+        max-width:62vw;
+        white-space:normal;
+        overflow-wrap:anywhere;
+        border-radius:12px;
+    }
+}
+@media(max-width:480px) {
+    .programming-toolbar, .programming-panel, .programming-summary { border-radius:12px; }
+    .programming-toolbar { padding:12px; }
+    .toolbar-actions, .row-actions, .modal-footer > div { width:100%; }
+    .toolbar-actions .btn, .row-actions .btn, .modal-footer .btn { flex:1 1 120px; justify-content:center; }
+    .list-table { min-width:680px; }
+    .calendar-meta { gap:5px; }
+    .cell-warning, .status-chip, .group-chip-mini, .media-chip { font-size:.7rem; }
+    .modal-overlay { padding:10px; align-items:flex-start; overflow-y:auto; }
+    .modal-box { margin:10px 0; }
+    .media-vignette-grid { grid-template-columns:repeat(auto-fill, minmax(92px, 1fr)); max-height:220px; }
 }
 {% endblock %}
 
@@ -127,13 +158,13 @@
 <div class="page-header">
     <div>
         <h1>{{ t('nav_programming') }}</h1>
-        <p>Une lecture beaucoup plus claire des créneaux par écran, média, groupe et semaine.</p>
+        <p>{{ t('programming_sub') }}</p>
     </div>
     {% if can_schedule %}
     <div class="page-header-actions">
         <button type="button" class="btn" id="btn-create-programming">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Nouvelle plage
+            {{ t('programming_new_slot') }}
         </button>
     </div>
     {% endif %}
@@ -143,42 +174,42 @@
     <section class="programming-toolbar">
         <div class="toolbar-head">
             <div>
-                <div class="toolbar-title">Filtres de lecture</div>
-                <div class="toolbar-sub">Filtrez la liste par écran, groupe, média et bornes de dates.</div>
+                <div class="toolbar-title">{{ t('programming_filters_title') }}</div>
+                <div class="toolbar-sub">{{ t('programming_filters_sub') }}</div>
             </div>
             <div class="toolbar-actions">
-                <button type="button" class="btn secondary sm" id="btn-reset-filters">Réinitialiser</button>
+                <button type="button" class="btn secondary sm" id="btn-reset-filters">{{ t('programming_reset_filters') }}</button>
             </div>
         </div>
         <div class="filter-grid">
             <div class="filter-card">
-                <label for="filter-screen">Écran</label>
+                <label for="filter-screen">{{ t('programming_filter_screen') }}</label>
                 <select id="filter-screen">
-                    <option value="">Tous les écrans</option>
+                    <option value="">{{ t('programming_all_screens') }}</option>
                     {% for value, label in filter_screen_choices %}
                     <option value="{{ value }}">{{ label }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div class="filter-card">
-                <label for="filter-group">Groupe</label>
+                <label for="filter-group">{{ t('programming_filter_group') }}</label>
                 <select id="filter-group">
-                    <option value="">Tous les groupes</option>
+                    <option value="">{{ t('programming_all_groups') }}</option>
                     {% for group in group_choices %}
                     <option value="{{ group }}">{{ group }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div class="filter-card">
-                <label for="filter-media">Média</label>
-                <input id="filter-media" type="search" placeholder="Nom du média…">
+                <label for="filter-media">{{ t('programming_filter_media') }}</label>
+                <input id="filter-media" type="search" placeholder="{{ t('programming_media_placeholder') }}">
             </div>
             <div class="filter-card">
-                <label for="filter-date-start">Date de début</label>
+                <label for="filter-date-start">{{ t('programming_filter_start_date') }}</label>
                 <input id="filter-date-start" type="date">
             </div>
             <div class="filter-card">
-                <label for="filter-date-end">Date de fin</label>
+                <label for="filter-date-end">{{ t('programming_filter_end_date') }}</label>
                 <input id="filter-date-end" type="date">
             </div>
         </div>
@@ -186,32 +217,32 @@
 
     <section class="summary-grid">
         <article class="programming-summary">
-            <div class="summary-label">Plages visibles</div>
+            <div class="summary-label">{{ t('programming_summary_visible') }}</div>
             <div class="summary-value" id="summary-visible">{{ entries|length }}</div>
-            <div class="summary-note">Après application des filtres.</div>
+            <div class="summary-note">{{ t('programming_summary_visible_note') }}</div>
         </article>
         <article class="programming-summary">
-            <div class="summary-label">Écrans couverts</div>
+            <div class="summary-label">{{ t('programming_summary_screens') }}</div>
             <div class="summary-value">{{ calendar_rows|length }}</div>
-            <div class="summary-note">Vue semaine du {{ week_start }} au {{ week_end }}.</div>
+            <div class="summary-note">{{ t('programming_summary_screens_note', start=week_start, end=week_end) }}</div>
         </article>
         <article class="programming-summary">
-            <div class="summary-label">Chevauchements semaine</div>
+            <div class="summary-label">{{ t('programming_summary_overlaps') }}</div>
             <div class="summary-value">{{ calendar_rows | sum(attribute='overlap_count') }}</div>
-            <div class="summary-note">Détection par écran sur la semaine affichée.</div>
+            <div class="summary-note">{{ t('programming_summary_overlaps_note') }}</div>
         </article>
         <article class="programming-summary">
-            <div class="summary-label">Trous semaine</div>
+            <div class="summary-label">{{ t('programming_summary_gaps') }}</div>
             <div class="summary-value">{{ calendar_rows | sum(attribute='gap_count') }}</div>
-            <div class="summary-note">Intervalles vides entre deux plages de diffusion.</div>
+            <div class="summary-note">{{ t('programming_summary_gaps_note') }}</div>
         </article>
     </section>
 
     <section class="programming-panel">
         <div class="panel-head">
             <div>
-                <div class="panel-title">Liste des plages</div>
-                <div class="panel-sub">Chaque plage peut être modifiée, dupliquée ou supprimée.</div>
+                <div class="panel-title">{{ t('programming_list_title') }}</div>
+                <div class="panel-sub">{{ t('programming_list_sub') }}</div>
             </div>
         </div>
         {% if entries %}
@@ -219,11 +250,11 @@
             <table class="list-table">
                 <thead>
                     <tr>
-                        <th>Média</th>
-                        <th>Écran</th>
-                        <th>Groupes</th>
-                        <th>Créneau</th>
-                        <th>Détection</th>
+                        <th>{{ t('programming_table_media') }}</th>
+                        <th>{{ t('programming_table_screen') }}</th>
+                        <th>{{ t('programming_table_groups') }}</th>
+                        <th>{{ t('programming_table_slot') }}</th>
+                        <th>{{ t('programming_table_detection') }}</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -250,24 +281,24 @@
                                 <span class="group-chip-mini">{{ group }}</span>
                                 {% endfor %}
                             {% else %}
-                                <span class="muted">Sans groupe</span>
+                                <span class="muted">{{ t('programming_no_group') }}</span>
                             {% endif %}
                         </td>
                         <td>
                             <div>{{ entry.summary }}</div>
                             <div class="muted" style="margin-top:6px">
                                 {% if entry.date_start or entry.date_end %}
-                                    Actif sur la plage sélectionnée
+                                    {{ t('programming_active_range') }}
                                 {% else %}
-                                    Actif en continu
+                                    {{ t('programming_active_continuous') }}
                                 {% endif %}
                             </div>
                         </td>
                         <td>
                             {% if entry.overlap_count %}
-                            <span class="status-chip overlap">{{ entry.overlap_count }} chevauchement(s)</span>
+                            <span class="status-chip overlap">{{ t('programming_overlap_count', count=entry.overlap_count) }}</span>
                             {% else %}
-                            <span class="muted">Aucun conflit détecté cette semaine</span>
+                            <span class="muted">{{ t('programming_no_conflict') }}</span>
                             {% endif %}
                         </td>
                         <td>
@@ -279,14 +310,14 @@
                                         data-date-start="{{ entry.date_start }}"
                                         data-date-end="{{ entry.date_end }}"
                                         data-time-start="{{ entry.time_start }}"
-                                        data-time-end="{{ entry.time_end }}">Modifier</button>
+                                        data-time-end="{{ entry.time_end }}">{{ t('programming_edit') }}</button>
                                 <button type="button" class="btn secondary sm btn-duplicate"
                                         data-filename="{{ entry.filename }}"
                                         data-screen="{{ entry.screen }}"
                                         data-date-start="{{ entry.date_start }}"
                                         data-date-end="{{ entry.date_end }}"
                                         data-time-start="{{ entry.time_start }}"
-                                        data-time-end="{{ entry.time_end }}">Dupliquer</button>
+                                        data-time-end="{{ entry.time_end }}">{{ t('programming_duplicate') }}</button>
                             </div>
                             {% endif %}
                         </td>
@@ -295,22 +326,22 @@
                 </tbody>
             </table>
         </div>
-        <div id="list-empty-state" class="empty-state-programming" style="display:none">Aucune plage ne correspond aux filtres actuels.</div>
+        <div id="list-empty-state" class="empty-state-programming" style="display:none">{{ t('programming_list_empty_filtered') }}</div>
         {% else %}
-        <div class="empty-state-programming">Aucune plage n’est encore définie. Créez-en une depuis cette vue.</div>
+        <div class="empty-state-programming">{{ t('programming_list_empty') }}</div>
         {% endif %}
     </section>
 
     <section class="programming-panel">
         <div class="panel-head">
             <div>
-                <div class="panel-title">Calendrier hebdomadaire</div>
-                <div class="panel-sub">Lecture par écran sur la semaine courante, avec alertes de chevauchement et trous.</div>
+                <div class="panel-title">{{ t('programming_calendar_title') }}</div>
+                <div class="panel-sub">{{ t('programming_calendar_sub') }}</div>
             </div>
             <div class="week-nav">
-                <a href="/admin/programming?week={{ previous_week }}" class="btn secondary sm">Semaine précédente</a>
+                <a href="/admin/programming?week={{ previous_week }}" class="btn secondary sm">{{ t('programming_previous_week') }}</a>
                 <span class="week-badge">{{ week_start }} → {{ week_end }}</span>
-                <a href="/admin/programming?week={{ next_week }}" class="btn secondary sm">Semaine suivante</a>
+                <a href="/admin/programming?week={{ next_week }}" class="btn secondary sm">{{ t('programming_next_week') }}</a>
             </div>
         </div>
 
@@ -325,17 +356,17 @@
             <div class="calendar-label calendar-scope-row" data-screen="{{ '' if row.scope_key == '__global__' else row.scope_key }}">
                 <div>
                     <div class="calendar-screen">{{ row.screen_label }}</div>
-                    <div class="muted" style="margin-top:4px">{{ row.item_count }} programmation(s)</div>
+                    <div class="muted" style="margin-top:4px">{{ t('programming_count_label', count=row.item_count) }}</div>
                 </div>
                 <div class="calendar-meta">
                     {% if row.overlap_count %}
-                    <span class="cell-warning danger">{{ row.overlap_count }} chev.</span>
+                    <span class="cell-warning danger">{{ t('programming_overlap_short', count=row.overlap_count) }}</span>
                     {% endif %}
                     {% if row.gap_count %}
-                    <span class="cell-warning">{{ row.gap_count }} trou(x)</span>
+                    <span class="cell-warning">{{ t('programming_gap_short', count=row.gap_count) }}</span>
                     {% endif %}
                     {% if not row.overlap_count and not row.gap_count %}
-                    <span class="muted">Semaine lisible</span>
+                    <span class="muted">{{ t('programming_week_readable') }}</span>
                     {% endif %}
                 </div>
             </div>
@@ -344,12 +375,12 @@
                 <div class="muted" style="font-weight:700">{{ week_labels[loop.index0].label }}</div>
                 {% if cell.overlaps %}
                     {% for overlap in cell.overlaps %}
-                    <div class="cell-warning danger">Chevauchement {{ overlap.label }}</div>
+                    <div class="cell-warning danger">{{ t('programming_overlap_label', label=overlap.label) }}</div>
                     {% endfor %}
                 {% endif %}
                 {% if cell.gaps %}
                     {% for gap in cell.gaps %}
-                    <div class="cell-warning">Trou {{ gap.label }}</div>
+                    <div class="cell-warning">{{ t('programming_gap_label', label=gap.label) }}</div>
                     {% endfor %}
                 {% endif %}
                 <div class="calendar-events">
@@ -359,13 +390,13 @@
                          data-groups="{{ item.groups | join('||') }}"
                          data-file="{{ item.filename }}"
                          data-date="{{ item.day_iso }}">
-                        <div class="event-time">{% if item.is_all_day %}Toute la journée{% else %}{{ '%02d:%02d'|format(item.start_minutes // 60, item.start_minutes % 60) }} - {{ '24:00' if item.end_minutes == 1440 else '%02d:%02d'|format(item.end_minutes // 60, item.end_minutes % 60) }}{% endif %}</div>
+                        <div class="event-time">{% if item.is_all_day %}{{ t('programming_all_day') }}{% else %}{{ '%02d:%02d'|format(item.start_minutes // 60, item.start_minutes % 60) }} - {{ '24:00' if item.end_minutes == 1440 else '%02d:%02d'|format(item.end_minutes // 60, item.end_minutes % 60) }}{% endif %}</div>
                         <div class="event-name">{{ item.filename }}</div>
-                        <div class="event-groups">{% if item.groups %}{{ item.groups | join(', ') }}{% else %}Sans groupe{% endif %}</div>
+                        <div class="event-groups">{% if item.groups %}{{ item.groups | join(', ') }}{% else %}{{ t('programming_no_group') }}{% endif %}</div>
                     </div>
                     {% endfor %}
                 </div>
-                <div class="calendar-empty" {% if cell['items'] %}style="display:none"{% endif %}>Aucune plage.</div>
+                <div class="calendar-empty" {% if cell['items'] %}style="display:none"{% endif %}>{{ t('programming_no_slot') }}</div>
             </div>
             {% endfor %}
             {% endfor %}
@@ -377,7 +408,7 @@
 {% if can_schedule %}
 <div class="modal-overlay theme-dialog-overlay" id="programming-modal">
     <div class="modal-box theme-dialog">
-        <button type="button" class="modal-close theme-dialog-close" id="programming-modal-close" aria-label="Fermer">
+        <button type="button" class="modal-close theme-dialog-close" id="programming-modal-close" aria-label="{{ t('programming_modal_close') }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>
         <div class="theme-dialog-header" style="padding-right:64px">
@@ -385,20 +416,20 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
             </div>
             <div>
-                <div class="modal-title theme-dialog-title" id="programming-modal-title">Nouvelle plage</div>
-                <div class="modal-sub theme-dialog-copy" id="programming-modal-sub">Créez, modifiez ou dupliquez une plage de diffusion.</div>
+                <div class="modal-title theme-dialog-title" id="programming-modal-title">{{ t('programming_new_slot') }}</div>
+                <div class="modal-sub theme-dialog-copy" id="programming-modal-sub">{{ t('programming_modal_sub') }}</div>
             </div>
         </div>
 
         <div class="theme-dialog-body">
         <div class="modal-grid">
             <div class="full form-group">
-                <label>Média</label>
+                <label>{{ t('programming_filter_media') }}</label>
                 <input type="hidden" id="programming-filename">
                 <div class="media-vignette-picker" id="programming-media-picker">
                     <div class="media-vignette-search-row">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                        <input type="search" class="media-vignette-search" id="programming-media-search" placeholder="Rechercher un média…">
+                        <input type="search" class="media-vignette-search" id="programming-media-search" placeholder="{{ t('programming_media_search') }}">
                         <span class="media-vignette-count" id="programming-media-count"></span>
                     </div>
                     <div class="media-vignette-grid" id="programming-media-grid">
@@ -417,14 +448,14 @@
                         </div>
                         {% endfor %}
                         {% if not media_items %}
-                        <div class="media-vignette-empty">Aucun média disponible.</div>
+                        <div class="media-vignette-empty">{{ t('programming_no_media') }}</div>
                         {% endif %}
                     </div>
-                    <div class="media-vignette-error" id="programming-media-error">Veuillez sélectionner un média.</div>
+                    <div class="media-vignette-error" id="programming-media-error">{{ t('programming_media_required') }}</div>
                 </div>
             </div>
             <div class="form-group">
-                <label for="programming-screen">Écran</label>
+                <label for="programming-screen">{{ t('programming_filter_screen') }}</label>
                 <select id="programming-screen">
                     {% for value, label in screen_choices %}
                     <option value="{{ value }}">{{ label }}</option>
@@ -432,29 +463,29 @@
                 </select>
             </div>
             <div class="form-group">
-                <label for="programming-date-start">Date de début</label>
+                <label for="programming-date-start">{{ t('programming_filter_start_date') }}</label>
                 <input id="programming-date-start" type="date">
             </div>
             <div class="form-group">
-                <label for="programming-date-end">Date de fin</label>
+                <label for="programming-date-end">{{ t('programming_filter_end_date') }}</label>
                 <input id="programming-date-end" type="date">
             </div>
             <div class="form-group">
-                <label for="programming-time-start">Heure de début</label>
+                <label for="programming-time-start">{{ t('programming_start_time') }}</label>
                 <input id="programming-time-start" type="time">
             </div>
             <div class="form-group">
-                <label for="programming-time-end">Heure de fin</label>
+                <label for="programming-time-end">{{ t('programming_end_time') }}</label>
                 <input id="programming-time-end" type="time">
             </div>
         </div>
 
         </div>
         <div class="modal-footer theme-dialog-actions">
-            <button type="button" class="btn danger sm modal-danger" id="programming-delete-btn" style="display:none">Supprimer</button>
+            <button type="button" class="btn danger sm modal-danger" id="programming-delete-btn" style="display:none">{{ t('programming_delete') }}</button>
             <div style="display:flex; gap:8px; flex-wrap:wrap; margin-left:auto">
-                <button type="button" class="btn secondary sm" id="programming-cancel-btn">Annuler</button>
-                <button type="button" class="btn sm" id="programming-save-btn">Enregistrer</button>
+                <button type="button" class="btn secondary sm" id="programming-cancel-btn">{{ t('programming_cancel') }}</button>
+                <button type="button" class="btn sm" id="programming-save-btn">{{ t('programming_save') }}</button>
             </div>
         </div>
     </div>
@@ -465,6 +496,20 @@
 {% block scripts %}
 <script>
 const canSchedule = {{ can_schedule | tojson }};
+const programmingI18n = {
+    newSlot: {{ t('programming_new_slot') | tojson }},
+    editSlot: {{ t('programming_edit_slot') | tojson }},
+    duplicateSlot: {{ t('programming_duplicate_slot') | tojson }},
+    mediaCountSingular: {{ t('programming_media_count_singular', count='__count__') | tojson }},
+    mediaCountPlural: {{ t('programming_media_count_plural', count='__count__') | tojson }},
+    saveError: {{ t('programming_save_error') | tojson }},
+    saveErrorTitle: {{ t('programming_save_error_title') | tojson }},
+    deleteTitle: {{ t('programming_delete_title') | tojson }},
+    deleteConfirm: {{ t('programming_delete_confirm') | tojson }},
+    deleteLabel: {{ t('programming_delete') | tojson }},
+    deleteErrorTitle: {{ t('programming_delete_error_title') | tojson }},
+    closeLabel: {{ t('programming_modal_close') | tojson }},
+};
 const rowNodes = [...document.querySelectorAll('.programming-row')];
 const calendarRows = [...document.querySelectorAll('.calendar-scope-row')];
 const calendarEvents = [...document.querySelectorAll('.calendar-event')];
@@ -579,7 +624,8 @@ if (canSchedule) {
 
     function syncVignetteCount() {
         const visible = vignetteItems.filter(i => !i.classList.contains('hidden')).length;
-        mediaCountEl.textContent = visible + ' média' + (visible > 1 ? 's' : '');
+        const template = visible > 1 ? programmingI18n.mediaCountPlural : programmingI18n.mediaCountSingular;
+        mediaCountEl.textContent = template.replace('__count__', visible);
     }
 
     mediaSearch?.addEventListener('input', () => {
@@ -603,7 +649,7 @@ if (canSchedule) {
         currentMode = mode;
         originalFilename = payload.originalFilename || payload.filename || '';
         originalScreen = payload.originalScreen || payload.screen || '';
-        modalTitle.textContent = mode === 'edit' ? 'Modifier la plage' : (mode === 'duplicate' ? 'Dupliquer la plage' : 'Nouvelle plage');
+        modalTitle.textContent = mode === 'edit' ? programmingI18n.editSlot : (mode === 'duplicate' ? programmingI18n.duplicateSlot : programmingI18n.newSlot);
         mediaSearch.value = '';
         vignetteItems.forEach(i => i.classList.remove('hidden'));
         syncVignetteCount();
@@ -667,7 +713,7 @@ if (canSchedule) {
         });
         const data = await response.json();
         if (!response.ok || !data.ok) {
-            throw new Error(data.error || 'Erreur lors de la sauvegarde');
+            throw new Error(data.error || programmingI18n.saveError);
         }
         return data;
     }
@@ -692,19 +738,19 @@ if (canSchedule) {
             window.location.reload();
         } catch (error) {
             await window.appUI.alert(error.message, {
-                titleText: 'Erreur de sauvegarde',
+                titleText: programmingI18n.saveErrorTitle,
                 tone: 'error',
-                confirmLabel: 'Fermer',
+                confirmLabel: programmingI18n.closeLabel,
             });
         }
     });
 
     deleteBtn.addEventListener('click', async () => {
         if (!await window.appUI.confirm({
-            titleText: 'Supprimer la plage',
-            messageText: 'Supprimer cette plage ?',
+            titleText: programmingI18n.deleteTitle,
+            messageText: programmingI18n.deleteConfirm,
             tone: 'error',
-            confirmLabel: 'Supprimer',
+            confirmLabel: programmingI18n.deleteLabel,
         })) return;
         try {
             await postJson('/programming/delete', {
@@ -714,9 +760,9 @@ if (canSchedule) {
             window.location.reload();
         } catch (error) {
             await window.appUI.alert(error.message, {
-                titleText: 'Erreur de suppression',
+                titleText: programmingI18n.deleteErrorTitle,
                 tone: 'error',
-                confirmLabel: 'Fermer',
+                confirmLabel: programmingI18n.closeLabel,
             });
         }
     });

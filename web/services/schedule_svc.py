@@ -98,16 +98,17 @@ def build_schedule_entries(cfg, media_infos, allowed_screens, default_screen_nam
     return entries
 
 
-def schedule_summary(entry):
+def schedule_summary(entry, translate=None):
+    translate = translate or (lambda key, **kwargs: key)
     parts = []
     if entry.get("has_time"):
         parts.append(f'{entry.get("time_start") or "00:00"} - {entry.get("time_end") or "24:00"}')
     else:
-        parts.append("All day")
+        parts.append(translate("programming_all_day"))
     if entry.get("date_start") or entry.get("date_end"):
         parts.append(f'{entry.get("date_start") or "..." } -> {entry.get("date_end") or "..."}')
     else:
-        parts.append("No date limit")
+        parts.append(translate("programming_no_date_limit"))
     return " · ".join(parts)
 
 

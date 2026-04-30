@@ -26,14 +26,9 @@
 
     function getDisplayBounds() {
         const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
-        const width = Math.max(
-            window.innerWidth || 0,
-            window.screen?.width || 0
-        );
-        const height = Math.max(
-            window.innerHeight || 0,
-            window.screen?.height || 0
-        );
+        const viewport = window.visualViewport;
+        const width = viewport?.width || window.innerWidth || document.documentElement.clientWidth || 0;
+        const height = viewport?.height || window.innerHeight || document.documentElement.clientHeight || 0;
         return {
             width: Math.max(1, Math.round(width * dpr)),
             height: Math.max(1, Math.round(height * dpr)),

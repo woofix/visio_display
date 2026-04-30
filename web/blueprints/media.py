@@ -316,7 +316,7 @@ def admin_programming_page():
 
     for entry in entries:
         issues = entry_issue_counts.get(entry['id'], {})
-        entry['summary'] = schedule_summary(entry)
+        entry['summary'] = schedule_summary(entry, _t)
         entry['overlap_count'] = issues.get('overlaps', 0)
         entry['gap_count'] = issues.get('gaps', 0)
 

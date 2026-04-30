@@ -388,6 +388,97 @@
         align-items: stretch;
         flex-direction: column;
     }
+    .activity-hero {
+        padding: 16px;
+        border-radius: var(--radius);
+    }
+    .summary-card,
+    .table-card,
+    .management-card.soft {
+        padding: 14px;
+    }
+    .admin-summary {
+        padding: 14px;
+    }
+    .admin-shell {
+        padding: 0 14px 14px;
+    }
+    .log-table-wrap {
+        overflow: visible;
+    }
+    .log-table,
+    .log-table thead,
+    .log-table tbody,
+    .log-table tr,
+    .log-table th,
+    .log-table td {
+        display: block;
+        width: 100%;
+    }
+    .log-table {
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    .log-table thead {
+        display: none;
+    }
+    .log-table tbody {
+        display: grid;
+        gap: 10px;
+    }
+    .log-table tr {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: var(--surface);
+        box-shadow: var(--shadow-sm);
+        overflow: hidden;
+    }
+    .log-table td {
+        display: grid;
+        grid-template-columns: minmax(84px, .34fr) minmax(0, 1fr);
+        gap: 10px;
+        align-items: start;
+        padding: 9px 12px;
+        border-bottom: 1px solid var(--border);
+        min-width: 0;
+    }
+    .log-table td::before {
+        content: attr(data-label);
+        color: var(--text-3);
+        font-size: .66rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: .06em;
+        line-height: 1.35;
+    }
+    .log-table td:last-child {
+        border-bottom: none;
+    }
+    .log-table tr:hover td {
+        background: transparent;
+    }
+    .log-ts,
+    .log-user,
+    .log-details,
+    .log-filename {
+        min-width: 0;
+        max-width: none;
+        white-space: normal;
+        overflow: visible;
+        text-overflow: unset;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+    .action-badge {
+        width: fit-content;
+        white-space: normal;
+    }
+    .empty-log {
+        display: block !important;
+    }
+    .empty-log::before {
+        content: none !important;
+    }
 }
 {% endblock %}
 
@@ -596,9 +687,9 @@
                             data-date="{{ (entry.timestamp or '')[:10] }}"
                             data-search="{{ (entry.username ~ ' ' ~ entry.action ~ ' ' ~ (entry.filename or '') ~ ' ' ~ (entry.details or '')) | lower }}"
                         >
-                            <td class="log-ts">{{ entry.timestamp_display or (entry.timestamp | replace('T', ' ')) }}</td>
-                            <td class="log-user">{{ entry.username }}</td>
-                            <td>
+                            <td class="log-ts" data-label="{{ t('activity_col_date') }}">{{ entry.timestamp_display or (entry.timestamp | replace('T', ' ')) }}</td>
+                            <td class="log-user" data-label="{{ t('activity_col_user') }}">{{ entry.username }}</td>
+                            <td data-label="{{ t('activity_col_action') }}">
                                 <span class="action-badge action-{{ entry.action if entry.action in ('upload','delete','login','logout','toggle','compress','config','campaign') else 'default' }}">
                                     {% if entry.action == 'upload' %}
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:11px;height:11px"><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -620,8 +711,8 @@
                                     {{ t('activity_action_' ~ entry.action) if ('activity_action_' ~ entry.action) in ['activity_action_upload','activity_action_delete','activity_action_login','activity_action_logout','activity_action_toggle','activity_action_compress','activity_action_config','activity_action_campaign'] else entry.action }}
                                 </span>
                             </td>
-                            <td><div class="log-filename" title="{{ entry.filename or '' }}">{{ entry.filename or '—' }}</div></td>
-                            <td class="log-details">{{ entry.details or '' }}</td>
+                            <td data-label="{{ t('activity_col_file') }}"><div class="log-filename" title="{{ entry.filename or '' }}">{{ entry.filename or '—' }}</div></td>
+                            <td class="log-details" data-label="{{ t('activity_col_details') }}">{{ entry.details or '' }}</td>
                         </tr>
                         {% else %}
                         <tr><td colspan="5" class="empty-log">

@@ -264,6 +264,11 @@
 @media(max-width: 640px) {
     .file-grid {
         grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    .file-card .thumb,
+    .file-card .thumb-video {
+        height: 220px;
     }
     .group-chip {
         width: 100%;
@@ -280,28 +285,123 @@
         padding-inline: 8px;
     }
     .file-grid.list-view .file-card {
+        display: grid;
+        grid-template-columns: 88px minmax(0, 1fr);
         align-items: stretch;
-        flex-direction: column;
-        overflow: hidden;
+        border-radius: 12px;
+        overflow: visible;
+        min-height: 88px;
     }
     .file-grid.list-view .file-card .thumb,
     .file-grid.list-view .file-card .thumb-video {
-        width: 100%;
-        height: 180px;
-        border-radius: 10px 10px 0 0;
+        width: 88px;
+        height: 88px;
+        border-radius: 12px 0 0 12px;
+        grid-row: 1;
+        object-fit: cover;
+    }
+    .file-grid.list-view .file-card:hover {
+        transform: none;
+    }
+    .file-grid.list-view .file-card .card-body {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 4px 8px;
+        padding: 9px 10px;
+        align-items: center;
+    }
+    .file-grid.list-view .file-card .fname {
+        grid-column: 1 / 2;
+        font-size: .82rem;
+        font-weight: 800;
+        line-height: 1.2;
+        margin: 0;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    .file-grid.list-view .file-card .finfo {
+        grid-column: 1 / 2;
+        font-size: .68rem;
+        line-height: 1.2;
+        margin: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .file-grid.list-view .file-card .group-badges {
+        grid-column: 1 / 3;
+        margin: 1px 0 0;
+        gap: 4px;
+        max-height: 24px;
+        overflow: hidden;
+    }
+    .file-grid.list-view .file-card .group-badge {
+        font-size: .58rem;
+        padding: 2px 6px;
+    }
+    .file-grid.list-view .file-card .group-editor,
+    .file-grid.list-view .file-card .group-hint {
+        display: none;
+    }
+    .file-grid.list-view .file-card .card-actions {
+        grid-column: 2 / 3;
+        grid-row: 1 / 3;
+        align-self: center;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 6px;
+        min-width: 0;
+    }
+    .file-grid.list-view .file-card .card-actions-right {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 6px;
+        min-width: 0;
+    }
+    .file-grid.list-view .file-card .duration-input {
+        width: 44px;
+        min-height: 32px;
+        padding: 3px 4px;
+    }
+    .file-grid.list-view .file-card .duration-unit {
+        font-size: .66rem;
+    }
+    .file-grid.list-view .file-card .dropdown .btn {
+        width: 38px;
+        min-width: 38px;
+        min-height: 34px;
+        padding: 0;
+        font-size: 0;
+        gap: 0;
+    }
+    .file-grid.list-view .file-card .dropdown .btn svg {
+        width: 14px !important;
+        height: 14px !important;
+    }
+    .file-grid.list-view .file-card .dropdown-menu {
+        right: 0;
+        min-width: 215px;
     }
     .file-grid.list-view .file-card .badge-video {
-        top: 8px;
-        left: auto;
-        right: 8px;
+        top: 6px;
+        left: 6px;
+        right: auto;
         transform: none;
+        font-size: .5rem;
+        padding: 1px 5px;
     }
     .file-grid.list-view .file-card .badge-disabled {
-        top: 30px;
+        top: 25px;
+        left: 6px;
+        right: auto;
         transform: none;
+        font-size: .5rem;
+        padding: 1px 5px;
     }
-    .file-grid.list-view .file-card .fname,
-    .file-grid.list-view .file-card .finfo,
     .file-card .fname,
     .file-card .finfo {
         min-width: 0;
@@ -310,14 +410,13 @@
         text-overflow: unset;
         overflow-wrap: anywhere;
     }
-    .file-grid.list-view .file-card .card-body,
     .file-card .card-actions,
     .modal-row,
     .modal-footer {
         flex-direction: column;
         align-items: stretch;
     }
-    .file-grid.list-view .file-card .card-actions,
+    .file-card .card-actions,
     .card-actions-right {
         min-width: 0;
     }

@@ -1,6 +1,7 @@
 # Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 from flask import Blueprint, render_template, request, redirect, url_for, session
+import logging
 import secrets
 import threading
 import time
@@ -10,6 +11,7 @@ from services.i18n import _flash
 from services.activity_svc import log_activity
 
 bp = Blueprint('auth', __name__)
+LOGGER = logging.getLogger(__name__)
 
 LOGIN_WINDOW_SECONDS = 15 * 60
 LOGIN_BLOCK_SECONDS = 15 * 60
@@ -33,9 +35,13 @@ def _prune_attempts(now):
         _login_attempts.pop(key, None)
 
 
-def _login_is_blocked(username):
+def _login_attempt_key(username, ip=None):
+    return f"{(ip if ip is not None else _client_ip())}::{username.casefold()}"
+
+
+def _login_is_blocked(username, ip=None):
     now = time.time()
-    key = f"{_client_ip()}::{username.casefold()}"
+    key = _login_attempt_key(username, ip)
     with _login_lock:
         entry = _login_attempts.get(key)
         if not entry:
@@ -51,9 +57,9 @@ def _login_is_blocked(username):
     return False
 
 
-def _record_login_failure(username):
+def _record_login_failure(username, ip=None):
     now = time.time()
-    key = f"{_client_ip()}::{username.casefold()}"
+    key = _login_attempt_key(username, ip)
     with _login_lock:
         entry = _login_attempts.setdefault(key, {'failures': [], 'blocked_until': 0})
         failures = [ts for ts in entry['failures'] if now - ts < LOGIN_WINDOW_SECONDS]
@@ -64,8 +70,8 @@ def _record_login_failure(username):
         _prune_attempts(now)
 
 
-def _clear_login_failures(username):
-    key = f"{_client_ip()}::{username.casefold()}"
+def _clear_login_failures(username, ip=None):
+    key = _login_attempt_key(username, ip)
     with _login_lock:
         _login_attempts.pop(key, None)
 
@@ -75,23 +81,26 @@ def login():
     if request.method == 'POST':
         username = normalize_username(request.form.get('username', ''))
         password = request.form.get('password', '')
-        if _login_is_blocked(username):
+        ip = _client_ip()
+        if _login_is_blocked(username, ip):
+            LOGGER.warning("Blocked login attempt for user '%s' from %s: rate limit exceeded", username, ip)
+            log_activity(username, 'login', details=f'rate_limited ip={ip}')
             _flash('flash_login_rate_limited', 'error')
             return render_template('login.html', logo_path=get_logo_path()), 429
-        users    = load_users()
+        users = load_users()
         if username in users and verify_user_password(username, password):
             session.clear()
             session.permanent = True
             session['user'] = username
             session['_csrf_token'] = secrets.token_urlsafe(32)
-            _clear_login_failures(username)
+            _clear_login_failures(username, ip)
             log_activity(username, 'login')
             from services.users_svc import get_user as _get_user
             _user_obj = _get_user(username)
             if _user_obj and _user_obj.must_change_password:
                 _flash('flash_must_change_password', 'warning')
             return redirect(url_for('admin.admin_page'))
-        _record_login_failure(username)
+        _record_login_failure(username, ip)
         _flash('flash_wrong_credentials', 'error')
     return render_template('login.html', logo_path=get_logo_path())
 

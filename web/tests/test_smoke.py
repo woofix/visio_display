@@ -99,6 +99,8 @@ class AppSmokeTests(unittest.TestCase):
                 "TESTING": True,
             },
         )
+        self.auth_module = import_module("blueprints.auth")
+        self.auth_module._login_attempts.clear()
         self.client = self.app.test_client()
 
     def tearDown(self):
@@ -110,6 +112,8 @@ class AppSmokeTests(unittest.TestCase):
                 db.engine.dispose()
         for patcher in reversed(self.patchers):
             patcher.stop()
+        if hasattr(self, "auth_module"):
+            self.auth_module._login_attempts.clear()
         for name in ("redis", "rq", "rq.job", "rq.registry"):
             sys.modules.pop(name, None)
         for key, value in self._env_backup.items():
@@ -136,6 +140,30 @@ class AppSmokeTests(unittest.TestCase):
     def test_login_redirects_to_admin(self):
         response = self._login()
         self.assertEqual(response.status_code, 302)
+
+    def test_rate_limited_login_rejects_before_password_check(self):
+        self.auth_module._login_attempts["127.0.0.1::admin"] = {
+            "failures": [],
+            "blocked_until": self.auth_module.time.time() + 60,
+        }
+
+        with (
+            patch("blueprints.auth.verify_user_password", side_effect=AssertionError("password checked")),
+            patch("blueprints.auth.log_activity") as log_activity,
+        ):
+            response = self.client.post(
+                "/login",
+                data={
+                    "username": "admin",
+                    "password": "supersecure123",
+                },
+                follow_redirects=False,
+            )
+
+        self.assertEqual(response.status_code, 429)
+        log_activity.assert_called_once_with("admin", "login", details="rate_limited ip=127.0.0.1")
+        with self.client.session_transaction() as session:
+            self.assertNotIn("user", session)
 
     def test_superadmin_can_view_version_page(self):
         self._login()

@@ -45,15 +45,13 @@ def _media_path(filename, media_type, bounds):
 
 
 def _best_remote_ip():
-    if request.access_route:
-        return str(request.access_route[0]).strip()
     return str(request.remote_addr or '').strip()
 
 
 def _heartbeat_token_is_valid(data):
     expected = os.environ.get('CLIENT_HEARTBEAT_TOKEN', '').strip()
     if not expected:
-        return True
+        return False
     provided = (
         request.headers.get('X-Client-Token')
         or str(data.get('token') or '').strip()
@@ -183,6 +181,8 @@ def api_diskusage():
 @bp.route('/api/client-heartbeat', methods=['POST'])
 def api_client_heartbeat():
     data = request.get_json(silent=True) or {}
+    if not os.environ.get('CLIENT_HEARTBEAT_TOKEN', '').strip():
+        return jsonify({'ok': False, 'error': 'client_heartbeat_token_required'}), 403
     if not _heartbeat_token_is_valid(data):
         return jsonify({'ok': False, 'error': 'invalid_client_token'}), 403
     hostname = str(data.get('hostname') or '').strip()

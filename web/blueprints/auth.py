@@ -21,8 +21,6 @@ _login_lock = threading.Lock()
 
 
 def _client_ip():
-    if request.access_route:
-        return str(request.access_route[0]).strip()
     return str(request.remote_addr or '').strip()
 
 

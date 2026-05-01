@@ -462,6 +462,12 @@ def delete_backup_archive(filename):
 def _safe_extract_tar(archive, target_dir):
     target_dir = os.path.abspath(target_dir)
     for member in archive.getmembers():
+        if member.issym() or member.islnk() or member.isdev() or member.isfifo():
+            raise ValueError("Unsafe entry detected in backup archive")
+        if not member.isfile() and not member.isdir():
+            raise ValueError("Unsafe entry detected in backup archive")
+        if os.path.isabs(member.name):
+            raise ValueError("Unsafe path detected in backup archive")
         member_path = os.path.abspath(os.path.join(target_dir, member.name))
         if os.path.commonpath([target_dir, member_path]) != target_dir:
             raise ValueError("Unsafe path detected in backup archive")

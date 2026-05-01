@@ -169,7 +169,7 @@ def _build_settings_context(tab='logo', install_defaults=None, install_result=No
         'enabled': bool(backup_remote.get('enabled')),
         'url': str(backup_remote.get('url', '') or ''),
         'username': str(backup_remote.get('username', '') or ''),
-        'password': str(backup_remote.get('password', '') or ''),
+        'password': '',
     }
     users = load_users()
     today = date.today()

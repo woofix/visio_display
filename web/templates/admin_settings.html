@@ -888,7 +888,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                         </div>
                         <div>
                             <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:6px">{{ t('backup_remote_password_label') }}</label>
-                            <input type="password" name="password" value="{{ backup_remote.password or '' }}" placeholder="{{ t('backup_remote_password_ph') }}" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;background:var(--surface);color:var(--text)">
+                            <input type="password" name="password" placeholder="{{ t('backup_remote_password_ph') }}" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;background:var(--surface);color:var(--text)">
                         </div>
                     </div>
                     <p class="backup-remote-note">{{ t('backup_remote_help') }}</p>

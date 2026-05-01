@@ -1,8 +1,10 @@
 # Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
+import os
 import shlex
 import shutil
 import subprocess
+import tempfile
 import time
 from pathlib import Path
 
@@ -11,6 +13,26 @@ INSTALL_SCRIPT = Path(__file__).resolve().parents[1] / 'scripts' / 'install.sh'
 
 
 def _run_command(cmd):
+    if len(cmd) >= 3 and cmd[0] == 'sshpass' and cmd[1] == '-p':
+        password = cmd[2]
+        with tempfile.NamedTemporaryFile('w', encoding='utf-8', prefix='visio-sshpass-', delete=False) as handle:
+            handle.write(password)
+            handle.write('\n')
+            password_file = handle.name
+        try:
+            os.chmod(password_file, 0o600)
+            return subprocess.run(
+                ['sshpass', '-f', password_file, *cmd[3:]],
+                capture_output=True,
+                text=True,
+                encoding='utf-8',
+                errors='replace',
+            )
+        finally:
+            try:
+                os.remove(password_file)
+            except OSError:
+                pass
     return subprocess.run(
         cmd,
         capture_output=True,

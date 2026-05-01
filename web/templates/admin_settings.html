@@ -2087,11 +2087,15 @@ async function searchMeteoCity() {
             const tz      = item.timezone || 'UTC';
             const lat     = item.latitude.toFixed(4);
             const lng     = item.longitude.toFixed(4);
-            return `<div class="meteo-result-row" data-ville="${name}" data-lat="${lat}" data-lng="${lng}" data-tz="${tz}"
+            const safeName = escapeMeteoHtml(name);
+            const safeCountry = escapeMeteoHtml(country);
+            const safeAdmin = escapeMeteoHtml(admin);
+            const safeTz = escapeMeteoHtml(tz);
+            return `<div class="meteo-result-row" data-ville="${safeName}" data-lat="${escapeMeteoHtml(lat)}" data-lng="${escapeMeteoHtml(lng)}" data-tz="${safeTz}"
                          style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);font-size:.84rem;display:flex;justify-content:space-between;align-items:center"
                          onmouseenter="this.style.background='var(--surface-alt)'" onmouseleave="this.style.background=''">
-                        <span><strong>${name}</strong>${admin} — ${country}</span>
-                        <span style="color:var(--text-3);font-size:.74rem">${lat}, ${lng}</span>
+                        <span><strong>${safeName}</strong>${safeAdmin} — ${safeCountry}</span>
+                        <span style="color:var(--text-3);font-size:.74rem">${escapeMeteoHtml(lat)}, ${escapeMeteoHtml(lng)}</span>
                     </div>`;
         }).join('');
 
@@ -2112,6 +2116,15 @@ async function searchMeteoCity() {
     } finally {
         btn.disabled = false;
     }
+}
+
+function escapeMeteoHtml(value) {
+    return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
 }
 
 /* Search when Enter is pressed in the field */

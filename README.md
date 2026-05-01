@@ -182,6 +182,7 @@ VISIO_VERSION_BUMP=none git commit -m "..."
 | `SECRET_KEY`     | Clé de signature des sessions Flask (obligatoire)                  |
 | `POSTGRES_PASSWORD` | Mot de passe du rôle PostgreSQL `visio` utilisé par la stack Docker |
 | `CLIENT_HEARTBEAT_TOKEN` | Jeton partagé optionnel exigé par `/api/client-heartbeat` lorsqu'il est défini |
+| `DISPLAY_API_TOKEN` | Jeton écran optionnel exigé par les endpoints publics d'affichage lorsqu'il est défini |
 | `SESSION_COOKIE_SECURE` | Force le cookie de session en mode `Secure` (recommandé derrière HTTPS) |
 | `SESSION_COOKIE_NAME` | Nom du cookie de session Flask (défaut : `visio_session`) |
 | `SESSION_LIFETIME_MINUTES` | Durée de vie maximale d’une session connectée (défaut : `480`) |
@@ -209,7 +210,9 @@ VISIO_VERSION_BUMP=none git commit -m "..."
 - Déconnexion réalisée en `POST` protégé par CSRF, pas en simple lien `GET`
 - Filtrage d'hôtes via `TRUSTED_HOSTS` et prise en charge d'un reverse proxy via `TRUST_PROXY_COUNT`
 - `CLIENT_HEARTBEAT_TOKEN` protège l'endpoint de heartbeat client lorsqu'il est renseigné côté serveur
+- `DISPLAY_API_TOKEN` protège les endpoints publics d'affichage lorsqu'il est renseigné côté serveur. Les écrans existants continuent de fonctionner sans changement tant que la variable est absente ; sinon envoyer `X-Screen-Token: <jeton>` ou `?screen_token=<jeton>`.
 - Les sauvegardes dans `PRIVATE_DIR/backups` peuvent contenir des données sensibles et sont verrouillées en `chmod 700`
+- Les archives de sauvegarde peuvent inclure une copie de `.env` (`env.backup`) et doivent être manipulées comme des secrets.
 - En-têtes de sécurité appliqués: CSP, HSTS en HTTPS, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `Cross-Origin-Opener-Policy` et `Cross-Origin-Resource-Policy`
 
 **Localisation météo** — configurable depuis l'interface (`/admin/settings?tab=meteo`, super-admin) :
@@ -511,15 +514,16 @@ Visio-Display/
 
 | Endpoint                                  | Méthode | Auth               | Description                                          |
 |-------------------------------------------|---------|--------------------|------------------------------------------------------|
-| `/api/images`                             | GET     | Non                | Liste des médias actifs (`?screen=<nom>` optionnel)  |
-| `/api/durations`                          | GET     | Non                | Durées d'affichage par fichier (`?screen=<nom>`)     |
+| `/api/images`                             | GET     | Non / `DISPLAY_API_TOKEN` | Liste des médias actifs (`?screen=<nom>` optionnel)  |
+| `/api/durations`                          | GET     | Non / `DISPLAY_API_TOKEN` | Durées d'affichage par fichier (`?screen=<nom>`)     |
+| `/api/pools`                              | GET     | Non / `DISPLAY_API_TOKEN` | Pools de groupes de médias                           |
 | `/api/config`                             | GET     | Non                | Configuration complète                               |
 | `/api/diskusage`                          | GET     | Non                | Statistiques disque                                  |
-| `/api/screens`                            | GET     | Non                | Liste des écrans nommés                              |
-| `/api/halo`                               | GET     | Non                | Couleur de halo de l'écran courant (`?screen=<nom>`) |
+| `/api/screens`                            | GET     | Non / `DISPLAY_API_TOKEN` | Liste des écrans nommés                              |
+| `/api/halo`                               | GET     | Non / `DISPLAY_API_TOKEN` | Couleur de halo de l'écran courant (`?screen=<nom>`) |
 | `/api/client-policy`                      | GET     | Non                | Politique watchdog envoyée aux clients kiosque       |
 | `/api/client-heartbeat`                   | POST    | Non                | Remontée d'état d'un client d'affichage              |
-| `/api/priority-alert`                     | GET     | Non                | Message d'alerte prioritaire en cours                |
+| `/api/priority-alert`                     | GET     | Non / `DISPLAY_API_TOKEN` | Message d'alerte prioritaire en cours                |
 | `/api/queue`                              | GET     | Connecté           | État de la file d'encodage (compression + upload)    |
 | `/upload`                                 | POST    | `upload`           | Importer des fichiers (retourne JSON + jobs d'encodage) |
 | `/delete/<filename>`                      | POST    | `delete`           | Supprimer un fichier                                 |
@@ -733,6 +737,8 @@ Valeurs par défaut :
 
 Les anciennes migrations automatiques depuis `users.json`, `config.json`, `queue.json` ou `visio-display.db` ont été retirées. Pour une installation propre, configurez `DATABASE_URL`, importez si besoin vos données vers PostgreSQL, puis supprimez les anciens fichiers locaux.
 
+Les migrations applicatives restantes sont additives et non destructrices : elles ajoutent uniquement les colonnes manquantes déclarées dans `web/app_bootstrap.py`. La production est PostgreSQL uniquement ; SQLite reste utilisé par la suite de tests pour des tests rapides et isolés, ce qui implique de garder les migrations compatibles avec les deux moteurs tant qu'elles sont exécutées au démarrage de l'app.
+
 ### Licence
 
 Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
@@ -915,6 +921,7 @@ VISIO_VERSION_BUMP=none git commit -m "..."
 | `SECRET_KEY`     | Flask session signing key (required)                              |
 | `POSTGRES_PASSWORD` | Password for the PostgreSQL `visio` role used by the Docker stack |
 | `CLIENT_HEARTBEAT_TOKEN` | Optional shared token required by `/api/client-heartbeat` when set |
+| `DISPLAY_API_TOKEN` | Optional screen token required by public display endpoints when set |
 | `SESSION_COOKIE_SECURE` | Forces the session cookie to use `Secure` (recommended behind HTTPS) |
 | `SESSION_COOKIE_NAME` | Flask session cookie name (default: `visio_session`) |
 | `SESSION_LIFETIME_MINUTES` | Maximum lifetime of an authenticated session (default: `480`) |
@@ -942,7 +949,9 @@ VISIO_VERSION_BUMP=none git commit -m "..."
 - Logout is performed through a CSRF-protected `POST`, not a plain `GET` link
 - Host header filtering is available through `TRUSTED_HOSTS`, with reverse-proxy awareness via `TRUST_PROXY_COUNT`
 - `CLIENT_HEARTBEAT_TOKEN` protects the client heartbeat endpoint when configured on the server
+- `DISPLAY_API_TOKEN` protects public display endpoints when configured on the server. Existing screens keep working unchanged while the variable is absent; otherwise send `X-Screen-Token: <token>` or `?screen_token=<token>`.
 - Backups in `PRIVATE_DIR/backups` can contain sensitive data and are locked down with `chmod 700`
+- Backup archives can include a copy of `.env` (`env.backup`) and must be handled as secrets.
 - Security headers are applied: CSP, HSTS on HTTPS, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `Cross-Origin-Opener-Policy`, and `Cross-Origin-Resource-Policy`
 
 **Weather location** — configurable from the UI (`/admin/settings?tab=meteo`, super-admin only):
@@ -1161,15 +1170,16 @@ Visio-Display/
 
 | Endpoint                                  | Method  | Auth               | Description                                             |
 |-------------------------------------------|---------|--------------------|-------------------------------------------------------|
-| `/api/images`                             | GET     | No                 | Active media list (`?screen=<name>` optional)           |
-| `/api/durations`                          | GET     | No                 | Per-file display durations (`?screen=<name>`)           |
+| `/api/images`                             | GET     | No / `DISPLAY_API_TOKEN` | Active media list (`?screen=<name>` optional)           |
+| `/api/durations`                          | GET     | No / `DISPLAY_API_TOKEN` | Per-file display durations (`?screen=<name>`)           |
+| `/api/pools`                              | GET     | No / `DISPLAY_API_TOKEN` | Media group pools                                      |
 | `/api/config`                             | GET     | No                 | Full configuration                                      |
 | `/api/diskusage`                          | GET     | No                 | Disk usage stats                                        |
-| `/api/screens`                            | GET     | No                 | List of named screens                                   |
-| `/api/halo`                               | GET     | No                 | Halo color for the current screen (`?screen=<name>`)     |
+| `/api/screens`                            | GET     | No / `DISPLAY_API_TOKEN` | List of named screens                                   |
+| `/api/halo`                               | GET     | No / `DISPLAY_API_TOKEN` | Halo color for the current screen (`?screen=<name>`)     |
 | `/api/client-policy`                      | GET     | No                 | Watchdog policy sent to kiosk clients                   |
 | `/api/client-heartbeat`                   | POST    | No                 | Display client status heartbeat                         |
-| `/api/priority-alert`                     | GET     | No                 | Current priority alert message                          |
+| `/api/priority-alert`                     | GET     | No / `DISPLAY_API_TOKEN` | Current priority alert message                          |
 | `/api/queue`                              | GET     | Logged in          | Encoding queue state (compression + upload jobs)        |
 | `/upload`                                 | POST    | `upload`           | Upload files (returns JSON with encoding job list)      |
 | `/delete/<filename>`                      | POST    | `delete`           | Delete a file                                           |
@@ -1399,6 +1409,8 @@ The `screens` field is optional. Absent or `null` = access to all screens. An em
 ### Migration from earlier versions
 
 Automatic migrations from `users.json`, `config.json`, `queue.json`, or `visio-display.db` have been removed. For a clean setup, configure `DATABASE_URL`, import any data you still need into PostgreSQL, then delete the old local files.
+
+Remaining application migrations are additive and non-destructive: they only add missing columns declared in `web/app_bootstrap.py`. Production is PostgreSQL-only; SQLite is still used by the test suite for fast isolated tests, so startup migrations must stay compatible with both engines while they run inside the app process.
 
 ### License
 

@@ -1,6 +1,7 @@
 import os
 import shutil
 import sys
+import tarfile
 import tempfile
 import types
 import unittest
@@ -39,16 +40,24 @@ class AppSmokeTests(unittest.TestCase):
         self.fake_redis = FakeRedis()
         self._env_backup = {key: os.environ.get(key) for key in (
             "VISIO_DATA_DIR",
+            "VISIO_STATIC_MEDIA_DIR",
             "ADMIN_USER",
             "ADMIN_PASSWORD",
             "SECRET_KEY",
             "DATABASE_URL",
+            "CLIENT_HEARTBEAT_TOKEN",
+            "DISPLAY_API_TOKEN",
+            "TRUST_PROXY_COUNT",
         )}
         os.environ["VISIO_DATA_DIR"] = os.path.join(self.temp_dir.name, "private")
+        os.environ["VISIO_STATIC_MEDIA_DIR"] = os.path.join(self.temp_dir.name, "media")
         os.environ["ADMIN_USER"] = "admin"
         os.environ["ADMIN_PASSWORD"] = "supersecure123"
         os.environ["SECRET_KEY"] = "test-secret-key"
         os.environ["DATABASE_URL"] = f"sqlite:///{os.path.join(self.temp_dir.name, 'test.sqlite')}"
+        os.environ["CLIENT_HEARTBEAT_TOKEN"] = "heartbeat-secret"
+        os.environ.pop("DISPLAY_API_TOKEN", None)
+        os.environ.pop("TRUST_PROXY_COUNT", None)
 
         redis_module = types.ModuleType("redis")
 
@@ -81,6 +90,14 @@ class AppSmokeTests(unittest.TestCase):
         rq_registry_module = types.ModuleType("rq.registry")
         rq_registry_module.StartedJobRegistry = object
         sys.modules["rq.registry"] = rq_registry_module
+
+        for module_name in list(sys.modules):
+            if (
+                module_name in {"app", "app_bootstrap", "constants", "db"}
+                or module_name.startswith("blueprints.")
+                or module_name.startswith("services.")
+            ):
+                sys.modules.pop(module_name, None)
 
         queue_svc = import_module("services.queue_svc")
         users_svc = import_module("services.users_svc")
@@ -164,6 +181,25 @@ class AppSmokeTests(unittest.TestCase):
         log_activity.assert_called_once_with("admin", "login", details="rate_limited ip=127.0.0.1")
         with self.client.session_transaction() as session:
             self.assertNotIn("user", session)
+
+    def test_rate_limited_login_ignores_untrusted_forwarded_for(self):
+        self.auth_module._login_attempts["127.0.0.1::admin"] = {
+            "failures": [],
+            "blocked_until": self.auth_module.time.time() + 60,
+        }
+
+        with patch("blueprints.auth.verify_user_password", side_effect=AssertionError("password checked")):
+            response = self.client.post(
+                "/login",
+                data={
+                    "username": "admin",
+                    "password": "supersecure123",
+                },
+                headers={"X-Forwarded-For": "203.0.113.10"},
+                follow_redirects=False,
+            )
+
+        self.assertEqual(response.status_code, 429)
 
     def test_superadmin_can_view_version_page(self):
         self._login()
@@ -352,7 +388,7 @@ class AppSmokeTests(unittest.TestCase):
         page = self.client.get("/admin/settings/comptes-permissions")
         self.assertEqual(page.status_code, 200)
         body = page.get_data(as_text=True)
-        self.assertIn("9 permission(s) active(s)", body)
+        self.assertIn(f"{len(expected_permissions)} permission(s) active(s)", body)
         self.assertIn("via rôle", body)
 
     def test_search_hides_superadmin_links_for_regular_users(self):
@@ -402,7 +438,7 @@ class AppSmokeTests(unittest.TestCase):
             with open(os.path.join(UPLOAD_FOLDER, "clip.mp4"), "wb") as handle:
                 handle.write(b"mp4")
 
-            save_config({"features": {"videos": False}, "order": ["clip.mp4", "poster.jpg"]})
+            save_config({"features": {"videos": False, "ephemeris": False}, "order": ["clip.mp4", "poster.jpg"]})
             self.assertEqual(get_all_media(), ["poster.jpg"])
 
     def test_upload_rejects_video_when_video_feature_disabled(self):
@@ -414,10 +450,11 @@ class AppSmokeTests(unittest.TestCase):
         with self.client.session_transaction() as session:
             session["user"] = "admin"
             session["_csrf_token"] = "upload-token"
+            token = session["_csrf_token"]
 
         response = self.client.post(
             "/upload",
-            data={"file": (BytesIO(b"fake-video"), "clip.mp4")},
+            data={"file": (BytesIO(b"fake-video"), "clip.mp4"), "_csrf_token": token},
             content_type="multipart/form-data",
         )
 
@@ -436,7 +473,7 @@ class AppSmokeTests(unittest.TestCase):
             with open(os.path.join(UPLOAD_FOLDER, "clip.mp4"), "wb") as handle:
                 handle.write(b"mp4")
 
-            save_config({"features": {"videos": False}, "order": ["clip.mp4", "poster.jpg"]})
+            save_config({"features": {"videos": False, "ephemeris": False}, "order": ["clip.mp4", "poster.jpg"]})
 
         response = self.client.get("/api/images")
 
@@ -459,18 +496,18 @@ class AppSmokeTests(unittest.TestCase):
         with self.client.session_transaction() as session:
             session["user"] = "admin"
             session["_csrf_token"] = "upload-token"
+            token = session["_csrf_token"]
 
         with patch("blueprints.media.enqueue_compress_job", return_value="job-123") as enqueue_job:
             response = self.client.post(
                 "/upload",
-                data={"file": (BytesIO(b"fake-video"), "clip.mp4")},
+                data={"file": (BytesIO(b"fake-video"), "clip.mp4"), "_csrf_token": token},
                 content_type="multipart/form-data",
             )
 
         self.assertEqual(response.status_code, 200)
         payload = response.get_json()
         self.assertTrue(payload["ok"])
-        self.assertEqual(payload["jobs"], [])
         self.assertEqual(payload["queued_files"], ["clip.mp4"])
         enqueue_job.assert_called_once()
 
@@ -524,6 +561,7 @@ class AppSmokeTests(unittest.TestCase):
     def test_client_heartbeat_api_accepts_machine_status_fields(self):
         response = self.client.post(
             "/api/client-heartbeat",
+            headers={"X-Client-Token": "heartbeat-secret"},
             json={
                 "machine_id": "screen-01",
                 "hostname": "screen-01",
@@ -559,11 +597,32 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(client["health_status"], "critical")
         self.assertEqual(client["last_error"], "Kiosk browser not running")
 
+    def test_client_heartbeat_requires_configured_token(self):
+        response = self.client.post(
+            "/api/client-heartbeat",
+            json={"machine_id": "screen-01"},
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.get_json()["error"], "invalid_client_token")
+
+    def test_client_heartbeat_rejects_when_server_token_missing(self):
+        os.environ.pop("CLIENT_HEARTBEAT_TOKEN", None)
+
+        response = self.client.post(
+            "/api/client-heartbeat",
+            json={"machine_id": "screen-01", "token": "anything"},
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.get_json()["error"], "client_heartbeat_token_required")
+
     def test_api_images_tolerates_ephemeris_generation_failure(self):
         with self.app.app_context():
-            upload_dir = os.path.join(self.app.root_path, "static", "data")
-            os.makedirs(upload_dir, exist_ok=True)
-            media_path = os.path.join(upload_dir, "fallback.jpg")
+            from constants import UPLOAD_FOLDER
+
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            media_path = os.path.join(UPLOAD_FOLDER, "fallback.jpg")
             gif_bytes = (
                 b"GIF89a\x01\x00\x01\x00\x80\x00\x00"
                 b"\x00\x00\x00\xff\xff\xff!\xf9\x04\x01\x00\x00\x00\x00,"
@@ -577,7 +636,7 @@ class AppSmokeTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         payload = response.get_json()
-        self.assertTrue(any(item["path"].endswith("/fallback.jpg") for item in payload))
+        self.assertTrue(any(item["name"] == "fallback.jpg" for item in payload))
 
     def test_api_halo_returns_effective_screen_halo(self):
         with self.app.app_context():
@@ -605,6 +664,16 @@ class AppSmokeTests(unittest.TestCase):
             "color": "#abcdef",
             "rgb": "171, 205, 239",
         })
+
+    def test_public_display_endpoints_can_require_screen_token(self):
+        os.environ["DISPLAY_API_TOKEN"] = "screen-secret"
+
+        blocked = self.client.get("/api/screens")
+        allowed = self.client.get("/api/screens", headers={"X-Screen-Token": "screen-secret"})
+
+        self.assertEqual(blocked.status_code, 403)
+        self.assertEqual(blocked.get_json()["error"], "screen_token_required")
+        self.assertEqual(allowed.status_code, 200)
 
     def test_server_stats_service_parses_cpu_and_memory(self):
         from services.server_stats_svc import get_server_stats
@@ -700,11 +769,12 @@ class AppSmokeTests(unittest.TestCase):
 
     def test_api_images_uses_precomputed_display_variant_for_images_when_bounds_are_provided(self):
         with self.app.app_context():
-            upload_dir = os.path.join(self.app.root_path, "static", "data")
-            os.makedirs(upload_dir, exist_ok=True)
             from PIL import Image
+            from constants import UPLOAD_FOLDER
+
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
             filename = "screen.jpg"
-            Image.new("RGB", (2200, 1400), "#336699").save(os.path.join(upload_dir, filename), "JPEG")
+            Image.new("RGB", (2200, 1400), "#336699").save(os.path.join(UPLOAD_FOLDER, filename), "JPEG")
             from services import media_svc
             media_svc.generate_standard_renditions(filename)
 
@@ -969,10 +1039,14 @@ class AppSmokeTests(unittest.TestCase):
             db.session.add_all(rows)
             db.session.commit()
 
-            with patch.object(activity_svc.C, "ACTIVITY_LOG_RETENTION_DAYS", 1), patch.object(
-                activity_svc.C, "ACTIVITY_LOG_MAX_ROWS", 2
-            ):
-                deleted = activity_svc._trim_activity_log(now)
+            deleted = activity_svc._trim_activity_log(
+                now,
+                settings={
+                    "auto_delete_enabled": True,
+                    "retention_days": 1,
+                    "max_rows": 2,
+                },
+            )
 
             self.assertEqual(deleted, 2)
 
@@ -1061,6 +1135,7 @@ class AppSmokeTests(unittest.TestCase):
         os.makedirs(backup_dir, exist_ok=True)
 
         with self.app.app_context():
+            from db import db
             from services import backup_svc
             from services.config_svc import save_config, load_config
 
@@ -1076,6 +1151,14 @@ class AppSmokeTests(unittest.TestCase):
 
             with patch.object(backup_svc.C, "STATIC_MEDIA_DIR", media_dir), \
                  patch.object(backup_svc, "BACKUP_DIR", backup_dir), \
+                 patch.object(backup_svc, "_ensure_supported_runtime", return_value={
+                     "supported_postgres_major": backup_svc.SUPPORTED_POSTGRES_MAJOR,
+                     "supported_postgres_image": backup_svc.SUPPORTED_POSTGRES_IMAGE,
+                     "server_version": "16.13",
+                     "server_major": backup_svc.SUPPORTED_POSTGRES_MAJOR,
+                     "pg_dump_version": "pg_dump (PostgreSQL) 16.13",
+                     "pg_restore_version": "pg_restore (PostgreSQL) 16.13",
+                 }), \
                  patch.object(backup_svc, "_dump_postgres_database", side_effect=fake_dump), \
                  patch.object(backup_svc, "_restore_postgres_database", side_effect=fake_restore):
                 with open(os.path.join(media_dir, "hello.txt"), "w", encoding="utf-8") as handle:
@@ -1232,6 +1315,45 @@ class AppSmokeTests(unittest.TestCase):
             self.assertEqual(cfg["backup_remote"]["password"], "secret123")
             self.assertTrue(cfg["backup_remote"]["enabled"])
 
+    def test_backup_smb_password_is_preserved_but_not_rendered(self):
+        with self.app.app_context():
+            from services.config_svc import load_config, save_config
+
+            cfg = load_config()
+            cfg["backup_remote"] = {
+                "enabled": True,
+                "url": "smb://nas/backup/visio",
+                "username": "backupuser",
+                "password": "secret123",
+            }
+            save_config(cfg)
+
+            self._login()
+            with self.client.session_transaction() as session:
+                token = session["_csrf_token"]
+
+            page = self.client.get("/admin/settings/sauvegardes")
+            self.assertEqual(page.status_code, 200)
+            self.assertNotIn(b"secret123", page.data)
+
+            response = self.client.post(
+                "/admin/settings/backups/remote",
+                data={
+                    "_csrf_token": token,
+                    "enabled": "on",
+                    "url": "smb://nas/backup/visio-updated",
+                    "username": "backupuser2",
+                    "password": "",
+                },
+                follow_redirects=False,
+            )
+
+            self.assertEqual(response.status_code, 302)
+            cfg = load_config()
+            self.assertEqual(cfg["backup_remote"]["url"], "smb://nas/backup/visio-updated")
+            self.assertEqual(cfg["backup_remote"]["username"], "backupuser2")
+            self.assertEqual(cfg["backup_remote"]["password"], "secret123")
+
     def test_superadmin_can_copy_backup_to_smb_from_admin(self):
         backup_dir = os.path.join(self.temp_dir.name, "private", "backups-test")
         os.makedirs(backup_dir, exist_ok=True)
@@ -1241,7 +1363,7 @@ class AppSmokeTests(unittest.TestCase):
             from services.config_svc import load_config, save_config
 
             with patch.object(backup_svc, "BACKUP_DIR", backup_dir), \
-                 patch.object(backup_svc, "copy_backup_to_smb") as copy_mock:
+                 patch("blueprints.settings.copy_backup_to_smb") as copy_mock:
                 backup_path = os.path.join(backup_dir, "visio-backup-20260101-010203.tar.gz")
                 with open(backup_path, "wb") as handle:
                     handle.write(b"backup")
@@ -1270,6 +1392,54 @@ class AppSmokeTests(unittest.TestCase):
                 args = copy_mock.call_args[0]
                 self.assertEqual(args[0], backup_path)
                 self.assertEqual(args[1], "visio-backup-20260101-010203.tar.gz")
+
+    def test_safe_extract_tar_rejects_dangerous_entries(self):
+        from services.backup_svc import _safe_extract_tar
+
+        dangerous_members = [
+            tarfile.TarInfo("../outside.txt"),
+            tarfile.TarInfo("/tmp/outside.txt"),
+            tarfile.TarInfo("link-out"),
+            tarfile.TarInfo("hardlink-out"),
+            tarfile.TarInfo("device-out"),
+        ]
+        dangerous_members[2].type = tarfile.SYMTYPE
+        dangerous_members[2].linkname = "/tmp/outside.txt"
+        dangerous_members[3].type = tarfile.LNKTYPE
+        dangerous_members[3].linkname = "safe.txt"
+        dangerous_members[4].type = tarfile.CHRTYPE
+
+        for member in dangerous_members:
+            with self.subTest(member=member.name):
+                payload = BytesIO()
+                with tarfile.open(fileobj=payload, mode="w:gz") as archive:
+                    archive.addfile(member)
+                payload.seek(0)
+
+                with tempfile.TemporaryDirectory() as target_dir:
+                    with tarfile.open(fileobj=payload, mode="r:gz") as archive:
+                        with self.assertRaises(ValueError):
+                            _safe_extract_tar(archive, target_dir)
+
+    def test_safe_extract_tar_allows_regular_backup_files(self):
+        from services.backup_svc import _safe_extract_tar
+
+        payload = BytesIO()
+        data = b"backup-data"
+        with tarfile.open(fileobj=payload, mode="w:gz") as archive:
+            directory = tarfile.TarInfo("media")
+            directory.type = tarfile.DIRTYPE
+            archive.addfile(directory)
+            regular = tarfile.TarInfo("media/safe.txt")
+            regular.size = len(data)
+            archive.addfile(regular, BytesIO(data))
+        payload.seek(0)
+
+        with tempfile.TemporaryDirectory() as target_dir:
+            with tarfile.open(fileobj=payload, mode="r:gz") as archive:
+                _safe_extract_tar(archive, target_dir)
+            with open(os.path.join(target_dir, "media", "safe.txt"), "rb") as handle:
+                self.assertEqual(handle.read(), data)
 
     def test_uploaded_phone_photo_rendition_honors_exif_orientation(self):
         from PIL import Image

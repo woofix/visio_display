@@ -7,6 +7,7 @@ from flask import Blueprint, request, jsonify
 from services.config_svc import (
     get_screen_halo_color,
     halo_color_to_rgb,
+    is_feature_enabled,
     load_config,
 )
 from services.clients_svc import record_client_heartbeat
@@ -21,6 +22,25 @@ from services.ephemeris_svc import generate_ephemeride_image
 from constants import UPLOAD_FOLDER
 
 bp = Blueprint('api', __name__)
+
+
+def _screen_api_token_is_valid():
+    expected = os.environ.get('DISPLAY_API_TOKEN', '').strip()
+    if not expected:
+        return True
+    provided = (
+        request.headers.get('X-Screen-Token')
+        or request.args.get('screen_token')
+        or request.args.get('token')
+        or ''
+    )
+    return bool(provided) and secrets.compare_digest(str(provided), expected)
+
+
+def _screen_api_guard():
+    if _screen_api_token_is_valid():
+        return None
+    return jsonify({"error": "screen_token_required"}), 403
 
 
 def _requested_display_bounds():
@@ -68,6 +88,9 @@ def api_config():
 
 @bp.route('/api/priority-alert')
 def api_priority_alert():
+    guard = _screen_api_guard()
+    if guard:
+        return guard
     alert = load_config().get('priority_alert', {})
     return jsonify({
         'message': str(alert.get('message', '') or ''),
@@ -91,10 +114,14 @@ def api_client_policy():
 
 @bp.route('/api/images')
 def get_images():
-    try:
-        generate_ephemeride_image()
-    except Exception as exc:
-        print(f"[EPHEMERIS ERROR] {exc}")
+    guard = _screen_api_guard()
+    if guard:
+        return guard
+    if is_feature_enabled('ephemeris'):
+        try:
+            generate_ephemeride_image()
+        except Exception as exc:
+            print(f"[EPHEMERIS ERROR] {exc}")
     screen = request.args.get('screen', '').strip().lower()
     bounds = _requested_display_bounds()
     cfg    = load_config()
@@ -140,6 +167,9 @@ def get_images():
 
 @bp.route('/api/durations')
 def api_durations():
+    guard = _screen_api_guard()
+    if guard:
+        return guard
     screen = request.args.get('screen', '').strip().lower()
     cfg    = load_config()
     if screen and screen in cfg.get('screens', {}):
@@ -151,18 +181,27 @@ def api_durations():
 
 @bp.route('/api/pools')
 def api_pools():
+    guard = _screen_api_guard()
+    if guard:
+        return guard
     cfg = load_config()
     return jsonify(cfg.get('group_pools', {}))
 
 
 @bp.route('/api/screens')
 def api_screens():
+    guard = _screen_api_guard()
+    if guard:
+        return guard
     cfg = load_config()
     return jsonify(list(cfg.get('screens', {}).keys()))
 
 
 @bp.route('/api/halo')
 def api_halo():
+    guard = _screen_api_guard()
+    if guard:
+        return guard
     screen = request.args.get('screen', '').strip().lower()
     cfg = load_config()
     color = get_screen_halo_color(screen, cfg)

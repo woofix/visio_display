@@ -54,6 +54,19 @@ CLIENT_HEARTBEAT_EXTRA_COLUMNS = {
     "last_error": "VARCHAR(512) NOT NULL DEFAULT ''",
 }
 
+SCHEMA_MIGRATIONS = (
+    {
+        "table": "client_heartbeats",
+        "columns": CLIENT_HEARTBEAT_EXTRA_COLUMNS,
+    },
+    {
+        "table": "users",
+        "columns": {
+            "must_change_password": "BOOLEAN NOT NULL DEFAULT false",
+        },
+    },
+)
+
 
 def env_flag(name, default=False):
     value = os.environ.get(name)
@@ -215,40 +228,42 @@ def require_database_url():
     )
 
 
-def migrate_client_heartbeats_schema():
+def _apply_additive_column_migration(table_name, column_definitions):
     try:
         inspector = inspect(db.engine)
         existing_columns = {
             column["name"]
-            for column in inspector.get_columns("client_heartbeats")
+            for column in inspector.get_columns(table_name)
         }
     except Exception:
-        LOGGER.exception("Unable to inspect client_heartbeats schema")
+        LOGGER.exception("Unable to inspect %s schema", table_name)
         return
 
     if not existing_columns:
         return
     changed = False
-    for column_name in CLIENT_HEARTBEAT_EXTRA_COLUMNS:
-        if column_name not in CLIENT_HEARTBEAT_EXTRA_COLUMNS:
-            raise RuntimeError(f"Unexpected client_heartbeats column: {column_name}")
-        column_sql = CLIENT_HEARTBEAT_EXTRA_COLUMNS[column_name]
+    for column_name, column_sql in column_definitions.items():
         if column_name in existing_columns:
             continue
         try:
             # SQL identifiers and column definitions cannot be bound as parameters.
-            # Keep both fragments restricted to the local whitelist above to avoid SQL injection.
+            # Keep both fragments restricted to local migration definitions to avoid SQL injection.
             db.session.execute(
-                text("ALTER TABLE client_heartbeats ADD COLUMN " + column_name + " " + column_sql)
+                text("ALTER TABLE " + table_name + " ADD COLUMN " + column_name + " " + column_sql)
             )
             changed = True
         except Exception:
             db.session.rollback()
-            LOGGER.exception("Unable to add column %s to client_heartbeats", column_name)
+            LOGGER.exception("Unable to add column %s to %s", column_name, table_name)
             return
 
     if changed:
         db.session.commit()
+
+
+def migrate_database_schema():
+    for migration in SCHEMA_MIGRATIONS:
+        _apply_additive_column_migration(migration["table"], migration["columns"])
 
 
 def get_csrf_token():
@@ -308,31 +323,12 @@ def configure_proxy(app):
     )
 
 
-def migrate_users_schema():
-    try:
-        inspector = inspect(db.engine)
-        existing_columns = {col["name"] for col in inspector.get_columns("users")}
-    except Exception:
-        LOGGER.exception("Unable to inspect users schema")
-        return
-    if "must_change_password" not in existing_columns:
-        try:
-            db.session.execute(
-                text("ALTER TABLE users ADD COLUMN must_change_password BOOLEAN NOT NULL DEFAULT false")
-            )
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-            LOGGER.exception("Unable to add column must_change_password to users")
-
-
 def initialize_database(app):
     from services.search_index_svc import reseed_search_index
     db.init_app(app)
     with app.app_context():
         db.create_all()
-        migrate_client_heartbeats_schema()
-        migrate_users_schema()
+        migrate_database_schema()
         reseed_search_index()
         init_users()
         init_rbac()

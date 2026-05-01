@@ -19,4 +19,6 @@ Contact the maintainers privately through GitHub with:
 - Use HTTPS and `SESSION_COOKIE_SECURE=1` when deploying behind a reverse proxy.
 - Restrict `TRUSTED_HOSTS` to the expected hostnames in production.
 - Set `CLIENT_HEARTBEAT_TOKEN` on managed deployments when client heartbeat submissions should require a shared token.
-- Backups can include media, private application data and a copy of `.env`; store them accordingly.
+- Public display endpoints are LAN-friendly by default. Set `DISPLAY_API_TOKEN` to require `X-Screen-Token` or `?screen_token=` on `/api/images`, `/api/durations`, `/api/pools`, `/api/screens`, `/api/halo` and `/api/priority-alert`.
+- Backups can include media, private application data and a copy of `.env`; treat backup archives as secrets and store them accordingly.
+- Remote client operations still support password-based SSH for convenience, but prefer SSH keys where possible. When password mode is used, the app passes the password to `sshpass` through a temporary `0600` file instead of command-line arguments.

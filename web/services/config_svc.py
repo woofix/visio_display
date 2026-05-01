@@ -166,9 +166,10 @@ def normalize_config(cfg):
     merged["activity_log"]["auto_delete_enabled"] = bool(
         merged["activity_log"].get("auto_delete_enabled", True)
     )
+    max_rows_minimum = min(1000, C.ACTIVITY_LOG_MAX_ROWS)
     for key, minimum, fallback in (
         ("retention_days", 1, _default_activity_log()["retention_days"]),
-        ("max_rows", 1000, _default_activity_log()["max_rows"]),
+        ("max_rows", max_rows_minimum, _default_activity_log()["max_rows"]),
     ):
         try:
             merged["activity_log"][key] = max(minimum, int(merged["activity_log"].get(key)))

@@ -264,6 +264,20 @@ const JS_CANCEL_BTN      = {{ t('js_queue_cancel_btn') | tojson }};
 const JS_EMPTY_ACTIVE    = {{ t('js_queue_empty_active') | tojson }};
 const JS_EMPTY_RECENT    = {{ t('js_queue_empty_recent') | tojson }};
 const JS_CONFIRM_CANCEL  = {{ t('js_queue_confirm_cancel') | tojson }};
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+}
+
+function escapeHtmlAttr(value) {
+    return escapeHtml(value);
+}
+
 const queueForceModal = document.getElementById('queue-force-modal');
 const queueForceCancelBtn = document.getElementById('queue-force-cancel');
 const queueForceConfirmBtn = document.getElementById('queue-force-confirm');
@@ -330,19 +344,22 @@ async function refreshQueue() {
             activeEl.innerHTML = data.active.map(j => {
                 const isPending = j.status === 'pending';
                 const pct = (j.progress !== undefined && j.progress >= 0) ? j.progress : null;
+                const safePct = pct === null ? null : Math.max(0, Math.min(100, Number(pct) || 0));
+                const safeStatus = escapeHtmlAttr(j.status || '');
+                const safeId = escapeHtmlAttr(j.id || '');
                 const progressBar = (!isPending && pct !== null)
-                    ? `<div class="job-progress-wrap"><div class="job-progress-fill" style="width:${pct}%"></div></div>`
+                    ? `<div class="job-progress-wrap"><div class="job-progress-fill" style="width:${safePct}%"></div></div>`
                     : '';
-                const metaPct = (!isPending && pct !== null) ? ` — ${pct}%` : '';
+                const metaPct = (!isPending && pct !== null) ? ` — ${safePct}%` : '';
                 return `<div class="job-card">
-                    <div class="job-icon ${j.status}">${isPending ? '⏳' : '⚙️'}</div>
+                    <div class="job-icon ${safeStatus}">${isPending ? '⏳' : '⚙️'}</div>
                     <div class="job-info">
-                        <div class="job-name">${j.filename}</div>
-                        <div class="job-meta">${JS_ADDED_ON} ${j.added.slice(0,16).replace('T',' ')}${metaPct}</div>
+                        <div class="job-name">${escapeHtml(j.filename || '')}</div>
+                        <div class="job-meta">${escapeHtml(JS_ADDED_ON)} ${escapeHtml((j.added || '').slice(0,16).replace('T',' '))}${metaPct}</div>
                         ${progressBar}
                     </div>
-                    <span class="job-status ${j.status}">${isPending ? JS_PENDING : JS_PROCESSING}</span>
-                    ${isPending ? `<button class="btn sm danger" onclick="cancelJob('${j.id}')">${JS_CANCEL_BTN}</button>` : ''}
+                    <span class="job-status ${safeStatus}">${isPending ? escapeHtml(JS_PENDING) : escapeHtml(JS_PROCESSING)}</span>
+                    ${isPending ? `<button class="btn sm danger" onclick="cancelJob('${safeId}')">${escapeHtml(JS_CANCEL_BTN)}</button>` : ''}
                 </div>`;
             }).join('');
         } else {
@@ -356,17 +373,19 @@ async function refreshQueue() {
         if ((data.recent || []).length) {
             recentEl.innerHTML = [...data.recent].reverse().map(j => {
                 const isDone = j.status === 'done';
+                const safeStatus = escapeHtmlAttr(j.status || '');
+                const safeId = escapeHtmlAttr(j.id || '');
                 const result = isDone
-                    ? `<span class="job-result">${j.before} Mo → ${j.after} Mo (÷${j.ratio})</span>`
-                    : `<span class="job-result error">${j.message || 'ffmpeg failed'}</span>`;
+                    ? `<span class="job-result">${escapeHtml(j.before)} Mo → ${escapeHtml(j.after)} Mo (÷${escapeHtml(j.ratio)})</span>`
+                    : `<span class="job-result error">${escapeHtml(j.message || 'ffmpeg failed')}</span>`;
                 return `<div class="job-card">
                     <div class="job-icon result">${isDone ? '✅' : '❌'}</div>
                     <div class="job-info">
-                        <div class="job-name">${j.filename}</div>
-                        <div class="job-meta">${result} — ${(j.finished||'').slice(0,16).replace('T',' ')}</div>
+                        <div class="job-name">${escapeHtml(j.filename || '')}</div>
+                        <div class="job-meta">${result} — ${escapeHtml((j.finished||'').slice(0,16).replace('T',' '))}</div>
                     </div>
-                    <span class="job-status ${j.status}">${isDone ? JS_DONE : JS_ERROR}</span>
-                    <button onclick="cancelJob('${j.id}')" class="job-dismiss" title="✕">✕</button>
+                    <span class="job-status ${safeStatus}">${isDone ? escapeHtml(JS_DONE) : escapeHtml(JS_ERROR)}</span>
+                    <button onclick="cancelJob('${safeId}')" class="job-dismiss" title="✕">✕</button>
                 </div>`;
             }).join('');
         } else {

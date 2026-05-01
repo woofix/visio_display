@@ -31,7 +31,7 @@ warning() {
 
 error() {
     ERROR_COUNT=$((ERROR_COUNT + 1))
-    echo "error: $1" >&2
+    echo "erreur: $1" >&2
 }
 
 usage() {

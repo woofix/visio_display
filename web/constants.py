@@ -20,16 +20,20 @@ def _resolve_app_path(*parts):
     return os.path.join(BASE_DIR, *parts)
 
 
-def _resolve_data_dir():
-    configured = os.environ.get('VISIO_DATA_DIR')
+def _resolve_env_path(name, *default_parts):
+    configured = os.environ.get(name)
     if not configured:
-        return _resolve_app_path('data', 'private')
+        return _resolve_app_path(*default_parts)
     if os.path.isabs(configured):
         return configured
     return _resolve_app_path(configured)
 
 
-STATIC_MEDIA_DIR = _resolve_app_path('static', 'data')
+def _resolve_data_dir():
+    return _resolve_env_path('VISIO_DATA_DIR', 'data', 'private')
+
+
+STATIC_MEDIA_DIR = _resolve_env_path('VISIO_STATIC_MEDIA_DIR', 'static', 'data')
 LEGACY_STATIC_MEDIA_DIR = _resolve_app_path('static', 'media')
 ORIGINAL_MEDIA_SUBDIR = 'original'
 STATIC_MEDIA_URL = '/static/data'

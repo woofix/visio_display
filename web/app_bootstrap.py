@@ -229,12 +229,17 @@ def migrate_client_heartbeats_schema():
     if not existing_columns:
         return
     changed = False
-    for column_name, column_sql in CLIENT_HEARTBEAT_EXTRA_COLUMNS.items():
+    for column_name in CLIENT_HEARTBEAT_EXTRA_COLUMNS:
+        if column_name not in CLIENT_HEARTBEAT_EXTRA_COLUMNS:
+            raise RuntimeError(f"Unexpected client_heartbeats column: {column_name}")
+        column_sql = CLIENT_HEARTBEAT_EXTRA_COLUMNS[column_name]
         if column_name in existing_columns:
             continue
         try:
+            # SQL identifiers and column definitions cannot be bound as parameters.
+            # Keep both fragments restricted to the local whitelist above to avoid SQL injection.
             db.session.execute(
-                text(f"ALTER TABLE client_heartbeats ADD COLUMN {column_name} {column_sql}")
+                text("ALTER TABLE client_heartbeats ADD COLUMN " + column_name + " " + column_sql)
             )
             changed = True
         except Exception:

@@ -4,7 +4,7 @@ import json
 from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
-PASSWORD_HASH_PLACEHOLDER = '__REDIS__'
+LEGACY_PASSWORD_HASH_PLACEHOLDER = '__REDIS__'
 
 
 class Role(db.Model):
@@ -73,12 +73,12 @@ class User(db.Model):
     @classmethod
     def from_dict(cls, username, entry):
         if isinstance(entry, str):
-            return cls(username=username, password_hash=PASSWORD_HASH_PLACEHOLDER,
+            return cls(username=username, password_hash=entry,
                        superadmin=False, permissions='[]')
         screens = entry.get('screens')
         return cls(
             username=username,
-            password_hash=PASSWORD_HASH_PLACEHOLDER,
+            password_hash=entry.get('password_hash') or LEGACY_PASSWORD_HASH_PLACEHOLDER,
             superadmin=bool(entry.get('superadmin', False)),
             permissions=json.dumps(entry.get('permissions', [])),
             screens=json.dumps(screens) if screens is not None else None,

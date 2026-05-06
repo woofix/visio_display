@@ -1,6 +1,5 @@
-# Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
-
 #!/usr/bin/env python3
+# Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 """Reset the password of an existing super-admin account."""
 
 from __future__ import annotations
@@ -11,25 +10,31 @@ import os
 import sys
 from pathlib import Path
 
-ROOT_DIR = Path(__file__).resolve().parents[1]
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
+WEB_DIR = Path(__file__).resolve().parents[1]
+PROJECT_DIR = WEB_DIR.parent
+if str(WEB_DIR) not in sys.path:
+    sys.path.insert(0, str(WEB_DIR))
 
-try:
-    from app import create_app
-    from db import User
-    from services.queue_svc import get_redis
-    from services.users_svc import set_user_password
-except ModuleNotFoundError:
-    venv_python = ROOT_DIR / ".venv" / "bin" / "python"
-    if venv_python.exists() and os.environ.get("VISIO_RESET_BOOTSTRAPPED") != "1":
-        env = os.environ.copy()
-        env["VISIO_RESET_BOOTSTRAPPED"] = "1"
-        os.execve(str(venv_python), [str(venv_python), __file__, *sys.argv[1:]], env)
-    raise SystemExit(
-        "Python dependencies not found. Run the script with the project virtual environment "
-        f"({venv_python}) or install the Python dependencies."
-    )
+
+def import_app_modules():
+    try:
+        from app import create_app
+        from db import User
+        from services.activity_svc import log_config_change
+        from services.users_svc import set_must_change_password, set_user_password
+    except ModuleNotFoundError:
+        venv_python = PROJECT_DIR / ".venv" / "bin" / "python"
+        if not venv_python.exists():
+            venv_python = WEB_DIR / ".venv" / "bin" / "python"
+        if venv_python.exists() and os.environ.get("VISIO_RESET_BOOTSTRAPPED") != "1":
+            env = os.environ.copy()
+            env["VISIO_RESET_BOOTSTRAPPED"] = "1"
+            os.execve(str(venv_python), [str(venv_python), __file__, *sys.argv[1:]], env)
+        raise SystemExit(
+            "Python dependencies not found. Run the script with the project virtual environment "
+            f"({venv_python}) or install the Python dependencies."
+        )
+    return create_app, User, log_config_change, set_must_change_password, set_user_password
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -71,12 +76,25 @@ def configure_database_env(database_url: str | None) -> str:
     if current:
         return current
 
+    env_file = PROJECT_DIR / ".env"
+    if env_file.exists():
+        for line in env_file.read_text(encoding="utf-8").splitlines():
+            key, sep, value = line.partition("=")
+            if sep and key.strip() == "DATABASE_URL" and value.strip():
+                database_url = value.strip().strip('"').strip("'")
+                os.environ["DATABASE_URL"] = database_url
+                return database_url
+
     raise SystemExit(
-        "DATABASE_URL is required. This project now requires PostgreSQL."
+        "DATABASE_URL is required. This project now requires PostgreSQL.\n\n"
+        "If Visio-Display is running with Docker Compose, run this from the project root instead:\n"
+        "  docker compose exec app python3 /app/tools/reset_superadmin_password.py --list\n"
+        "  docker compose exec app python3 /app/tools/reset_superadmin_password.py --user <super-admin-name>\n\n"
+        "For a non-Docker local run, export DATABASE_URL first or pass --database-url."
     )
 
 
-def list_superadmins() -> list[str]:
+def list_superadmins(User) -> list[str]:
     rows = User.query.filter_by(superadmin=True).order_by(User.username).all()
     return [row.username for row in rows]
 
@@ -125,11 +143,12 @@ def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
 
-    os.chdir(ROOT_DIR)
+    os.chdir(WEB_DIR)
     database_label = configure_database_env(args.database_url)
+    create_app, User, log_config_change, set_must_change_password, set_user_password = import_app_modules()
     app = create_app(start_scheduler=False)
     with app.app_context():
-        superadmins = list_superadmins()
+        superadmins = list_superadmins(User)
         if args.list:
             if not superadmins:
                 print("No super-admin account exists in the database.")
@@ -147,11 +166,13 @@ def main() -> int:
         user = User.query.filter_by(username=target_user, superadmin=True).first()
         if user is None:
             raise SystemExit(f'Account "{target_user}" cannot be modified.')
-        get_redis().ping()
         set_user_password(target_user, password)
+        set_must_change_password(target_user, True)
+        log_config_change('system', f'local super-admin password reset:{target_user}')
 
     print(f'Database: {database_label}')
-    print(f'Redis password updated for super-admin "{target_user}".')
+    print(f'PostgreSQL password updated for super-admin "{target_user}".')
+    print("The account must change its password after the next login.")
     return 0
 
 

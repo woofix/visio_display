@@ -1,6 +1,7 @@
 # Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 import json
+import logging
 import os
 import re
 
@@ -12,8 +13,9 @@ from services.queue_svc import get_redis
 
 USERNAME_RE = re.compile(r'^[a-zA-Z0-9_.-]{3,64}$')
 MIN_PASSWORD_LENGTH = 10
-PASSWORD_HASH_PLACEHOLDER = '__REDIS__'
-PASSWORD_KEY_PREFIX = 'visio-display:user-password:'
+LEGACY_PASSWORD_HASH_PLACEHOLDER = '__REDIS__'
+LEGACY_PASSWORD_KEY_PREFIX = 'visio-display:user-password:'
+LOGGER = logging.getLogger(__name__)
 
 
 def normalize_username(value):
@@ -36,32 +38,43 @@ def _json_list(raw_value):
     return parsed if isinstance(parsed, list) else []
 
 
-def _password_key(username):
-    return f'{PASSWORD_KEY_PREFIX}{normalize_username(username)}'
-
-
-def get_password_hash(username):
-    raw = get_redis().get(_password_key(username))
-    if raw is None:
-        return ''
-    return raw.decode('utf-8') if isinstance(raw, bytes) else str(raw)
+def _legacy_password_key(username):
+    return f'{LEGACY_PASSWORD_KEY_PREFIX}{normalize_username(username)}'
 
 
 def set_user_password(username, password):
-    get_redis().set(_password_key(username), generate_password_hash(password))
+    user = get_user(username)
+    if user is None:
+        return False
+    user.password_hash = generate_password_hash(password)
+    db.session.commit()
+    return True
 
 
 def set_user_password_hash(username, password_hash):
-    get_redis().set(_password_key(username), password_hash)
+    user = get_user(username)
+    if user is None:
+        return False
+    user.password_hash = str(password_hash or '').strip()
+    db.session.commit()
+    return True
 
 
-def delete_user_password(username):
-    get_redis().delete(_password_key(username))
+def _delete_legacy_password_hash(username):
+    try:
+        get_redis().delete(_legacy_password_key(username))
+    except Exception:
+        LOGGER.debug("Unable to remove legacy Redis password hash for %s", username, exc_info=True)
 
 
 def verify_user_password(username, password):
-    password_hash = get_password_hash(username)
-    return bool(password_hash) and check_password_hash(password_hash, password)
+    user = get_user(username)
+    if user is None:
+        return False
+    password_hash = (user.password_hash or '').strip()
+    if not password_hash or password_hash == LEGACY_PASSWORD_HASH_PLACEHOLDER:
+        return False
+    return check_password_hash(password_hash, password)
 
 
 def get_user(username):
@@ -84,7 +97,7 @@ def create_user(username, password, *, superadmin=False, permissions=None, scree
 
     user = User(
         username=normalized,
-        password_hash=PASSWORD_HASH_PLACEHOLDER,
+        password_hash=generate_password_hash(password),
         superadmin=bool(superadmin),
         permissions=json.dumps(list(permissions or [])),
         screens=json.dumps(list(screens)) if screens is not None else None,
@@ -94,7 +107,6 @@ def create_user(username, password, *, superadmin=False, permissions=None, scree
     )
     db.session.add(user)
     db.session.commit()
-    set_user_password(normalized, password)
     return user
 
 
@@ -102,9 +114,10 @@ def delete_user_account(username):
     user = get_user(username)
     if user is None:
         return False
+    username = user.username
     db.session.delete(user)
     db.session.commit()
-    delete_user_password(user.username)
+    _delete_legacy_password_hash(username)
     return True
 
 
@@ -153,17 +166,48 @@ def update_user_screens(username, screens):
     return True
 
 
-def _migrate_password_hashes_to_redis():
-    changed = False
+def _read_legacy_password_hash(username):
+    try:
+        raw = get_redis().get(_legacy_password_key(username))
+    except Exception:
+        LOGGER.exception("Unable to read legacy Redis password hash for %s", username)
+        return ''
+    if raw is None:
+        return ''
+    return raw.decode('utf-8') if isinstance(raw, bytes) else str(raw)
+
+
+def _migrate_password_hashes_from_redis():
+    migrated_usernames = []
     for user in User.query.all():
         current_hash = (user.password_hash or '').strip()
-        if current_hash and current_hash != PASSWORD_HASH_PLACEHOLDER and not get_password_hash(user.username):
-            set_user_password_hash(user.username, current_hash)
-        if current_hash != PASSWORD_HASH_PLACEHOLDER:
-            user.password_hash = PASSWORD_HASH_PLACEHOLDER
-            changed = True
-    if changed:
+        if current_hash != LEGACY_PASSWORD_HASH_PLACEHOLDER:
+            continue
+        legacy_hash = _read_legacy_password_hash(user.username)
+        if not legacy_hash:
+            continue
+        user.password_hash = legacy_hash
+        migrated_usernames.append(user.username)
+    if migrated_usernames:
         db.session.commit()
+        for username in migrated_usernames:
+            _delete_legacy_password_hash(username)
+
+
+def _repair_env_superadmin_password_if_legacy():
+    username = os.environ.get('ADMIN_USER', '').strip()
+    password = os.environ.get('ADMIN_PASSWORD', '').strip()
+    if not username or not password:
+        return
+    user = get_user(username)
+    if user is None or not user.superadmin:
+        return
+    current_hash = (user.password_hash or '').strip()
+    if current_hash != LEGACY_PASSWORD_HASH_PLACEHOLDER:
+        return
+    user.password_hash = generate_password_hash(password)
+    user.must_change_password = True
+    db.session.commit()
 
 
 def load_users():
@@ -176,16 +220,19 @@ def save_users(users_dict):
 
     for username in existing_usernames - incoming_usernames:
         User.query.filter_by(username=username).delete()
-        delete_user_password(username)
+        _delete_legacy_password_hash(username)
 
     for username, entry in users_dict.items():
+        if isinstance(entry, dict) and not entry.get('password_hash'):
+            existing = db.session.get(User, username)
+            if existing is not None:
+                entry = {**entry, 'password_hash': existing.password_hash}
         db.session.merge(User.from_dict(username, entry))
 
     db.session.commit()
 
 
 def init_users():
-    get_redis().ping()
     if User.query.count() == 0:
         user = os.environ.get('ADMIN_USER', '').strip()
         pwd  = os.environ.get('ADMIN_PASSWORD', '').strip()
@@ -196,13 +243,13 @@ def init_users():
             )
         db.session.add(User(
             username=user,
-            password_hash=PASSWORD_HASH_PLACEHOLDER,
+            password_hash=generate_password_hash(pwd),
             superadmin=True,
             permissions='[]',
         ))
         db.session.commit()
-        set_user_password(user, pwd)
-    _migrate_password_hashes_to_redis()
+    _migrate_password_hashes_from_redis()
+    _repair_env_superadmin_password_if_legacy()
 
 
 def is_admin():

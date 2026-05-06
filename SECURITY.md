@@ -18,7 +18,7 @@ Contact the maintainers privately through GitHub with:
 - The bootstrap creates missing `SECRET_KEY`, `POSTGRES_PASSWORD` and `CLIENT_HEARTBEAT_TOKEN`, applies `chmod 600` to `.env`, creates `PRIVATE_DIR/backups`, and applies `chmod 700` to private data and backup directories.
 - Use HTTPS and `SESSION_COOKIE_SECURE=1` when deploying behind a reverse proxy.
 - Restrict `TRUSTED_HOSTS` to the expected hostnames in production.
-- Set `CLIENT_HEARTBEAT_TOKEN` on managed deployments when client heartbeat submissions should require a shared token.
+- Keep `CLIENT_HEARTBEAT_TOKEN` defined and shared only with managed kiosk clients; heartbeat submissions are rejected without it.
 - Public display endpoints are LAN-friendly by default. Set `DISPLAY_API_TOKEN` to require `X-Screen-Token` or `?screen_token=` on `/api/images`, `/api/durations`, `/api/pools`, `/api/screens`, `/api/halo` and `/api/priority-alert`.
 - Backups can include media, private application data and a copy of `.env`; treat backup archives as secrets and store them accordingly.
 - Remote client operations still support password-based SSH for convenience, but prefer SSH keys where possible. When password mode is used, the app passes the password to `sshpass` through a temporary `0600` file instead of command-line arguments.

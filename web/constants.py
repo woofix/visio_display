@@ -50,14 +50,6 @@ LEGACY_VIDEO_VARIANT_FOLDER = os.path.join(STATIC_MEDIA_DIR, '.video_variants')
 LEGACY_VIDEO_POSTER_FOLDER = os.path.join(STATIC_MEDIA_DIR, '.video_posters')
 IMAGES_FOLDER = _resolve_app_path('static', 'images')
 PRIVATE_DATA_DIR = _resolve_data_dir()
-DB_FILE       = os.path.join(PRIVATE_DATA_DIR, 'visio-display.db')
-CONFIG_FILE   = os.path.join(PRIVATE_DATA_DIR, 'config.json')
-QUEUE_FILE    = os.path.join(PRIVATE_DATA_DIR, 'queue.json')
-USERS_FILE    = os.path.join(PRIVATE_DATA_DIR, 'users.json')
-LEGACY_DB_FILE     = os.path.join(STATIC_MEDIA_DIR, 'visio-display.db')
-LEGACY_CONFIG_FILE = os.path.join(STATIC_MEDIA_DIR, 'config.json')
-LEGACY_QUEUE_FILE  = os.path.join(STATIC_MEDIA_DIR, 'queue.json')
-LEGACY_USERS_FILE  = os.path.join(STATIC_MEDIA_DIR, 'users.json')
 DEFAULT_LOGO  = 'logo.svg'
 LOGO_EXTS     = {'.svg', '.png', '.jpg', '.jpeg'}
 

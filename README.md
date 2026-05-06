@@ -257,7 +257,7 @@ Depuis l'onglet **Paramètres > Installation client**, renseigner :
 - le **mot de passe SSH** (requis — nécessite `sshpass` installé sur le serveur) ;
 - le **mot de passe admin / sudo** (optionnel — réutilise le mot de passe SSH si identique) ;
 - l'utilisateur local à configurer pour l'autologin ;
-- l'URL de base du serveur (ex. `https://cargot.tomas66.net`) ;
+- l'URL de base du serveur (ex. `https://visio.example.com`) ;
 - le nom d'écran (ex. `reception` ou `cuisine`) ;
 - le nom de la machine cliente.
 
@@ -1001,7 +1001,7 @@ From **Settings > Client installation**, provide:
 - the **SSH password** (required — `sshpass` must be installed on the server);
 - the **admin / sudo password** (optional — reuses the SSH password when identical);
 - the local user to configure for autologin;
-- the base server URL (for example `https://cargot.tomas66.net`);
+- the base server URL (for example `https://visio.example.com`);
 - the screen name (for example `reception` or `cuisine`);
 - the client machine name.
 

@@ -1,8 +1,8 @@
 /* Authentication screen */
 
 :root {
-    --auth-font-base: "Manrope", "Inter", sans-serif;
-    --auth-font-display: "Space Grotesk", "Manrope", sans-serif;
+    --auth-font-base: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --auth-font-display: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     --auth-bg-1: #0f172a;
     --auth-bg-2: #1e293b;
     --auth-bg-3: #312e81;

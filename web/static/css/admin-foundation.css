@@ -1,8 +1,8 @@
 /* GNU General Public License v3.0 (GPL-3.0) - Copyright (c) 2026 Eric TOMAS and Jean-michel TOMAS */
 
 :root {
-    --font-family-base: "Manrope", "Inter", sans-serif;
-    --font-family-display: "Space Grotesk", "Manrope", sans-serif;
+    --font-family-base: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-family-display: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     --font-family-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     --primary: #4f46e5;
     --primary-light: #8b8cff;

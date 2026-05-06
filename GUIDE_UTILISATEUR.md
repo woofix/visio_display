@@ -58,7 +58,7 @@ La page d'affichage est conçue pour fonctionner en plein écran, sans interacti
 
 > **Conseil d'utilisation** : Sur un Raspberry Pi, configurez le navigateur en mode kiosk (`chromium-browser --kiosk http://localhost:8081`) pour un affichage plein écran sans barre de navigation.
 
-Si vous utilisez l'installation client automatique depuis l'administration, saisissez l'**URL de base du serveur** (par exemple `https://cargot.tomas66.net`) puis, si besoin, le **nom d'écran**. Le client reconstruit lui-même l'URL finale d'affichage et ajoute `?screen=<nom>` uniquement quand un écran nommé est configuré.
+Si vous utilisez l'installation client automatique depuis l'administration, saisissez l'**URL de base du serveur** (par exemple `https://visio.example.com`) puis, si besoin, le **nom d'écran**. Le client reconstruit lui-même l'URL finale d'affichage et ajoute `?screen=<nom>` uniquement quand un écran nommé est configuré.
 
 ### À savoir
 
@@ -284,7 +284,7 @@ Depuis **Paramètres > Installation client** :
 1. Renseignez l'hôte ou l'IP du poste client, le port SSH, l'utilisateur SSH et l'utilisateur local à configurer.
 2. Saisissez le **mot de passe SSH** du compte distant (obligatoire — nécessite `sshpass` installé sur le serveur).
 3. Saisissez le **mot de passe admin / sudo** si différent du mot de passe SSH (laissez vide pour le réutiliser).
-4. Saisissez l'**URL de base du serveur** (ex. `https://cargot.tomas66.net`), pas une URL écrite en dur par écran.
+4. Saisissez l'**URL de base du serveur** (ex. `https://visio.example.com`), pas une URL écrite en dur par écran.
 5. Renseignez le **nom d'écran** si le poste doit ouvrir un écran nommé (ex. `reception`, `cuisine`).
 6. Renseignez le **nom de la machine** cliente.
 7. Lancez l'installation.

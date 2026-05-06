@@ -1300,9 +1300,11 @@ TRANSLATIONS = {
         'about_idea_label': 'Idée originale',
         'about_license_label': 'Licence',
         'about_license_link': 'Voir la licence',
+        'about_repository_label': 'Dépôt Git',
         'about_backend_label': 'Backend',
         'about_database_label': 'Base de données',
         'about_deployment_label': 'Déploiement',
+        'footer_repository_link': 'Dépôt Git',
 
         # ── Version ──
         'version_title': 'Version',
@@ -2596,9 +2598,11 @@ TRANSLATIONS = {
         'about_idea_label': 'Original idea',
         'about_license_label': 'License',
         'about_license_link': 'View license',
+        'about_repository_label': 'Git repository',
         'about_backend_label': 'Backend',
         'about_database_label': 'Database',
         'about_deployment_label': 'Deployment',
+        'footer_repository_link': 'Git repository',
 
         # ── Version ──
         'version_title': 'Version',

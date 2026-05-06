@@ -13,6 +13,7 @@ bp = Blueprint('about', __name__)
 
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_RELEASES_URL = 'https://github.com/woofix/visio_display/releases/tag'
+DEFAULT_REPOSITORY_URL = 'https://github.com/woofix/visio_display'
 
 
 def _get_version():
@@ -64,6 +65,10 @@ def _get_release_url(version):
     return f'{releases_url}/{clean_version}'
 
 
+def _get_repository_url():
+    return os.environ.get('APP_REPOSITORY_URL', DEFAULT_REPOSITORY_URL).strip()
+
+
 def _license_exists():
     return os.path.isfile(os.path.normpath(os.path.join(_BASE_DIR, '..', 'LICENSE')))
 
@@ -82,6 +87,7 @@ def about_page():
         logo_path=get_logo_path(),
         app_version=app_version,
         app_release_url=_get_release_url(app_version),
+        repository_url=_get_repository_url(),
         git_commit=_get_git_commit(),
         license_exists=_license_exists(),
     )

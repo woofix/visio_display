@@ -50,6 +50,10 @@
                     </td>
                 </tr>
                 <tr>
+                    <th>{{ t('about_repository_label') }}</th>
+                    <td><a class="about-repository" href="{{ repository_url }}" target="_blank" rel="noopener noreferrer">{{ repository_url }}</a></td>
+                </tr>
+                <tr>
                     <th>{{ t('about_description_label') }}</th>
                     <td>{{ t('about_description_text') }}</td>
                 </tr>
@@ -132,6 +136,14 @@ a.about-version {
     text-decoration: none;
 }
 a.about-version:hover {
+    text-decoration: underline;
+}
+.about-repository {
+    color: var(--primary);
+    font-weight: 700;
+    text-decoration: none;
+}
+.about-repository:hover {
     text-decoration: underline;
 }
 .about-commit {

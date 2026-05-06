@@ -423,6 +423,8 @@ window.__flashMessages = [{% for cat, msg in _fm %}{% set tone = cat if cat in [
     <footer class="admin-site-footer">
         <span>© 2026 Eric TOMAS — Licensed under the</span>
         <a href="https://github.com/woofix/visio_display/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">GNU GPL v3.0</a>
+        <span>·</span>
+        <a href="{{ repository_url }}" target="_blank" rel="noopener noreferrer">{{ t('footer_repository_link') }}</a>
     </footer>
 </div>
 

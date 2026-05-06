@@ -513,6 +513,7 @@ def register_template_context(app):
             app_name=cfg.get("app_name", "Helios"),
             lang=lang,
             static_version=static_version,
+            repository_url=os.environ.get("APP_REPOSITORY_URL", "https://github.com/woofix/visio_display").strip(),
             t=t,
             all_permissions=translated_permissions,
             default_screen_name=default_screen_name,

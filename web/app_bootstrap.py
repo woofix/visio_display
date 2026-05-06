@@ -421,6 +421,12 @@ def register_request_hooks(app):
         response.headers.setdefault("Origin-Agent-Cluster", "?1")
         response.headers.setdefault("X-Permitted-Cross-Domain-Policies", "none")
 
+        cacheable_static = request.endpoint == "static" and request.path.startswith("/static/css/")
+        if cacheable_static:
+            response.headers["Cache-Control"] = "public, max-age=2592000, immutable"
+            response.headers.pop("Pragma", None)
+            response.headers.pop("Expires", None)
+
         sensitive_path = (
             request.path in {"/login", "/logout"}
             or request.path.startswith("/admin")
@@ -428,7 +434,7 @@ def register_request_hooks(app):
             or request.path.startswith("/api/activity")
             or request.path.startswith("/api/queue")
         )
-        if session.get("user") or sensitive_path:
+        if sensitive_path and not cacheable_static:
             response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"
             response.headers["Pragma"] = "no-cache"
             response.headers["Expires"] = "0"
@@ -483,11 +489,14 @@ def register_template_context(app):
         cfg = load_config()
         default_screen_name = get_default_screen_name(cfg) or t("media_screen_default")
         translated_permissions = [(key, t(label_key)) for key, label_key in ALL_PERMISSIONS]
+        from services.version_svc import _read_local_version
+
+        static_version = _read_local_version() or "dev"
         admin_update_status = None
         if session.get("user") and request.path.startswith("/admin"):
             from services.version_svc import get_version_status
 
-            admin_update_status = get_version_status()
+            admin_update_status = get_version_status(allow_remote=False)
 
         current_user_must_change_password = False
         if username:
@@ -503,6 +512,7 @@ def register_template_context(app):
             theme=user_theme,
             app_name=cfg.get("app_name", "Helios"),
             lang=lang,
+            static_version=static_version,
             t=t,
             all_permissions=translated_permissions,
             default_screen_name=default_screen_name,

@@ -3,6 +3,7 @@ import os
 import tempfile
 import time
 import unittest
+import importlib.util
 from unittest.mock import patch
 
 from services import version_svc
@@ -14,6 +15,7 @@ class VersionServiceTests(unittest.TestCase):
         self.cache_file = os.path.join(self.temp_dir.name, "version_check.json")
         self._env_backup = {
             "APP_VERSION": os.environ.get("APP_VERSION"),
+            "VISIO_GIT_ROOT": os.environ.get("VISIO_GIT_ROOT"),
             "VISIO_VERSION_CHECK_TTL_SECONDS": os.environ.get("VISIO_VERSION_CHECK_TTL_SECONDS"),
         }
         os.environ["APP_VERSION"] = "1.0.0"
@@ -118,6 +120,27 @@ class VersionServiceTests(unittest.TestCase):
         self.assertEqual(status["remote_version"], "1.2.0")
         self.assertFalse(status["fetched_from_cache"])
 
+    def test_allow_remote_false_does_not_refresh_expired_cache(self):
+        os.environ["VISIO_VERSION_CHECK_TTL_SECONDS"] = "300"
+        payload = {
+            "remote_version": "1.0.0",
+            "fetch_error": "",
+            "fetched_at": int(time.time()) - 3600,
+            "source_url": version_svc.DEFAULT_VERSION_URL,
+        }
+        with open(self.cache_file, "w", encoding="utf-8") as handle:
+            json.dump(payload, handle)
+
+        with patch.object(version_svc, "VERSION_CACHE_FILE", self.cache_file), patch.object(
+            version_svc,
+            "_read_remote_version",
+            side_effect=AssertionError("network should not be called"),
+        ):
+            status = version_svc.get_version_status(allow_remote=False)
+
+        self.assertEqual(status["remote_version"], "1.0.0")
+        self.assertTrue(status["fetched_from_cache"])
+
     def test_future_cache_timestamp_is_refreshed(self):
         payload = {
             "remote_version": "1.0.0",
@@ -219,6 +242,37 @@ class VersionServiceTests(unittest.TestCase):
 
         self.assertEqual(status["status"], "update_available")
         self.assertEqual(status["remote_version"], "1.2.0")
+
+    def test_local_version_prefers_configured_git_root(self):
+        os.environ.pop("APP_VERSION", None)
+        os.environ["VISIO_GIT_ROOT"] = self.temp_dir.name
+        with open(os.path.join(self.temp_dir.name, "VERSION"), "w", encoding="utf-8") as handle:
+            handle.write("1.6.12\n")
+
+        self.assertEqual(version_svc._read_local_version(), "1.6.12")
+
+    def test_version_cache_uses_database_with_app_context(self):
+        if importlib.util.find_spec("flask") is None or importlib.util.find_spec("flask_sqlalchemy") is None:
+            self.skipTest("Flask dependencies are not installed")
+
+        from flask import Flask
+        from db import VersionCheckCache, db
+
+        app = Flask(__name__)
+        app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{os.path.join(self.temp_dir.name, 'cache.sqlite')}"
+        app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+        db.init_app(app)
+
+        with app.app_context():
+            db.create_all()
+            with patch.object(version_svc, "_read_remote_version", return_value=("1.2.0", "")):
+                status = version_svc.get_version_status(force_refresh=True)
+            row = db.session.get(VersionCheckCache, version_svc.DEFAULT_VERSION_URL)
+
+            self.assertEqual(status["remote_version"], "1.2.0")
+            self.assertIsNotNone(row)
+            self.assertEqual(row.remote_version, "1.2.0")
+            self.assertEqual(version_svc._read_cache()["remote_version"], "1.2.0")
 
     def test_remote_version_falls_back_to_curl(self):
         completed = type(

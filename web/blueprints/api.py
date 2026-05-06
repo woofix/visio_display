@@ -13,7 +13,7 @@ from services.config_svc import (
 from services.clients_svc import record_client_heartbeat
 from services.users_svc import is_admin
 from services.media_svc import (
-    get_all_media, get_file_info, is_media_scheduled, get_disk_usage,
+    get_all_media, get_media_type, is_media_scheduled, get_disk_usage,
     is_media_disabled, get_media_groups, is_group_active_on_screen,
     get_media_url, get_original_media_url,
 )
@@ -60,7 +60,7 @@ def _media_path(filename, media_type, bounds):
         context='display',
         bounds=bounds,
         allow_original=True,
-        generate_missing=True,
+        generate_missing=False,
     ) or get_original_media_url(filename)
 
 
@@ -145,7 +145,7 @@ def get_images():
             else:
                 files = all_files
         return jsonify([
-            {"path": _media_path(f, get_file_info(f)["type"], bounds), "type": get_file_info(f)["type"],
+            {"path": _media_path(f, get_media_type(f), bounds), "type": get_media_type(f),
              "name": f,
              "rev": int(os.path.getmtime(os.path.join(UPLOAD_FOLDER, f))) if os.path.exists(os.path.join(UPLOAD_FOLDER, f)) else 0,
              "groups": [g for g in get_media_groups(f, effective_cfg)
@@ -156,7 +156,7 @@ def get_images():
 
     files = campaign_override.get('files', []) if campaign_override else get_all_media(cfg)
     return jsonify([
-        {"path": _media_path(f, get_file_info(f)["type"], bounds), "type": get_file_info(f)["type"],
+        {"path": _media_path(f, get_media_type(f), bounds), "type": get_media_type(f),
          "name": f,
          "rev": int(os.path.getmtime(os.path.join(UPLOAD_FOLDER, f))) if os.path.exists(os.path.join(UPLOAD_FOLDER, f)) else 0,
          "groups": [g for g in get_media_groups(f, cfg) if is_group_active_on_screen(g, cfg, '')]}

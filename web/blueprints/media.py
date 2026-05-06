@@ -221,7 +221,7 @@ def admin_media():
     cfg       = load_config()
     screen    = request.args.get('screen', '').strip().lower()
     all_media = get_all_media()
-    infos     = {f: get_file_info(f) for f in all_media}
+    infos     = {f: get_file_info(f, include_dimensions=False) for f in all_media}
     q         = load_queue()
     queued    = {j['filename'] for j in q if j['status'] in ('pending', 'processing')}
     users     = load_users()
@@ -251,18 +251,17 @@ def admin_media():
     preview_urls = {}
     preview_media_urls = {}
     for filename in all_media:
-        is_queued = filename in queued
         preview_urls[filename] = get_media_url(
             filename,
             context='admin',
-            allow_original=not is_queued,
-            generate_missing=not is_queued,
-        ) or get_original_media_url(filename)
+            allow_original=False,
+            generate_missing=False,
+        ) or '/static/images/logo.svg'
         preview_media_urls[filename] = get_media_url(
             filename,
             context='preview',
             allow_original=True,
-            generate_missing=not is_queued,
+            generate_missing=False,
         ) or get_original_media_url(filename)
     effective_cfg = dict(view_cfg)
     effective_cfg['groups'] = cfg.get('groups', {})
@@ -301,7 +300,7 @@ def admin_programming_page():
     cfg = load_config()
     users = load_users()
     files = get_all_media()
-    media_infos = {filename: get_file_info(filename) for filename in files}
+    media_infos = {filename: get_file_info(filename, include_dimensions=False) for filename in files}
     allowed_screens = [screen for screen in cfg.get('screens', {}) if has_screen_access(screen)]
     default_screen_name = get_default_screen_name(cfg) or _t('media_screen_default')
 
@@ -335,6 +334,8 @@ def admin_programming_page():
     filter_screen_choices = ([('__global__', default_screen_name)] if has_screen_access('') else []) + [(screen, screen) for screen in allowed_screens]
     group_choices = sorted({group for entry in entries for group in entry.get('groups', [])}, key=str.casefold)
 
+    media_preview_map = build_media_preview_map(files, context='campaign')
+
     return render_template(
         'admin_programming.html',
         entries=entries,
@@ -354,7 +355,7 @@ def admin_programming_page():
                 'type': media_infos[f].get('type', 'unknown'),
                 'size': media_infos[f].get('size', '--'),
                 'dims': media_infos[f].get('dims', '--'),
-                'preview_url': build_media_preview_map([f], context='campaign').get(f),
+                'preview_url': media_preview_map.get(f),
             }
             for f in files
         ],

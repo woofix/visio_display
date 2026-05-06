@@ -19,12 +19,26 @@ def _get_version():
     v = os.environ.get('APP_VERSION', '').strip()
     if v:
         return v
-    version_file = os.path.join(_BASE_DIR, '..', 'VERSION')
-    try:
-        with open(os.path.normpath(version_file)) as f:
-            return f.read().strip() or '1.0.0'
-    except OSError:
-        pass
+    version_files = []
+    git_root = os.environ.get('VISIO_GIT_ROOT', '').strip()
+    if git_root:
+        version_files.append(os.path.join(git_root, 'VERSION'))
+    version_files.append(os.path.join(_BASE_DIR, '..', 'VERSION'))
+    version_files.append('/VERSION')
+
+    seen = set()
+    for version_file in version_files:
+        version_file = os.path.normpath(version_file)
+        if version_file in seen:
+            continue
+        seen.add(version_file)
+        try:
+            with open(version_file, encoding='utf-8') as f:
+                version = f.read().strip()
+            if version:
+                return version
+        except OSError:
+            continue
     return '1.0.0'
 
 

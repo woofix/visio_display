@@ -50,6 +50,22 @@ class AppConfig(db.Model):
     data = db.Column(db.Text, nullable=False, default='{}')
 
 
+class VersionCheckCache(db.Model):
+    __tablename__ = 'version_check_cache'
+    source_url     = db.Column(db.String(512), primary_key=True)
+    remote_version = db.Column(db.String(64), nullable=False, default='')
+    fetch_error    = db.Column(db.Text, nullable=False, default='')
+    fetched_at     = db.Column(db.Integer, nullable=False, default=0)
+
+    def to_dict(self):
+        return {
+            'source_url': self.source_url,
+            'remote_version': self.remote_version or '',
+            'fetch_error': self.fetch_error or '',
+            'fetched_at': self.fetched_at or 0,
+        }
+
+
 class User(db.Model):
     __tablename__ = 'users'
     username      = db.Column(db.String(64), primary_key=True)

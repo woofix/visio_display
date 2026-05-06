@@ -678,15 +678,15 @@ def get_media_url(filename, *, context='admin', bounds=None, allow_original=Fals
         return get_original_media_url(filename) if allow_original else None
 
 
-def build_media_preview_map(files, context='admin'):
+def build_media_preview_map(files, context='admin', *, generate_missing=False):
     previews = {}
     for filename in files:
         previews[filename] = get_media_url(
             filename,
             context=context,
-            allow_original=True,
-            generate_missing=True,
-        ) or get_original_media_url(filename)
+            allow_original=False,
+            generate_missing=generate_missing,
+        ) or '/static/images/logo.svg'
     return previews
 
 
@@ -900,13 +900,15 @@ def get_disk_usage():
     }
 
 
-def get_file_info(filename):
+def get_file_info(filename, *, include_dimensions=True):
     path = os.path.join(UPLOAD_FOLDER, filename)
     if not os.path.exists(path):
         return {"size": "--", "dims": "--", "type": "unknown"}
     size = os.path.getsize(path)
     ext  = os.path.splitext(filename)[1].lower()
     if ext in IMAGE_EXTS:
+        if not include_dimensions:
+            return {"size": f"{round(size/1024)} Ko", "dims": "image", "type": "image"}
         try:
             with Image.open(path) as img:
                 img = ImageOps.exif_transpose(img)

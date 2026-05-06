@@ -7,8 +7,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Administration{% endblock %} — {{ app_name }}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-foundation.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-pages.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-foundation.css', v=static_version) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-pages.css', v=static_version) }}">
     <style>{% block styles %}{% endblock %}</style>
 </head>
 <body>

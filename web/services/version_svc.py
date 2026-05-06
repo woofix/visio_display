@@ -90,12 +90,27 @@ def _read_local_version():
     env_version = os.environ.get("APP_VERSION", "").strip()
     if env_version:
         return env_version
-    version_file = os.path.normpath(os.path.join(DEFAULT_REPO_CWD, "VERSION"))
-    try:
-        with open(version_file, "r", encoding="utf-8") as handle:
-            return handle.read().strip()
-    except OSError:
-        return ""
+    version_files = []
+    git_root = os.environ.get("VISIO_GIT_ROOT", "").strip()
+    if git_root:
+        version_files.append(os.path.join(git_root, "VERSION"))
+    version_files.append(os.path.join(DEFAULT_REPO_CWD, "VERSION"))
+    version_files.append("/VERSION")
+
+    seen = set()
+    for version_file in version_files:
+        version_file = os.path.normpath(version_file)
+        if version_file in seen:
+            continue
+        seen.add(version_file)
+        try:
+            with open(version_file, "r", encoding="utf-8") as handle:
+                version = handle.read().strip()
+            if version:
+                return version
+        except OSError:
+            continue
+    return ""
 
 
 def _read_remote_version_with_curl(version_url, timeout=6):
@@ -147,6 +162,14 @@ def _read_remote_version(timeout=6):
 
 def _read_cache():
     try:
+        from flask import has_app_context
+        from db import VersionCheckCache, db
+    except ImportError:
+        has_app_context = None
+    if has_app_context and has_app_context():
+        row = db.session.get(VersionCheckCache, _version_url())
+        return row.to_dict() if row is not None else {}
+    try:
         with open(VERSION_CACHE_FILE, "r", encoding="utf-8") as handle:
             payload = json.load(handle)
         if not isinstance(payload, dict):
@@ -157,6 +180,29 @@ def _read_cache():
 
 
 def _write_cache(payload):
+    source_url = str(payload.get("source_url") or _version_url()).strip()
+    try:
+        from flask import has_app_context
+        from db import VersionCheckCache, db
+    except ImportError:
+        has_app_context = None
+    if has_app_context and has_app_context():
+        row = db.session.get(VersionCheckCache, source_url)
+        if row is None:
+            row = VersionCheckCache(source_url=source_url)
+            db.session.add(row)
+        row.remote_version = _clean_version(payload.get("remote_version", ""))
+        row.fetch_error = str(payload.get("fetch_error") or "")
+        try:
+            row.fetched_at = int(payload.get("fetched_at") or 0)
+        except (TypeError, ValueError):
+            row.fetched_at = 0
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            return False
+        return True
     try:
         os.makedirs(os.path.dirname(VERSION_CACHE_FILE), exist_ok=True)
         tmp_path = f"{VERSION_CACHE_FILE}.{os.getpid()}.tmp"
@@ -189,7 +235,7 @@ def _cache_is_fresh(cached, now):
     return now - fetched_at < ttl
 
 
-def get_version_status(force_refresh=False):
+def get_version_status(force_refresh=False, allow_remote=True):
     now = _now()
     version_url = _version_url()
     local_version = _read_local_version()
@@ -201,6 +247,10 @@ def get_version_status(force_refresh=False):
         remote_version = cached_remote_version
         fetch_error = cached.get("fetch_error", "")
         fetched_from_cache = True
+    elif not allow_remote:
+        remote_version = cached_remote_version
+        fetch_error = cached.get("fetch_error", "") if source_matches_cache else ""
+        fetched_from_cache = bool(cached_remote_version or fetch_error)
     else:
         previous_remote_version = cached_remote_version
         remote_version, fetch_error = _read_remote_version()

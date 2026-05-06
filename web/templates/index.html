@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Diaporama</title>
     <style>:root { --media-halo-rgb: {{ display_halo_rgb | default('138, 43, 226') }}; }</style>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/display-screen.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/display-screen.css', v=static_version) }}">
 </head>
 <body>
 <div id="screen-switcher" class="screen-switcher">

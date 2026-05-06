@@ -60,7 +60,7 @@ def _build_media_items():
     preview_map = build_media_preview_map(files, context='campaign')
     items = []
     for filename in files:
-        info = get_file_info(filename)
+        info = get_file_info(filename, include_dimensions=False)
         items.append(
             {
                 "filename": filename,
@@ -72,7 +72,7 @@ def _build_media_items():
                     filename,
                     context='preview',
                     allow_original=True,
-                    generate_missing=True,
+                    generate_missing=False,
                 ),
             }
         )

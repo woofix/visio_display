@@ -1,0 +1,615 @@
+<!-- GNU General Public License v3.0 (GPL-3.0) - Copyright (c) 2026 Woofix -->
+{% extends 'admin_layout.html' %}
+
+{% block title %}{{ t('campaigns_title') }}{% endblock %}
+{% block topbar_icon %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7V3m8 4V3"/><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 11h18"/><path d="M8 15h3"/><path d="M13 15h3"/><path d="M8 18h8"/></svg>{% endblock %}
+{% block topbar_breadcrumbs %}<div class="topbar-breadcrumbs">
+    <a href="/admin" class="bc-link">{{ app_name }}</a>
+    <svg class="bc-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    <span class="bc-current">{% block topbar_title %}{{ t('campaigns_title') }}{% endblock %}</span>
+</div>{% endblock %}
+{% block topbar_sub %}{{ t('campaigns_topbar_sub') }}{% endblock %}
+
+{% block styles %}
+.campaign-layout { display:flex; flex-direction:column; gap:20px; }
+.campaign-card, .campaign-panel { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow-sm); }
+.campaign-panel { padding:18px; }
+.campaign-main { display:flex; flex-direction:column; gap:16px; }
+.campaign-list { display:flex; flex-direction:column; gap:14px; }
+.campaign-card { padding:0; }
+.campaign-card-header { display:flex; justify-content:space-between; gap:12px; align-items:center; padding:14px 18px; cursor:pointer; user-select:none; }
+.campaign-card-header:hover { background:var(--surface-alt); border-radius:var(--radius); }
+.campaign-card.open .campaign-card-header { border-radius:var(--radius) var(--radius) 0 0; }
+.campaign-card-header-left { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.campaign-card-header-right { display:flex; align-items:center; gap:10px; flex-shrink:0; }
+.campaign-card-chevron { width:18px; height:18px; color:var(--text-3); transition:transform .2s; flex-shrink:0; }
+.campaign-card.open .campaign-card-chevron { transform:rotate(180deg); }
+.campaign-card-body { display:none; padding:0 18px 18px; border-top:1px solid var(--border); }
+.campaign-card.open .campaign-card-body { display:block; }
+.campaign-title { font-size:1rem; font-weight:800; color:var(--text); }
+.campaign-meta { font-size:.75rem; color:var(--text-3); margin-top:4px; }
+.campaign-owner { color:var(--text-3); }
+.campaign-owner strong { color:var(--text-2); font-weight:600; }
+.campaign-badges { display:flex; flex-wrap:wrap; gap:6px; }
+.campaign-badge { border-radius:999px; padding:4px 10px; font-size:.7rem; font-weight:700; }
+.campaign-badge.active { background:#dcfce7; color:#166534; }
+.campaign-badge.disabled { background:#fee2e2; color:#b91c1c; }
+.campaign-badge.archived { background:#e5e7eb; color:#4b5563; }
+.campaign-badge.priority { background:var(--primary-bg); color:var(--primary); }
+.campaign-stats { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; margin-top:14px; }
+.campaign-stat { background:var(--surface-alt); border-radius:10px; padding:8px 10px; min-width:92px; }
+.campaign-stat strong { display:block; font-size:.96rem; color:var(--text); }
+.campaign-stat span { font-size:.7rem; color:var(--text-3); text-transform:uppercase; letter-spacing:.05em; }
+.campaign-actions { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+.campaign-actions form { margin:0; }
+.campaign-form { display:grid; gap:14px; }
+.campaign-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px; }
+.campaign-field { display:flex; flex-direction:column; gap:6px; }
+.campaign-field label, .campaign-section-title { font-size:.72rem; font-weight:700; color:var(--text-2); text-transform:uppercase; letter-spacing:.06em; }
+.campaign-field input, .campaign-field select, .campaign-field textarea { border:1.5px solid var(--border); border-radius:10px; padding:10px 12px; font:inherit; color:var(--text); background:var(--surface); }
+.campaign-field input:focus, .campaign-field select:focus, .campaign-field textarea:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px rgba(124,58,237,.09); }
+.campaign-inline-help { font-size:.72rem; color:var(--text-3); line-height:1.5; }
+.campaign-checks { display:flex; flex-wrap:wrap; gap:8px; }
+.campaign-check { display:inline-flex; align-items:center; gap:8px; border:1px solid var(--border); border-radius:999px; padding:7px 12px; background:var(--surface-alt); font-size:.78rem; color:var(--text-2); }
+.campaign-check input { accent-color:var(--primary); }
+.campaign-check-label { min-width:0; color:inherit; overflow-wrap:anywhere; }
+.campaign-tags { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.campaign-tag { display:inline-flex; align-items:center; gap:6px; background:var(--primary-bg); color:var(--primary); border-radius:999px; padding:5px 10px; font-size:.72rem; font-weight:700; }
+.campaign-tag.muted { background:#f3f4f6; color:#6b7280; }
+.campaign-empty { padding:36px 20px; text-align:center; color:var(--text-3); background:var(--surface); border:1px dashed var(--border); border-radius:var(--radius); }
+.campaign-help { font-size:.78rem; color:var(--text-3); line-height:1.6; }
+.campaign-divider { height:1px; background:var(--border); margin:14px 0; }
+.campaign-card.highlight { box-shadow:0 0 0 2px rgba(124,58,237,.18), var(--shadow); }
+.campaign-panel h2 { font-family:var(--font-family-display); font-size:1rem; margin-bottom:6px; }
+.campaign-check.align-end { align-self:end; }
+.campaign-checks.spaced { margin-top:8px; }
+.campaign-library { padding:16px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow-sm); }
+.campaign-library-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
+.campaign-library-title { font-size:.95rem; font-weight:800; color:var(--text); }
+.campaign-library-sub { font-size:.76rem; color:var(--text-3); }
+.campaign-search-box { flex:1; min-width:200px; display:flex; align-items:center; gap:8px; background:var(--surface); border:1.5px solid var(--border); border-radius:var(--radius-sm); padding:7px 12px; transition:border-color .15s,box-shadow .15s; }
+.campaign-search-box:focus-within { border-color:var(--primary); box-shadow:0 0 0 3px rgba(124,58,237,.09); }
+.campaign-search-box svg { width:14px; height:14px; color:var(--text-3); flex-shrink:0; }
+.campaign-media-search { border:none; outline:none; font-family:inherit; font-size:.83rem; color:var(--text); background:transparent; flex:1; width:100%; min-width:0; padding:0; }
+.campaign-media-search::placeholder { color:var(--text-3); }
+.campaign-media-picker { display:grid; gap:12px; }
+.campaign-media-toolbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.campaign-media-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(110px, 1fr)); gap:10px; max-height:520px; overflow-y:auto; padding-right:4px; padding-bottom:2px; }
+.campaign-media-card { position:relative; border:2px solid var(--border); border-radius:12px; background:var(--surface); overflow:hidden; cursor:pointer; transition:border-color .16s, box-shadow .16s; box-shadow:var(--shadow-sm); }
+.campaign-media-card:hover { border-color:var(--primary); box-shadow:var(--shadow); }
+.campaign-media-card input { position:absolute; opacity:0; pointer-events:none; }
+.campaign-media-card.selected { border-color:var(--primary); box-shadow:0 0 0 3px var(--primary-fade); }
+.campaign-media-card.hidden { display:none; }
+.campaign-media-thumb-wrap { position:relative; width:100%; aspect-ratio:16/9; background:#0b1220; overflow:hidden; }
+.campaign-media-thumb, .campaign-media-video { width:100%; height:100%; display:block; object-fit:cover; }
+.campaign-media-type { position:absolute; top:5px; left:5px; border-radius:999px; padding:2px 6px; background:rgba(0,0,0,.55); color:#fff; font-size:.55rem; font-weight:700; letter-spacing:.04em; backdrop-filter:blur(4px); }
+.campaign-media-checkmark { position:absolute; inset:0; z-index:2; display:flex; align-items:center; justify-content:center; background:color-mix(in srgb, var(--primary) 70%, transparent); color:#fff; opacity:0; transition:opacity .16s; pointer-events:none; }
+.campaign-media-checkmark svg { filter:drop-shadow(0 1px 3px rgba(0,0,0,.3)); }
+.campaign-media-card.selected .campaign-media-checkmark { opacity:1; }
+.campaign-media-body { padding:6px 8px 8px; }
+.campaign-media-name { font-size:.7rem; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; }
+.campaign-media-meta { font-size:.63rem; color:var(--text-3); white-space:nowrap; display:block; margin-top:1px; }
+.campaign-media-count { font-size:.72rem; color:var(--text-3); }
+.campaign-media-summary { display:grid; grid-template-columns:repeat(auto-fill, minmax(90px, 1fr)); gap:8px; margin-top:10px; }
+.campaign-media-summary-item { border-radius:10px; overflow:hidden; border:1px solid var(--border); background:var(--surface); box-shadow:var(--shadow-sm); }
+.campaign-media-summary-thumb-wrap { width:100%; aspect-ratio:16/9; background:#0b1220; overflow:hidden; }
+.campaign-media-summary-thumb, .campaign-media-summary-video { width:100%; height:100%; object-fit:cover; display:block; }
+.campaign-media-summary-body { padding:5px 7px; }
+.campaign-media-summary-name { font-size:.68rem; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; }
+.campaign-media-summary-meta { font-size:.62rem; color:var(--text-3); display:block; }
+@media (max-width: 980px) {
+    .campaign-layout { grid-template-columns:1fr; }
+    .campaign-panel { position:static; }
+}
+@media (max-width: 640px) {
+    .campaign-grid { grid-template-columns:1fr; }
+    .campaign-panel,
+    .campaign-library,
+    .campaign-card-body {
+        padding:14px;
+    }
+    .campaign-card-header {
+        align-items:flex-start;
+        padding:13px 14px;
+    }
+    .campaign-card-header-right {
+        align-items:flex-end;
+        flex-direction:column;
+        gap:8px;
+    }
+    .campaign-badges {
+        justify-content:flex-end;
+    }
+    .campaign-stats {
+        display:grid;
+        grid-template-columns:repeat(2, minmax(0, 1fr));
+    }
+    .campaign-stat {
+        min-width:0;
+    }
+    .campaign-checks {
+        display:grid;
+        grid-template-columns:1fr;
+        gap:8px;
+    }
+    .campaign-check {
+        width:100%;
+        min-height:44px;
+        border-radius:12px;
+        padding:10px 12px;
+        justify-content:flex-start;
+        font-size:.86rem;
+        line-height:1.25;
+        white-space:normal;
+        overflow-wrap:anywhere;
+    }
+    .campaign-check input {
+        width:18px;
+        height:18px;
+        flex-shrink:0;
+    }
+    .campaign-check-label {
+        display:block;
+        flex:1;
+        min-width:0;
+        color:var(--text);
+        font-weight:700;
+    }
+    .campaign-tags {
+        display:grid;
+        grid-template-columns:1fr;
+        gap:7px;
+    }
+    .campaign-tag {
+        width:100%;
+        justify-content:flex-start;
+        border-radius:10px;
+        padding:8px 10px;
+        font-size:.8rem;
+        line-height:1.25;
+        white-space:normal;
+        overflow-wrap:anywhere;
+    }
+    .campaign-media-toolbar,
+    .campaign-search-box,
+    .campaign-media-count {
+        width:100%;
+    }
+    .campaign-media-grid {
+        grid-template-columns:repeat(2, minmax(0, 1fr));
+        gap:12px;
+        max-height:none;
+        overflow:visible;
+        padding-right:0;
+    }
+    .campaign-media-card {
+        border-radius:14px;
+    }
+    .campaign-media-thumb-wrap {
+        aspect-ratio:1 / 1;
+    }
+    .campaign-media-body {
+        padding:8px 9px 10px;
+    }
+    .campaign-media-name {
+        font-size:.78rem;
+        line-height:1.2;
+        white-space:normal;
+        overflow:hidden;
+        display:-webkit-box;
+        -webkit-line-clamp:2;
+        -webkit-box-orient:vertical;
+    }
+    .campaign-media-meta {
+        font-size:.68rem;
+        margin-top:4px;
+    }
+    .campaign-media-type {
+        font-size:.6rem;
+        padding:3px 7px;
+    }
+    .campaign-media-summary {
+        grid-template-columns:repeat(2, minmax(0, 1fr));
+        gap:10px;
+    }
+    .campaign-media-summary-thumb-wrap {
+        aspect-ratio:1 / 1;
+    }
+    .campaign-media-summary-body {
+        padding:8px 9px;
+    }
+    .campaign-media-summary-name {
+        font-size:.76rem;
+        line-height:1.2;
+        white-space:normal;
+        overflow:hidden;
+        display:-webkit-box;
+        -webkit-line-clamp:2;
+        -webkit-box-orient:vertical;
+    }
+    .campaign-media-summary-meta {
+        font-size:.67rem;
+        margin-top:3px;
+    }
+    .campaign-actions,
+    .campaign-actions form,
+    .campaign-actions .btn,
+    .campaign-form > .btn {
+        width:100%;
+    }
+}
+@media (max-width: 390px) {
+    .campaign-media-grid,
+    .campaign-media-summary {
+        grid-template-columns:1fr;
+    }
+}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{{ t('campaigns_h1') }}</h1>
+        <p>{{ t('campaigns_sub') }}</p>
+    </div>
+</div>
+
+<div class="campaign-layout">
+    <aside class="campaign-panel">
+        <h2>{{ t('campaigns_create_title') }}</h2>
+        <p class="campaign-help">{{ t('campaigns_create_desc') }}</p>
+        <div class="campaign-divider"></div>
+
+        {% if can_manage_campaigns %}
+        <form action="/admin/campaigns/create" method="post" class="campaign-form" id="campaign-create-form">
+            <div class="campaign-field">
+                <label for="new-campaign-name">{{ t('campaigns_name_label') }}</label>
+                <input id="new-campaign-name" type="text" name="name" maxlength="80" required>
+            </div>
+            <div class="campaign-grid">
+                <div class="campaign-field">
+                    <label for="new-campaign-start">{{ t('campaigns_start_label') }}</label>
+                    <input id="new-campaign-start" type="date" name="start_date">
+                </div>
+                <div class="campaign-field">
+                    <label for="new-campaign-end">{{ t('campaigns_end_label') }}</label>
+                    <input id="new-campaign-end" type="date" name="end_date">
+                </div>
+            </div>
+            <div class="campaign-grid">
+                <div class="campaign-field">
+                    <label for="new-campaign-priority">{{ t('campaigns_priority_label') }}</label>
+                    <input id="new-campaign-priority" type="number" name="priority" min="1" max="999" value="100">
+                    <div class="campaign-inline-help">{{ t('campaigns_priority_field_help') }}</div>
+                </div>
+                <label class="campaign-check align-end">
+                    <input type="checkbox" name="enabled" checked>
+                    <span class="campaign-check-label">{{ t('campaigns_enabled_label') }}</span>
+                </label>
+            </div>
+            <div>
+                <div class="campaign-section-title">{{ t('campaigns_screens_label') }}</div>
+                <div class="campaign-checks spaced">
+                    {% for screen_value, screen_label in available_screen_choices %}
+                    <label class="campaign-check">
+                        <input type="checkbox" name="screens" value="{{ screen_value }}">
+                        <span class="campaign-check-label">{{ screen_label or default_screen_name }}</span>
+                    </label>
+                    {% endfor %}
+                    {% if not available_screen_choices %}
+                    <span class="campaign-tag muted">{{ t('campaigns_no_screens') }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="campaign-field">
+                <label for="new-campaign-groups">{{ t('campaigns_groups_label') }}</label>
+                <input id="new-campaign-groups" type="text" name="groups" placeholder="{{ t('campaigns_groups_placeholder') }}">
+                {% if group_choices %}
+                <div class="campaign-tags">
+                    {% for group in group_choices %}
+                    <span class="campaign-tag">{{ group }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            <p class="campaign-help">{{ t('campaigns_priority_help') }}</p>
+            <button type="submit" class="btn">{{ t('campaigns_create_cta') }}</button>
+        </form>
+        {% else %}
+        <p class="campaign-help">{{ t('campaigns_readonly') }}</p>
+        {% endif %}
+    </aside>
+
+    {% if can_manage_campaigns %}
+    <section class="campaign-library">
+        <div class="campaign-library-head">
+            <div>
+                <div class="campaign-library-title">{{ t('campaigns_media_label') }}</div>
+                <div class="campaign-library-sub">{{ t('campaigns_media_library_sub') }}</div>
+            </div>
+        </div>
+        <div class="campaign-media-picker" data-media-picker
+             data-visible-singular="{{ t('campaigns_media_count_visible_singular', n='__N__') }}"
+             data-visible-plural="{{ t('campaigns_media_count_visible_plural', n='__N__') }}"
+             data-selected-visible-singular="{{ t('campaigns_media_count_selected_visible_singular', selected='__S__', visible='__V__') }}"
+             data-selected-visible-plural="{{ t('campaigns_media_count_selected_visible_plural', selected='__S__', visible='__V__') }}">
+            <div class="campaign-media-toolbar">
+                <div class="campaign-search-box">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <input id="new-campaign-media" type="search" class="campaign-media-search" placeholder="{{ t('campaigns_media_search_placeholder') }}" data-media-search>
+                </div>
+                <div class="campaign-media-count" data-media-count></div>
+            </div>
+            <div class="campaign-media-grid">
+                {% for media in media_items %}
+                <label class="campaign-media-card" data-media-card data-media-name="{{ media.filename|lower }}">
+                    <input type="checkbox" name="media" value="{{ media.filename }}" form="campaign-create-form" data-media-checkbox>
+                    <span class="campaign-media-checkmark">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width:20px;height:20px"><polyline points="20 6 9 17 4 12"/></svg>
+                    </span>
+                    <span class="campaign-media-thumb-wrap">
+                        <img class="campaign-media-thumb" src="{{ media.preview_url }}" alt="{{ media.filename }}" loading="lazy">
+                        <span class="campaign-media-type">{% if media.type == 'video' %}{{ t('campaigns_media_type_video') }}{% else %}{{ t('campaigns_media_type_image') }}{% endif %}</span>
+                    </span>
+                    <span class="campaign-media-body">
+                        <span class="campaign-media-name" title="{{ media.filename }}">{{ media.filename }}</span>
+                        <span class="campaign-media-meta">{{ media.size }}</span>
+                    </span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    <section class="campaign-main">
+    <section class="campaign-list">
+        {% if campaigns %}
+            {% for campaign in campaigns %}
+            <article class="campaign-card {% if current_campaign == campaign.id %}highlight open{% endif %}" id="campaign-{{ campaign.id }}">
+                <div class="campaign-card-header" data-campaign-toggle>
+                    <div class="campaign-card-header-left">
+                        <div class="campaign-title">{{ campaign.name }}</div>
+                        <div class="campaign-meta">
+                            {{ t('campaigns_updated_at', updated_at=campaign.updated_at or '—') }}
+                            {% if campaign.created_by %}<span class="campaign-owner">· {{ t('campaigns_owner_label') }} <strong>{{ campaign.created_by }}</strong></span>{% endif %}
+                        </div>
+                    </div>
+                    <div class="campaign-card-header-right">
+                        <div class="campaign-badges">
+                            <span class="campaign-badge priority">{{ t('campaigns_priority_badge', priority=campaign.priority) }}</span>
+                            {% if campaign.archived %}
+                            <span class="campaign-badge archived">{{ t('campaigns_archived_badge') }}</span>
+                            {% elif campaign.is_active %}
+                            <span class="campaign-badge active">{{ t('campaigns_active_badge') }}</span>
+                            {% else %}
+                            <span class="campaign-badge disabled">{{ t('campaigns_inactive_badge') }}</span>
+                            {% endif %}
+                        </div>
+                        <svg class="campaign-card-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                    </div>
+                </div>
+
+                <div class="campaign-card-body">
+
+                <div class="campaign-stats">
+                    <div class="campaign-stat"><strong>{{ campaign.target_counts.resolved_media }}</strong><span>{{ t('campaigns_stat_resolved_media') }}</span></div>
+                    <div class="campaign-stat"><strong>{{ campaign.target_counts.media }}</strong><span>{{ t('campaigns_stat_selected_media') }}</span></div>
+                    <div class="campaign-stat"><strong>{{ campaign.target_counts.groups }}</strong><span>{{ t('campaigns_stat_groups') }}</span></div>
+                    <div class="campaign-stat"><strong>{{ campaign.target_counts.screens if campaign.target_counts.screens else '∞' }}</strong><span>{{ t('campaigns_stat_screens') }}</span></div>
+                </div>
+
+                <div class="campaign-tags">
+                    <span class="campaign-tag muted">
+                        {{ t('campaigns_period_label') }}:
+                        {{ campaign.start_date or '—' }} → {{ campaign.end_date or '—' }}
+                    </span>
+                    {% if campaign.screens %}
+                        {% for screen in campaign.screens %}
+                        <span class="campaign-tag">{{ screen or default_screen_name }}</span>
+                        {% endfor %}
+                    {% else %}
+                    <span class="campaign-tag muted">{{ t('campaigns_all_screens') }}</span>
+                    {% endif %}
+                    {% for group in campaign.groups %}
+                    <span class="campaign-tag">{{ group }}</span>
+                    {% endfor %}
+                </div>
+
+                {% if campaign.media %}
+                <div class="campaign-media-summary">
+                    {% for filename in campaign.media %}
+                        {% set media = media_map.get(filename) %}
+                        {% if media %}
+                        <div class="campaign-media-summary-item">
+                            <div class="campaign-media-summary-thumb-wrap">
+                                <img class="campaign-media-summary-thumb" src="{{ media.preview_url }}" alt="{{ media.filename }}" loading="lazy">
+                            </div>
+                            <div class="campaign-media-summary-body">
+                                <span class="campaign-media-summary-name" title="{{ media.filename }}">{{ media.filename }}</span>
+                                <span class="campaign-media-summary-meta">{{ media.size }}</span>
+                            </div>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <div class="campaign-actions">
+                    {% if can_manage_campaigns %}
+                    {% set is_owner = current_user_is_superadmin or not campaign.created_by or campaign.created_by == current_user %}
+                    {% if is_owner and not campaign.archived %}
+                    <form action="/admin/campaigns/{{ campaign.id }}/toggle" method="post">
+                        <button type="submit" class="btn sm {% if campaign.enabled and not campaign.archived %}warning{% else %}success{% endif %}">
+                            {% if campaign.enabled and not campaign.archived %}{{ t('campaigns_disable_cta') }}{% else %}{{ t('campaigns_enable_cta') }}{% endif %}
+                        </button>
+                    </form>
+                    {% endif %}
+                    <form action="/admin/campaigns/{{ campaign.id }}/duplicate" method="post">
+                        <button type="submit" class="btn sm secondary">{{ t('campaigns_duplicate_cta') }}</button>
+                    </form>
+                    {% if is_owner %}
+                    <form action="/admin/campaigns/{{ campaign.id }}/archive" method="post">
+                        <button type="submit" class="btn sm ghost">
+                            {% if campaign.archived %}{{ t('campaigns_restore_cta') }}{% else %}{{ t('campaigns_archive_cta') }}{% endif %}
+                        </button>
+                    </form>
+                    <form action="/admin/campaigns/{{ campaign.id }}/delete" method="post"
+                          data-confirm="{{ t('campaigns_delete_confirm') }}"
+                          data-confirm-title="{{ t('campaigns_delete_cta') }}"
+                          data-confirm-tone="error"
+                          data-confirm-ok="{{ t('campaigns_delete_cta') }}">
+                        <button type="submit" class="btn sm danger">{{ t('campaigns_delete_cta') }}</button>
+                    </form>
+                    {% endif %}
+                    {% endif %}
+                </div>
+
+                {% if can_manage_campaigns and (current_user_is_superadmin or not campaign.created_by or campaign.created_by == current_user) %}
+                <form action="/admin/campaigns/{{ campaign.id }}/update" method="post" class="campaign-form">
+                    <input type="hidden" name="archived" value="{{ '1' if campaign.archived else '0' }}">
+                    <div class="campaign-field">
+                        <label for="campaign-name-{{ campaign.id }}">{{ t('campaigns_name_label') }}</label>
+                        <input id="campaign-name-{{ campaign.id }}" type="text" name="name" value="{{ campaign.name }}" maxlength="80" required>
+                    </div>
+                    <div class="campaign-grid">
+                        <div class="campaign-field">
+                            <label for="campaign-start-{{ campaign.id }}">{{ t('campaigns_start_label') }}</label>
+                            <input id="campaign-start-{{ campaign.id }}" type="date" name="start_date" value="{{ campaign.start_date }}">
+                        </div>
+                        <div class="campaign-field">
+                            <label for="campaign-end-{{ campaign.id }}">{{ t('campaigns_end_label') }}</label>
+                            <input id="campaign-end-{{ campaign.id }}" type="date" name="end_date" value="{{ campaign.end_date }}">
+                        </div>
+                    </div>
+                    <div class="campaign-grid">
+                        <div class="campaign-field">
+                            <label for="campaign-priority-{{ campaign.id }}">{{ t('campaigns_priority_label') }}</label>
+                            <input id="campaign-priority-{{ campaign.id }}" type="number" name="priority" min="1" max="999" value="{{ campaign.priority }}">
+                            <div class="campaign-inline-help">{{ t('campaigns_priority_field_help') }}</div>
+                        </div>
+                        <label class="campaign-check align-end">
+                            <input type="checkbox" name="enabled" value="1" {% if campaign.enabled %}checked{% endif %}>
+                            <span class="campaign-check-label">{{ t('campaigns_enabled_label') }}</span>
+                        </label>
+                    </div>
+                    <div>
+                        <div class="campaign-section-title">{{ t('campaigns_screens_label') }}</div>
+                        <div class="campaign-checks spaced">
+                            {% for screen_value, screen_label in available_screen_choices %}
+                            <label class="campaign-check">
+                                <input type="checkbox" name="screens" value="{{ screen_value }}" {% if screen_label in campaign.screens %}checked{% endif %}>
+                                <span class="campaign-check-label">{{ screen_label or default_screen_name }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="campaign-field">
+                        <label for="campaign-groups-{{ campaign.id }}">{{ t('campaigns_groups_label') }}</label>
+                        <input id="campaign-groups-{{ campaign.id }}" type="text" name="groups" value="{{ campaign.groups|join(', ') }}" placeholder="{{ t('campaigns_groups_placeholder') }}">
+                    </div>
+                    <div class="campaign-field">
+                        <label for="campaign-media-{{ campaign.id }}">{{ t('campaigns_media_label') }}</label>
+                        <div class="campaign-media-picker" data-media-picker
+                             data-visible-singular="{{ t('campaigns_media_count_visible_singular', n='__N__') }}"
+                             data-visible-plural="{{ t('campaigns_media_count_visible_plural', n='__N__') }}"
+                             data-selected-visible-singular="{{ t('campaigns_media_count_selected_visible_singular', selected='__S__', visible='__V__') }}"
+                             data-selected-visible-plural="{{ t('campaigns_media_count_selected_visible_plural', selected='__S__', visible='__V__') }}">
+                            <div class="campaign-search-box">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                <input id="campaign-media-{{ campaign.id }}" type="search" class="campaign-media-search" placeholder="{{ t('campaigns_media_search_placeholder') }}" data-media-search>
+                            </div>
+                            <div class="campaign-media-count" data-media-count></div>
+                            <div class="campaign-media-grid">
+                                {% for media in media_items %}
+                                <label class="campaign-media-card {% if media.filename in campaign.media %}selected{% endif %}" data-media-card data-media-name="{{ media.filename|lower }}">
+                                    <input type="checkbox" name="media" value="{{ media.filename }}" data-media-checkbox {% if media.filename in campaign.media %}checked{% endif %}>
+                                    <span class="campaign-media-checkmark">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width:20px;height:20px"><polyline points="20 6 9 17 4 12"/></svg>
+                                    </span>
+                                    <span class="campaign-media-thumb-wrap">
+                                        <img class="campaign-media-thumb" src="{{ media.preview_url }}" alt="{{ media.filename }}" loading="lazy">
+                                        <span class="campaign-media-type">{% if media.type == 'video' %}{{ t('campaigns_media_type_video') }}{% else %}{{ t('campaigns_media_type_image') }}{% endif %}</span>
+                                    </span>
+                                    <span class="campaign-media-body">
+                                        <span class="campaign-media-name" title="{{ media.filename }}">{{ media.filename }}</span>
+                                        <span class="campaign-media-meta">{{ media.size }}</span>
+                                    </span>
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn">{{ t('campaigns_save_cta') }}</button>
+                </form>
+                {% endif %}
+                </div>
+            </article>
+            {% endfor %}
+        {% else %}
+        <div class="campaign-empty">
+            <p>{{ t('campaigns_empty') }}</p>
+        </div>
+        {% endif %}
+    </section>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('[data-campaign-toggle]').forEach((toggle) => {
+    toggle.addEventListener('click', () => {
+        toggle.closest('.campaign-card').classList.toggle('open');
+    });
+});
+
+document.querySelectorAll('[data-media-picker]').forEach((picker) => {
+    const search = picker.querySelector('[data-media-search]');
+    const cards = Array.from(picker.querySelectorAll('[data-media-card]'));
+    const count = picker.querySelector('[data-media-count]');
+    const format = (template, values) => Object.entries(values).reduce(
+        (result, [key, value]) => result.replaceAll(key, String(value)),
+        template
+    );
+
+    const sync = () => {
+        const query = (search?.value || '').trim().toLowerCase();
+        let visible = 0;
+        let selected = 0;
+
+        cards.forEach((card) => {
+            const checkbox = card.querySelector('[data-media-checkbox]');
+            const matches = !query || card.dataset.mediaName.includes(query);
+            card.classList.toggle('hidden', !matches);
+            card.classList.toggle('selected', !!checkbox?.checked);
+            if (matches) {
+                visible += 1;
+            }
+            if (checkbox?.checked) {
+                selected += 1;
+            }
+        });
+
+        if (count) {
+            count.textContent = selected
+                ? format(
+                    selected > 1 ? picker.dataset.selectedVisiblePlural : picker.dataset.selectedVisibleSingular,
+                    {'__S__': selected, '__V__': visible}
+                )
+                : format(
+                    visible > 1 ? picker.dataset.visiblePlural : picker.dataset.visibleSingular,
+                    {'__N__': visible}
+                );
+        }
+    };
+
+    cards.forEach((card) => {
+        const checkbox = card.querySelector('[data-media-checkbox]');
+        checkbox?.addEventListener('change', sync);
+    });
+    search?.addEventListener('input', sync);
+    sync();
+});
+</script>
+{% endblock %}

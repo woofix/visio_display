@@ -1,0 +1,1398 @@
+{# GNU General Public License v3.0 (GPL-3.0) - Copyright (c) 2026 Woofix - See LICENSE file for details #}
+{% extends 'admin_layout.html' %}
+
+{% block title %}{{ t('media_title') }}{% endblock %}
+{% block topbar_icon %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>{% endblock %}
+{% block topbar_breadcrumbs %}<div class="topbar-breadcrumbs">
+    <a href="/admin" class="bc-link">{{ app_name }}</a>
+    <svg class="bc-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    <a href="/admin/media" class="bc-link">{{ t('nav_label_contents') }}</a>
+    <svg class="bc-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    <span class="bc-current">{% block topbar_title %}{{ t('media_title') }}{% endblock %}</span>
+</div>{% endblock %}
+{% block topbar_sub %}{% if current_screen %}{{ t('media_screen_label') }} « {{ current_screen }} » — {% endif %}{% if files|length > 1 %}{{ t('media_topbar_sub_p', n=files|length) }}{% else %}{{ t('media_topbar_sub_s', n=files|length) }}{% endif %}{% endblock %}
+
+{% block topbar_actions %}
+{% if has_permission('upload') and is_feature_enabled('upload') %}
+<a href="/admin/upload" class="btn sm">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    {{ t('btn_add') }}
+</a>
+{% endif %}
+{% endblock %}
+
+{% block styles %}
+/* Toolbar */
+.toolbar { display:flex; align-items:center; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
+.search-box { flex:1; min-width:200px; display:flex; align-items:center; gap:8px; background:var(--surface); border:1.5px solid var(--border); border-radius:var(--radius-sm); padding:7px 12px; transition:border-color .15s,box-shadow .15s; }
+.search-box:focus-within { border-color:var(--primary); box-shadow:0 0 0 3px rgba(124,58,237,.09); }
+.search-box svg { width:14px;height:14px;color:var(--text-3);flex-shrink:0; }
+.search-box input { border:none;outline:none;font-family:inherit;font-size:.83rem;color:var(--text);background:transparent;flex:1; }
+.search-box input::placeholder { color:var(--text-3); }
+.filter-select { border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:7px 10px;font-family:inherit;font-size:.82rem;color:var(--text-2);background:var(--surface);cursor:pointer;outline:none;transition:border-color .15s; }
+.filter-select:focus { border-color:var(--primary); }
+.view-toggle { display:flex;gap:3px;background:var(--primary-bg);padding:3px;border-radius:8px; }
+.view-toggle button { background:none;border:none;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:.78rem;color:var(--primary);font-weight:600;transition:all .15s;font-family:inherit; }
+.view-toggle button.active { background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.1); }
+.group-panel { margin-bottom:16px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-sm); }
+.group-panel-head { display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap; }
+.group-panel-title { font-size:.78rem;font-weight:800;color:var(--text-2);text-transform:uppercase;letter-spacing:.08em; }
+.group-panel-sub { font-size:.75rem;color:var(--text-3); }
+.group-chip-list { display:flex;flex-wrap:wrap;gap:8px; }
+.group-chip { display:inline-flex;flex-direction:column;border:1px solid var(--border);background:var(--surface-2, var(--bg));border-radius:10px;overflow:hidden; }
+.group-chip-main { display:flex;align-items:center;gap:8px;padding:7px 10px; }
+.group-chip-name { font-size:.78rem;font-weight:700;color:var(--text-2); }
+.group-chip-count { font-size:.7rem;color:var(--text-3); }
+.group-chip.disabled { background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.18); }
+.group-chip-toggle { border:none;background:var(--primary-bg);color:var(--primary);padding:5px 9px;border-radius:999px;font:inherit;font-size:.72rem;font-weight:700;cursor:pointer; }
+.group-chip.disabled .group-chip-toggle { background:rgba(239,68,68,.12);color:var(--red); }
+.group-pool-wrap { display:inline-flex;align-items:center;gap:3px;background:var(--surface-2,var(--bg));border:1px solid var(--border);border-radius:999px;padding:3px 8px; }
+.group-pool-label { font-size:.75rem; }
+.group-pool-input { width:36px;border:none;background:transparent;color:var(--text-1);font:inherit;font-size:.72rem;text-align:center;padding:0; }
+.group-pool-input:focus { outline:none; }
+.group-pool-sep { font-size:.72rem;color:var(--text-3);white-space:nowrap; }
+.group-panel-empty { font-size:.82rem;color:var(--text-3); }
+.btn-group-screens-toggle { border:none;background:transparent;color:var(--text-3);padding:3px 6px;border-radius:6px;font:inherit;font-size:.72rem;cursor:pointer;display:inline-flex;align-items:center;gap:3px;transition:color .15s,background .15s; }
+.btn-group-screens-toggle:hover { color:var(--primary);background:var(--primary-bg); }
+.group-chip.screens-linked .btn-group-screens-toggle { color:var(--primary); }
+.group-screens-count { background:var(--primary);color:#fff;border-radius:999px;padding:0 5px;font-size:.62rem;font-weight:700; }
+.group-screens-row { display:none;align-items:center;flex-wrap:wrap;gap:5px;padding:6px 10px;border-top:1px solid var(--border);background:var(--bg,var(--surface)); }
+.group-chip.screens-open .group-screens-row { display:flex; }
+.group-screens-label { color:var(--text-3);font-size:.7rem;white-space:nowrap;margin-right:2px; }
+.group-screens-hint { color:var(--text-3);font-style:italic;font-size:.7rem; }
+.btn-group-screen-link { border:1.5px solid var(--border);background:transparent;color:var(--text-3);padding:2px 9px;border-radius:999px;font:inherit;font-size:.7rem;cursor:pointer;transition:all .15s; }
+.btn-group-screen-link.linked { border-color:var(--primary);background:var(--primary-bg);color:var(--primary);font-weight:700; }
+.btn-group-screen-link:hover:not(.linked) { border-color:var(--primary);color:var(--primary); }
+
+/* Grid */
+.file-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(215px,1fr)); gap:14px; }
+.file-card { background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-sm);border:1px solid var(--border);transition:box-shadow .2s,transform .15s;position:relative; }
+.file-card .thumb, .file-card .thumb-video { border-radius:var(--radius) var(--radius) 0 0; }
+.file-card:hover { box-shadow:var(--shadow);transform:translateY(-2px); }
+.file-card.disabled { opacity:.45; }
+.file-card.disabled:hover { opacity:.85; }
+.file-card.disabled.has-dropdown-open { opacity:1; }
+.file-card .thumb       { width:100%;height:138px;object-fit:cover;display:block;cursor:pointer; }
+.file-card .thumb-video { width:100%;height:138px;object-fit:cover;display:block;cursor:pointer;background:#0d0920; }
+.file-card .thumb:hover, .file-card .thumb-video:hover { filter:brightness(1.07); }
+.file-card.disabled .thumb,
+.file-card.disabled .thumb-video { cursor:not-allowed; pointer-events:none; }
+.file-card.disabled .thumb:hover,
+.file-card.disabled .thumb-video:hover { filter:none; }
+
+/* List view */
+.file-grid.list-view { display:flex;flex-direction:column;gap:7px; }
+.file-grid.list-view .disabled-sep { grid-column:unset;width:100%; }
+.file-grid.list-view .file-card { display:flex;align-items:center;border-radius:10px;overflow:visible; }
+.file-grid.list-view .file-card .thumb,
+.file-grid.list-view .file-card .thumb-video { width:72px;height:52px;flex-shrink:0;border-radius:8px 0 0 8px; }
+.file-grid.list-view .file-card .card-body { display:flex;align-items:center;gap:10px;flex:1;padding:8px 12px;flex-wrap:wrap; }
+.file-grid.list-view .file-card .fname { flex:1;min-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:0; }
+.file-grid.list-view .file-card .finfo { white-space:nowrap;margin-bottom:0;min-width:100px; }
+.file-grid.list-view .file-card .badge-video { top:50%;transform:translateY(-50%);right:auto;left:48px; }
+.file-grid.list-view .file-card .badge-disabled { top:50%;transform:translateY(-50%); }
+.file-grid.list-view .file-card .card-actions { flex-shrink:0; min-width:180px; }
+.file-card.has-dropdown-open { z-index:10; }
+.file-card .dropdown-menu { bottom:calc(100% + 6px); top:auto; }
+.file-card .dropdown-menu.drop-down { bottom:auto; top:calc(100% + 6px); }
+
+.badge-video    { position:absolute;top:8px;right:8px;background:var(--blue);color:#fff;font-size:.59rem;padding:2px 7px;border-radius:10px;font-weight:700;letter-spacing:.04em; }
+.badge-disabled { position:absolute;top:30px;right:8px;background:var(--red);color:#fff;font-size:.59rem;padding:2px 7px;border-radius:10px;display:none;font-weight:700; }
+.file-card.disabled .badge-disabled { display:block; }
+.file-card .card-body { padding:11px 13px; }
+.file-card .fname { font-size:.76rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px; }
+.file-card .finfo { font-size:.69rem;color:var(--text-3);margin-bottom:9px; }
+.file-card .group-badges { display:flex;flex-wrap:wrap;gap:6px;margin-bottom:9px; }
+.file-card .group-badge { font-size:.63rem;font-weight:700;color:var(--primary);background:var(--primary-bg);padding:3px 7px;border-radius:999px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.file-card .group-badge.disabled { color:var(--red);background:rgba(239,68,68,.08); }
+.file-card .group-editor { display:flex;gap:6px;align-items:center;margin-bottom:9px; }
+.group-input { flex:1;min-width:0;padding:6px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:.74rem;font-family:inherit;color:var(--text);background:var(--surface); }
+.group-input:focus { outline:none;border-color:var(--primary); }
+.group-save-btn { border:none;background:var(--primary-bg);color:var(--primary);padding:6px 9px;border-radius:7px;font:inherit;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap; }
+.group-save-btn:disabled { opacity:.55;cursor:wait; }
+.file-card .group-hint { font-size:.67rem;color:var(--text-3);margin-bottom:10px; }
+.file-card .card-actions { display:flex;gap:8px;align-items:center;justify-content:space-between; flex-wrap:wrap; }
+.card-actions-right { display:flex;gap:6px;align-items:center;margin-left:auto; }
+.quick-action-btn { min-height:30px; }
+.duration-input { width:50px;padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:.78rem;text-align:center;font-family:inherit;transition:border-color .15s;color:var(--text);background:var(--surface); }
+.duration-input:focus { outline:none;border-color:var(--primary); }
+.duration-unit { font-size:.73rem;color:var(--text-3); }
+
+/* Separator */
+.disabled-sep { grid-column:1/-1;display:flex;align-items:center;gap:10px;margin:4px 0; }
+.disabled-sep-line { flex:1;height:1px;background:var(--border); }
+.disabled-sep-label { font-size:.7rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.09em;white-space:nowrap; }
+
+/* Empty state */
+.empty-state { text-align:center;padding:48px 20px;color:var(--text-3); }
+.empty-state svg { width:48px;height:48px;color:#ddd6fe;display:block;margin:0 auto 14px; }
+.empty-state p { font-size:.87rem; }
+
+/* Screen bar */
+.screen-bar { display:flex;align-items:center;gap:8px;margin-bottom:18px;flex-wrap:wrap;padding:10px 14px;background:var(--primary-bg);border-radius:var(--radius-sm);border:1px solid var(--border); }
+.screen-bar-label { font-size:.75rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.07em;flex-shrink:0; }
+.screen-tabs { display:flex;gap:4px;flex-wrap:wrap;flex:1; }
+.screen-tab { padding:5px 12px;border-radius:6px;font-size:.8rem;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);text-decoration:none;transition:all .15s; }
+.screen-tab:hover { border-color:var(--primary);color:var(--primary); }
+.screen-tab.active { background:var(--primary);border-color:var(--primary);color:#fff; }
+.screen-tab.delete-tab { color:var(--red);border-color:transparent;background:none;padding:5px 6px;font-size:.72rem; }
+.screen-tab.delete-tab:hover { background:rgba(239,68,68,.08); }
+.screen-add-form { display:flex;gap:6px;align-items:center; }
+.screen-add-form input { padding:5px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:.8rem;font-family:inherit;color:var(--text);background:var(--surface);width:140px;outline:none;transition:border-color .15s; }
+.screen-add-form input:focus { border-color:var(--primary); }
+.screen-add-form input::placeholder { color:var(--text-3); }
+
+/* Drag & drop reorder */
+.file-card[draggable="true"] { cursor:grab; }
+.file-card[draggable="true"]:active { cursor:grabbing; }
+.file-card.dragging { opacity:.3; box-shadow:none; transform:none; }
+.file-card.drag-over { outline:2px dashed var(--primary); outline-offset:3px; }
+
+/* Unassigned section */
+.unassigned-sep { display:flex;align-items:center;gap:10px;margin:22px 0 12px; }
+.unassigned-sep-line { flex:1;height:1px;background:var(--border); }
+.unassigned-sep-label { font-size:.7rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.09em;white-space:nowrap; }
+.file-card.unassigned { opacity:.5; }
+.file-card.unassigned:hover { opacity:.85; }
+.file-card.unassigned .thumb,
+.file-card.unassigned .thumb-video { cursor:not-allowed; pointer-events:none; }
+.file-card.unassigned .thumb:hover,
+.file-card.unassigned .thumb-video:hover { filter:none; }
+.btn-assign { background:var(--primary);color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:.76rem;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s; }
+.btn-assign:hover { background:var(--primary-hover,#6d28d9); }
+
+/* Schedule badge */
+.badge-scheduled { position:absolute;top:8px;right:8px;background:var(--primary);color:#fff;font-size:.59rem;padding:2px 7px;border-radius:10px;font-weight:700;letter-spacing:.04em;display:none; }
+.file-card.scheduled .badge-scheduled { display:block; }
+.file-card.disabled .badge-scheduled  { top:52px; }
+.badge-group-disabled { position:absolute;top:52px;right:8px;background:#b91c1c;color:#fff;font-size:.56rem;padding:2px 7px;border-radius:10px;font-weight:700;letter-spacing:.04em;display:none; }
+.file-card.group-disabled .badge-group-disabled { display:block; }
+.file-card.disabled .badge-group-disabled { display:none; }
+
+/* Preview button (screen-bar action) */
+.btn-preview-screen { background:var(--primary);color:#fff;border:none;border-radius:6px;padding:6px 13px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s;white-space:nowrap; }
+.btn-preview-screen:hover { background:var(--primary-hover,#6d28d9); }
+.btn-broadcast-screen { background:var(--surface);color:var(--primary);border:1.5px solid var(--primary);border-radius:6px;padding:6px 13px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap;flex-shrink:0; }
+.btn-broadcast-screen:hover { background:var(--primary-bg); }
+@keyframes sync-ring {
+    0%   { box-shadow:0 0 0 0 rgba(138,43,226,.55); }
+    70%  { box-shadow:0 0 0 7px rgba(138,43,226,0); }
+    100% { box-shadow:0 0 0 0 rgba(138,43,226,0); }
+}
+@keyframes sync-pulse {
+    0%,100% { box-shadow:0 0 0 0 rgba(138,43,226,.4); }
+    50%     { box-shadow:0 0 0 5px rgba(138,43,226,0); }
+}
+.screen-tab.sync-flash {
+    animation: sync-ring .75s ease-out 3;
+    border-color: var(--primary) !important;
+    color: var(--primary) !important;
+}
+.screen-tab.sync-active {
+    animation: sync-pulse 1.8s ease-in-out infinite;
+    border-color: var(--primary) !important;
+    color: var(--primary) !important;
+    font-weight:700 !important;
+}
+.btn-broadcast-stop { background:rgba(239,68,68,.1);color:var(--red,#ef4444);border:1.5px solid rgba(239,68,68,.35);border-radius:6px;padding:6px 13px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap;flex-shrink:0;display:flex;align-items:center;gap:6px; }
+.btn-broadcast-stop:hover { background:rgba(239,68,68,.18); }
+.broadcast-live-dot { width:7px;height:7px;border-radius:50%;background:var(--primary);display:inline-block;animation:sync-pulse 1.8s ease-in-out infinite;flex-shrink:0; }
+.broadcast-screen-list { display:flex;flex-direction:column;gap:6px;margin:12px 0; }
+.broadcast-screen-item { display:flex;align-items:center;gap:9px;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;transition:border-color .15s,background .15s; }
+.broadcast-screen-item:hover { border-color:var(--primary);background:var(--primary-bg); }
+.broadcast-screen-item input[type=checkbox] { width:15px;height:15px;accent-color:var(--primary);flex-shrink:0; }
+.broadcast-screen-item label { font-size:.84rem;font-weight:600;color:var(--text);cursor:pointer;flex:1; }
+.broadcast-hint { font-size:.74rem;color:var(--text-3);background:var(--bg,var(--surface-2));padding:9px 12px;border-radius:8px;margin-bottom:4px; }
+.broadcast-select-all-row { display:flex;align-items:center;gap:8px;margin-bottom:6px; }
+.broadcast-select-all-btn { border:none;background:transparent;color:var(--primary);font:inherit;font-size:.75rem;font-weight:700;cursor:pointer;padding:0;text-decoration:underline; }
+
+/* Screen preview modal */
+.screen-preview-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2000;align-items:center;justify-content:center; }
+.screen-preview-overlay.open { display:flex; }
+.screen-preview-box { position:relative;width:90vw;max-width:1200px;aspect-ratio:16/9;background:#000;border-radius:10px;overflow:hidden;box-shadow:0 0 0 2px rgba(138,43,226,.6),0 8px 48px rgba(0,0,0,.7); }
+.screen-preview-box iframe { width:100%;height:100%;border:none;display:block; }
+.screen-preview-close { position:absolute;top:10px;right:12px;background:rgba(0,0,0,.55);border:none;border-radius:8px;padding:5px 11px;font-size:1rem;cursor:pointer;color:#fff;line-height:1;z-index:10;transition:background .15s; }
+.screen-preview-close:hover { background:rgba(0,0,0,.8); }
+.screen-preview-label { position:absolute;bottom:10px;left:14px;color:rgba(255,255,255,.5);font-size:.72rem;z-index:10;pointer-events:none; }
+
+/* Modal */
+.modal-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:center;justify-content:center; }
+.modal-overlay.open { display:flex; }
+.modal-box { background:var(--surface);border-radius:var(--radius);box-shadow:0 8px 32px rgba(0,0,0,.25);padding:28px 32px;width:100%;max-width:480px;position:relative; }
+.modal-box h2 { font-size:1rem;font-weight:700;color:var(--text);margin-bottom:4px; }
+.modal-box .modal-sub { font-size:.76rem;color:var(--text-3);margin-bottom:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.modal-close { position:absolute;top:14px;right:16px;background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--text-3);line-height:1; }
+.modal-section { margin-bottom:18px; }
+.modal-section label { display:flex;align-items:center;gap:8px;font-size:.82rem;font-weight:600;color:var(--text-2);margin-bottom:10px;cursor:pointer; }
+.modal-section label input[type=checkbox] { width:15px;height:15px;accent-color:var(--primary); }
+.modal-row { display:flex;gap:12px;align-items:center; }
+.modal-row span { font-size:.78rem;color:var(--text-3); }
+.modal-row input[type=time],
+.modal-row input[type=date] { padding:6px 10px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:.82rem;color:var(--text);background:var(--surface);transition:border-color .15s; }
+.modal-row input:focus { outline:none;border-color:var(--primary); }
+.modal-row input:disabled { opacity:.4;pointer-events:none; }
+.modal-footer { display:flex;gap:8px;justify-content:flex-end;margin-top:22px;padding-top:16px;border-top:1px solid var(--border); }
+.modal-info { font-size:.74rem;color:var(--primary);background:var(--primary-bg);padding:8px 12px;border-radius:8px;margin-bottom:14px;display:none; }
+.modal-info.visible { display:block; }
+@media(max-width: 860px) {
+    .toolbar {
+        align-items: stretch;
+    }
+    .search-box,
+    .filter-select,
+    .view-toggle {
+        width: 100%;
+    }
+    .view-toggle button {
+        flex: 1 1 0;
+    }
+    .screen-bar {
+        padding: 12px;
+    }
+    .screen-tabs {
+        width: 100%;
+    }
+    .screen-add-form {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+    .screen-add-form input,
+    .btn-preview-screen {
+        width: 100%;
+    }
+}
+@media(max-width: 640px) {
+    .file-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    .file-card .thumb,
+    .file-card .thumb-video {
+        height: 220px;
+    }
+    .group-chip {
+        width: 100%;
+    }
+    .group-chip-main {
+        flex-wrap: wrap;
+    }
+    .group-chip-toggle,
+    .group-pool-wrap {
+        width: 100%;
+        justify-content: center;
+    }
+    .group-screens-row {
+        padding-inline: 8px;
+    }
+    .file-grid.list-view .file-card {
+        display: grid;
+        grid-template-columns: 88px minmax(0, 1fr);
+        align-items: stretch;
+        border-radius: 12px;
+        overflow: visible;
+        min-height: 88px;
+    }
+    .file-grid.list-view .file-card .thumb,
+    .file-grid.list-view .file-card .thumb-video {
+        width: 88px;
+        height: 88px;
+        border-radius: 12px 0 0 12px;
+        grid-row: 1;
+        object-fit: cover;
+    }
+    .file-grid.list-view .file-card:hover {
+        transform: none;
+    }
+    .file-grid.list-view .file-card .card-body {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 4px 8px;
+        padding: 9px 10px;
+        align-items: center;
+    }
+    .file-grid.list-view .file-card .fname {
+        grid-column: 1 / 2;
+        font-size: .82rem;
+        font-weight: 800;
+        line-height: 1.2;
+        margin: 0;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    .file-grid.list-view .file-card .finfo {
+        grid-column: 1 / 2;
+        font-size: .68rem;
+        line-height: 1.2;
+        margin: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .file-grid.list-view .file-card .group-badges {
+        grid-column: 1 / 3;
+        margin: 1px 0 0;
+        gap: 4px;
+        max-height: 24px;
+        overflow: hidden;
+    }
+    .file-grid.list-view .file-card .group-badge {
+        font-size: .58rem;
+        padding: 2px 6px;
+    }
+    .file-grid.list-view .file-card .group-editor,
+    .file-grid.list-view .file-card .group-hint {
+        display: none;
+    }
+    .file-grid.list-view .file-card .card-actions {
+        grid-column: 2 / 3;
+        grid-row: 1 / 3;
+        align-self: center;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 6px;
+        min-width: 0;
+    }
+    .file-grid.list-view .file-card .card-actions-right {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 6px;
+        min-width: 0;
+    }
+    .file-grid.list-view .file-card .duration-input {
+        width: 44px;
+        min-height: 32px;
+        padding: 3px 4px;
+    }
+    .file-grid.list-view .file-card .duration-unit {
+        font-size: .66rem;
+    }
+    .file-grid.list-view .file-card .dropdown .btn {
+        width: 38px;
+        min-width: 38px;
+        min-height: 34px;
+        padding: 0;
+        font-size: 0;
+        gap: 0;
+    }
+    .file-grid.list-view .file-card .dropdown .btn svg {
+        width: 14px !important;
+        height: 14px !important;
+    }
+    .file-grid.list-view .file-card .dropdown-menu {
+        right: 0;
+        min-width: 215px;
+    }
+    .file-grid.list-view .file-card .badge-video {
+        top: 6px;
+        left: 6px;
+        right: auto;
+        transform: none;
+        font-size: .5rem;
+        padding: 1px 5px;
+    }
+    .file-grid.list-view .file-card .badge-disabled {
+        top: 25px;
+        left: 6px;
+        right: auto;
+        transform: none;
+        font-size: .5rem;
+        padding: 1px 5px;
+    }
+    .file-card .fname,
+    .file-card .finfo {
+        min-width: 0;
+        white-space: normal;
+        overflow: visible;
+        text-overflow: unset;
+        overflow-wrap: anywhere;
+    }
+    .file-card .card-actions,
+    .modal-row,
+    .modal-footer {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .file-card .card-actions,
+    .card-actions-right {
+        min-width: 0;
+    }
+    .modal-box {
+        width: calc(100vw - 24px);
+        padding: 20px 16px;
+    }
+    .modal-box .modal-sub {
+        white-space: normal;
+    }
+}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ t('media_h1') }}</h1>
+    <p>{{ t('media_sub') }}</p>
+</div>
+
+<!-- Screen selector -->
+<div class="screen-bar">
+    <span class="screen-bar-label">{{ t('media_screen_label') }}</span>
+    <div class="screen-tabs">
+        {% if has_default_screen %}<a href="/admin/media" class="screen-tab {% if not current_screen %}active{% endif %}" data-screen="">{{ default_screen_name }}</a>{% endif %}
+        {% for s in screens %}
+        <a href="/admin/media?screen={{ s }}" class="screen-tab {% if current_screen == s %}active{% endif %}" data-screen="{{ s }}">{{ s }}</a>
+        {% if current_screen == s and current_user_is_superadmin %}
+        <form method="post" action="/admin/screens/delete/{{ s }}" style="display:inline"
+              data-confirm="{{ t('media_screen_delete_confirm') | replace('{name}', s) }}"
+              data-confirm-title="Supprimer l’écran"
+              data-confirm-tone="error"
+              data-confirm-ok="Supprimer">
+            <button type="submit" class="screen-tab delete-tab" title="✕">✕</button>
+        </form>
+        {% endif %}
+        {% endfor %}
+    </div>
+    <button class="btn-preview-screen" id="btn-preview-screen"
+            title="{% if current_screen %}Prévisualiser « {{ current_screen }} »{% else %}Prévisualiser « {{ default_screen_name }} »{% endif %}"
+            style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-shrink:0">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        Prévisualiser
+    </button>
+</div>
+
+<!-- Toolbar -->
+<div class="toolbar">
+    <div class="search-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="media-search" placeholder="{{ t('media_search_placeholder') }}" value="{{ request.args.get('q', '') }}">
+    </div>
+    <select class="filter-select" id="media-filter">
+        <option value="all"      {% if request.args.get('filter') == 'all'      or not request.args.get('filter') %}selected{% endif %}>{{ t('filter_all') }}</option>
+        <option value="active"   {% if request.args.get('filter') == 'active'   %}selected{% endif %}>{{ t('filter_active') }}</option>
+        <option value="disabled" {% if request.args.get('filter') == 'disabled' %}selected{% endif %}>{{ t('filter_disabled') }}</option>
+        <option value="image"    {% if request.args.get('filter') == 'image'    %}selected{% endif %}>{{ t('filter_images') }}</option>
+        {% if is_feature_enabled('videos') %}
+        <option value="video"    {% if request.args.get('filter') == 'video'    %}selected{% endif %}>{{ t('filter_videos') }}</option>
+        {% endif %}
+    </select>
+    <div class="view-toggle">
+        <button id="btn-grid" class="active">{{ t('view_grid') }}</button>
+        <button id="btn-list">{{ t('view_list') }}</button>
+    </div>
+</div>
+
+<div class="group-panel">
+    <div class="group-panel-head">
+        <div class="group-panel-title">{{ t('media_groups_title') }}</div>
+        <div class="group-panel-sub">{{ t('media_group_hint') }}</div>
+    </div>
+    {% if group_states %}
+    <div class="group-chip-list">
+        {% for group in group_states %}
+        <div class="group-chip {% if group.disabled %}disabled{% endif %} {% if group.screens %}screens-linked{% endif %}"
+             data-group-chip="{{ group.name }}" data-screens="{{ group.screens | tojson | e }}">
+            <div class="group-chip-main">
+                <span class="group-chip-name">{{ group.name }}</span>
+                <span class="group-chip-count">{{ group.count }}</span>
+                <button class="group-chip-toggle btn-toggle-group" data-group="{{ group.name }}">
+                    {% if group.disabled %}{{ t('media_group_enable') }}{% else %}{{ t('media_group_disable') }}{% endif %}
+                </button>
+                <span class="group-pool-wrap" title="{{ t('media_group_pool_title') }}">
+                    <span class="group-pool-label">🎲</span>
+                    <input type="number" class="group-pool-input" min="0" max="9999"
+                           data-group="{{ group.name }}"
+                           value="{{ group.pool_size if group.pool_size else '' }}"
+                           placeholder="…">
+                    <span class="group-pool-sep">/{{ group.count }}</span>
+                </span>
+                {% if screens %}
+                <button class="btn-group-screens-toggle" data-group="{{ group.name }}" title="{{ t('group_screens_title') }}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                    {% if group.screens %}<span class="group-screens-count">{{ group.screens | length }}</span>{% endif %}
+                </button>
+                {% endif %}
+            </div>
+            {% if screens %}
+            <div class="group-screens-row">
+                <span class="group-screens-label">{{ t('group_screens_label') }} :</span>
+                <button class="btn-group-screen-link {% if '' in group.screens %}linked{% endif %}"
+                        data-group="{{ group.name }}" data-screen="">{{ default_screen_name }}</button>
+                {% for s in screens %}
+                <button class="btn-group-screen-link {% if s in group.screens %}linked{% endif %}"
+                        data-group="{{ group.name }}" data-screen="{{ s }}">{{ s }}</button>
+                {% endfor %}
+                {% if not group.screens %}<span class="group-screens-hint">{{ t('group_screens_global') }}</span>{% endif %}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="group-panel-empty">{{ t('media_groups_none') }}</div>
+    {% endif %}
+</div>
+
+<!-- Grid -->
+<div class="file-grid" id="file-grid">
+    {% for file in files %}
+    {% set info = infos[file] %}
+    {% set sched = schedules.get(file, {}) %}
+    {% set file_groups = media_groups.get(file, []) %}
+    {% set disabled_by_group = disabled_map.get(file, false) and file not in cfg.disabled %}
+    <div class="file-card {% if disabled_map.get(file, false) %}disabled{% endif %} {% if disabled_by_group %}group-disabled{% endif %} {% if sched %}scheduled{% endif %}"
+         data-file="{{ file }}"
+         data-type="{{ info.type }}"
+         data-disabled="{{ 'true' if disabled_map.get(file, false) else 'false' }}"
+         data-manually-disabled="{{ 'true' if file in cfg.disabled else 'false' }}"
+         data-group-disabled="{{ 'true' if disabled_by_group else 'false' }}"
+         data-groups="{{ file_groups | tojson | e }}"
+         data-schedule="{{ sched | tojson | e }}">
+        <span class="badge-scheduled">{{ t('badge_scheduled') }}</span>
+        <span class="badge-group-disabled">{{ t('media_group_disabled_badge') }}</span>
+        {% if info.type == 'video' %}
+        <span class="badge-video">{{ t('badge_video') }}</span>
+        <img class="thumb-video" src="{{ preview_urls[file] }}" alt="{{ file }}" loading="lazy"
+             data-src="{{ preview_media_urls[file] }}" data-type="video"
+             data-preview-disabled="{{ 'true' if disabled_map.get(file, false) else 'false' }}">
+        {% else %}
+        <img class="thumb" src="{{ preview_urls[file] }}" alt="{{ file }}" loading="lazy"
+             data-src="{{ preview_media_urls[file] }}" data-type="image"
+             data-preview-disabled="{{ 'true' if disabled_map.get(file, false) else 'false' }}">
+        {% endif %}
+        <span class="badge-disabled">{{ t('badge_disabled') }}</span>
+        <div class="card-body">
+            <div class="fname" title="{{ file }}">{{ file }}</div>
+            <div class="finfo">{{ info.dims }} · {{ info.size }}</div>
+            <div class="group-badges">
+                {% for group in file_groups %}
+                <span class="group-badge {% if group in cfg.disabled_groups %}disabled{% endif %}">{{ group }}</span>
+                {% endfor %}
+            </div>
+            <div class="group-editor">
+                <input type="text" class="group-input" data-file="{{ file }}" value="{{ file_groups | join(', ') }}"
+                       placeholder="{{ t('media_group_input_placeholder') }}" title="{{ t('media_group_input_title') }}">
+                <button class="group-save-btn btn-save-groups" data-file="{{ file }}">{{ t('media_group_save') }}</button>
+            </div>
+            <div class="group-hint">{{ t('media_group_hint') }}</div>
+            <div class="card-actions">
+                <div class="card-actions-right">
+                    <div style="display:flex;align-items:center;gap:4px">
+                        <input type="number" class="duration-input" min="3" max="300"
+                               value="{{ cfg.durations.get(file, 15) }}"
+                               title="{{ t('duration_title') }}" data-file="{{ file }}">
+                        <span class="duration-unit">s</span>
+                    </div>
+                    {% if (can_toggle and file not in queued) or can_schedule or file in queued or info.type == 'video' or current_screen %}
+                    <div class="dropdown">
+                        <button class="btn sm secondary dropdown-toggle">
+                            {{ t('actions_more') }} <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:10px;height:10px"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                        <div class="dropdown-menu">
+                            <div class="dropdown-label">{{ file[:24] }}{% if file|length > 24 %}…{% endif %}</div>
+                            {% if (can_toggle and file not in queued) or can_schedule or file in queued %}
+                            <div class="dropdown-label">{{ t('dropdown_label_manage') }}</div>
+                            {% if can_toggle and file not in queued %}
+                            <button class="dropdown-item btn-toggle" data-file="{{ file }}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                                {% if file in cfg.disabled %}{{ t('action_enable') }}{% else %}{{ t('action_disable') }}{% endif %}
+                            </button>
+                            {% endif %}
+                            {% if can_schedule %}
+                            <button class="dropdown-item btn-schedule" data-file="{{ file }}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
+                                {{ t('action_schedule') }}
+                            </button>
+                            {% endif %}
+                            {% if file in queued %}
+                            <button class="dropdown-item" disabled style="opacity:.45;cursor:not-allowed">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                {{ t('action_pending_encoding') }}
+                            </button>
+                            {% endif %}
+                            {% endif %}
+                            {% if info.type == 'video' and file not in queued %}
+                            <div class="dropdown-separator"></div>
+                            <div class="dropdown-label">{{ t('dropdown_label_technical') }}</div>
+                            <button class="dropdown-item btn-compress" data-file="{{ file }}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg>
+                                {{ t('action_compress') }}
+                            </button>
+                            {% endif %}
+                            {% if current_user_is_superadmin and info.type == 'video' and file not in queued %}
+                            <button class="dropdown-item btn-force-encode" data-file="{{ file }}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                {{ t('action_force_encode') }}
+                            </button>
+                            {% endif %}
+                            <div class="dropdown-separator"></div>
+                            <div class="dropdown-label">{{ t('dropdown_label_danger') }}</div>
+                            {% if current_screen %}
+                            <button class="dropdown-item danger btn-remove-from-screen" data-file="{{ file }}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                {{ t('action_remove_from_screen') }}
+                            </button>
+                            {% endif %}
+                            <button class="dropdown-item danger btn-delete" data-file="{{ file }}" data-action="/delete/{{ file }}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                                {{ t('action_delete') }}
+                            </button>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% if current_screen and unassigned %}
+<div class="unassigned-sep">
+    <div class="unassigned-sep-line"></div>
+    <span class="unassigned-sep-label">{{ t('media_unassigned_section', n=unassigned|length) }}</span>
+    <div class="unassigned-sep-line"></div>
+</div>
+<div class="file-grid" id="unassigned-grid">
+    {% for file in unassigned %}
+    {% set info = infos[file] %}
+    <div class="file-card unassigned" data-file="{{ file }}" data-type="{{ info.type }}">
+        {% if info.type == 'video' %}
+        <span class="badge-video">{{ t('badge_video') }}</span>
+        <img class="thumb-video" src="{{ preview_urls[file] }}" alt="{{ file }}" loading="lazy"
+             data-src="{{ preview_media_urls[file] }}" data-type="video">
+        {% else %}
+        <img class="thumb" src="{{ preview_urls[file] }}" alt="{{ file }}" loading="lazy"
+             data-src="{{ preview_media_urls[file] }}" data-type="image">
+        {% endif %}
+        <div class="card-body">
+            <div class="fname" title="{{ file }}">{{ file }}</div>
+            <div class="finfo">{{ info.dims }} · {{ info.size }}</div>
+            <div class="card-actions">
+                <button class="btn-assign btn-add-to-screen" data-file="{{ file }}">{{ t('media_add_to_screen') }}</button>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div id="media-empty" class="empty-state" style="display:none">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <p>{{ t('no_results') }}</p>
+</div>
+
+<!-- Screen preview modal -->
+<div class="screen-preview-overlay" id="screen-preview-overlay">
+    <div class="screen-preview-box">
+        <button class="screen-preview-close" id="screen-preview-close-btn" title="Fermer">✕</button>
+        <iframe id="screen-preview-iframe" src="" allowfullscreen></iframe>
+        <span class="screen-preview-label">{{ current_screen or default_screen_name }}</span>
+    </div>
+</div>
+
+
+<!-- Schedule modal -->
+<div class="modal-overlay theme-dialog-overlay" id="schedule-modal">
+    <div class="modal-box theme-dialog">
+        <button class="modal-close theme-dialog-close" id="modal-close-btn" title="Fermer" aria-label="Fermer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+        <div class="theme-dialog-header" style="padding-right:64px">
+            <div class="theme-dialog-icon" data-tone="info" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            </div>
+            <div>
+                <div class="theme-dialog-title">{{ t('modal_schedule_title') }}</div>
+                <p class="modal-sub theme-dialog-copy" id="modal-filename">—</p>
+            </div>
+        </div>
+        <div class="theme-dialog-body">
+            <div class="modal-info" id="modal-info"></div>
+
+            <div class="modal-section">
+                <label>
+                    <input type="checkbox" id="chk-time"> {{ t('modal_time_limit') }}
+                </label>
+                <div class="modal-row" id="row-time">
+                    <span>{{ t('modal_from') }}</span>
+                    <input type="time" id="time-start" disabled>
+                    <span>{{ t('modal_to') }}</span>
+                    <input type="time" id="time-end" disabled>
+                </div>
+            </div>
+
+            <div class="modal-section">
+                <label>
+                    <input type="checkbox" id="chk-date"> {{ t('modal_date_limit') }}
+                </label>
+                <div class="modal-row" id="row-date">
+                    <span>{{ t('modal_from_date') }}</span>
+                    <input type="date" id="date-start" disabled>
+                    <span>{{ t('modal_to_date') }}</span>
+                    <input type="date" id="date-end" disabled>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer theme-dialog-actions">
+            <button class="btn secondary sm" id="modal-clear-btn">{{ t('modal_clear') }}</button>
+            <button class="btn sm" id="modal-save-btn">{{ t('modal_save') }}</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const CURRENT_SCREEN          = {{ current_screen | tojson }};
+const JS_CONFIRM_COMPRESS     = {{ t('js_confirm_compress') | tojson }};
+const JS_CONFIRM_DELETE       = {{ t('js_confirm_delete') | tojson }};
+const JS_COMPRESS_ADDING      = {{ t('js_compress_adding') | tojson }};
+const JS_COMPRESS_WAITING     = {{ t('js_compress_waiting') | tojson }};
+const JS_COMPRESS_ERR_PREFIX  = {{ t('js_compress_error_prefix') | tojson }};
+const JS_COMPRESS_ERR_NET     = {{ t('js_compress_error_network') | tojson }};
+const JS_FLASH_ADDED_QUEUE    = {{ t('js_flash_added_queue') | tojson }};
+const JS_SCHEDULE_SAVED       = {{ t('js_schedule_saved') | tojson }};
+const JS_SCHEDULE_CLEARED     = {{ t('js_schedule_cleared') | tojson }};
+const JS_SAVE_ERROR           = {{ t('js_save_error') | tojson }};
+const JS_DISABLED_LABEL       = {{ t('js_media_disabled_label') | tojson }};
+const JS_ACTIVE_SCHEDULE      = {{ t('modal_active_schedule') | tojson }};
+const JS_ACTION_ENABLE        = {{ t('action_enable') | tojson }};
+const JS_ACTION_DISABLE       = {{ t('action_disable') | tojson }};
+const JS_FORCE_CONFIRM        = {{ t('js_force_encode_confirm') | tojson }};
+const JS_FORCE_LAUNCHING      = {{ t('js_force_encode_launching') | tojson }};
+const JS_FORCE_RUNNING        = {{ t('js_force_encode_running') | tojson }};
+const JS_ACTION_FORCE         = {{ t('action_force_encode') | tojson }};
+const JS_SCREEN_ADDED         = {{ t('js_screen_added') | tojson }};
+const JS_SCREEN_REMOVED       = {{ t('js_screen_removed') | tojson }};
+const JS_SCREEN_REMOVE_CONFIRM = {{ t('js_remove_from_screen_confirm') | tojson }};
+const JS_ADD_TO_SCREEN        = {{ t('media_add_to_screen') | tojson }};
+const SCREEN_DELETE_CONFIRM   = {{ t('media_screen_delete_confirm') | tojson }};
+const JS_GROUPS_SAVED         = {{ t('js_groups_saved') | tojson }};
+const JS_GROUP_ENABLED        = {{ t('js_group_enabled') | tojson }};
+const JS_GROUP_DISABLED       = {{ t('js_group_disabled') | tojson }};
+const JS_GROUP_ENABLE         = {{ t('media_group_enable') | tojson }};
+const JS_GROUP_DISABLE        = {{ t('media_group_disable') | tojson }};
+const JS_GROUP_POOL_SAVED     = {{ t('js_group_pool_saved') | tojson }};
+const JS_GROUP_POOL_CLEARED   = {{ t('js_group_pool_cleared') | tojson }};
+const JS_GROUP_SCREENS_SAVED  = {{ t('js_group_screens_saved') | tojson }};
+const ALL_SCREENS             = {{ screens | tojson }};
+
+/* ── Screen preview modal ── */
+(function() {
+    const btn = document.getElementById('btn-preview-screen');
+    if (!btn) return;
+    const overlay = document.getElementById('screen-preview-overlay');
+    const iframe  = document.getElementById('screen-preview-iframe');
+    const closeBtn = document.getElementById('screen-preview-close-btn');
+
+    function open() {
+        iframe.src = CURRENT_SCREEN ? '/?screen=' + encodeURIComponent(CURRENT_SCREEN) : '/';
+        overlay.classList.add('open');
+    }
+    function close() {
+        overlay.classList.remove('open');
+        iframe.src = '';
+    }
+
+    btn.addEventListener('click', open);
+    closeBtn.addEventListener('click', close);
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+})();
+
+/* ── Sort active on top, disabled at bottom ── */
+function sortMediaCards() {
+    const grid = document.getElementById('file-grid');
+    const cards = [...grid.querySelectorAll('.file-card')];
+    const active   = cards.filter(c => c.dataset.disabled === 'false');
+    const disabled = cards.filter(c => c.dataset.disabled === 'true');
+    grid.querySelector('.disabled-sep')?.remove();
+    active.forEach(c => grid.appendChild(c));
+    if (disabled.length) {
+        const sep = document.createElement('div');
+        sep.className = 'disabled-sep';
+        sep.innerHTML = `<div class="disabled-sep-line"></div><span class="disabled-sep-label">${JS_DISABLED_LABEL.replace('{n}', disabled.length)}</span><div class="disabled-sep-line"></div>`;
+        grid.appendChild(sep);
+        disabled.forEach(c => grid.appendChild(c));
+    }
+}
+sortMediaCards();
+
+/* ── URL param filter on load ── */
+(function() {
+    const p = new URLSearchParams(window.location.search);
+    const f = p.get('filter'); if (f) document.getElementById('media-filter').value = f;
+    const q = p.get('q');      if (q) document.getElementById('media-search').value = q;
+    applyFilter();
+})();
+
+/* ── Search + filter ── */
+function applyFilter() {
+    const q   = document.getElementById('media-search').value.toLowerCase().trim();
+    const fil = document.getElementById('media-filter').value;
+    let visible = 0;
+    document.querySelectorAll('.file-card').forEach(card => {
+        const name     = card.dataset.file.toLowerCase();
+        const type     = card.dataset.type;
+        const disabled = card.dataset.disabled === 'true';
+        let show = name.includes(q);
+        if (show && fil === 'active')   show = !disabled;
+        if (show && fil === 'disabled') show = disabled;
+        if (show && fil === 'image')    show = type === 'image';
+        if (show && fil === 'video')    show = type === 'video';
+        card.style.display = show ? '' : 'none';
+        if (show) visible++;
+    });
+    document.getElementById('media-empty').style.display = visible === 0 ? 'block' : 'none';
+}
+document.getElementById('media-search').addEventListener('input', applyFilter);
+document.getElementById('media-filter').addEventListener('change', applyFilter);
+
+function refreshCardDisabledState(card) {
+    const isDisabled = card.dataset.manuallyDisabled === 'true' || card.dataset.groupDisabled === 'true';
+    card.dataset.disabled = isDisabled ? 'true' : 'false';
+    card.classList.toggle('disabled', isDisabled);
+    card.classList.toggle('group-disabled', card.dataset.groupDisabled === 'true' && card.dataset.manuallyDisabled !== 'true');
+    const preview = card.querySelector('.thumb, .thumb-video');
+    if (preview) {
+        preview.dataset.previewDisabled = isDisabled ? 'true' : 'false';
+        preview.style.pointerEvents = isDisabled ? 'none' : '';
+    }
+}
+
+/* ── Grid / list view toggle ── */
+(function() {
+    const grid = document.getElementById('file-grid');
+    const saved = localStorage.getItem('mediaView') || 'grid';
+    function setView(v) {
+        grid.classList.toggle('list-view', v === 'list');
+        const unassigned = document.getElementById('unassigned-grid');
+        if (unassigned) unassigned.classList.toggle('list-view', v === 'list');
+        document.getElementById('btn-grid').classList.toggle('active', v !== 'list');
+        document.getElementById('btn-list').classList.toggle('active', v === 'list');
+        localStorage.setItem('mediaView', v);
+    }
+    setView(saved);
+    document.getElementById('btn-grid').addEventListener('click', () => setView('grid'));
+    document.getElementById('btn-list').addEventListener('click', () => setView('list'));
+})();
+
+/* ── Enable / disable toggle ── */
+document.querySelectorAll('.btn-toggle').forEach(btn => {
+    btn.addEventListener('click', async e => {
+        e.stopPropagation();
+        btn.closest('.dropdown-menu')?.classList.remove('open');
+        const file = btn.dataset.file;
+        const res  = await fetch(`/toggle/${encodeURIComponent(file)}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ screen: CURRENT_SCREEN })
+        });
+        const data = await res.json();
+        const card = btn.closest('.file-card');
+        if (data.state === 'disabled') {
+            card.dataset.manuallyDisabled = 'true';
+            btn.classList.replace('success-item', 'warning-item');
+            btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> ${JS_ACTION_ENABLE}`;
+        } else {
+            card.dataset.manuallyDisabled = 'false';
+            btn.classList.replace('warning-item', 'success-item');
+            btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg> ${JS_ACTION_DISABLE}`;
+        }
+        refreshCardDisabledState(card);
+        sortMediaCards();
+    });
+});
+
+document.querySelectorAll('.btn-save-groups').forEach(btn => {
+    btn.addEventListener('click', async e => {
+        e.stopPropagation();
+        const input = btn.closest('.group-editor')?.querySelector('.group-input');
+        if (!input) return;
+        const file = btn.dataset.file;
+        const groups = input.value.split(',').map(v => v.trim()).filter(Boolean);
+        btn.disabled = true;
+        try {
+            const res = await fetch(`/set_groups/${encodeURIComponent(file)}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ groups })
+            });
+            const data = await res.json();
+            if (data.ok) {
+                window.appUI.showFlashAfterReload(JS_GROUPS_SAVED.replace('{file}', file), 'success');
+                window.location.reload();
+            } else {
+                showFlash(data.error || JS_SAVE_ERROR, 'error');
+                btn.disabled = false;
+            }
+        } catch {
+            showFlash(JS_COMPRESS_ERR_NET, 'error');
+            btn.disabled = false;
+        }
+    });
+});
+
+document.querySelectorAll('.group-input').forEach(input => {
+    input.addEventListener('keydown', e => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        input.closest('.group-editor')?.querySelector('.btn-save-groups')?.click();
+    });
+});
+
+document.querySelectorAll('.btn-toggle-group').forEach(btn => {
+    btn.addEventListener('click', async e => {
+        e.stopPropagation();
+        const group = btn.dataset.group;
+        btn.disabled = true;
+        try {
+            const res = await fetch(`/toggle_group/${encodeURIComponent(group)}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ screen: CURRENT_SCREEN })
+            });
+            const data = await res.json();
+            if (data.state === 'disabled') {
+                window.appUI.showFlashAfterReload(JS_GROUP_DISABLED.replace('{group}', group), 'success');
+            } else if (data.state === 'enabled') {
+                window.appUI.showFlashAfterReload(JS_GROUP_ENABLED.replace('{group}', group), 'success');
+            } else {
+                showFlash(data.error || JS_SAVE_ERROR, 'error');
+                btn.disabled = false;
+                return;
+            }
+            window.location.reload();
+        } catch {
+            showFlash(JS_COMPRESS_ERR_NET, 'error');
+            btn.disabled = false;
+        }
+    });
+});
+
+/* ── Group pool size ── */
+document.querySelectorAll('.group-pool-input').forEach(input => {
+    let timer;
+    const save = async () => {
+        const group = input.dataset.group;
+        const poolSize = parseInt(input.value) || 0;
+        try {
+            const res = await fetch(`/set_group_pool/${encodeURIComponent(group)}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ pool_size: poolSize })
+            });
+            const data = await res.json();
+            if (data.ok) {
+                if (poolSize > 0) {
+                    showFlash(JS_GROUP_POOL_SAVED.replace('{group}', group).replace('{size}', poolSize), 'success');
+                } else {
+                    showFlash(JS_GROUP_POOL_CLEARED.replace('{group}', group), 'success');
+                }
+            } else {
+                showFlash(data.error || JS_SAVE_ERROR, 'error');
+            }
+        } catch {
+            showFlash(JS_SAVE_ERROR, 'error');
+        }
+    };
+    input.addEventListener('change', () => { clearTimeout(timer); timer = setTimeout(save, 400); });
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') { clearTimeout(timer); save(); } });
+});
+
+/* ── Group screens toggle (opens/closes the picker) ── */
+document.querySelectorAll('.btn-group-screens-toggle').forEach(btn => {
+    btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const chip = document.querySelector(`.group-chip[data-group-chip="${btn.dataset.group}"]`);
+        if (chip) chip.classList.toggle('screens-open');
+    });
+});
+
+/* ── Group-to-screen link ── */
+document.querySelectorAll('.btn-group-screen-link').forEach(btn => {
+    btn.addEventListener('click', async e => {
+        e.stopPropagation();
+        const group  = btn.dataset.group;
+        const screen = btn.dataset.screen;
+        const chip   = document.querySelector(`.group-chip[data-group-chip="${group}"]`);
+        const current = JSON.parse(chip.dataset.screens || '[]');
+        const next    = current.includes(screen)
+            ? current.filter(s => s !== screen)
+            : [...current, screen];
+        btn.disabled = true;
+        try {
+            const res  = await fetch(`/set_group_screens/${encodeURIComponent(group)}`, {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ screens: next })
+            });
+            const data = await res.json();
+            if (data.ok) {
+                chip.dataset.screens = JSON.stringify(data.screens);
+                btn.classList.toggle('linked', data.screens.includes(screen));
+                chip.classList.toggle('screens-linked', data.screens.length > 0);
+                const countEl = chip.querySelector('.group-screens-count');
+                const toggleBtn = chip.querySelector('.btn-group-screens-toggle');
+                if (data.screens.length > 0) {
+                    if (countEl) { countEl.textContent = data.screens.length; }
+                    else if (toggleBtn) {
+                        const span = document.createElement('span');
+                        span.className = 'group-screens-count';
+                        span.textContent = data.screens.length;
+                        toggleBtn.appendChild(span);
+                    }
+                } else {
+                    countEl?.remove();
+                }
+                const hint = chip.querySelector('.group-screens-hint');
+                if (hint) hint.style.display = data.screens.length ? 'none' : '';
+                showFlash(JS_GROUP_SCREENS_SAVED.replace('{group}', group), 'success');
+            } else {
+                showFlash(data.error || JS_SAVE_ERROR, 'error');
+            }
+        } catch {
+            showFlash(JS_SAVE_ERROR, 'error');
+        }
+        btn.disabled = false;
+    });
+});
+
+/* ── Duration auto-save ── */
+document.querySelectorAll('.duration-input').forEach(input => {
+    let timer;
+    input.addEventListener('input', () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => fetch(`/set_duration/${encodeURIComponent(input.dataset.file)}`, {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ duration: parseInt(input.value), screen: CURRENT_SCREEN })
+        }), 600);
+    });
+});
+
+/* ── Compression ── */
+document.querySelectorAll('.btn-compress').forEach(btn => {
+    btn.addEventListener('click', async e => {
+        e.stopPropagation();
+        btn.closest('.dropdown-menu')?.classList.remove('open');
+        const file = btn.dataset.file;
+        if (!await window.appUI.confirm({
+            titleText: {{ t('action_compress') | tojson }},
+            messageText: JS_CONFIRM_COMPRESS.replace('{file}', file),
+            tone: 'warning',
+            confirmLabel: {{ t('action_compress') | tojson }},
+        })) return;
+        btn.disabled = true; btn.textContent = JS_COMPRESS_ADDING;
+        try {
+            const res  = await fetch(`/compress/${encodeURIComponent(file)}`, { method:'POST' });
+            const data = await res.json();
+            if (data.ok) { btn.textContent = JS_COMPRESS_WAITING; showFlash(JS_FLASH_ADDED_QUEUE.replace('{file}', file), 'success'); }
+            else { showFlash(JS_COMPRESS_ERR_PREFIX + data.error, 'error'); btn.disabled = false; btn.textContent = '🗜 ' + {{ t('action_compress') | tojson }}; }
+        } catch { showFlash(JS_COMPRESS_ERR_NET, 'error'); btn.disabled = false; btn.textContent = '🗜 ' + {{ t('action_compress') | tojson }}; }
+    });
+});
+
+/* ── Force encode (superadmin) ── */
+document.querySelectorAll('.btn-force-encode').forEach(btn => {
+    btn.addEventListener('click', async e => {
+        e.stopPropagation();
+        btn.closest('.dropdown-menu')?.classList.remove('open');
+        const file = btn.dataset.file;
+        if (!await window.appUI.confirm({
+            titleText: {{ t('action_force_encode') | tojson }},
+            messageText: JS_FORCE_CONFIRM.replace('{file}', file),
+            tone: 'warning',
+            confirmLabel: {{ t('action_force_encode') | tojson }},
+        })) return;
+        btn.disabled = true;
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ${JS_FORCE_LAUNCHING}`;
+        try {
+            const res  = await fetch(`/admin/compress/${encodeURIComponent(file)}/force`, { method: 'POST' });
+            const data = await res.json();
+            if (data.ok) {
+                btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ${JS_FORCE_RUNNING}`;
+                showFlash(JS_FLASH_ADDED_QUEUE.replace('{file}', file), 'success');
+            } else {
+                showFlash(JS_COMPRESS_ERR_PREFIX + data.error, 'error');
+                btn.disabled = false;
+                btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polygon points="5 3 19 12 5 21 5 3"/></svg> ${JS_ACTION_FORCE}`;
+            }
+        } catch {
+            showFlash(JS_COMPRESS_ERR_NET, 'error');
+            btn.disabled = false;
+            btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polygon points="5 3 19 12 5 21 5 3"/></svg> ${JS_ACTION_FORCE}`;
+        }
+    });
+});
+
+/* ── Delete ── */
+document.querySelectorAll('.btn-delete').forEach(btn => {
+    btn.addEventListener('click', async e => {
+        e.stopPropagation();
+        if (!await window.appUI.confirm({
+            titleText: 'Supprimer le média',
+            messageText: JS_CONFIRM_DELETE.replace('{file}', btn.dataset.file),
+            tone: 'error',
+            confirmLabel: 'Supprimer',
+        })) return;
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = btn.dataset.action;
+
+        const csrf = document.createElement('input');
+        csrf.type = 'hidden';
+        csrf.name = '_csrf_token';
+        csrf.value = window.CSRF_TOKEN;
+        form.appendChild(csrf);
+
+        document.body.appendChild(form);
+        form.submit();
+    });
+});
+
+/* ── Stacking dropdown z-index ── */
+new MutationObserver(() => {
+    document.querySelectorAll('.file-card').forEach(card => {
+        card.classList.toggle('has-dropdown-open', !!card.querySelector('.dropdown-menu.open'));
+    });
+}).observe(document.getElementById('file-grid'), { subtree:true, attributes:true, attributeFilter:['class'] });
+
+/* ── Flash ── */
+function showFlash(msg, type) {
+    window.appUI.showFlash(msg, type);
+}
+
+/* ── Schedule modal ── */
+let _scheduleFile = null;
+
+function openScheduleModal(file, schedData) {
+    _scheduleFile = file;
+    document.getElementById('modal-filename').textContent = file;
+
+    const s = schedData || {};
+    const hasTime = !!(s.time_start || s.time_end);
+    const hasDate = !!(s.date_start || s.date_end);
+
+    document.getElementById('chk-time').checked = hasTime;
+    document.getElementById('time-start').value   = s.time_start || '';
+    document.getElementById('time-end').value     = s.time_end   || '';
+    document.getElementById('time-start').disabled = !hasTime;
+    document.getElementById('time-end').disabled   = !hasTime;
+
+    document.getElementById('chk-date').checked = hasDate;
+    document.getElementById('date-start').value   = s.date_start || '';
+    document.getElementById('date-end').value     = s.date_end   || '';
+    document.getElementById('date-start').disabled = !hasDate;
+    document.getElementById('date-end').disabled   = !hasDate;
+
+    const info = document.getElementById('modal-info');
+    if (hasTime || hasDate) {
+        const parts = [];
+        if (hasTime) parts.push(`${s.time_start || '00:00'} – ${s.time_end || '23:59'}`);
+        if (hasDate) parts.push(`${s.date_start || '…'} → ${s.date_end || '…'}`);
+        info.textContent = JS_ACTIVE_SCHEDULE + parts.join(' · ');
+        info.classList.add('visible');
+    } else {
+        info.classList.remove('visible');
+    }
+
+    document.getElementById('schedule-modal').classList.add('open');
+}
+
+document.getElementById('chk-time').addEventListener('change', e => {
+    document.getElementById('time-start').disabled = !e.target.checked;
+    document.getElementById('time-end').disabled   = !e.target.checked;
+});
+document.getElementById('chk-date').addEventListener('change', e => {
+    document.getElementById('date-start').disabled = !e.target.checked;
+    document.getElementById('date-end').disabled   = !e.target.checked;
+});
+
+async function saveSchedule(payload) {
+    const res  = await fetch(`/schedule/${encodeURIComponent(_scheduleFile)}`, {
+        method: 'POST', headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': window.CSRF_TOKEN,
+        },
+        body: JSON.stringify({ ...payload, screen: CURRENT_SCREEN })
+    });
+    const data = await res.json();
+    if (data.ok) {
+        const card = document.querySelector(`.file-card[data-file="${CSS.escape(_scheduleFile)}"]`);
+        const isEmpty = !payload.time_start && !payload.time_end && !payload.date_start && !payload.date_end;
+        if (card) {
+            card.classList.toggle('scheduled', !isEmpty);
+            card.dataset.schedule = JSON.stringify(isEmpty ? {} : payload);
+        }
+        showFlash(isEmpty
+            ? JS_SCHEDULE_CLEARED.replace('{file}', _scheduleFile)
+            : JS_SCHEDULE_SAVED.replace('{file}', _scheduleFile), 'success');
+    } else {
+        showFlash(data.error || JS_SAVE_ERROR, 'error');
+    }
+    document.getElementById('schedule-modal').classList.remove('open');
+}
+
+document.getElementById('modal-save-btn').addEventListener('click', () => {
+    const payload = {};
+    if (document.getElementById('chk-time').checked) {
+        payload.time_start = document.getElementById('time-start').value;
+        payload.time_end   = document.getElementById('time-end').value;
+    }
+    if (document.getElementById('chk-date').checked) {
+        payload.date_start = document.getElementById('date-start').value;
+        payload.date_end   = document.getElementById('date-end').value;
+    }
+    saveSchedule(payload);
+});
+
+document.getElementById('modal-clear-btn').addEventListener('click', () => {
+    saveSchedule({});
+});
+
+document.getElementById('modal-close-btn').addEventListener('click', () => {
+    document.getElementById('schedule-modal').classList.remove('open');
+});
+document.getElementById('schedule-modal').addEventListener('click', e => {
+    if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
+});
+
+document.querySelectorAll('.btn-schedule').forEach(btn => {
+    btn.addEventListener('click', e => {
+        e.stopPropagation();
+        btn.closest('.dropdown-menu')?.classList.remove('open');
+        const card  = btn.closest('.file-card');
+        const sched = JSON.parse(card.dataset.schedule || '{}');
+        openScheduleModal(btn.dataset.file, sched);
+    });
+});
+
+/* ── Screen assign / remove ── */
+async function screenAssign(file, action) {
+    const res  = await fetch(`/screen_assign/${encodeURIComponent(file)}`, {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ screen: CURRENT_SCREEN, action })
+    });
+    return await res.json();
+}
+
+document.querySelectorAll('.btn-add-to-screen').forEach(btn => {
+    btn.addEventListener('click', async e => {
+        e.stopPropagation();
+        btn.disabled = true; btn.textContent = '…';
+        const data = await screenAssign(btn.dataset.file, 'add');
+        if (data.ok) {
+            window.location.reload();
+        } else {
+            showFlash(data.error || JS_COMPRESS_ERR_NET, 'error');
+            btn.disabled = false; btn.textContent = JS_ADD_TO_SCREEN;
+        }
+    });
+});
+
+document.querySelectorAll('.btn-remove-from-screen').forEach(btn => {
+    btn.addEventListener('click', async e => {
+        e.stopPropagation();
+        btn.closest('.dropdown-menu')?.classList.remove('open');
+        const file = btn.dataset.file;
+        if (!await window.appUI.confirm({
+            titleText: 'Retirer de l’écran',
+            messageText: JS_SCREEN_REMOVE_CONFIRM.replace('{file}', file).replace('{screen}', CURRENT_SCREEN),
+            tone: 'warning',
+            confirmLabel: 'Retirer',
+        })) return;
+        const data = await screenAssign(file, 'remove');
+        if (data.ok) {
+            showFlash(JS_SCREEN_REMOVED.replace('{file}', file).replace('{screen}', CURRENT_SCREEN), 'success');
+            window.location.reload();
+        } else {
+            showFlash(data.error || JS_COMPRESS_ERR_NET, 'error');
+        }
+    });
+});
+
+
+/* ── Drag & drop reorder ── */
+(function() {
+    const grid = document.getElementById('file-grid');
+    let dragSrc = null;
+
+    function isDragEnabled() {
+        const q = document.getElementById('media-search').value.trim();
+        const f = document.getElementById('media-filter').value;
+        return !q && f === 'all';
+    }
+
+    function updateDraggable() {
+        const enabled = isDragEnabled();
+        grid.querySelectorAll('.file-card').forEach(card => {
+            card.draggable = enabled;
+        });
+        grid.querySelectorAll('.thumb, .thumb-video').forEach(el => {
+            el.draggable = false;
+        });
+    }
+
+    grid.addEventListener('dragstart', e => {
+        if (e.target.matches('.thumb, .thumb-video')) {
+            e.preventDefault();
+            return;
+        }
+        const card = e.target.closest('.file-card');
+        if (!card) return;
+        dragSrc = card;
+        card.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+    });
+
+    grid.addEventListener('dragend', () => {
+        if (dragSrc) dragSrc.classList.remove('dragging');
+        grid.querySelectorAll('.file-card.drag-over').forEach(c => c.classList.remove('drag-over'));
+        dragSrc = null;
+    });
+
+    grid.addEventListener('dragover', e => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        const card = e.target.closest('.file-card');
+        grid.querySelectorAll('.file-card.drag-over').forEach(c => c.classList.remove('drag-over'));
+        if (card && card !== dragSrc) card.classList.add('drag-over');
+    });
+
+    grid.addEventListener('dragleave', e => {
+        if (!grid.contains(e.relatedTarget))
+            grid.querySelectorAll('.file-card.drag-over').forEach(c => c.classList.remove('drag-over'));
+    });
+
+    grid.addEventListener('drop', e => {
+        e.preventDefault();
+        const target = e.target.closest('.file-card');
+        if (!target || target === dragSrc) return;
+        target.classList.remove('drag-over');
+
+        const rect = target.getBoundingClientRect();
+        const isListView = grid.classList.contains('list-view');
+        const insertBefore = isListView
+            ? e.clientY < rect.top + rect.height / 2
+            : e.clientX < rect.left + rect.width / 2;
+
+        grid.insertBefore(dragSrc, insertBefore ? target : target.nextSibling);
+        saveOrder();
+    });
+
+    async function saveOrder() {
+        const order = [...grid.querySelectorAll('.file-card[data-file]')].map(c => c.dataset.file);
+        await fetch('/reorder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order, screen: CURRENT_SCREEN })
+        });
+    }
+
+    document.getElementById('media-search').addEventListener('input', updateDraggable);
+    document.getElementById('media-filter').addEventListener('change', updateDraggable);
+    updateDraggable();
+})();
+</script>
+{% endblock %}

@@ -430,7 +430,7 @@ Dans la fiche d'un utilisateur, section **Écrans autorisés** :
 
 Cliquez sur **Réinitialiser le mot de passe** dans la fiche de l'utilisateur et saisissez le nouveau mot de passe.
 
-Le mot de passe du **super-admin** ne se réinitialise pas depuis l'interface. En cas de perte, utilisez le script de maintenance `web/tools/reset_superadmin_password.py` depuis le serveur (voir le `README.md` pour la procédure).
+Le mot de passe du **super-admin** ne se réinitialise pas depuis l'interface. En cas de perte, utilisez le script local de maintenance depuis le serveur (voir le `README.md` pour la procédure). Avec Docker Compose, lancez-le depuis la racine du projet avec `docker compose exec app python3 /app/tools/reset_superadmin_password.py`. Le script remplace uniquement le hash PostgreSQL, force le changement du mot de passe au prochain login et écrit une trace dans le journal d'activité.
 
 ### Supprimer un compte
 
@@ -540,20 +540,20 @@ Les opérations sensibles d'administration utilisent une session authentifiée p
 
 ### Rétention et espace disque
 
-Le journal est **purgé automatiquement** pour éviter une croissance infinie de la base SQLite :
+Le journal est **purgé automatiquement** pour éviter une croissance infinie de la base PostgreSQL :
 
 - les entrées trop anciennes sont supprimées automatiquement ;
 - un plafond de lignes est appliqué même si l'activité est très importante ;
-- un compactage SQLite (`VACUUM`) est lancé périodiquement après purge pour récupérer l'espace disque devenu inutile.
+- les règles de rétention peuvent être appliquées immédiatement depuis l'administration.
 
 Par défaut :
 
 - **conservation** : `90` jours ;
 - **taille maximale** : `20000` entrées ;
 - **fréquence de purge** : `1` heure ;
-- **fréquence minimale de compactage** : `24` heures.
 
-Ces valeurs peuvent être ajustées via les variables d'environnement `ACTIVITY_LOG_RETENTION_DAYS`, `ACTIVITY_LOG_MAX_ROWS`, `ACTIVITY_LOG_CLEANUP_INTERVAL_SECONDS` et `ACTIVITY_LOG_VACUUM_INTERVAL_SECONDS`.
+Ces valeurs peuvent être ajustées via les variables d'environnement `ACTIVITY_LOG_RETENTION_DAYS`, `ACTIVITY_LOG_MAX_ROWS` et `ACTIVITY_LOG_CLEANUP_INTERVAL_SECONDS`.
+Le super-admin peut aussi modifier la conservation, le plafond de lignes, purger les entrées anciennes ou vider le journal depuis la page **Journal d'activité**.
 
 > **Note :** Les compressions vidéo automatiques (planifiées la nuit) sont enregistrées sous l'utilisateur `system`. Les opérations de configuration apparaissent avec l'action **Configuration** et les opérations de campagnes avec l'action **Campagne**.
 

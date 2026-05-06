@@ -82,7 +82,7 @@ Application web légère de signalétique numérique. Elle affiche un diaporama 
 - Chaque entrée indique l'utilisateur responsable, le fichier concerné et les détails (état, taille avant/après…)
 - Filtres par type d'action, par utilisateur et recherche libre (`Upload`, `Suppression`, `Connexion`, `Déconnexion`, `Activation`, `Compression`, `Configuration`, `Campagne`)
 - Les compressions automatiques nocturnes sont tracées sous l'utilisateur `system`
-- Purge automatique des anciennes entrées + plafond de lignes + compactage SQLite périodique pour éviter l'explosion de l'espace disque
+- Purge automatique des anciennes entrées + plafond de lignes pour éviter l'explosion de l'espace disque
 - Sur mobile, le journal est présenté en cartes empilées pour éviter les débordements horizontaux
 
 **Wiki intégré**
@@ -181,7 +181,7 @@ VISIO_VERSION_BUMP=none git commit -m "..."
 | `ADMIN_PASSWORD` | Mot de passe du super-admin (10 caractères minimum)                |
 | `SECRET_KEY`     | Clé de signature des sessions Flask (obligatoire)                  |
 | `POSTGRES_PASSWORD` | Mot de passe du rôle PostgreSQL `visio` utilisé par la stack Docker |
-| `CLIENT_HEARTBEAT_TOKEN` | Jeton partagé optionnel exigé par `/api/client-heartbeat` lorsqu'il est défini |
+| `CLIENT_HEARTBEAT_TOKEN` | Jeton partagé exigé par `/api/client-heartbeat` |
 | `DISPLAY_API_TOKEN` | Jeton écran optionnel exigé par les endpoints publics d'affichage lorsqu'il est défini |
 | `SESSION_COOKIE_SECURE` | Force le cookie de session en mode `Secure` (recommandé derrière HTTPS) |
 | `SESSION_COOKIE_NAME` | Nom du cookie de session Flask (défaut : `visio_session`) |
@@ -209,7 +209,7 @@ VISIO_VERSION_BUMP=none git commit -m "..."
 - Protection CSRF sur toutes les requêtes d'écriture (`POST`, JSON et formulaires)
 - Déconnexion réalisée en `POST` protégé par CSRF, pas en simple lien `GET`
 - Filtrage d'hôtes via `TRUSTED_HOSTS` et prise en charge d'un reverse proxy via `TRUST_PROXY_COUNT`
-- `CLIENT_HEARTBEAT_TOKEN` protège l'endpoint de heartbeat client lorsqu'il est renseigné côté serveur
+- `CLIENT_HEARTBEAT_TOKEN` protège l'endpoint de heartbeat client et doit être partagé avec les clients kiosque installés
 - `DISPLAY_API_TOKEN` protège les endpoints publics d'affichage lorsqu'il est renseigné côté serveur. Les écrans existants continuent de fonctionner sans changement tant que la variable est absente ; sinon envoyer `X-Screen-Token: <jeton>` ou `?screen_token=<jeton>`.
 - Les sauvegardes dans `PRIVATE_DIR/backups` peuvent contenir des données sensibles et sont verrouillées en `chmod 700`
 - Les archives de sauvegarde peuvent inclure une copie de `.env` (`env.backup`) et doivent être manipulées comme des secrets.
@@ -276,24 +276,7 @@ Le super-admin peut aussi configurer le watchdog kiosque, arrêter/redémarrer u
 
 **Réinitialiser un mot de passe super-admin (hors interface) :**
 
-```bash
-cd web
-python3 tools/reset_superadmin_password.py --list
-python3 tools/reset_superadmin_password.py --user <nom-super-admin>
-```
-
-Le script demande le nouveau mot de passe de façon masquée et met à jour uniquement le hash en base. Si un seul super-admin existe, l'option `--user` est facultative.
-Le mot de passe du super-admin ne peut pas être réinitialisé depuis l'interface d'administration.
-
-**Commande en une seule ligne :**
-
-```bash
-cd web && printf '%s\n' '<nouveau-mot-de-passe>' | python3 tools/reset_superadmin_password.py --user <nom-super-admin> --password-stdin
-```
-
-Si un seul compte super-admin existe, vous pouvez omettre `--user <nom-super-admin>`.
-
-**Depuis Docker Compose :**
+Avec Docker Compose, lancez la commande depuis la racine du projet :
 
 ```bash
 docker compose exec app python3 /app/tools/reset_superadmin_password.py --list
@@ -305,6 +288,25 @@ Le script détecte automatiquement `DATABASE_URL` dans le conteneur `app`. Le pr
 ```bash
 printf '%s\n' '<nouveau-mot-de-passe>' | docker compose exec -T app python3 /app/tools/reset_superadmin_password.py --user <nom-super-admin> --password-stdin
 ```
+
+Sans Docker, exportez `DATABASE_URL` ou passez `--database-url` :
+
+```bash
+cd web
+python3 tools/reset_superadmin_password.py --list
+python3 tools/reset_superadmin_password.py --user <nom-super-admin>
+```
+
+Le script demande le nouveau mot de passe de façon masquée, met à jour uniquement le hash PostgreSQL, force le changement du mot de passe à la prochaine connexion et ajoute une trace dans le journal d'activité. Si un seul super-admin existe, l'option `--user` est facultative.
+Le mot de passe du super-admin ne peut pas être réinitialisé depuis l'interface d'administration.
+
+**Commande en une seule ligne :**
+
+```bash
+cd web && printf '%s\n' '<nouveau-mot-de-passe>' | python3 tools/reset_superadmin_password.py --user <nom-super-admin> --password-stdin
+```
+
+Si un seul compte super-admin existe, vous pouvez omettre `--user <nom-super-admin>`.
 
 ### Sauvegarde et restauration Docker
 
@@ -517,12 +519,12 @@ Visio-Display/
 | `/api/images`                             | GET     | Non / `DISPLAY_API_TOKEN` | Liste des médias actifs (`?screen=<nom>` optionnel)  |
 | `/api/durations`                          | GET     | Non / `DISPLAY_API_TOKEN` | Durées d'affichage par fichier (`?screen=<nom>`)     |
 | `/api/pools`                              | GET     | Non / `DISPLAY_API_TOKEN` | Pools de groupes de médias                           |
-| `/api/config`                             | GET     | Non                | Configuration complète                               |
-| `/api/diskusage`                          | GET     | Non                | Statistiques disque                                  |
+| `/api/config`                             | GET     | Connecté           | Configuration complète                               |
+| `/api/diskusage`                          | GET     | Connecté           | Statistiques disque                                  |
 | `/api/screens`                            | GET     | Non / `DISPLAY_API_TOKEN` | Liste des écrans nommés                              |
 | `/api/halo`                               | GET     | Non / `DISPLAY_API_TOKEN` | Couleur de halo de l'écran courant (`?screen=<nom>`) |
 | `/api/client-policy`                      | GET     | Non                | Politique watchdog envoyée aux clients kiosque       |
-| `/api/client-heartbeat`                   | POST    | Non                | Remontée d'état d'un client d'affichage              |
+| `/api/client-heartbeat`                   | POST    | `CLIENT_HEARTBEAT_TOKEN` | Remontée d'état d'un client d'affichage              |
 | `/api/priority-alert`                     | GET     | Non / `DISPLAY_API_TOKEN` | Message d'alerte prioritaire en cours                |
 | `/api/queue`                              | GET     | Connecté           | État de la file d'encodage (compression + upload)    |
 | `/upload`                                 | POST    | `upload`           | Importer des fichiers (retourne JSON + jobs d'encodage) |
@@ -698,17 +700,17 @@ Une campagne active et non archivée peut cibler des groupes, des médias isolé
 
 ### Stockage des données
 
-Les médias uploadés et leurs rendus sont stockés dans `web/static/data/` en local, ou dans le volume Docker défini par `MEDIA_DIR`. Les données privées d’exécution (config, secrets, base locale éventuelle) vivent dans `data/private/` ou dans le volume `PRIVATE_DIR`.
+Les médias uploadés et leurs rendus sont stockés dans `web/static/data/` en local, ou dans le volume Docker défini par `MEDIA_DIR`. Les données privées d’exécution (sauvegardes, cache de version, fichiers privés) vivent dans `data/private/` ou dans le volume `PRIVATE_DIR`. La configuration applicative, les utilisateurs, les rôles, le journal et les jobs sont stockés en PostgreSQL.
 
 ```json
 {
   "alice": {
-    "password":    "<bcrypt>",
+    "password_hash": "<bcrypt>",
     "superadmin":  true,
     "permissions": []
   },
   "bob": {
-    "password":    "<bcrypt>",
+    "password_hash": "<bcrypt>",
     "superadmin":  false,
     "permissions": ["upload", "toggle", "duration"],
     "screens":     ["hall", "refectoire"]
@@ -724,14 +726,15 @@ Le journal d'activité est automatiquement entretenu pour éviter qu'une accumul
 
 - suppression automatique des entrées plus anciennes que la durée de conservation ;
 - suppression des plus anciennes entrées si le nombre maximal de lignes est dépassé ;
-- compactage SQLite périodique après purge pour récupérer l'espace libéré.
+- application immédiate des règles de rétention configurées depuis l'administration.
 
 Valeurs par défaut :
 
 - `ACTIVITY_LOG_RETENTION_DAYS=90`
 - `ACTIVITY_LOG_MAX_ROWS=20000`
 - `ACTIVITY_LOG_CLEANUP_INTERVAL_SECONDS=3600`
-- `ACTIVITY_LOG_VACUUM_INTERVAL_SECONDS=86400`
+
+Le super-admin peut aussi ajuster la rétention, le plafond de lignes et purger les anciennes entrées directement depuis la page **Journal d'activité**.
 
 ### Migration depuis une version antérieure
 
@@ -821,7 +824,7 @@ A lightweight web-based digital signage. It displays a fullscreen slideshow of i
 - Each entry shows the responsible user, the affected file and details (state, before/after size…)
 - Filters by action type, by user, and free-text search (`Upload`, `Delete`, `Login`, `Logout`, `Toggle`, `Compression`, `Configuration`, `Campaign`)
 - Automatic overnight compressions are logged under the `system` user
-- Automatic retention + row cap + periodic SQLite compaction prevent the log database from growing forever
+- Automatic retention + row cap prevent the log database from growing forever
 - Mobile layout renders entries as stacked cards to avoid horizontal overflow
 
 **Built-in wiki**
@@ -920,7 +923,7 @@ VISIO_VERSION_BUMP=none git commit -m "..."
 | `ADMIN_PASSWORD` | Super-admin password (minimum 10 characters)                      |
 | `SECRET_KEY`     | Flask session signing key (required)                              |
 | `POSTGRES_PASSWORD` | Password for the PostgreSQL `visio` role used by the Docker stack |
-| `CLIENT_HEARTBEAT_TOKEN` | Optional shared token required by `/api/client-heartbeat` when set |
+| `CLIENT_HEARTBEAT_TOKEN` | Shared token required by `/api/client-heartbeat` |
 | `DISPLAY_API_TOKEN` | Optional screen token required by public display endpoints when set |
 | `SESSION_COOKIE_SECURE` | Forces the session cookie to use `Secure` (recommended behind HTTPS) |
 | `SESSION_COOKIE_NAME` | Flask session cookie name (default: `visio_session`) |
@@ -948,7 +951,7 @@ VISIO_VERSION_BUMP=none git commit -m "..."
 - CSRF protection is enforced on all state-changing requests (`POST`, JSON and form submissions)
 - Logout is performed through a CSRF-protected `POST`, not a plain `GET` link
 - Host header filtering is available through `TRUSTED_HOSTS`, with reverse-proxy awareness via `TRUST_PROXY_COUNT`
-- `CLIENT_HEARTBEAT_TOKEN` protects the client heartbeat endpoint when configured on the server
+- `CLIENT_HEARTBEAT_TOKEN` protects the client heartbeat endpoint and must be shared with installed kiosk clients
 - `DISPLAY_API_TOKEN` protects public display endpoints when configured on the server. Existing screens keep working unchanged while the variable is absent; otherwise send `X-Screen-Token: <token>` or `?screen_token=<token>`.
 - Backups in `PRIVATE_DIR/backups` can contain sensitive data and are locked down with `chmod 700`
 - Backup archives can include a copy of `.env` (`env.backup`) and must be handled as secrets.
@@ -1017,13 +1020,28 @@ The super-admin can also configure the kiosk watchdog, shut down/restart a detec
 
 **Reset a super-admin password (outside the UI):**
 
+With Docker Compose, run the command from the project root:
+
+```bash
+docker compose exec app python3 /app/tools/reset_superadmin_password.py --list
+docker compose exec app python3 /app/tools/reset_superadmin_password.py --user <super-admin-name>
+```
+
+The script automatically detects `DATABASE_URL` inside the `app` container. The project now runs in PostgreSQL-only mode.
+
+```bash
+printf '%s\n' '<new-password>' | docker compose exec -T app python3 /app/tools/reset_superadmin_password.py --user <super-admin-name> --password-stdin
+```
+
+Without Docker, export `DATABASE_URL` or pass `--database-url`:
+
 ```bash
 cd web
 python3 tools/reset_superadmin_password.py --list
 python3 tools/reset_superadmin_password.py --user <super-admin-name>
 ```
 
-The script prompts for the new password securely and only updates the password hash in the database. If there is only one super-admin account, the `--user` option is optional.
+The script prompts for the new password securely, only updates the PostgreSQL password hash, forces a password change on the next login, and adds an activity-log entry. If there is only one super-admin account, the `--user` option is optional.
 The super-admin password cannot be reset from the admin interface.
 
 **One-line command:**
@@ -1173,12 +1191,12 @@ Visio-Display/
 | `/api/images`                             | GET     | No / `DISPLAY_API_TOKEN` | Active media list (`?screen=<name>` optional)           |
 | `/api/durations`                          | GET     | No / `DISPLAY_API_TOKEN` | Per-file display durations (`?screen=<name>`)           |
 | `/api/pools`                              | GET     | No / `DISPLAY_API_TOKEN` | Media group pools                                      |
-| `/api/config`                             | GET     | No                 | Full configuration                                      |
-| `/api/diskusage`                          | GET     | No                 | Disk usage stats                                        |
+| `/api/config`                             | GET     | Logged in          | Full configuration                                      |
+| `/api/diskusage`                          | GET     | Logged in          | Disk usage stats                                        |
 | `/api/screens`                            | GET     | No / `DISPLAY_API_TOKEN` | List of named screens                                   |
 | `/api/halo`                               | GET     | No / `DISPLAY_API_TOKEN` | Halo color for the current screen (`?screen=<name>`)     |
 | `/api/client-policy`                      | GET     | No                 | Watchdog policy sent to kiosk clients                   |
-| `/api/client-heartbeat`                   | POST    | No                 | Display client status heartbeat                         |
+| `/api/client-heartbeat`                   | POST    | `CLIENT_HEARTBEAT_TOKEN` | Display client status heartbeat                         |
 | `/api/priority-alert`                     | GET     | No / `DISPLAY_API_TOKEN` | Current priority alert message                          |
 | `/api/queue`                              | GET     | Logged in          | Encoding queue state (compression + upload jobs)        |
 | `/upload`                                 | POST    | `upload`           | Upload files (returns JSON with encoding job list)      |
@@ -1354,7 +1372,7 @@ An empty or absent `message` means no banner is displayed.
 
 ### Data storage
 
-Configuration and users are stored in PostgreSQL when using the Docker stack. Uploaded media live in the `MEDIA_DIR` volume and private runtime files live in the `PRIVATE_DIR` volume.
+Application configuration, users, roles, activity log entries and jobs are stored in PostgreSQL when using the Docker stack. Uploaded media live in the `MEDIA_DIR` volume and private runtime files such as backups and the version cache live in the `PRIVATE_DIR` volume.
 
 ### Docker backup and restore
 
@@ -1391,12 +1409,12 @@ Only the **5 most recent backups** are kept automatically in the web interface. 
 ```json
 {
   "alice": {
-    "password":    "<bcrypt>",
+    "password_hash": "<bcrypt>",
     "superadmin":  true,
     "permissions": []
   },
   "bob": {
-    "password":    "<bcrypt>",
+    "password_hash": "<bcrypt>",
     "superadmin":  false,
     "permissions": ["upload", "toggle", "duration"],
     "screens":     ["hall", "cafeteria"]

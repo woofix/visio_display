@@ -1,0 +1,1318 @@
+{# GNU General Public License v3.0 (GPL-3.0) - Copyright (c) 2026 Woofix - See LICENSE file for details #}
+{% extends 'admin_layout.html' %}
+
+{% block title %}{{ t('upload_title') }}{% endblock %}
+{% block topbar_icon %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>{% endblock %}
+{% block topbar_breadcrumbs %}<div class="topbar-breadcrumbs">
+    <a href="/admin" class="bc-link">{{ app_name }}</a>
+    <svg class="bc-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    <a href="/admin/media" class="bc-link">{{ t('nav_label_contents') }}</a>
+    <svg class="bc-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    <span class="bc-current">{% block topbar_title %}{{ t('upload_title') }}{% endblock %}</span>
+</div>{% endblock %}
+{% block topbar_sub %}{% if is_feature_enabled('videos') %}{{ t('upload_topbar_sub') }}{% else %}Importez images et PDF dans le diaporama{% endif %}{% endblock %}
+
+{% block styles %}
+.upload-grid { display: grid; grid-template-columns: 1fr 380px; gap: 20px; align-items: start; }
+.upload-page-stack { display:grid; gap:20px; }
+.upload-area {
+    border: 2px dashed var(--border); border-radius: 14px;
+    padding: 48px 24px; text-align: center;
+    cursor: pointer; transition: all .2s; background: var(--surface-alt);
+}
+.upload-area:hover, .upload-area.dragover {
+    background: var(--primary-bg); border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(124,58,237,.08);
+}
+.upload-icon { width: 56px; height: 56px; background: var(--primary-bg); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; color: var(--primary); }
+.upload-icon svg { width: 26px; height: 26px; }
+.upload-area h3 { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+.upload-area p  { color: var(--text-3); font-size: .8rem; line-height: 1.7; }
+.upload-area .formats { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 14px; }
+.upload-area .fmt-badge { background: var(--primary-bg); color: var(--primary); font-size: .66rem; font-weight: 700; padding: 3px 9px; border-radius: 8px; letter-spacing: .04em; }
+
+/* ── Upload animation ── */
+.upload-area { position: relative; overflow: hidden; isolation: isolate; }
+.upload-area-content {
+    transition: filter .28s ease, opacity .28s ease, transform .28s ease;
+    will-change: filter, opacity, transform;
+}
+.upload-overlay {
+    display: none; position: absolute; inset: 0; border-radius: 12px;
+    background: rgba(255, 255, 255, .72);
+    background: color-mix(in srgb, var(--surface) 68%, transparent);
+    backdrop-filter: blur(5px) saturate(1.08);
+    -webkit-backdrop-filter: blur(5px) saturate(1.08);
+    flex-direction: column;
+    align-items: center; justify-content: center; gap: 10px;
+    z-index: 2;
+    overflow: hidden;
+}
+.upload-overlay::before {
+    content: '';
+    position: absolute;
+    inset: -45%;
+    background: linear-gradient(115deg, transparent 34%, rgba(124, 58, 237, .18) 48%, transparent 62%);
+    background:
+        linear-gradient(115deg, transparent 34%, color-mix(in srgb, var(--primary) 22%, transparent) 48%, transparent 62%);
+    transform: translateX(-45%) rotate(8deg);
+    animation: upload-sweep 1.35s ease-in-out infinite;
+    pointer-events: none;
+}
+.upload-overlay > * {
+    position: relative;
+    z-index: 1;
+}
+.upload-area.uploading { pointer-events: none; }
+.upload-area.uploading .upload-area-content {
+    filter: blur(10px);
+    opacity: .28;
+    transform: scale(.985);
+    animation: upload-blur-breathe 1.1s ease-in-out infinite alternate;
+}
+.upload-area.uploading .upload-overlay {
+    display: flex;
+    animation: upload-overlay-in .28s ease-out both;
+}
+@keyframes upload-overlay-in {
+    from { opacity: 0; transform: scale(1.015); }
+    to { opacity: 1; transform: scale(1); }
+}
+@keyframes upload-blur-breathe {
+    from { filter: blur(7px); transform: scale(.988); }
+    to { filter: blur(12px); transform: scale(.975); }
+}
+@keyframes upload-sweep {
+    0% { transform: translateX(-55%) rotate(8deg); opacity: .15; }
+    45% { opacity: .9; }
+    100% { transform: translateX(55%) rotate(8deg); opacity: .15; }
+}
+.upload-spinner-ring {
+    width: 52px; height: 52px; position: relative; margin-bottom: 4px;
+}
+.upload-spinner-ring::before, .upload-spinner-ring::after {
+    content: ''; position: absolute; inset: 0; border-radius: 50%;
+    border: 3px solid transparent;
+}
+.upload-spinner-ring::before {
+    border-color: rgba(124,58,237,.15);
+}
+.upload-spinner-ring::after {
+    border-top-color: var(--primary);
+    animation: spin .75s linear infinite;
+}
+.upload-spinner-icon {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    color: var(--primary);
+}
+.upload-spinner-icon svg { width: 20px; height: 20px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.upload-overlay-title {
+    font-size: .9rem; font-weight: 700; color: var(--primary);
+}
+.upload-overlay-sub {
+    font-size: .75rem; color: var(--text-3);
+}
+.upload-overlay-pct {
+    font-size: 1.3rem; font-weight: 800; color: var(--text); letter-spacing: -.02em;
+}
+.upload-overlay-dots span {
+    display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--primary); margin: 0 2px; opacity: .3;
+    animation: dot-pulse 1.2s ease-in-out infinite;
+}
+.upload-overlay-dots span:nth-child(2) { animation-delay: .2s; }
+.upload-overlay-dots span:nth-child(3) { animation-delay: .4s; }
+@keyframes dot-pulse { 0%,80%,100%{opacity:.3} 40%{opacity:1} }
+body.site-uploading {
+    overflow: hidden;
+}
+body.site-uploading .sidebar,
+body.site-uploading .main,
+body.site-uploading .mobile-sidebar-backdrop {
+    filter: blur(9px) saturate(.82);
+    transform: scale(.992);
+    transition: filter .24s ease, transform .24s ease;
+    pointer-events: none;
+    user-select: none;
+}
+.site-upload-overlay {
+    position: fixed;
+    inset: 0;
+    display: none;
+    place-items: center;
+    z-index: 5000;
+    background: rgba(15, 23, 42, .38);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    cursor: wait;
+}
+.site-upload-overlay.open {
+    display: grid;
+    animation: site-upload-fade .24s ease-out both;
+}
+.site-upload-panel {
+    position: relative;
+    width: min(340px, calc(100vw - 36px));
+    overflow: hidden;
+    border: 1px solid rgba(124, 58, 237, .24);
+    border: 1px solid color-mix(in srgb, var(--primary) 24%, var(--border));
+    border-radius: 14px;
+    background: rgba(255, 255, 255, .94);
+    background: color-mix(in srgb, var(--surface) 92%, transparent);
+    box-shadow: 0 24px 70px rgba(15, 23, 42, .24);
+    padding: 26px 24px 24px;
+    text-align: center;
+}
+.site-upload-panel::before {
+    content: '';
+    position: absolute;
+    inset: -55%;
+    background: linear-gradient(115deg, transparent 34%, rgba(124, 58, 237, .20) 48%, transparent 62%);
+    background: linear-gradient(115deg, transparent 34%, color-mix(in srgb, var(--primary) 24%, transparent) 48%, transparent 62%);
+    animation: upload-sweep 1.35s ease-in-out infinite;
+}
+.site-upload-panel > * {
+    position: relative;
+    z-index: 1;
+}
+.site-upload-panel .upload-spinner-ring {
+    margin: 0 auto 6px;
+}
+.site-upload-pct {
+    margin-top: 14px;
+    color: var(--text);
+    font-size: 1.75rem;
+    font-weight: 800;
+}
+.site-upload-title {
+    margin-top: 4px;
+    color: var(--primary);
+    font-size: .96rem;
+    font-weight: 800;
+}
+.site-upload-sub {
+    margin-top: 5px;
+    color: var(--text-3);
+    font-size: .78rem;
+}
+@keyframes site-upload-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* ── Progress bar shimmer ── */
+.progress-fill.active {
+    background: linear-gradient(90deg, var(--primary) 0%, var(--primary-light,#a78bfa) 50%, var(--primary) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s linear infinite;
+}
+@keyframes shimmer { 0%{background-position:100% 0} 100%{background-position:-100% 0} }
+
+/* ── Rejected format banner ── */
+.rejected-banner {
+    background: rgba(239,68,68,.07); border: 1.5px solid var(--red,#ef4444);
+    border-radius: 10px; padding: 12px 14px; margin-top: 12px; display: none;
+}
+.rejected-banner-header {
+    display: flex; align-items: center; gap: 7px;
+    font-size: .81rem; font-weight: 700; color: var(--red,#ef4444); margin-bottom: 8px;
+}
+.rejected-banner-header svg { width: 15px; height: 15px; flex-shrink: 0; }
+.rejected-file-list { list-style: none; padding: 0; margin: 0 0 8px; }
+.rejected-file-list li {
+    font-size: .77rem; color: var(--text); padding: 2px 0;
+    display: flex; align-items: baseline; gap: 6px;
+}
+.rejected-file-list li::before { content: '✕'; color: var(--red,#ef4444); font-size: .7rem; flex-shrink: 0; }
+.rejected-file-ext { background: rgba(239,68,68,.12); color: var(--red,#ef4444); font-size: .65rem; font-weight: 700; padding: 1px 6px; border-radius: 5px; letter-spacing: .04em; flex-shrink: 0; }
+.rejected-accepted {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 5px;
+    font-size: .72rem; color: var(--text-3);
+    background: var(--surface-alt); border-radius: 7px; padding: 7px 10px;
+}
+.rejected-accepted .fmt-badge { font-size: .63rem; padding: 2px 7px; }
+
+.upload-conflict-modal {
+    position: fixed; inset: 0; display: none; place-items: center;
+    background: rgba(15, 23, 42, .58); z-index: 1000; padding: 20px;
+}
+.upload-conflict-modal.open { display: grid; }
+.upload-conflict-dialog {
+    width: min(560px, 100%); background: var(--surface); color: var(--text);
+    border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--shadow);
+    display: flex; flex-direction: column;
+    max-height: calc(100dvh - 40px);
+    overflow: hidden;
+}
+.upload-conflict-head {
+    padding: 18px 20px; border-bottom: 1px solid var(--border);
+    background: var(--surface-alt);
+    flex: 0 0 auto;
+}
+.upload-conflict-head h3 { font-size: .95rem; font-weight: 800; margin-bottom: 4px; }
+.upload-conflict-head p { font-size: .78rem; color: var(--text-3); line-height: 1.5; }
+.upload-conflict-body {
+    padding: 18px 20px; display: grid; gap: 12px;
+    min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+}
+.upload-conflict-summary {
+    padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px;
+    background: var(--primary-bg); color: var(--text-2); font-size: .78rem; line-height: 1.55;
+    max-height: 96px; overflow-y: auto; overscroll-behavior: contain;
+}
+.upload-conflict-row label { display: block; font-size: .74rem; font-weight: 700; color: var(--text-2); margin-bottom: 6px; }
+.upload-conflict-label-line {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+}
+.upload-conflict-current {
+    font-size: .68rem; font-weight: 700; color: var(--primary);
+    background: var(--primary-bg); border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent);
+    border-radius: 999px; padding: 3px 8px;
+}
+.upload-conflict-row input {
+    width: 100%; border: 1px solid var(--border); border-radius: 10px;
+    background: var(--surface-alt); color: var(--text); padding: 10px 12px;
+    font: inherit; font-size: .82rem; outline: none;
+}
+.upload-conflict-row input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent); }
+.upload-conflict-help {
+    display: block; margin-top: 5px; font-size: .7rem; color: var(--text-3);
+}
+.upload-conflict-error {
+    display: none; padding: 11px 13px; border-radius: 10px;
+    background: color-mix(in srgb, var(--red) 10%, var(--surface));
+    border: 1px solid color-mix(in srgb, var(--red) 35%, transparent);
+    color: var(--red); font-size: .76rem; line-height: 1.45; font-weight: 600;
+}
+.upload-conflict-error.open { display: block; }
+.upload-conflict-actions {
+    padding: 14px 20px; border-top: 1px solid var(--border); background: var(--surface-alt);
+    display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap;
+    flex: 0 0 auto;
+}
+
+#file-preview { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+#file-preview .prev-item {
+    width: 88px; height: 88px; border-radius: 9px; overflow: hidden;
+    background: var(--surface-alt); position: relative; border: 1px solid var(--border);
+    display: grid; place-items: center;
+}
+#file-preview .prev-item img,
+#file-preview .prev-item video {
+    position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+    opacity: 0; transition: opacity .16s;
+}
+#file-preview .prev-item.has-preview img,
+#file-preview .prev-item.has-preview video { opacity: 1; }
+#file-preview .prev-icon {
+    width: 44px; height: 44px; border-radius: 12px;
+    display: grid; place-items: center; color: var(--primary);
+    background: var(--primary-bg); border: 1px solid color-mix(in srgb, var(--primary) 18%, transparent);
+}
+#file-preview .prev-icon svg { width: 24px; height: 24px; }
+#file-preview .prev-item[data-kind="video"] .prev-icon {
+    color: var(--blue); background: color-mix(in srgb, var(--blue) 12%, var(--surface));
+    border-color: color-mix(in srgb, var(--blue) 24%, transparent);
+}
+#file-preview .prev-ext {
+    position: absolute; top: 5px; left: 5px; z-index: 2;
+    background: rgba(15, 23, 42, .72); color: #fff; border-radius: 6px;
+    font-size: .52rem; font-weight: 800; line-height: 1; letter-spacing: .04em;
+    padding: 3px 5px; max-width: calc(100% - 10px); overflow: hidden; text-overflow: ellipsis;
+}
+#file-preview .prev-name {
+    position: absolute; bottom: 0; left: 0; right: 0; z-index: 2;
+    background: var(--lightbox-overlay); color: var(--lightbox-text);
+    font-size: .57rem; padding: 3px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.progress-wrap { background: var(--primary-bg); border-radius: 6px; height: 7px; overflow: hidden; margin: 10px 0; display: none; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--primary-light)); width: 0; transition: width .3s; border-radius: 6px; }
+
+.encode-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-top: 16px; display: none; }
+.encode-panel h3 { font-size: .82rem; font-weight: 700; color: var(--text); margin-bottom: 14px; display: flex; align-items: center; gap: 7px; }
+.encode-panel h3 svg { width: 15px; height: 15px; color: var(--primary); }
+.encode-job { margin-bottom: 12px; }
+.encode-job:last-child { margin-bottom: 0; }
+.encode-job-name { font-size: .78rem; font-weight: 600; color: var(--text); margin-bottom: 5px; display: flex; justify-content: space-between; }
+.encode-job-name span { font-weight: 400; color: var(--text-3); }
+.encode-bar-wrap { background: var(--primary-bg); border-radius: 6px; height: 8px; overflow: hidden; }
+.encode-bar-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--primary-light)); width: 0; transition: width .4s; border-radius: 6px; }
+.encode-bar-fill.error { background: var(--red); }
+.encode-bar-fill.done  { background: var(--green, #16a34a); }
+
+.info-panel { display: flex; flex-direction: column; gap: 14px; }
+.info-card { background: var(--surface); border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow-sm); border: 1px solid var(--border); }
+.info-card h3 { font-size: .82rem; font-weight: 700; color: var(--text); margin-bottom: 12px; display: flex; align-items: center; gap: 7px; }
+.info-card h3 svg { width: 15px; height: 15px; color: var(--primary); }
+.info-row { display: flex; gap: 10px; align-items: flex-start; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: .81rem; }
+.info-row:last-child { border-bottom: none; }
+.info-row-icon { width: 24px; height: 24px; border-radius: 6px; background: var(--primary-bg); display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+.info-row-icon svg { width: 13px; height: 13px; color: var(--primary); }
+.info-row-text strong { display: block; color: var(--text); font-weight: 600; margin-bottom: 1px; }
+.info-row-text span { color: var(--text-3); font-size: .75rem; }
+.queue-link-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+.queue-force-form { margin: 0; }
+
+.queue-grid { display: grid; grid-template-columns: 1fr 380px; gap: 20px; align-items: start; }
+.queue-main-card { padding: 0; overflow: hidden; }
+.queue-main-shell { padding: 24px; display: grid; gap: 18px; }
+.queue-topbar {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 14px; flex-wrap: wrap;
+}
+.queue-topbar-text h2 { margin: 0; font-size: 1.05rem; font-weight: 800; color: var(--text); }
+.queue-topbar-text p { margin-top: 6px; font-size: .78rem; line-height: 1.6; color: var(--text-3); }
+.queue-topbar-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.window-banner {
+    border-radius: 12px; padding: 14px 18px;
+    display: flex; align-items: center; gap: 12px;
+    font-size: .85rem; font-weight: 600;
+    border: 1px solid;
+}
+.window-banner.on  { background: linear-gradient(180deg, color-mix(in srgb, var(--success-bg) 90%, white 10%), color-mix(in srgb, var(--surface) 94%, var(--success-bg) 6%)); color: var(--success-text); border-color: var(--success-border); }
+.window-banner.off { background: linear-gradient(180deg, color-mix(in srgb, var(--warning-bg) 90%, white 10%), color-mix(in srgb, var(--surface) 94%, var(--warning-bg) 6%)); color: var(--warning-text); border-color: var(--warning-border); }
+.window-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.window-dot.on  { background: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--success-border) 80%, transparent); animation: pulse 2s infinite; }
+.window-dot.off { background: var(--orange); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warning-border) 80%, transparent); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.55} }
+
+.queue-section { margin-bottom: 22px; }
+.queue-section:last-child { margin-bottom: 0; }
+.queue-section-title { font-size: .78rem; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 10px; }
+.job-card {
+    background: color-mix(in srgb, var(--surface-alt) 72%, var(--surface));
+    border-radius: 12px; padding: 14px 16px;
+    border: 1px solid var(--border); box-shadow: none;
+    display: flex; align-items: center; gap: 14px; margin-bottom: 8px;
+}
+.job-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.1rem; }
+.job-progress-wrap { height: 5px; background: var(--border); border-radius: 4px; overflow: hidden; margin-top: 5px; }
+.job-progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--primary-light)); border-radius: 4px; transition: width .5s; }
+.job-icon.pending    { background: color-mix(in srgb, var(--warning-bg) 88%, white 12%); color: var(--warning-text); }
+.job-icon.processing { background: color-mix(in srgb, var(--info-bg) 88%, white 12%); color: var(--info-text); animation: spin-slow 3s linear infinite; }
+@keyframes spin-slow { to { transform: rotate(360deg); } }
+.job-info { flex: 1; min-width: 0; }
+.job-name   { font-size: .84rem; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.job-meta   { font-size: .73rem; color: var(--text-3); margin-top: 2px; }
+.job-status { font-size: .72rem; font-weight: 700; padding: 3px 9px; border-radius: 8px; white-space: nowrap; }
+.job-status.pending    { background: color-mix(in srgb, var(--warning-bg) 88%, white 12%); color: var(--warning-text); }
+.job-status.processing { background: color-mix(in srgb, var(--info-bg) 88%, white 12%); color: var(--info-text); }
+.job-status.done       { background: color-mix(in srgb, var(--success-bg) 88%, white 12%); color: var(--success-text); }
+.job-status.error      { background: color-mix(in srgb, var(--error-bg) 88%, white 12%); color: var(--error-text); }
+.job-result { font-size: .76rem; color: var(--success-text); font-weight: 600; }
+.job-result.error { color: var(--error-text); }
+.empty-queue { text-align: center; padding: 40px 20px; color: var(--text-3); }
+.empty-queue svg { width: 44px; height: 44px; color: #ddd6fe; display: block; margin: 0 auto 12px; }
+.empty-queue p { font-size: .85rem; }
+.timeline { margin-top: 12px; }
+.tl-item { display: flex; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: .79rem; }
+.tl-item:last-child { border-bottom: none; }
+.tl-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+.tl-dot.on  { background: var(--green); }
+.tl-dot.off { background: var(--border); }
+.tl-label { color: var(--text-2); font-weight: 500; }
+.tl-note  { color: var(--text-3); margin-top: 1px; }
+
+@media(max-width: 860px) {
+    .upload-grid { grid-template-columns: 1fr; }
+    .queue-grid { grid-template-columns: 1fr; }
+}
+@media(max-width: 640px) {
+    .upload-conflict-modal { padding: 12px; }
+    .upload-conflict-dialog { max-height: calc(100dvh - 24px); }
+    .upload-conflict-head,
+    .upload-conflict-body,
+    .upload-conflict-actions { padding-left: 14px; padding-right: 14px; }
+    .upload-conflict-actions .btn { flex: 1 1 130px; justify-content: center; }
+    .upload-area {
+        padding: 32px 16px;
+    }
+    #file-preview .prev-item {
+        width: calc(50% - 4px);
+        aspect-ratio: 1;
+        height: auto;
+    }
+    .encode-job-name,
+    .info-row,
+    .rejected-banner-header,
+    .job-card,
+    .window-banner,
+    .queue-topbar {
+        flex-wrap: wrap;
+    }
+    .job-status { white-space: normal; }
+}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ t('upload_h1') }}</h1>
+    <p>{% if is_feature_enabled('videos') %}{{ t('upload_sub') }}{% else %}Les images et PDF sont importés immédiatement dans la médiathèque.{% endif %}</p>
+</div>
+
+<div class="upload-page-stack">
+<div class="upload-grid">
+    <div class="upload-stack">
+        <div class="card" style="padding: 0; overflow: hidden;">
+            <form id="upload-form" action="/upload" method="post" enctype="multipart/form-data">
+                <div style="padding: 24px;">
+                    <div class="upload-area" id="upload-area">
+                        <!-- Animated overlay shown during upload -->
+                        <div class="upload-overlay" id="upload-overlay">
+                            <div class="upload-spinner-ring">
+                                <div class="upload-spinner-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                </div>
+                            </div>
+                            <div class="upload-overlay-pct" id="overlay-pct">0%</div>
+                            <div class="upload-overlay-title" id="overlay-title"></div>
+                            <div class="upload-overlay-sub" id="overlay-sub"></div>
+                            <div class="upload-overlay-dots"><span></span><span></span><span></span></div>
+                        </div>
+
+                        <div class="upload-area-content">
+                            <div class="upload-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            </div>
+                            <h3>{{ t('upload_drag') }}</h3>
+                            <p>{{ t('upload_click') }}</p>
+                            <div class="formats">
+                                <span class="fmt-badge">JPG</span>
+                                <span class="fmt-badge">PNG</span>
+                                <span class="fmt-badge">PDF</span>
+                                {% if is_feature_enabled('videos') %}
+                                <span class="fmt-badge">MP4</span>
+                                <span class="fmt-badge">MOV</span>
+                                <span class="fmt-badge">WebM</span>
+                                <span class="fmt-badge">AVI</span>
+                                <span class="fmt-badge">MKV</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <input type="file" name="file" id="file-input" multiple
+                               accept=".jpg,.jpeg,.png,.pdf{% if is_feature_enabled('videos') %},.mp4,.webm,.mov,.avi,.mkv{% endif %}"
+                               style="display:none">
+                    </div>
+
+                    <!-- Rejected format banner -->
+                    <div class="rejected-banner" id="rejected-banner">
+                        <div class="rejected-banner-header">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                            <span id="rejected-banner-title"></span>
+                        </div>
+                        <ul class="rejected-file-list" id="rejected-file-list"></ul>
+                        <div class="rejected-accepted" id="rejected-accepted"></div>
+                    </div>
+
+                    <div id="file-preview"></div>
+                    <div class="progress-wrap" id="progress-wrap">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                    <div class="encode-panel" id="encode-panel">
+                        <h3>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            <span id="encode-panel-title">{{ t('upload_encoding_title') }}</span>
+                        </h3>
+                        <div id="encode-jobs"></div>
+                        <a href="/admin/media" class="btn sm" id="btn-go-media" style="display:none;margin-top:12px">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                            {{ t('upload_go_media') }}
+                        </a>
+                    </div>
+                </div>
+
+                <div style="padding: 16px 24px; background: var(--surface-alt); border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+                    <span style="font-size: .76rem; color: var(--text-3);">{{ t('upload_max_size') }}</span>
+                    <button type="submit" class="btn success">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        {{ t('upload_btn') }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="info-panel">
+        <div class="info-card">
+            <h3>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                {{ t('upload_how_title') }}
+            </h3>
+            <div class="info-row">
+                <div class="info-row-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>
+                <div class="info-row-text"><strong>{{ t('upload_images_title') }}</strong><span>{{ t('upload_images_desc') }}</span></div>
+            </div>
+            <div class="info-row">
+                <div class="info-row-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+                <div class="info-row-text"><strong>{{ t('upload_pdf_title') }}</strong><span>{{ t('upload_pdf_desc') }}</span></div>
+            </div>
+            {% if is_feature_enabled('videos') %}
+            <div class="info-row">
+                <div class="info-row-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>
+                <div class="info-row-text"><strong>{{ t('upload_video_title') }}</strong><span>{{ t('upload_video_desc') }}</span></div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="info-card">
+            <h3>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                {{ t('upload_after_title') }}
+            </h3>
+            <p style="font-size:.8rem; color:var(--text-3); line-height:1.6;">{{ t('upload_after_desc') }}</p>
+            <a href="/admin/media" class="btn secondary sm" style="margin-top:12px; display:inline-flex;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                {{ t('go_to_media') }}
+            </a>
+        </div>
+
+        {% if is_feature_enabled('videos') and is_feature_enabled('compress') %}
+        <div class="info-card">
+            <h3>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                {{ t('queue_title') }}
+            </h3>
+            <p style="font-size:.8rem; color:var(--text-3); line-height:1.6;">{{ t('upload_queue_desc') }}</p>
+            <div class="queue-link-actions">
+                <a href="/admin/queue" class="btn secondary sm">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                    {{ t('queue_title') }}
+                </a>
+                {% if current_user_is_superadmin %}
+                <form method="post" action="/admin/queue/force" class="queue-force-form">
+                    <button type="submit" class="btn sm">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        {{ t('queue_force_btn') }}
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+</div>
+
+<div class="upload-conflict-modal" id="upload-conflict-modal" aria-hidden="true">
+    <div class="upload-conflict-dialog theme-dialog" role="dialog" aria-modal="true" aria-labelledby="upload-conflict-title">
+        <div class="upload-conflict-head">
+            <h3 id="upload-conflict-title">Fichier déjà existant</h3>
+            <p>Choisissez un nouveau nom, ou écrasez le fichier existant.</p>
+        </div>
+        <div class="upload-conflict-body" id="upload-conflict-body"></div>
+        <div class="upload-conflict-actions">
+            <button type="button" class="btn secondary sm" id="upload-conflict-cancel">Annuler</button>
+            <button type="button" class="btn warning sm" id="upload-conflict-overwrite">Écraser</button>
+            <button type="button" class="btn success sm" id="upload-conflict-rename">Renommer</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const MSG_TOO_LARGE        = {{ t('js_upload_too_large') | tojson }};
+const MSG_TOO_LARGE_SINGLE = {{ t('js_upload_too_large_single') | tojson }};
+const MSG_BATCH_TOO_LARGE  = {{ t('js_upload_batch_too_large') | tojson }};
+const MSG_NETWORK_ERROR    = {{ t('js_upload_network_error') | tojson }};
+const MSG_ENCODING_TITLE   = {{ t('upload_encoding_title') | tojson }};
+const MSG_ENCODING_DONE    = {{ t('upload_encoding_done') | tojson }};
+const MSG_ENCODING_ERROR   = {{ t('upload_encoding_error') | tojson }};
+const MSG_INVALID_FORMAT   = {{ t('js_upload_invalid_format') | tojson }};
+const MSG_ACCEPTED_FORMATS = {{ t('js_upload_accepted_formats') | tojson }};
+const MSG_UPLOADING        = {{ t('js_upload_uploading') | tojson }};
+const MSG_UPLOADING_FILES  = {{ t('js_upload_uploading_files') | tojson }};
+const JS_WINDOW_ACTIVE   = {{ t('js_queue_window_active') | tojson }};
+const JS_WINDOW_INACTIVE = {{ t('js_queue_window_inactive_prefix') | tojson }};
+const JS_TONIGHT         = {{ t('js_queue_tonight') | tojson }};
+const JS_TOMORROW        = {{ t('js_queue_tomorrow') | tojson }};
+const JS_PENDING         = {{ t('js_queue_status_pending') | tojson }};
+const JS_PROCESSING      = {{ t('js_queue_status_processing') | tojson }};
+const JS_DONE            = {{ t('js_queue_status_done') | tojson }};
+const JS_ERROR           = {{ t('js_queue_status_error') | tojson }};
+const JS_ADDED_ON        = {{ t('js_queue_added_on') | tojson }};
+const JS_CANCEL_BTN      = {{ t('js_queue_cancel_btn') | tojson }};
+const JS_EMPTY_ACTIVE    = {{ t('js_queue_empty_active') | tojson }};
+const JS_EMPTY_RECENT    = {{ t('js_queue_empty_recent') | tojson }};
+const JS_CONFIRM_CANCEL  = {{ t('js_queue_confirm_cancel') | tojson }};
+const MSG_UNSUPPORTED_TYPE = 'Type de fichier non pris en charge.';
+const MSG_INVALID_IMAGE    = 'Le fichier image est invalide ou corrompu.';
+const MSG_FILE_TOO_LARGE   = {{ t('js_upload_too_large_single') | tojson }};
+const MSG_UPLOAD_FAILED    = "L'envoi a échoué. Vérifiez le format du fichier et réessayez.";
+const MSG_NAME_CONFLICT_TITLE = "Fichier déjà existant";
+const MSG_NAME_CONFLICT_TEXT  = "Choisissez le nom exact à utiliser pour chaque fichier en conflit, ou écrasez les fichiers déjà présents.";
+const MSG_NAME_CONFLICT_LIST  = "Fichiers déjà présents";
+const MSG_NAME_INPUT_LABEL    = "Nouveau nom";
+const MSG_NAME_CURRENT_LABEL  = "Nom actuel";
+const MSG_NAME_OCCURRENCE     = "Occurrence";
+const MSG_NAME_INPUT_HELP     = "Gardez la même extension.";
+const MSG_NAME_REQUIRED       = "Veuillez saisir un nom pour chaque fichier.";
+const MSG_NAME_EXT_MISMATCH   = "L’extension doit rester identique au fichier d’origine.";
+const MSG_NAME_DUPLICATE      = "Chaque nouveau nom doit être unique.";
+const MSG_NAME_EXISTS         = "Le nom choisi existe déjà. Choisissez-en un autre.";
+const MSG_NAME_RETRY          = "Le nom choisi existe déjà. Modifiez-le et réessayez.";
+const MSG_NAME_MISSING        = "Nom manquant pour un fichier en conflit.";
+const UPLOAD_ANIMATION_MIN_MS = 900;
+let uploadAnimationStartedAt = 0;
+const ACCEPTED_EXTS = new Set([
+    '.jpg','.jpeg','.png','.pdf'
+    {% if is_feature_enabled('videos') %},'.mp4','.webm','.mov','.avi','.mkv'{% endif %}
+]);
+const ACCEPTED_LABELS = [
+    'JPG','PNG','PDF'
+    {% if is_feature_enabled('videos') %},'MP4','MOV','WebM','AVI','MKV'{% endif %}
+];
+
+const uploadArea    = document.getElementById('upload-area');
+const fileInput     = document.getElementById('file-input');
+const preview       = document.getElementById('file-preview');
+const progressWrap  = document.getElementById('progress-wrap');
+const progressFill  = document.getElementById('progress-fill');
+const encodePanel   = document.getElementById('encode-panel');
+const encodeJobs    = document.getElementById('encode-jobs');
+const rejectedBanner = document.getElementById('rejected-banner');
+const overlayPct    = document.getElementById('overlay-pct');
+const overlayTitle  = document.getElementById('overlay-title');
+const overlaySub    = document.getElementById('overlay-sub');
+let siteUploadOverlay = null;
+let siteOverlayPct = null;
+let siteOverlayTitle = null;
+let siteOverlaySub = null;
+const conflictModal = document.getElementById('upload-conflict-modal');
+const conflictTitle = document.getElementById('upload-conflict-title');
+const conflictHeadText = conflictModal.querySelector('.upload-conflict-head p');
+const conflictBody = document.getElementById('upload-conflict-body');
+const conflictCancelBtn = document.getElementById('upload-conflict-cancel');
+const conflictOverwriteBtn = document.getElementById('upload-conflict-overwrite');
+const conflictRenameBtn = document.getElementById('upload-conflict-rename');
+let droppedFiles    = [];
+let _pollTimer      = null;
+let conflictDialogState = null;
+
+function getExt(name) { return name.slice(name.lastIndexOf('.')).toLowerCase(); }
+
+function getPreviewKind(file) {
+    const ext = getExt(file.name);
+    if (['.jpg', '.jpeg', '.png'].includes(ext)) return 'image';
+    if (['.mp4', '.webm', '.mov', '.avi', '.mkv'].includes(ext)) return 'video';
+    if (ext === '.pdf') return 'pdf';
+    return 'file';
+}
+
+function previewIcon(kind) {
+    if (kind === 'video') {
+        return `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="5" width="14" height="14" rx="2"></rect>
+                <path d="m17 9 4-2v10l-4-2"></path>
+            </svg>`;
+    }
+    if (kind === 'pdf') {
+        return `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <path d="M14 2v6h6"></path>
+                <path d="M8 16h8"></path>
+                <path d="M8 12h3"></path>
+            </svg>`;
+    }
+    return `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+            <path d="m21 15-5-5L5 21"></path>
+        </svg>`;
+}
+
+function filterFiles(files) {
+    const valid = [], rejected = [];
+    [...files].forEach(f => (ACCEPTED_EXTS.has(getExt(f.name)) ? valid : rejected).push(f));
+    return { valid, rejected };
+}
+
+function showRejectedBanner(rejected) {
+    if (!rejected.length) { rejectedBanner.style.display = 'none'; return; }
+    document.getElementById('rejected-banner-title').textContent = MSG_INVALID_FORMAT;
+    const list = document.getElementById('rejected-file-list');
+    list.innerHTML = rejected.map(f => {
+        const ext = getExt(f.name);
+        return `<li><span>${f.name}</span><span class="rejected-file-ext">${ext.toUpperCase()}</span></li>`;
+    }).join('');
+    const acc = document.getElementById('rejected-accepted');
+    acc.innerHTML = MSG_ACCEPTED_FORMATS + ' ' + ACCEPTED_LABELS.map(l => `<span class="fmt-badge">${l}</span>`).join('');
+    rejectedBanner.style.display = 'block';
+}
+
+uploadArea.addEventListener('click', () => fileInput.click());
+uploadArea.addEventListener('dragover',  e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+uploadArea.addEventListener('drop', e => {
+    e.preventDefault(); e.stopPropagation();
+    uploadArea.classList.remove('dragover');
+    const { valid, rejected } = filterFiles(e.dataTransfer.files);
+    droppedFiles = [...droppedFiles, ...valid];
+    showRejectedBanner(rejected);
+    showPreviews(droppedFiles);
+});
+fileInput.addEventListener('change', () => {
+    const { valid, rejected } = filterFiles(fileInput.files);
+    droppedFiles = [...droppedFiles, ...valid];
+    fileInput.value = '';
+    showRejectedBanner(rejected);
+    showPreviews(droppedFiles);
+});
+
+function showPreviews(files) {
+    preview.innerHTML = '';
+    [...files].forEach(file => {
+        const item = document.createElement('div');
+        const kind = getPreviewKind(file);
+        const ext = getExt(file.name).replace('.', '').toUpperCase() || 'FILE';
+        item.className = 'prev-item';
+        item.dataset.kind = kind;
+        item.innerHTML = `
+            <div class="prev-icon" aria-hidden="true">${previewIcon(kind)}</div>
+            <span class="prev-ext">${escapeHtml(ext)}</span>
+            <span class="prev-name" title="${escapeHtmlAttr(file.name)}">${escapeHtml(file.name)}</span>
+        `;
+        if (kind === 'image') {
+            const img = document.createElement('img');
+            img.alt = '';
+            img.addEventListener('load', () => item.classList.add('has-preview'), { once: true });
+            img.addEventListener('error', () => item.classList.remove('has-preview'), { once: true });
+            img.src = URL.createObjectURL(file);
+            item.appendChild(img);
+        } else if (kind === 'video') {
+            const vid = document.createElement('video');
+            vid.muted = true;
+            vid.playsInline = true;
+            vid.preload = 'metadata';
+            vid.addEventListener('loadeddata', () => item.classList.add('has-preview'), { once: true });
+            vid.addEventListener('error', () => item.classList.remove('has-preview'), { once: true });
+            vid.src = URL.createObjectURL(file);
+            item.appendChild(vid);
+        }
+        preview.appendChild(item);
+    });
+}
+
+function setUploadingState(active, pct, n) {
+    const pctText = (pct || 0) + '%';
+    if (active) {
+        uploadAnimationStartedAt = performance.now();
+        ensureSiteUploadOverlay();
+        document.body.classList.add('site-uploading');
+        siteUploadOverlay.classList.add('open');
+        siteUploadOverlay.setAttribute('aria-hidden', 'false');
+        uploadArea.classList.add('uploading');
+        uploadArea.setAttribute('aria-busy', 'true');
+        overlayTitle.textContent = MSG_UPLOADING;
+        overlaySub.textContent = MSG_UPLOADING_FILES.replace('{n}', n);
+        overlayPct.textContent = pctText;
+        siteOverlayTitle.textContent = MSG_UPLOADING;
+        siteOverlaySub.textContent = MSG_UPLOADING_FILES.replace('{n}', n);
+        siteOverlayPct.textContent = pctText;
+        progressFill.classList.add('active');
+    } else {
+        if (siteUploadOverlay) {
+            siteUploadOverlay.classList.remove('open');
+            siteUploadOverlay.setAttribute('aria-hidden', 'true');
+        }
+        document.body.classList.remove('site-uploading');
+        uploadArea.classList.remove('uploading');
+        uploadArea.removeAttribute('aria-busy');
+        progressFill.classList.remove('active');
+    }
+}
+
+function ensureSiteUploadOverlay() {
+    if (siteUploadOverlay) return;
+    siteUploadOverlay = document.createElement('div');
+    siteUploadOverlay.className = 'site-upload-overlay';
+    siteUploadOverlay.setAttribute('aria-hidden', 'true');
+    siteUploadOverlay.innerHTML = `
+        <div class="site-upload-panel" role="status" aria-live="polite">
+            <div class="upload-spinner-ring">
+                <div class="upload-spinner-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                </div>
+            </div>
+            <div class="site-upload-pct">0%</div>
+            <div class="site-upload-title"></div>
+            <div class="site-upload-sub"></div>
+            <div class="upload-overlay-dots"><span></span><span></span><span></span></div>
+        </div>
+    `;
+    document.body.appendChild(siteUploadOverlay);
+    siteOverlayPct = siteUploadOverlay.querySelector('.site-upload-pct');
+    siteOverlayTitle = siteUploadOverlay.querySelector('.site-upload-title');
+    siteOverlaySub = siteUploadOverlay.querySelector('.site-upload-sub');
+}
+
+function waitForUploadAnimation() {
+    const elapsed = performance.now() - uploadAnimationStartedAt;
+    const remaining = Math.max(0, UPLOAD_ANIMATION_MIN_MS - elapsed);
+    return new Promise(resolve => setTimeout(resolve, remaining));
+}
+
+const MAX_FILE_SIZE = 150 * 1024 * 1024;
+const MAX_BATCH_SIZE = 256 * 1024 * 1024;
+function checkSizes(files) {
+    const big = [...files].filter(f => f.size > MAX_FILE_SIZE);
+    if (big.length) {
+        showFlash(MSG_TOO_LARGE.replace('{names}', big.map(f => f.name).join(', ')), 'error');
+        return false;
+    }
+    const total = [...files].reduce((sum, f) => sum + f.size, 0);
+    if (total > MAX_BATCH_SIZE) {
+        showFlash(MSG_BATCH_TOO_LARGE, 'error');
+        return false;
+    }
+    return true;
+}
+
+/* ── Suivi de l'encodage ── */
+function startProgressPolling(jobs) {
+    encodePanel.style.display = 'block';
+    encodeJobs.innerHTML = '';
+    const jobMap = {};
+    jobs.forEach(j => {
+        const wrap  = document.createElement('div'); wrap.className = 'encode-job';
+        const label = document.createElement('div'); label.className = 'encode-job-name';
+        label.innerHTML = `${j.filename} <span id="pct-${j.id}">0%</span>`;
+        const barWrap = document.createElement('div'); barWrap.className = 'encode-bar-wrap';
+        const bar     = document.createElement('div'); bar.className = 'encode-bar-fill'; bar.id = `bar-${j.id}`;
+        barWrap.appendChild(bar); wrap.appendChild(label); wrap.appendChild(barWrap);
+        encodeJobs.appendChild(wrap);
+        jobMap[j.id] = j.filename;
+    });
+
+    function poll() {
+        fetch('/api/queue').then(r => r.json()).then(data => {
+            let allDone = true;
+            jobs.forEach(j => {
+                const uj  = (data.upload_jobs || []).find(x => x.filename === j.filename);
+                const bar = document.getElementById(`bar-${j.id}`);
+                const pct = document.getElementById(`pct-${j.id}`);
+                if (!uj || uj.status === 'processing') {
+                    allDone = false;
+                    const p = Math.max(0, uj ? (uj.progress || 0) : 0);
+                    if (bar) bar.style.width = p + '%';
+                    if (pct) pct.textContent = p + '%';
+                } else if (uj.status === 'done') {
+                    if (bar) { bar.style.width = '100%'; bar.classList.add('done'); }
+                    if (pct) pct.textContent = '100%';
+                } else if (uj.status === 'error') {
+                    if (bar) bar.classList.add('error');
+                    if (pct) pct.textContent = MSG_ENCODING_ERROR;
+                }
+            });
+            if (!allDone) {
+                _pollTimer = setTimeout(poll, 1500);
+            } else {
+                document.getElementById('encode-panel-title').textContent = MSG_ENCODING_DONE;
+                document.getElementById('btn-go-media').style.display = 'inline-flex';
+            }
+        }).catch(() => { _pollTimer = setTimeout(poll, 3000); });
+    }
+    poll();
+}
+
+function splitFilename(filename) {
+    const dot = filename.lastIndexOf('.');
+    if (dot <= 0) return { base: filename, ext: '' };
+    return { base: filename.slice(0, dot), ext: filename.slice(dot) };
+}
+
+function normalizeConflictEntries(conflicts) {
+    const entries = (conflicts || []).map((entry, index) => {
+        if (typeof entry === 'string') {
+            return { uploadIndex: index, filename: entry };
+        }
+        return {
+            uploadIndex: Number.isInteger(entry?.upload_index) ? entry.upload_index : index,
+            filename: String(entry?.filename || ''),
+        };
+    }).filter(entry => entry.filename);
+
+    const occurrences = new Map();
+    return entries.map(entry => {
+        const count = (occurrences.get(entry.filename) || 0) + 1;
+        occurrences.set(entry.filename, count);
+        return { ...entry, occurrence: count };
+    });
+}
+
+function openConflictDialog(conflicts, message = '') {
+    const entries = normalizeConflictEntries(conflicts);
+    return new Promise(resolve => {
+        conflictDialogState = { resolve, entries };
+        conflictTitle.textContent = MSG_NAME_CONFLICT_TITLE;
+        conflictHeadText.textContent = MSG_NAME_CONFLICT_TEXT;
+
+        const summary = entries.map(entry => `<strong>${escapeHtml(entry.filename)}</strong>`).join(', ');
+        conflictBody.innerHTML = `
+            <div class="upload-conflict-summary">${MSG_NAME_CONFLICT_LIST} : ${summary}</div>
+            <div class="upload-conflict-error${message ? ' open' : ''}" id="upload-conflict-error">${escapeHtml(message || '')}</div>
+            ${entries.map((entry, index) => {
+                const { base, ext } = splitFilename(entry.filename);
+                const occurrenceBadge = entry.occurrence > 1
+                    ? `<span class="upload-conflict-current">${MSG_NAME_OCCURRENCE} ${entry.occurrence}</span>`
+                    : '';
+                return `
+                    <div class="upload-conflict-row">
+                        <label for="upload-conflict-input-${index}">
+                            <span class="upload-conflict-label-line">
+                                <span>${MSG_NAME_INPUT_LABEL}</span>
+                                <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                                    <span class="upload-conflict-current">${MSG_NAME_CURRENT_LABEL} : ${escapeHtml(entry.filename)}</span>
+                                    ${occurrenceBadge}
+                                </span>
+                            </span>
+                        </label>
+                        <input
+                            id="upload-conflict-input-${index}"
+                            type="text"
+                            data-upload-index="${entry.uploadIndex}"
+                            data-original-name="${escapeHtmlAttr(entry.filename)}"
+                            data-original-ext="${escapeHtmlAttr(ext)}"
+                            value="${escapeHtmlAttr(base)}"
+                            autocomplete="off"
+                            spellcheck="false"
+                        >
+                        <small class="upload-conflict-help">${MSG_NAME_INPUT_HELP} ${escapeHtml(ext)}</small>
+                    </div>
+                `;
+            }).join('')}
+        `;
+
+        conflictModal.classList.add('open');
+        conflictModal.setAttribute('aria-hidden', 'false');
+        const firstInput = conflictBody.querySelector('input');
+        if (firstInput) {
+            requestAnimationFrame(() => {
+                firstInput.focus();
+                firstInput.select();
+            });
+        }
+    });
+}
+
+function closeConflictDialog(result) {
+    if (!conflictDialogState) return;
+    const { resolve } = conflictDialogState;
+    conflictDialogState = null;
+    conflictModal.classList.remove('open');
+    conflictModal.setAttribute('aria-hidden', 'true');
+    conflictBody.innerHTML = '';
+    resolve(result);
+}
+
+function setConflictError(message) {
+    const box = document.getElementById('upload-conflict-error');
+    if (!box) return;
+    box.textContent = message;
+    box.classList.add('open');
+}
+
+function collectRenameMap() {
+    const inputs = [...conflictBody.querySelectorAll('input[data-upload-index]')];
+    const renameMap = {};
+    const targets = new Set();
+
+    for (const input of inputs) {
+        const uploadIndex = input.dataset.uploadIndex || '';
+        const originalName = input.dataset.originalName || '';
+        const originalExt = (input.dataset.originalExt || '').toLowerCase();
+        const rawValue = input.value.trim();
+
+        if (!rawValue) {
+            input.focus();
+            input.select();
+            setConflictError(MSG_NAME_REQUIRED);
+            return null;
+        }
+
+        const hasExt = rawValue.includes('.');
+        const proposed = hasExt ? rawValue : `${rawValue}${originalExt}`;
+        const proposedExt = getExt(proposed);
+
+        if (proposedExt !== originalExt) {
+            input.focus();
+            input.select();
+            setConflictError(MSG_NAME_EXT_MISMATCH);
+            return null;
+        }
+        if (targets.has(proposed.toLowerCase())) {
+            input.focus();
+            input.select();
+            setConflictError(MSG_NAME_DUPLICATE);
+            return null;
+        }
+
+        targets.add(proposed.toLowerCase());
+        renameMap[uploadIndex] = proposed;
+    }
+
+    return renameMap;
+}
+
+function escapeHtml(value) {
+    return String(value)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+}
+
+function escapeHtmlAttr(value) {
+    return escapeHtml(value);
+}
+
+conflictCancelBtn.addEventListener('click', () => closeConflictDialog(null));
+conflictOverwriteBtn.addEventListener('click', () => closeConflictDialog({ strategy: 'overwrite' }));
+conflictRenameBtn.addEventListener('click', () => {
+    const renameMap = collectRenameMap();
+    if (!renameMap) return;
+    closeConflictDialog({ strategy: 'rename_custom', renameMap });
+});
+document.querySelectorAll('.queue-force-form').forEach(form => {
+    form.addEventListener('submit', async event => {
+        event.preventDefault();
+        const ok = await window.appUI.confirm({
+            titleText: {{ t('queue_force_btn') | tojson }},
+            messageText: {{ t('queue_force_confirm') | tojson }},
+            note: "L'encodage démarre immédiatement pour les éléments en attente, même hors de la fenêtre nocturne. Cela peut saturer la machine et risque de bloquer temporairement les clients pendant l'encodage.",
+            tone: 'warning',
+            confirmLabel: {{ t('queue_force_btn') | tojson }},
+        });
+        if (ok) form.submit();
+    });
+});
+conflictModal.addEventListener('click', event => {
+    if (event.target === conflictModal) closeConflictDialog(null);
+});
+document.querySelector('.upload-conflict-dialog').addEventListener('click', e => e.stopPropagation());
+document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') {
+        event.preventDefault();
+        if (conflictDialogState) closeConflictDialog(null);
+        return;
+    }
+    if (conflictDialogState && event.key === 'Enter' && event.target instanceof HTMLInputElement) {
+        event.preventDefault();
+        conflictRenameBtn.click();
+    }
+});
+
+function submitUploadFiles(files, strategy = '', renameMap = null) {
+    const fd = new FormData();
+    files.forEach(f => fd.append('file', f));
+    if (strategy) fd.append('conflict_strategy', strategy);
+    if (renameMap) fd.append('rename_map', JSON.stringify(renameMap));
+    const xhr = new XMLHttpRequest();
+    progressWrap.style.display = 'block'; progressFill.style.width = '0';
+    setUploadingState(true, 0, files.length);
+    xhr.upload.addEventListener('progress', ev => {
+        if (ev.lengthComputable) {
+            const pct = Math.round(ev.loaded / ev.total * 100);
+            progressFill.style.width = pct + '%';
+            overlayPct.textContent = pct + '%';
+            if (siteOverlayPct) siteOverlayPct.textContent = pct + '%';
+        }
+    });
+    xhr.addEventListener('load', async () => {
+        await waitForUploadAnimation();
+        setUploadingState(false);
+        progressWrap.style.display = 'none';
+        let data = {};
+        try {
+            data = JSON.parse(xhr.responseText || '{}');
+        } catch {
+            data = {};
+        }
+        if (xhr.status === 413) {
+            const message = data.error === 'file too large'
+                ? MSG_FILE_TOO_LARGE
+                : MSG_BATCH_TOO_LARGE;
+            showFlash(message, 'error');
+            return;
+        }
+        if (xhr.status === 409 && data.error === 'name conflict') {
+            const retryMessage = data.message || '';
+            const choice = await openConflictDialog(data.conflicts || [], retryMessage);
+            if (!choice) return;
+            submitUploadFiles(files, choice.strategy, choice.renameMap || null);
+            return;
+        }
+        if (xhr.status >= 400) {
+            const message = data.error === 'unsupported file type'
+                ? MSG_UNSUPPORTED_TYPE
+                : data.error === 'invalid image file'
+                    ? MSG_INVALID_IMAGE
+                    : data.error === 'batch too large'
+                        ? MSG_BATCH_TOO_LARGE
+                    : data.error === 'file too large'
+                        ? MSG_FILE_TOO_LARGE
+                    : data.error === 'missing rename'
+                        ? MSG_NAME_MISSING
+                    : data.error === 'extension mismatch'
+                        ? MSG_NAME_EXT_MISMATCH
+                    : data.error === 'target exists'
+                        ? MSG_NAME_EXISTS
+                    : (data.error || `${MSG_UPLOAD_FAILED} (HTTP ${xhr.status})`);
+            showFlash(message, 'error');
+            return;
+        }
+        window.location.href = data.redirect || '/admin/media';
+    });
+    xhr.addEventListener('error', async () => {
+        await waitForUploadAnimation();
+        setUploadingState(false);
+        progressWrap.style.display = 'none';
+        showFlash(MSG_NETWORK_ERROR, 'error');
+    });
+    xhr.open('POST', '/upload');
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+    xhr.setRequestHeader('X-CSRF-Token', window.CSRF_TOKEN);
+    xhr.send(fd);
+}
+
+document.getElementById('upload-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const files = droppedFiles.length ? droppedFiles : [...fileInput.files];
+    if (!files.length) return;
+    if (!checkSizes(files)) return;
+    submitUploadFiles(files);
+});
+
+function showFlash(msg, type) {
+    window.appUI.showFlash(msg, type);
+}
+
+{% if is_feature_enabled('videos') and is_feature_enabled('compress') %}
+async function refreshQueue() {
+    try {
+        const res = await fetch('/api/queue');
+        const data = await res.json();
+
+        const banner = document.getElementById('window-banner');
+        const dot = document.getElementById('window-dot');
+        const text = document.getElementById('window-text');
+        if (banner && dot && text) {
+            const h = new Date().getHours();
+            const active = h >= 20 || h < 6;
+            banner.className = `window-banner ${active ? 'on' : 'off'}`;
+            dot.className = `window-dot ${active ? 'on' : 'off'}`;
+            if (active) {
+                text.textContent = JS_WINDOW_ACTIVE;
+            } else {
+                const next = h < 20 ? JS_TONIGHT : JS_TOMORROW;
+                text.innerHTML = `${JS_WINDOW_INACTIVE} <strong>${next}</strong>`;
+            }
+        }
+
+        const activeEl = document.getElementById('active-jobs');
+        if (activeEl) {
+            if ((data.active || []).length) {
+                activeEl.innerHTML = data.active.map(j => {
+                    const isPending = j.status === 'pending';
+                    const pct = (j.progress !== undefined && j.progress >= 0) ? j.progress : null;
+                    const progressBar = (!isPending && pct !== null)
+                        ? `<div class="job-progress-wrap"><div class="job-progress-fill" style="width:${pct}%"></div></div>`
+                        : '';
+                    const metaPct = (!isPending && pct !== null) ? ` — ${pct}%` : '';
+                    return `<div class="job-card">
+                        <div class="job-icon ${j.status}">${isPending ? '⏳' : '⚙️'}</div>
+                        <div class="job-info">
+                            <div class="job-name">${j.filename}</div>
+                            <div class="job-meta">${JS_ADDED_ON} ${j.added.slice(0,16).replace('T',' ')}${metaPct}</div>
+                            ${progressBar}
+                        </div>
+                        <span class="job-status ${j.status}">${isPending ? JS_PENDING : JS_PROCESSING}</span>
+                        ${isPending ? `<button class="btn sm danger" onclick="cancelJob('${j.id}')">${JS_CANCEL_BTN}</button>` : ''}
+                    </div>`;
+                }).join('');
+            } else {
+                activeEl.innerHTML = `<div class="empty-queue">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                    <p>${JS_EMPTY_ACTIVE}</p></div>`;
+            }
+        }
+
+        const clearRecentBtn = document.getElementById('btn-clear-recent');
+        if (clearRecentBtn) {
+            clearRecentBtn.style.display = (data.recent || []).length ? 'inline-flex' : 'none';
+        }
+
+        const recentEl = document.getElementById('recent-jobs');
+        if (recentEl) {
+            if ((data.recent || []).length) {
+                recentEl.innerHTML = [...data.recent].reverse().map(j => {
+                    const isDone = j.status === 'done';
+                    const result = isDone
+                        ? `<span class="job-result">${j.before} Mo → ${j.after} Mo (÷${j.ratio})</span>`
+                        : `<span class="job-result error">${j.message || 'ffmpeg failed'}</span>`;
+                    return `<div class="job-card">
+                        <div class="job-icon" style="font-size:1.2rem">${isDone ? '✅' : '❌'}</div>
+                        <div class="job-info">
+                            <div class="job-name">${j.filename}</div>
+                            <div class="job-meta">${result} — ${(j.finished||'').slice(0,16).replace('T',' ')}</div>
+                        </div>
+                        <span class="job-status ${j.status}">${isDone ? JS_DONE : JS_ERROR}</span>
+                        <button onclick="cancelJob('${j.id}')" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:1rem;padding:4px;" title="✕">✕</button>
+                    </div>`;
+                }).join('');
+            } else {
+                recentEl.innerHTML = `<div class="empty-queue" style="padding:20px"><p>${JS_EMPTY_RECENT}</p></div>`;
+            }
+        }
+
+        const badge = document.getElementById('nav-queue-badge');
+        if (badge) {
+            const n = (data.active || []).length;
+            badge.style.display = n ? 'inline' : 'none';
+            badge.textContent = n;
+        }
+    } catch {}
+}
+
+async function cancelJob(id) {
+    if (!await window.appUI.confirm({
+        titleText: JS_CANCEL_BTN,
+        messageText: JS_CONFIRM_CANCEL,
+        tone: 'warning',
+        confirmLabel: 'Oui',
+        cancelLabel: 'Non',
+    })) return;
+    await fetch(`/queue/cancel/${id}`, {
+        method: 'POST',
+        headers: { 'X-CSRF-Token': window.CSRF_TOKEN },
+    });
+    refreshQueue();
+}
+
+document.getElementById('btn-clear-recent')?.addEventListener('click', async () => {
+    if (!await window.appUI.confirm({
+        titleText: 'Tout effacer',
+        messageText: 'Supprimer tous les encodages récents de la liste ?',
+        tone: 'warning',
+        confirmLabel: 'Effacer',
+        cancelLabel: 'Annuler',
+    })) return;
+    await fetch('/queue/clear-recent', {
+        method: 'POST',
+        headers: { 'X-CSRF-Token': window.CSRF_TOKEN },
+    });
+    refreshQueue();
+});
+
+refreshQueue();
+setInterval(refreshQueue, 5000);
+{% endif %}
+</script>
+{% endblock %}

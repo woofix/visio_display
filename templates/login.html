@@ -1,0 +1,47 @@
+<!-- GNU General Public License v3.0 (GPL-3.0) - Copyright (c) 2026 Eric TOMAS and Jean-michel TOMAS -->
+<!DOCTYPE html>
+<html lang="{{ lang | default('fr') }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ t('login_title') }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="eyebrow">Visio Display</div>
+        <div class="logo">
+            <img src="{{ logo_path }}" alt="Logo">
+        </div>
+        <h1>{{ t('login_title') }}</h1>
+        <p class="sub">Interface d’administration unifiée pour piloter vos écrans, médias et campagnes depuis un seul espace.</p>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <ul class="flash-list">
+            {% for cat, msg in messages %}
+            {% set flash_cat = cat if cat in ['success', 'error', 'warning', 'info'] else 'info' %}
+            <li class="{{ flash_cat }}">
+                <span class="flash-icon" aria-hidden="true">
+                    {% if flash_cat == 'success' %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    {% elif flash_cat == 'error' %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    {% elif flash_cat == 'warning' %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M12 3 2 21h20L12 3z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    {% else %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><circle cx="12" cy="12" r="10"/><line x1="12" y1="10" x2="12" y2="16"/><line x1="12" y1="7" x2="12.01" y2="7"/></svg>{% endif %}
+                </span>
+                <span class="flash-body">{{ msg }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        {% endwith %}
+        <form method="post">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+            <label for="username">{{ t('login_username') }}</label>
+            <input type="text" name="username" id="username" required>
+            <label for="password">{{ t('login_password') }}</label>
+            <input type="password" name="password" id="password" required>
+            <button type="submit">{{ t('login_submit') }}</button>
+        </form>
+    </div>
+</body>
+</html>

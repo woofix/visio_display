@@ -782,7 +782,7 @@ class AppSmokeTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         payload = response.get_json()
-        target = next(item for item in payload if item["path"])
+        target = next(item for item in payload if item["name"] == filename)
         self.assertIn("/static/data/variants/screen__jpg__medium.jpg", target["path"])
 
     def test_group_metadata_is_removed_when_last_media_leaves_group(self):

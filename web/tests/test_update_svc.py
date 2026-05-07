@@ -173,6 +173,8 @@ class UpdateServiceTests(unittest.TestCase):
         helper.assert_called_once_with(
             ["docker-compose", "--project-name", "visio_display", "up", "-d", "--build"],
             repo_dir=str(self.root / "repo"),
+            compose_cmd=["docker-compose"],
+            project_name="visio_display",
             progress_callback=messages.append,
         )
         self.assertEqual(result["status"], "restart_scheduled")

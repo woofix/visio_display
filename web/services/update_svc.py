@@ -127,20 +127,6 @@ def _shell_join(command):
     return " ".join(shlex.quote(str(part)) for part in command)
 
 
-def _current_container_id():
-    result = _run(["hostname"], cwd=_repo_dir(), timeout=4)
-    return result.stdout.strip() if result.ok else ""
-
-
-def _current_container_image(docker_path, container_id):
-    result = _run(
-        [docker_path, "inspect", "--format", "{{.Config.Image}}", container_id],
-        cwd=_repo_dir(),
-        timeout=8,
-    )
-    return result.stdout.strip() if result.ok else ""
-
-
 def _start_restart_helper(command, *, repo_dir, compose_cmd, project_name, progress_callback=None):
     helper_name = f"visio-display-restart-{int(time.time())}"
     helper_script = "\n".join([

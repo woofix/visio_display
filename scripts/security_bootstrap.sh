@@ -9,6 +9,7 @@ ENV_FILE="${VISIO_ENV_FILE:-$INSTALL_DIR/.env}"
 PLACEHOLDER_SECRET="replace_with_a_random_string"
 DEFAULT_MEDIA_DIR="$INSTALL_DIR/media"
 DEFAULT_PRIVATE_DIR="$INSTALL_DIR/private"
+DEFAULT_HOST_ROOT="$INSTALL_DIR"
 
 OK_COUNT=0
 FIXED_COUNT=0
@@ -221,6 +222,25 @@ ensure_required_path() {
     fixed "$label added: $default_value"
 }
 
+ensure_host_root() {
+    value="$(env_value VISIO_HOST_ROOT)"
+
+    if env_has_key "VISIO_HOST_ROOT" && [ -n "$value" ]; then
+        ok "VISIO_HOST_ROOT present: $value"
+        return 0
+    fi
+    if [ "$MODE" = "check" ]; then
+        warning "VISIO_HOST_ROOT missing; Docker restart from the admin may fail"
+        return 0
+    fi
+
+    set_env_value "VISIO_HOST_ROOT" "$DEFAULT_HOST_ROOT" || {
+        error "cannot write VISIO_HOST_ROOT to $ENV_FILE"
+        return 1
+    }
+    fixed "VISIO_HOST_ROOT added: $DEFAULT_HOST_ROOT"
+}
+
 ensure_permissions() {
     if [ -f "$ENV_FILE" ]; then
         if chmod 600 "$ENV_FILE" 2>/dev/null; then
@@ -301,6 +321,7 @@ if [ -f "$ENV_FILE" ]; then
     ensure_secret_key "POSTGRES_PASSWORD" "POSTGRES_PASSWORD"
     ensure_secret_key "DISPLAY_API_TOKEN" "DISPLAY_API_TOKEN"
     ensure_optional_generated_key "CLIENT_HEARTBEAT_TOKEN" "CLIENT_HEARTBEAT_TOKEN"
+    ensure_host_root
     ensure_required_path "MEDIA_DIR" "MEDIA_DIR" "$DEFAULT_MEDIA_DIR"
     ensure_required_path "PRIVATE_DIR" "PRIVATE_DIR" "$DEFAULT_PRIVATE_DIR"
 

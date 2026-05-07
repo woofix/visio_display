@@ -11,8 +11,8 @@ x-visio-container-env: &visio-container-env
   DATABASE_URL: postgresql://visio:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD absent. Lancez scripts/security_bootstrap.sh install . ou renseignez .env.}@postgres:5432/visio
 
 x-visio-volumes: &visio-volumes
-  - .:/opt/visio-display
-  - ./.env:/app/.env:ro
+  - ${VISIO_HOST_ROOT:-.}:/opt/visio-display
+  - ${VISIO_HOST_ROOT:-.}/.env:/app/.env:ro
   - ${MEDIA_DIR:?MEDIA_DIR absent. Lancez le module d'installation ou renseignez .env.}:/app/static/data
   - ${PRIVATE_DIR:?PRIVATE_DIR absent. Lancez le module d'installation ou renseignez .env.}:/app/data
 
@@ -44,8 +44,8 @@ services:
     env_file: .env
     environment: *visio-container-env
     volumes:
-      - .:/opt/visio-display
-      - ./.env:/app/.env:ro
+      - ${VISIO_HOST_ROOT:-.}:/opt/visio-display
+      - ${VISIO_HOST_ROOT:-.}/.env:/app/.env:ro
       - ${MEDIA_DIR:?MEDIA_DIR absent. Lancez le module d'installation ou renseignez .env.}:/app/static/data
       - ${PRIVATE_DIR:?PRIVATE_DIR absent. Lancez le module d'installation ou renseignez .env.}:/app/data
       - /var/run/docker.sock:/var/run/docker.sock

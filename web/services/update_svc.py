@@ -141,19 +141,7 @@ def _current_container_image(docker_path, container_id):
     return result.stdout.strip() if result.ok else ""
 
 
-def _start_restart_helper(command, *, repo_dir, progress_callback=None):
-    docker_path = shutil.which("docker")
-    if not docker_path:
-        raise RuntimeError("Docker est requis pour lancer le redémarrage détaché.")
-
-    container_id = _current_container_id()
-    if not container_id:
-        raise RuntimeError("Le conteneur courant est introuvable.")
-
-    image = _current_container_image(docker_path, container_id)
-    if not image:
-        raise RuntimeError("L'image du conteneur courant est introuvable.")
-
+def _start_restart_helper(command, *, repo_dir, compose_cmd, project_name, progress_callback=None):
     helper_name = f"visio-display-restart-{int(time.time())}"
     helper_script = "\n".join([
         "sleep 2",
@@ -161,19 +149,14 @@ def _start_restart_helper(command, *, repo_dir, progress_callback=None):
         _shell_join(command),
     ])
     helper_command = [
-        docker_path,
+        *_with_compose_project(compose_cmd, project_name),
         "run",
         "-d",
         "--rm",
         "--name",
         helper_name,
-        "--volumes-from",
-        container_id,
-        "-v",
-        "/var/run/docker.sock:/var/run/docker.sock",
-        "-w",
-        repo_dir,
-        image,
+        "--no-deps",
+        "app",
         "sh",
         "-lc",
         helper_script,
@@ -461,7 +444,13 @@ def restart_stack(*, progress_callback=None):
     if progress_callback:
         progress_callback("Le redémarrage va continuer en arrière-plan.")
         progress_callback(f"$ {' '.join(command)}")
-    _start_restart_helper(command, repo_dir=status["repo_dir"], progress_callback=progress_callback)
+    _start_restart_helper(
+        command,
+        repo_dir=status["repo_dir"],
+        compose_cmd=compose_cmd,
+        project_name=project_name,
+        progress_callback=progress_callback,
+    )
     status["status"] = "restart_scheduled"
     status["status_label"] = "Redémarrage lancé"
     status["status_tone"] = "success"

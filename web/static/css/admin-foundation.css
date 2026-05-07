@@ -72,6 +72,13 @@
     --danger-color: var(--red);
     --success-color: var(--green);
     --warning-color: var(--orange);
+    --dialog-backdrop-bg: color-mix(in srgb, var(--sidebar-bg) 38%, transparent);
+    --dialog-backdrop-blur: 3px;
+    --dialog-panel-bg: color-mix(in srgb, var(--surface) 92%, transparent);
+    --dialog-panel-border: color-mix(in srgb, var(--primary) 24%, var(--border));
+    --dialog-panel-shadow: 0 24px 70px color-mix(in srgb, var(--sidebar-bg) 24%, transparent);
+    --dialog-header-bg: color-mix(in srgb, var(--surface-alt) 88%, transparent);
+    --dialog-actions-bg: color-mix(in srgb, var(--surface-alt) 76%, transparent);
 }
 
 [data-theme="bleu"] {
@@ -576,9 +583,11 @@ body.sidebar-open {
     padding: 13px 14px;
     border: 1px solid var(--warning-border);
     border-radius: 8px;
-    background: var(--surface);
+    background: var(--dialog-panel-bg);
     color: var(--text);
     box-shadow: var(--shadow);
+    backdrop-filter: blur(5px) saturate(1.08);
+    -webkit-backdrop-filter: blur(5px) saturate(1.08);
     opacity: 0;
     visibility: hidden;
     transform: translateY(-4px);
@@ -662,27 +671,27 @@ body.sidebar-open {
 }
 
 .btn.danger {
-    background: linear-gradient(135deg, var(--red), #b91c1c);
+    background: linear-gradient(135deg, var(--red), color-mix(in srgb, var(--red) 72%, var(--sidebar-bg)));
 }
 
 .btn.danger:hover {
-    box-shadow: 0 10px 22px rgba(220, 38, 38, .22);
+    box-shadow: 0 10px 22px color-mix(in srgb, var(--red) 22%, transparent);
 }
 
 .btn.success {
-    background: linear-gradient(135deg, var(--green), #15803d);
+    background: linear-gradient(135deg, var(--green), color-mix(in srgb, var(--green) 72%, var(--sidebar-bg)));
 }
 
 .btn.success:hover {
-    box-shadow: 0 10px 22px rgba(22, 163, 74, .2);
+    box-shadow: 0 10px 22px color-mix(in srgb, var(--green) 20%, transparent);
 }
 
 .btn.warning {
-    background: linear-gradient(135deg, var(--orange), #c2410c);
+    background: linear-gradient(135deg, var(--orange), color-mix(in srgb, var(--orange) 72%, var(--sidebar-bg)));
 }
 
 .btn.secondary {
-    background: color-mix(in srgb, var(--surface-alt) 88%, white 12%);
+    background: color-mix(in srgb, var(--surface-alt) 88%, var(--surface) 12%);
     color: var(--text-2);
     border: 1px solid var(--border);
     box-shadow: none;
@@ -829,10 +838,12 @@ body.sidebar-open {
     bottom: calc(100% + 6px);
     right: 0;
     min-width: 185px;
-    background: var(--surface);
-    border: 1px solid var(--border);
+    background: var(--dialog-panel-bg);
+    border: 1px solid var(--dialog-panel-border);
     border-radius: 12px;
     box-shadow: var(--shadow-lg);
+    backdrop-filter: blur(5px) saturate(1.08);
+    -webkit-backdrop-filter: blur(5px) saturate(1.08);
     z-index: 500;
     display: none;
     overflow: hidden;
@@ -1055,8 +1066,9 @@ body.sidebar-open {
     align-items: center;
     justify-content: center;
     padding: 20px;
-    background: color-mix(in srgb, var(--sidebar-bg) 42%, transparent);
-    backdrop-filter: blur(10px);
+    background: var(--dialog-backdrop-bg);
+    backdrop-filter: blur(var(--dialog-backdrop-blur));
+    -webkit-backdrop-filter: blur(var(--dialog-backdrop-blur));
     z-index: 1250;
 }
 
@@ -1067,12 +1079,15 @@ body.sidebar-open {
 
 .theme-dialog {
     width: min(100%, 540px);
-    background: linear-gradient(180deg, color-mix(in srgb, var(--surface-strong) 90%, white 10%), var(--surface));
-    border: 1px solid color-mix(in srgb, var(--border) 88%, white 12%);
+    background: var(--dialog-panel-bg);
+    border: 1px solid var(--dialog-panel-border);
     border-radius: calc(var(--radius) + 2px);
-    box-shadow: var(--shadow-lg);
+    box-shadow: var(--dialog-panel-shadow);
     overflow: hidden;
     position: relative;
+    color: var(--text);
+    backdrop-filter: blur(5px) saturate(1.08);
+    -webkit-backdrop-filter: blur(5px) saturate(1.08);
 }
 
 .theme-dialog-header {
@@ -1081,7 +1096,7 @@ body.sidebar-open {
     align-items: flex-start;
     gap: 14px;
     border-bottom: 1px solid var(--border);
-    background: linear-gradient(180deg, color-mix(in srgb, var(--surface-alt) 86%, white 14%), color-mix(in srgb, var(--surface) 94%, var(--surface-alt) 6%));
+    background: var(--dialog-header-bg);
 }
 
 .theme-dialog-icon {
@@ -1093,9 +1108,9 @@ body.sidebar-open {
     justify-content: center;
     flex: 0 0 auto;
     color: var(--info-text);
-    background: color-mix(in srgb, var(--info-bg) 92%, white 8%);
+    background: color-mix(in srgb, var(--info-bg) 92%, var(--surface) 8%);
     border: 1px solid var(--info-border);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35);
+    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--surface) 55%, transparent);
 }
 
 .theme-dialog-icon svg {
@@ -1105,19 +1120,19 @@ body.sidebar-open {
 
 .theme-dialog-icon[data-tone="success"] {
     color: var(--success-text);
-    background: color-mix(in srgb, var(--success-bg) 92%, white 8%);
+    background: color-mix(in srgb, var(--success-bg) 92%, var(--surface) 8%);
     border-color: var(--success-border);
 }
 
 .theme-dialog-icon[data-tone="warning"] {
     color: var(--warning-text);
-    background: color-mix(in srgb, var(--warning-bg) 92%, white 8%);
+    background: color-mix(in srgb, var(--warning-bg) 92%, var(--surface) 8%);
     border-color: var(--warning-border);
 }
 
 .theme-dialog-icon[data-tone="error"] {
     color: var(--error-text);
-    background: color-mix(in srgb, var(--error-bg) 92%, white 8%);
+    background: color-mix(in srgb, var(--error-bg) 92%, var(--surface) 8%);
     border-color: var(--error-border);
 }
 
@@ -1149,18 +1164,18 @@ body.sidebar-open {
     padding: 13px 14px;
     border-radius: 14px;
     border: 1px solid var(--info-border);
-    background: linear-gradient(180deg, color-mix(in srgb, var(--info-bg) 88%, white 12%), color-mix(in srgb, var(--surface) 94%, var(--info-bg) 6%));
+    background: linear-gradient(180deg, color-mix(in srgb, var(--info-bg) 88%, var(--surface) 12%), color-mix(in srgb, var(--surface) 94%, var(--info-bg) 6%));
     color: var(--text-2);
 }
 
 .theme-dialog-note[data-tone="warning"] {
     border-color: var(--warning-border);
-    background: linear-gradient(180deg, color-mix(in srgb, var(--warning-bg) 88%, white 12%), color-mix(in srgb, var(--surface) 94%, var(--warning-bg) 6%));
+    background: linear-gradient(180deg, color-mix(in srgb, var(--warning-bg) 88%, var(--surface) 12%), color-mix(in srgb, var(--surface) 94%, var(--warning-bg) 6%));
 }
 
 .theme-dialog-note[data-tone="error"] {
     border-color: var(--error-border);
-    background: linear-gradient(180deg, color-mix(in srgb, var(--error-bg) 88%, white 12%), color-mix(in srgb, var(--surface) 94%, var(--error-bg) 6%));
+    background: linear-gradient(180deg, color-mix(in srgb, var(--error-bg) 88%, var(--surface) 12%), color-mix(in srgb, var(--surface) 94%, var(--error-bg) 6%));
 }
 
 .theme-dialog-note svg {
@@ -1192,7 +1207,7 @@ body.sidebar-open {
     gap: 10px;
     flex-wrap: wrap;
     border-top: 1px solid var(--border);
-    background: color-mix(in srgb, var(--surface-alt) 76%, white 24%);
+    background: var(--dialog-actions-bg);
 }
 
 .theme-dialog-close {
@@ -1752,8 +1767,8 @@ body.sidebar-open {
     top: calc(100% + 6px);
     left: 0;
     width: 340px;
-    background: var(--surface);
-    border: 1px solid var(--border);
+    background: var(--dialog-panel-bg);
+    border: 1px solid var(--dialog-panel-border);
     border-radius: var(--radius-sm);
     box-shadow: var(--shadow-lg);
     z-index: 500;
@@ -1761,6 +1776,8 @@ body.sidebar-open {
     overflow: hidden;
     max-height: 480px;
     overflow-y: auto;
+    backdrop-filter: blur(5px) saturate(1.08);
+    -webkit-backdrop-filter: blur(5px) saturate(1.08);
 }
 .topbar-search-dropdown.open { display: block; }
 

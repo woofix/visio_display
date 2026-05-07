@@ -719,7 +719,7 @@ setInterval(updateQueueBadge, 30000);
             document.body.appendChild(list);
         }
         const item = document.createElement('li');
-        item.style.cssText = 'padding:13px 16px;border-radius:14px;font-size:.86rem;font-weight:600;display:flex;align-items:center;gap:10px;border:1px solid;box-shadow:var(--shadow-lg);transition:opacity .2s,transform .2s;background:linear-gradient(180deg,color-mix(in srgb,var(--surface-strong) 90%,white 10%),var(--surface))';
+        item.style.cssText = 'padding:13px 16px;border-radius:14px;font-size:.86rem;font-weight:600;display:flex;align-items:center;gap:10px;border:1px solid;box-shadow:var(--dialog-panel-shadow);transition:opacity .2s,transform .2s;background:var(--dialog-panel-bg);backdrop-filter:blur(5px) saturate(1.08);-webkit-backdrop-filter:blur(5px) saturate(1.08)';
         const colors = { success: 'var(--success-text)', info: 'var(--info-text)' };
         const borders = { success: 'var(--success-border)', info: 'var(--info-border)' };
         item.style.color = colors[tone] || 'var(--info-text)';

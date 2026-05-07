@@ -234,20 +234,14 @@ body.site-uploading .mobile-sidebar-backdrop {
 .rejected-accepted .fmt-badge { font-size: .63rem; padding: 2px 7px; }
 
 .upload-conflict-modal {
-    position: fixed; inset: 0; display: none; place-items: center;
-    background: rgba(15, 23, 42, .58); z-index: 1000; padding: 20px;
+    z-index: 1250;
 }
-.upload-conflict-modal.open { display: grid; }
 .upload-conflict-dialog {
-    width: min(560px, 100%); background: var(--surface); color: var(--text);
-    border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--shadow);
+    width: min(560px, 100%);
     display: flex; flex-direction: column;
     max-height: calc(100dvh - 40px);
-    overflow: hidden;
 }
 .upload-conflict-head {
-    padding: 18px 20px; border-bottom: 1px solid var(--border);
-    background: var(--surface-alt);
     flex: 0 0 auto;
 }
 .upload-conflict-head h3 { font-size: .95rem; font-weight: 800; margin-bottom: 4px; }
@@ -287,8 +281,6 @@ body.site-uploading .mobile-sidebar-backdrop {
 }
 .upload-conflict-error.open { display: block; }
 .upload-conflict-actions {
-    padding: 14px 20px; border-top: 1px solid var(--border); background: var(--surface-alt);
-    display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap;
     flex: 0 0 auto;
 }
 
@@ -595,14 +587,16 @@ body.site-uploading .mobile-sidebar-backdrop {
 </div>
 </div>
 
-<div class="upload-conflict-modal" id="upload-conflict-modal" aria-hidden="true">
+<div class="upload-conflict-modal theme-dialog-overlay" id="upload-conflict-modal" aria-hidden="true">
     <div class="upload-conflict-dialog theme-dialog" role="dialog" aria-modal="true" aria-labelledby="upload-conflict-title">
-        <div class="upload-conflict-head">
-            <h3 id="upload-conflict-title">Fichier déjà existant</h3>
-            <p>Choisissez un nouveau nom, ou écrasez le fichier existant.</p>
+        <div class="upload-conflict-head theme-dialog-header">
+            <div>
+                <h3 id="upload-conflict-title" class="theme-dialog-title">Fichier déjà existant</h3>
+                <p class="theme-dialog-copy">Choisissez un nouveau nom, ou écrasez le fichier existant.</p>
+            </div>
         </div>
-        <div class="upload-conflict-body" id="upload-conflict-body"></div>
-        <div class="upload-conflict-actions">
+        <div class="upload-conflict-body theme-dialog-body" id="upload-conflict-body"></div>
+        <div class="upload-conflict-actions theme-dialog-actions">
             <button type="button" class="btn secondary sm" id="upload-conflict-cancel">Annuler</button>
             <button type="button" class="btn warning sm" id="upload-conflict-overwrite">Écraser</button>
             <button type="button" class="btn success sm" id="upload-conflict-rename">Renommer</button>

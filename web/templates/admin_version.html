@@ -487,12 +487,22 @@
     }
 
     checkBtn.addEventListener('click', () => refreshStatus(true));
-    applyBtn.addEventListener('click', () => {
-        if (!window.confirm('Appliquer maintenant la mise à jour serveur affichée ?')) return;
+    applyBtn.addEventListener('click', async () => {
+        if (!await window.appUI.confirm({
+            titleText: 'Appliquer la mise à jour',
+            messageText: 'Appliquer maintenant la mise à jour serveur affichée ?',
+            tone: 'warning',
+            confirmLabel: 'Appliquer',
+        })) return;
         streamAction('/admin/version/update/apply-stream', 'Application de la mise à jour...');
     });
-    restartBtn.addEventListener('click', () => {
-        if (!window.confirm('Redémarrer la stack Docker maintenant ?')) return;
+    restartBtn.addEventListener('click', async () => {
+        if (!await window.appUI.confirm({
+            titleText: 'Redémarrer Docker',
+            messageText: 'Redémarrer la stack Docker maintenant ?',
+            tone: 'warning',
+            confirmLabel: 'Redémarrer',
+        })) return;
         streamAction('/admin/version/update/restart-stream', 'Redémarrage de la stack Docker...');
     });
 

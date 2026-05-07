@@ -103,6 +103,10 @@ Application web légère de signalétique numérique. Elle affiche un diaporama 
 **À propos**
 - Page `/admin/about` accessible à tous les utilisateurs connectés : version de l'application, commit git, stack technique et lien vers la licence
 
+**Mise à jour serveur**
+- Page `/admin/version` réservée au super-admin : vérification du dépôt Git installé, application d'une mise à jour disponible et redémarrage Docker assisté
+- Overlay bloquant pendant les opérations système : l'administration est verrouillée jusqu'à la fin de la mise à jour ou du redémarrage
+
 **Sécurité & accès**
 - Contrôle d'accès à deux niveaux : super-admin et utilisateurs limités
 - Permissions granulaires configurables par compte, regroupables en rôles réutilisables
@@ -120,9 +124,8 @@ Application web légère de signalétique numérique. Elle affiche un diaporama 
 ```bash
 git clone <url-du-dépôt>
 cd Visio-Display
-cp .env.example .env
-# Éditer .env : renseigner ADMIN_USER, ADMIN_PASSWORD, puis durcir les secrets
 ./scripts/security_bootstrap.sh install .
+# Éditer .env si besoin : ADMIN_USER, ADMIN_PASSWORD, chemins et options de déploiement
 docker compose up -d --build
 ```
 
@@ -183,6 +186,9 @@ VISIO_VERSION_BUMP=none git commit -m "..."
 | `POSTGRES_PASSWORD` | Mot de passe du rôle PostgreSQL `visio` utilisé par la stack Docker |
 | `MEDIA_DIR` | Dossier hôte obligatoire contenant les médias publics et leurs rendus |
 | `PRIVATE_DIR` | Dossier hôte obligatoire contenant les données privées d’exécution |
+| `VISIO_HOST_ROOT` | Racine hôte du dépôt montée dans Docker pour les mises à jour/redémarrages depuis l'administration (défaut : `.`) |
+| `VISIO_UPDATE_BRANCH` | Branche cible utilisée par la mise à jour serveur (défaut : `main`) |
+| `VISIO_UPDATE_REMOTE` | Remote Git utilisée par la mise à jour serveur (défaut : `origin`) |
 | `CLIENT_HEARTBEAT_TOKEN` | Jeton partagé exigé par `/api/client-heartbeat` |
 | `DISPLAY_API_TOKEN` | Jeton écran obligatoire exigé par `/` et les endpoints publics d'affichage |
 | `SESSION_COOKIE_SECURE` | Force le cookie de session en mode `Secure` (recommandé derrière HTTPS) |
@@ -191,7 +197,7 @@ VISIO_VERSION_BUMP=none git commit -m "..."
 | `TRUSTED_HOSTS` | Liste d’hôtes autorisés séparés par des virgules pour filtrer l’en-tête `Host` |
 | `TRUST_PROXY_COUNT` | Nombre de proxies inverse de confiance pour interpréter `X-Forwarded-*` |
 
-`scripts/security_bootstrap.sh install .` crée les secrets absents, refuse les valeurs faibles pendant une installation, ajoute `MEDIA_DIR` et `PRIVATE_DIR` s’ils manquent, applique `chmod 600` sur `.env`, crée `MEDIA_DIR` et `PRIVATE_DIR/backups`, puis applique `chmod 700` sur `PRIVATE_DIR` et ses sauvegardes. En mise à jour, `scripts/security_bootstrap.sh update .` ajoute uniquement les clés manquantes et signale les valeurs faibles sans remplacer `SECRET_KEY` ni `POSTGRES_PASSWORD`. La stack Docker exige `MEDIA_DIR`, `PRIVATE_DIR` et `DISPLAY_API_TOKEN` dans `.env` et refuse de démarrer s’ils sont absents.
+`scripts/security_bootstrap.sh install .` crée les secrets absents, refuse les valeurs faibles pendant une installation, ajoute `MEDIA_DIR`, `PRIVATE_DIR` et `VISIO_HOST_ROOT` s’ils manquent, applique `chmod 600` sur `.env`, crée `MEDIA_DIR` et `PRIVATE_DIR/backups`, puis applique `chmod 700` sur `PRIVATE_DIR` et ses sauvegardes. En mise à jour, `scripts/security_bootstrap.sh update .` ajoute uniquement les clés manquantes et signale les valeurs faibles sans remplacer `SECRET_KEY` ni `POSTGRES_PASSWORD`. La stack Docker exige `MEDIA_DIR`, `PRIVATE_DIR` et `DISPLAY_API_TOKEN` dans `.env` et refuse de démarrer s’ils sont absents.
 
 `web/` est la seule arborescence applicative runtime. Les chemins racine `services`, `templates`, `translations.py` et `tools` sont uniquement des liens symboliques contrôlés vers `web/` pour compatibilité de développement. Dans Docker, `MEDIA_DIR` et `PRIVATE_DIR` de `.env` désignent les dossiers hôte persistants; ils sont montés dans le conteneur sur `/app/static/data` et `/app/data`, qui sont seulement des chemins internes de conteneur.
 
@@ -275,6 +281,10 @@ Le script distant configure alors automatiquement :
 
 Les clients détectés dans l'administration sont rafraîchis automatiquement et les nouvelles installations envoient un heartbeat toutes les 30 secondes environ.
 Le super-admin peut aussi configurer le watchdog kiosque, arrêter/redémarrer un client détecté, réinstaller le client ou lancer une mise à jour Debian distante depuis **Paramètres > Installation client**.
+
+**Mise à jour serveur depuis l'administration :**
+
+Depuis **Paramètres > Version**, le super-admin peut vérifier la version distante, appliquer une mise à jour disponible depuis le dépôt Git installé, puis redémarrer la stack Docker. La mise à jour refuse de continuer si le dépôt n'est pas propre, si le remote/branche cible est introuvable ou si Docker Compose n'est pas accessible. Pendant l'application ou le redémarrage, un verrou système persistant affiche un overlay bloquant sur l'administration et empêche les autres actions jusqu'à la fin de l'opération.
 
 **Interface d'administration :** ouvrir `http://<hôte>:8081/admin` et se connecter.
 
@@ -445,9 +455,9 @@ Une fois l'encodage initial effectué, la vidéo est ajoutée en file de compres
 
 ```
 Visio-Display/
-├── docker-compose.yml           # Services : app, worker, redis
+├── docker-compose.yml           # Services : app, worker, redis, postgres
 ├── Dockerfile
-├── .env.example
+├── .env                         # Créé/local, non versionné
 ├── LICENSE
 ├── README.md
 ├── services -> web/services     # Lien de compatibilité, non source runtime
@@ -479,6 +489,7 @@ Visio-Display/
     │   ├── search.py            # Recherche globale
     │   ├── settings.py          # Paramètres (thème, langue, logo, météo, fonctionnalités)
     │   ├── users.py             # Gestion des utilisateurs
+    │   ├── version.py           # Vérification, mise à jour serveur et redémarrage Docker
     │   └── wiki.py              # Page d'aide intégrée
     ├── services/                # Logique métier
     │   ├── activity_svc.py      # Enregistrement et lecture du journal d'activité
@@ -495,6 +506,8 @@ Visio-Display/
     │   ├── schedule_svc.py      # Logique de planification horaire/dates
     │   ├── search_index_svc.py  # Index de recherche globale
     │   ├── server_stats_svc.py  # Statistiques CPU/RAM du serveur
+    │   ├── system_lock_svc.py   # Verrou persistant des opérations update/reboot
+    │   ├── update_svc.py        # Contrôles Git/Docker et application des mises à jour
     │   └── users_svc.py         # CRUD utilisateurs + permissions
     ├── static/
     │   └── images/              # Logo et ressources statiques
@@ -514,6 +527,7 @@ Visio-Display/
         ├── admin_settings.html  # Logo, thème, langue, mot de passe, événements, météo, fonctionnalités
         ├── admin_superadmin.html # Gestion des comptes, permissions et écrans
         ├── admin_upload.html    # Import de médias + suivi d'encodage
+        ├── admin_version.html   # Version, mise à jour serveur et redémarrage Docker
         └── admin_wiki.html      # Page d'aide intégrée
 ```
 
@@ -528,6 +542,7 @@ Visio-Display/
 | `/api/pools`                              | GET     | `DISPLAY_API_TOKEN` | Pools de groupes de médias                           |
 | `/api/config`                             | GET     | Connecté           | Configuration complète                               |
 | `/api/diskusage`                          | GET     | Connecté           | Statistiques disque                                  |
+| `/api/system/status`                      | GET     | Connecté           | Verrou système actif pendant update/reboot           |
 | `/api/screens`                            | GET     | `DISPLAY_API_TOKEN` | Liste des écrans nommés                              |
 | `/api/halo`                               | GET     | `DISPLAY_API_TOKEN` | Couleur de halo de l'écran courant (`?screen=<nom>`) |
 | `/api/client-policy`                      | GET     | Non                | Politique watchdog envoyée aux clients kiosque       |
@@ -590,6 +605,9 @@ Visio-Display/
 | `/admin/compress/<filename>/force`        | POST    | Super-admin        | Forcer l'encodage d'un seul fichier immédiatement    |
 | `/admin/priority-alert`                   | POST    | Super-admin        | Publier ou effacer l'alerte prioritaire              |
 | `/admin/version`                          | GET     | Super-admin        | Comparer la version installée avec la version distante |
+| `/admin/version/update/status`            | GET     | Super-admin        | Vérifier l'état Git/Docker et la version distante    |
+| `/admin/version/update/apply-stream`      | POST    | Super-admin        | Appliquer une mise à jour en flux NDJSON             |
+| `/admin/version/update/restart-stream`    | POST    | Super-admin        | Redémarrer la stack Docker en flux NDJSON            |
 | `/admin/about`                            | GET     | Connecté           | Page À propos (version, stack, licence)              |
 
 #### Réponse de `/api/queue`
@@ -852,6 +870,10 @@ A lightweight web-based digital signage. It displays a fullscreen slideshow of i
 **About**
 - Page `/admin/about` accessible to all logged-in users: application version, git commit, tech stack and licence link
 
+**Server update**
+- Super-admin-only `/admin/version` page: check the installed Git repository, apply an available update, then restart Docker from the UI
+- Blocking overlay during system operations: the admin UI stays locked until the update or restart completes
+
 **Security & access**
 - Two-level access control: super-admin and limited users
 - Granular permissions configurable per account, groupable into reusable roles
@@ -869,9 +891,8 @@ A lightweight web-based digital signage. It displays a fullscreen slideshow of i
 ```bash
 git clone <repository-url>
 cd Visio-Display
-cp .env.example .env
-# Edit .env: set ADMIN_USER, ADMIN_PASSWORD, then harden secrets
 ./scripts/security_bootstrap.sh install .
+# Edit .env if needed: ADMIN_USER, ADMIN_PASSWORD, paths and deployment options
 docker compose up -d --build
 ```
 
@@ -932,6 +953,9 @@ VISIO_VERSION_BUMP=none git commit -m "..."
 | `POSTGRES_PASSWORD` | Password for the PostgreSQL `visio` role used by the Docker stack |
 | `MEDIA_DIR` | Required host directory containing public media and generated renditions |
 | `PRIVATE_DIR` | Required host directory containing private runtime data |
+| `VISIO_HOST_ROOT` | Host repository root mounted into Docker for admin-triggered updates/restarts (default: `.`) |
+| `VISIO_UPDATE_BRANCH` | Target branch used by the server update workflow (default: `main`) |
+| `VISIO_UPDATE_REMOTE` | Git remote used by the server update workflow (default: `origin`) |
 | `CLIENT_HEARTBEAT_TOKEN` | Shared token required by `/api/client-heartbeat` |
 | `DISPLAY_API_TOKEN` | Required screen token for `/` and public display endpoints |
 | `SESSION_COOKIE_SECURE` | Forces the session cookie to use `Secure` (recommended behind HTTPS) |
@@ -940,7 +964,7 @@ VISIO_VERSION_BUMP=none git commit -m "..."
 | `TRUSTED_HOSTS` | Comma-separated allowlist of hostnames accepted from the `Host` header |
 | `TRUST_PROXY_COUNT` | Number of trusted reverse proxies for `X-Forwarded-*` headers |
 
-`scripts/security_bootstrap.sh install .` creates missing secrets, rejects weak values during installation, adds `MEDIA_DIR` and `PRIVATE_DIR` when missing, applies `chmod 600` to `.env`, creates `MEDIA_DIR` and `PRIVATE_DIR/backups`, then applies `chmod 700` to `PRIVATE_DIR` and its backups. During updates, `scripts/security_bootstrap.sh update .` only adds missing keys and reports weak values without replacing `SECRET_KEY` or `POSTGRES_PASSWORD`. The Docker stack requires `MEDIA_DIR`, `PRIVATE_DIR`, and `DISPLAY_API_TOKEN` in `.env` and refuses to start when they are absent.
+`scripts/security_bootstrap.sh install .` creates missing secrets, rejects weak values during installation, adds `MEDIA_DIR`, `PRIVATE_DIR`, and `VISIO_HOST_ROOT` when missing, applies `chmod 600` to `.env`, creates `MEDIA_DIR` and `PRIVATE_DIR/backups`, then applies `chmod 700` to `PRIVATE_DIR` and its backups. During updates, `scripts/security_bootstrap.sh update .` only adds missing keys and reports weak values without replacing `SECRET_KEY` or `POSTGRES_PASSWORD`. The Docker stack requires `MEDIA_DIR`, `PRIVATE_DIR`, and `DISPLAY_API_TOKEN` in `.env` and refuses to start when they are absent.
 
 `web/` is the only runtime application tree. The root paths `services`, `templates`, `translations.py`, and `tools` are controlled symlinks to `web/` for development compatibility only. In Docker, `MEDIA_DIR` and `PRIVATE_DIR` from `.env` name the persistent host directories; they are mounted inside the container at `/app/static/data` and `/app/data`, which are container mount points only.
 
@@ -1026,6 +1050,10 @@ The remote script then configures:
 
 Detected clients in the admin UI refresh automatically, and new installations send a heartbeat roughly every 30 seconds.
 The super-admin can also configure the kiosk watchdog, shut down/restart a detected client, reinstall the client, or run a remote Debian update from **Settings > Client installation**.
+
+**Server update from the admin UI:**
+
+From **Settings > Version**, the super-admin can check the remote version, apply an available update from the installed Git repository, then restart the Docker stack. The update refuses to continue when the repository is dirty, when the target remote/branch cannot be read, or when Docker Compose is unavailable. During the update or restart, a persistent system lock shows a blocking overlay in the admin UI and prevents other actions until the operation finishes.
 
 **Admin interface:** open `http://<host>:8081/admin` and log in with your credentials.
 
@@ -1124,9 +1152,9 @@ After initial encoding, the video is queued for overnight compression (8 PM–6 
 
 ```
 Visio-Display/
-├── docker-compose.yml           # Services: app, worker, redis
+├── docker-compose.yml           # Services: app, worker, redis, postgres
 ├── Dockerfile
-├── .env.example
+├── .env                         # Created locally, not versioned
 ├── LICENSE
 ├── README.md
 ├── services -> web/services     # Compatibility link, not a runtime source
@@ -1158,6 +1186,7 @@ Visio-Display/
     │   ├── search.py            # Global search
     │   ├── settings.py          # Settings (theme, language, logo, weather, features)
     │   ├── users.py             # User management
+    │   ├── version.py           # Version checks, server update and Docker restart
     │   └── wiki.py              # Built-in help page
     ├── services/                # Business logic
     │   ├── activity_svc.py      # Activity log recording and reading
@@ -1174,6 +1203,8 @@ Visio-Display/
     │   ├── schedule_svc.py      # Time/date scheduling logic
     │   ├── search_index_svc.py  # Global search index
     │   ├── server_stats_svc.py  # Server CPU/RAM stats
+    │   ├── system_lock_svc.py   # Persistent update/reboot operation lock
+    │   ├── update_svc.py        # Git/Docker checks and update application
     │   └── users_svc.py         # User CRUD + permissions
     ├── static/
     │   └── images/              # Logo and static assets
@@ -1193,6 +1224,7 @@ Visio-Display/
         ├── admin_settings.html  # Logo, theme, language, password, events, weather, features
         ├── admin_superadmin.html # Account, permission and screen management
         ├── admin_upload.html    # Media import + encoding progress
+        ├── admin_version.html   # Version, server update and Docker restart
         └── admin_wiki.html      # Built-in help page
 ```
 
@@ -1207,6 +1239,7 @@ Visio-Display/
 | `/api/pools`                              | GET     | `DISPLAY_API_TOKEN` | Media group pools                                      |
 | `/api/config`                             | GET     | Logged in          | Full configuration                                      |
 | `/api/diskusage`                          | GET     | Logged in          | Disk usage stats                                        |
+| `/api/system/status`                      | GET     | Logged in          | Active system lock during update/reboot                 |
 | `/api/screens`                            | GET     | `DISPLAY_API_TOKEN` | List of named screens                                   |
 | `/api/halo`                               | GET     | `DISPLAY_API_TOKEN` | Halo color for the current screen (`?screen=<name>`)     |
 | `/api/client-policy`                      | GET     | No                 | Watchdog policy sent to kiosk clients                   |
@@ -1269,6 +1302,9 @@ Visio-Display/
 | `/admin/compress/<filename>/force`        | POST    | Super-admin        | Force-encode a single file immediately                  |
 | `/admin/priority-alert`                   | POST    | Super-admin        | Publish or clear the priority alert banner              |
 | `/admin/version`                          | GET     | Super-admin        | Compare the installed version with the remote version   |
+| `/admin/version/update/status`            | GET     | Super-admin        | Check Git/Docker state and the remote version            |
+| `/admin/version/update/apply-stream`      | POST    | Super-admin        | Apply an update over an NDJSON stream                    |
+| `/admin/version/update/restart-stream`    | POST    | Super-admin        | Restart the Docker stack over an NDJSON stream           |
 | `/admin/about`                            | GET     | Logged in          | About page (version, stack, licence)                    |
 
 #### `/api/queue` response

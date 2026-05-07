@@ -797,14 +797,17 @@ Accessible depuis **Paramètres → Version** dans le menu de navigation.
 
 > **Réservé au super-admin.**
 
-Cette page compare la version installée avec la version distante publiée sur GitHub. Elle est en lecture seule et ne lance aucune action système.
+Cette page compare la version installée avec la version distante publiée sur GitHub et permet d'appliquer une mise à jour serveur quand l'installation locale est compatible.
 
 ### Vérifier l'état de version
 
 1. Ouvrez **Paramètres → Version**.
-2. Consultez le statut affiché :
+2. Cliquez sur **Vérifier** pour interroger le dépôt distant.
+3. Consultez le statut affiché :
    - **À jour** : la version installée correspond à la version distante connue.
    - **Mise à jour disponible** : une version plus récente est détectée.
+   - **Redémarrage requis** : la mise à jour a été appliquée et Docker doit être relancé.
+   - **Installation incompatible** : un prérequis manque ou l'état local empêche l'action.
    - **Vérification impossible** : la source distante n'a pas pu être contactée ou les versions ne peuvent pas être comparées.
 
 ### Informations affichées
@@ -813,10 +816,30 @@ Cette page compare la version installée avec la version distante publiée sur G
 |---|---|
 | **Version installée** | Version lue depuis le fichier `VERSION` ou la variable d'environnement `APP_VERSION`. |
 | **Version distante** | Version publiée lue depuis GitHub. |
+| **Branche courante / cible** | Branche Git locale et branche utilisée pour la mise à jour. |
+| **État Git** | Doit être propre pour appliquer une mise à jour. |
+| **Commits** | Identifiants courts des commits local et distant. |
+
+### Appliquer une mise à jour
+
+Quand le statut indique **Mise à jour disponible**, cliquez sur **Appliquer**, confirmez l'action, puis suivez le journal affiché sur la page.
+
+La mise à jour :
+
+- utilise le dépôt Git déjà installé, sans recloner l'application ;
+- refuse de continuer si des changements locaux sont présents ;
+- vérifie le remote, la branche cible, le script `scripts/update.sh` et Docker Compose ;
+- bascule ou tire la branche cible configurée, puis prépare le code applicatif.
+
+Après application, cliquez sur **Redémarrer Docker** pour relancer la stack avec la nouvelle version.
+
+Pendant une mise à jour ou un redémarrage, l'administration affiche un **overlay bloquant**. Il empêche les clics, formulaires et raccourcis jusqu'à la fin de l'opération. Si le serveur redémarre et répond temporairement moins vite, la page affiche une reconnexion automatique.
 
 ### Bonnes pratiques
 
-- Si la vérification échoue, contrôlez l'accès réseau du serveur.
+- Lancez une sauvegarde avant une mise à jour importante.
+- Évitez d'appliquer une mise à jour pendant un import massif ou une restauration.
+- Si la vérification échoue, contrôlez l'accès réseau du serveur, l'état Git local et la disponibilité de Docker Compose.
 
 ---
 

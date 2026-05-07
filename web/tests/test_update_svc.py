@@ -152,6 +152,34 @@ class UpdateServiceTests(unittest.TestCase):
         self.assertEqual(docker_compose, ["docker", "compose", "--project-name", "visio_display"])
         self.assertEqual(legacy_compose, ["docker-compose", "--project-name", "visio_display"])
 
+    def test_restart_stack_schedules_detached_helper(self):
+        status = {
+            "compatible": True,
+            "repo_dir": str(self.root / "repo"),
+            "can_apply": False,
+            "can_restart": True,
+            "reason": "",
+        }
+        messages = []
+
+        with (
+            patch.object(update_svc, "get_update_status", return_value=status.copy()),
+            patch.object(update_svc, "_docker_compose_command", return_value=(["docker-compose"], "")),
+            patch.object(update_svc, "_current_compose_project_name", return_value="visio_display"),
+            patch.object(update_svc, "_start_restart_helper") as helper,
+        ):
+            result = update_svc.restart_stack(progress_callback=messages.append)
+
+        helper.assert_called_once_with(
+            ["docker-compose", "--project-name", "visio_display", "up", "-d", "--build"],
+            repo_dir=str(self.root / "repo"),
+            progress_callback=messages.append,
+        )
+        self.assertEqual(result["status"], "restart_scheduled")
+        self.assertEqual(result["status_label"], "Redémarrage lancé")
+        self.assertFalse(result["can_restart"])
+        self.assertIn("arrière-plan", result["reason"])
+
 
 if __name__ == "__main__":
     unittest.main()

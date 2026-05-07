@@ -43,7 +43,12 @@ services:
     container_name: Visio
     env_file: .env
     environment: *visio-container-env
-    volumes: *visio-volumes
+    volumes:
+      - .:/opt/visio-display
+      - ./.env:/app/.env:ro
+      - ${MEDIA_DIR:?MEDIA_DIR absent. Lancez le module d'installation ou renseignez .env.}:/app/static/data
+      - ${PRIVATE_DIR:?PRIVATE_DIR absent. Lancez le module d'installation ou renseignez .env.}:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - "${PORT:-8081}:8080"
     restart: always

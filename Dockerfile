@@ -6,6 +6,7 @@ FROM python:3.13-slim
 # System dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
         poppler-utils ffmpeg git curl ca-certificates openssh-client sshpass postgresql-client smbclient \
+        docker.io docker-compose \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

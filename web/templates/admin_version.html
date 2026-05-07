@@ -26,62 +26,10 @@
 <div class="version-page">
     <section class="version-hero">
         <div>
-            <div class="version-kicker">{{ t('version_readonly_badge') }}</div>
             <h1>{{ t('version_title') }}</h1>
-            <p>{{ t('version_intro') }}</p>
-            <a class="btn sm version-refresh-btn" href="/admin/version?refresh=1">{{ t('version_refresh') }}</a>
-        </div>
-        <div class="version-status-card" data-tone="{{ version_status.status_tone }}">
-            <span class="version-status-dot"></span>
-            <div>
-                <div class="version-status-label">{{ version_status.status_label }}</div>
-                <div class="version-status-sub">
-                    {% if version_status.status == 'update_available' %}
-                    {{ t('version_available_hint') }}
-                    {% elif version_status.status == 'up_to_date' %}
-                    {{ t('version_up_to_date_hint') }}
-                    {% elif version_status.status == 'local_ahead' %}
-                    {{ t('version_local_ahead_hint') }}
-                    {% else %}
-                    {{ t('version_check_failed_hint') }}
-                    {% endif %}
-                </div>
-            </div>
+            <p>Vérifiez et appliquez les mises à jour depuis le dépôt Git installé.</p>
         </div>
     </section>
-
-    {% if version_status.fetch_error %}
-    <div class="version-warning">
-        <strong>{{ t('version_fetch_error_title') }}</strong>
-        <span>{{ version_status.fetch_error }}</span>
-    </div>
-    {% endif %}
-
-    <div class="version-grid">
-        <section class="version-panel">
-            <div class="version-panel-header">
-                <h2>{{ t('version_installed_title') }}</h2>
-            </div>
-            <dl class="version-details">
-                <div>
-                    <dt>{{ t('version_label') }}</dt>
-                    <dd><strong>{{ version_status.local_version or '-' }}</strong></dd>
-                </div>
-            </dl>
-        </section>
-
-        <section class="version-panel">
-            <div class="version-panel-header">
-                <h2>{{ t('version_remote_title') }}</h2>
-            </div>
-            <dl class="version-details">
-                <div>
-                    <dt>{{ t('version_label') }}</dt>
-                    <dd><strong>{{ version_status.remote_version or '-' }}</strong></dd>
-                </div>
-            </dl>
-        </section>
-    </div>
 
     <section class="version-panel update-panel" id="server-update-panel"
              data-initial-status='{{ update_status | tojson }}'>
@@ -160,43 +108,21 @@
     gap: 18px;
 }
 .version-hero {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
-    gap: 18px;
-    align-items: stretch;
+    max-width: 780px;
 }
 .version-hero h1 {
-    margin: 6px 0 8px;
+    margin: 0 0 8px;
     font-size: 1.65rem;
 }
 .version-hero p {
-    max-width: 780px;
     margin: 0;
     color: var(--text-2);
     line-height: 1.55;
 }
-.version-refresh-btn {
-    margin-top: 14px;
-}
-.version-kicker {
-    color: var(--primary);
-    font-size: .78rem;
-    font-weight: 800;
-    letter-spacing: .04em;
-    text-transform: uppercase;
-}
-.version-status-card,
-.version-panel,
-.version-warning {
+.version-panel {
     border: 1px solid var(--border);
     background: var(--surface);
     border-radius: 8px;
-}
-.version-status-card {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 18px;
 }
 .version-status-dot {
     width: 12px;
@@ -206,20 +132,10 @@
     box-shadow: 0 0 0 5px var(--primary-bg);
     flex: 0 0 auto;
 }
-.version-status-card[data-tone="warning"] .version-status-dot {
-    background: var(--warning-color);
-    box-shadow: 0 0 0 5px color-mix(in srgb, var(--warning-color) 16%, transparent);
-}
-.version-status-card[data-tone="success"] .version-status-dot {
-    background: var(--success-color);
-    box-shadow: 0 0 0 5px color-mix(in srgb, var(--success-color) 16%, transparent);
-}
-.version-status-card[data-tone="info"] .version-status-dot,
 .update-state[data-tone="info"] .version-status-dot {
     background: var(--primary);
     box-shadow: 0 0 0 5px var(--primary-bg);
 }
-.version-status-card[data-tone="danger"] .version-status-dot,
 .update-state[data-tone="danger"] .version-status-dot {
     background: var(--danger-color);
     box-shadow: 0 0 0 5px color-mix(in srgb, var(--danger-color) 16%, transparent);
@@ -231,18 +147,6 @@
     margin-top: 3px;
     color: var(--text-2);
     font-size: .84rem;
-}
-.version-warning {
-    display: flex;
-    gap: 10px;
-    padding: 12px 14px;
-    color: var(--warning-text);
-    background: var(--warning-bg);
-}
-.version-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 18px;
 }
 .version-panel {
     overflow: hidden;
@@ -374,8 +278,6 @@
     white-space: pre-wrap;
 }
 @media (max-width: 900px) {
-    .version-hero,
-    .version-grid,
     .update-details {
         grid-template-columns: 1fr;
     }
@@ -585,12 +487,22 @@
     }
 
     checkBtn.addEventListener('click', () => refreshStatus(true));
-    applyBtn.addEventListener('click', () => {
-        if (!window.confirm('Appliquer maintenant la mise à jour serveur affichée ?')) return;
+    applyBtn.addEventListener('click', async () => {
+        if (!await window.appUI.confirm({
+            titleText: 'Appliquer la mise à jour',
+            messageText: 'Appliquer maintenant la mise à jour serveur affichée ?',
+            tone: 'warning',
+            confirmLabel: 'Appliquer',
+        })) return;
         streamAction('/admin/version/update/apply-stream', 'Application de la mise à jour...');
     });
-    restartBtn.addEventListener('click', () => {
-        if (!window.confirm('Redémarrer la stack Docker maintenant ?')) return;
+    restartBtn.addEventListener('click', async () => {
+        if (!await window.appUI.confirm({
+            titleText: 'Redémarrer Docker',
+            messageText: 'Redémarrer la stack Docker maintenant ?',
+            tone: 'warning',
+            confirmLabel: 'Redémarrer',
+        })) return;
         streamAction('/admin/version/update/restart-stream', 'Redémarrage de la stack Docker...');
     });
 

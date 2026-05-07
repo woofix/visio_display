@@ -200,11 +200,10 @@
 .backup-log-line.is-error { color:#fca5a5; }
 .backup-item-actions { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
 .backup-delete-form { margin:0; }
-.backup-delete-modal { position:fixed; inset:0; display:none; align-items:center; justify-content:center; padding:24px; background:rgba(15,23,42,.48); backdrop-filter:blur(5px); z-index:350; }
-.backup-delete-modal[aria-hidden="false"] { display:flex; }
+.backup-delete-modal { padding:24px; z-index:1250; }
 .backup-delete-dialog { width:min(100%, 460px); }
 .backup-delete-head { display:flex; gap:14px; align-items:flex-start; }
-.backup-delete-icon { width:42px; height:42px; border-radius:14px; display:flex; align-items:center; justify-content:center; flex:0 0 auto; background:color-mix(in srgb, var(--error-bg) 92%, white 8%); color:var(--error-text); border:1px solid var(--error-border); }
+.backup-delete-icon { width:42px; height:42px; border-radius:14px; display:flex; align-items:center; justify-content:center; flex:0 0 auto; background:color-mix(in srgb, var(--error-bg) 92%, var(--surface) 8%); color:var(--error-text); border:1px solid var(--error-border); }
 .backup-delete-icon svg { width:20px; height:20px; }
 .backup-delete-head h3 { margin:0; font-size:1rem; font-weight:800; color:var(--text); }
 .backup-delete-head p { margin-top:6px; font-size:.82rem; color:var(--text-3); line-height:1.55; }

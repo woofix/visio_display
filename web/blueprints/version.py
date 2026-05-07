@@ -11,7 +11,6 @@ from services.activity_svc import log_config_change
 from services.config_svc import load_config
 from services.media_svc import get_logo_path
 from services.update_svc import apply_update, get_update_status, restart_stack
-from services.version_svc import get_version_status
 
 
 bp = Blueprint("version", __name__)
@@ -28,7 +27,6 @@ def version_page():
         cfg=load_config(),
         current_user=session.get("user"),
         logo_path=get_logo_path(),
-        version_status=get_version_status(force_refresh=request.args.get("refresh") == "1"),
         update_status=get_update_status(fetch_remote=False),
     )
 

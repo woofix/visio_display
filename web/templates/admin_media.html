@@ -216,12 +216,11 @@
 .screen-preview-label { position:absolute;bottom:10px;left:14px;color:rgba(255,255,255,.5);font-size:.72rem;z-index:10;pointer-events:none; }
 
 /* Modal */
-.modal-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:center;justify-content:center; }
-.modal-overlay.open { display:flex; }
-.modal-box { background:var(--surface);border-radius:var(--radius);box-shadow:0 8px 32px rgba(0,0,0,.25);padding:28px 32px;width:100%;max-width:480px;position:relative; }
+.modal-overlay { z-index:1250; }
+.modal-box { width:100%;max-width:480px;position:relative; }
 .modal-box h2 { font-size:1rem;font-weight:700;color:var(--text);margin-bottom:4px; }
 .modal-box .modal-sub { font-size:.76rem;color:var(--text-3);margin-bottom:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
-.modal-close { position:absolute;top:14px;right:16px;background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--text-3);line-height:1; }
+.modal-close { position:absolute;top:14px;right:16px;z-index:2; }
 .modal-section { margin-bottom:18px; }
 .modal-section label { display:flex;align-items:center;gap:8px;font-size:.82rem;font-weight:600;color:var(--text-2);margin-bottom:10px;cursor:pointer; }
 .modal-section label input[type=checkbox] { width:15px;height:15px;accent-color:var(--primary); }
@@ -231,7 +230,7 @@
 .modal-row input[type=date] { padding:6px 10px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:.82rem;color:var(--text);background:var(--surface);transition:border-color .15s; }
 .modal-row input:focus { outline:none;border-color:var(--primary); }
 .modal-row input:disabled { opacity:.4;pointer-events:none; }
-.modal-footer { display:flex;gap:8px;justify-content:flex-end;margin-top:22px;padding-top:16px;border-top:1px solid var(--border); }
+.modal-footer { display:flex;gap:8px;justify-content:flex-end; }
 .modal-info { font-size:.74rem;color:var(--primary);background:var(--primary-bg);padding:8px 12px;border-radius:8px;margin-bottom:14px;display:none; }
 .modal-info.visible { display:block; }
 @media(max-width: 860px) {
@@ -421,8 +420,7 @@
         min-width: 0;
     }
     .modal-box {
-        width: calc(100vw - 24px);
-        padding: 20px 16px;
+        width: 100%;
     }
     .modal-box .modal-sub {
         white-space: normal;

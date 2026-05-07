@@ -4,10 +4,17 @@ set -euo pipefail
 TARGET_VERSION="${1:-}"
 APP_DIR="${VISIO_APP_DIR:-/app}"
 UPDATE_BRANCH="${VISIO_UPDATE_BRANCH:-main}"
+UPDATE_REMOTE="${VISIO_UPDATE_REMOTE:-origin}"
 
 case "$UPDATE_BRANCH" in
   ""| -*|*..*|*[[:space:]~^:?*\\[]*)
     echo "Erreur: branche de mise à jour invalide: $UPDATE_BRANCH"
+    exit 1
+    ;;
+esac
+case "$UPDATE_REMOTE" in
+  ""| -*|*..*|*[[:space:]~^:?*\\[]*)
+    echo "Erreur: remote de mise à jour invalide: $UPDATE_REMOTE"
     exit 1
     ;;
 esac
@@ -20,14 +27,58 @@ if [ ! -d ".git" ]; then
   exit 1
 fi
 
+if ! git remote get-url "$UPDATE_REMOTE" >/dev/null 2>&1; then
+  echo "Erreur: remote Git introuvable: $UPDATE_REMOTE"
+  exit 1
+fi
+
+if ! git rev-parse --verify --quiet HEAD >/dev/null; then
+  echo "Erreur: commit courant illisible"
+  exit 1
+fi
+
 if [ -n "$(git status --porcelain)" ]; then
   echo "Erreur: dépôt Git non propre"
   git status --short
   exit 1
 fi
 
+if ! command -v docker >/dev/null 2>&1 && ! command -v docker-compose >/dev/null 2>&1; then
+  echo "Erreur: Docker Compose est requis pour finaliser la mise à jour"
+  exit 1
+fi
+
+if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+  echo "Docker Compose disponible: docker compose"
+elif command -v docker-compose >/dev/null 2>&1; then
+  echo "Docker Compose disponible: docker-compose"
+else
+  echo "Erreur: Docker Compose est introuvable ou inaccessible"
+  exit 1
+fi
+
 echo "Récupération des tags et branches"
-git fetch --tags --prune
+git fetch "$UPDATE_REMOTE" --tags --prune
+
+checkout_update_branch() {
+  if ! git rev-parse --verify --quiet "refs/remotes/$UPDATE_REMOTE/$UPDATE_BRANCH" >/dev/null; then
+    echo "Erreur: branche distante introuvable: $UPDATE_REMOTE/$UPDATE_BRANCH"
+    exit 1
+  fi
+
+  CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+  if [ "$CURRENT_BRANCH" = "$UPDATE_BRANCH" ]; then
+    return
+  fi
+
+  if git rev-parse --verify --quiet "refs/heads/$UPDATE_BRANCH" >/dev/null; then
+    echo "Checkout de la branche cible $UPDATE_BRANCH"
+    git checkout "$UPDATE_BRANCH"
+  else
+    echo "Création de la branche locale $UPDATE_BRANCH depuis $UPDATE_REMOTE/$UPDATE_BRANCH"
+    git checkout -b "$UPDATE_BRANCH" --track "$UPDATE_REMOTE/$UPDATE_BRANCH"
+  fi
+}
 
 if [ -n "$TARGET_VERSION" ]; then
   if git rev-parse --verify --quiet "refs/tags/$TARGET_VERSION" >/dev/null; then
@@ -37,12 +88,14 @@ if [ -n "$TARGET_VERSION" ]; then
     echo "Checkout du tag v$TARGET_VERSION"
     git checkout "v$TARGET_VERSION"
   else
-    echo "Tag $TARGET_VERSION introuvable, pull origin $UPDATE_BRANCH"
-    git pull --ff-only origin "$UPDATE_BRANCH"
+    checkout_update_branch
+    echo "Tag $TARGET_VERSION introuvable, pull $UPDATE_REMOTE $UPDATE_BRANCH"
+    git pull --ff-only "$UPDATE_REMOTE" "$UPDATE_BRANCH"
   fi
 else
-  echo "Pull origin $UPDATE_BRANCH"
-  git pull --ff-only origin "$UPDATE_BRANCH"
+  checkout_update_branch
+  echo "Pull $UPDATE_REMOTE $UPDATE_BRANCH"
+  git pull --ff-only "$UPDATE_REMOTE" "$UPDATE_BRANCH"
 fi
 
 if [ -d "$APP_DIR" ] && [ -d "web" ] && [ "$(CDPATH= cd -- "$APP_DIR" && pwd)" != "$(pwd)" ]; then

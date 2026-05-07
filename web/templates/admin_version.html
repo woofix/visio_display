@@ -82,6 +82,75 @@
             </dl>
         </section>
     </div>
+
+    <section class="version-panel update-panel" id="server-update-panel"
+             data-initial-status='{{ update_status | tojson }}'>
+        <div class="version-panel-header update-header">
+            <div>
+                <h2>Mise à jour serveur</h2>
+                <p>Vérification et application depuis le dépôt Git installé, sans reclonage.</p>
+            </div>
+            <div class="update-actions">
+                <button type="button" class="btn sm" id="update-check-btn">Vérifier</button>
+                <button type="button" class="btn sm success" id="update-apply-btn" hidden>Appliquer</button>
+                <button type="button" class="btn sm secondary" id="update-restart-btn" hidden>Redémarrer Docker</button>
+            </div>
+        </div>
+
+        <div class="update-state" data-tone="{{ update_status.status_tone }}" id="update-state">
+            <span class="version-status-dot"></span>
+            <div>
+                <div class="version-status-label" id="update-status-label">{{ update_status.status_label }}</div>
+                <div class="version-status-sub" id="update-status-reason">
+                    {% if update_status.reason %}{{ update_status.reason }}{% else %}Cliquez sur Vérifier pour interroger le dépôt distant avant toute action.{% endif %}
+                </div>
+            </div>
+        </div>
+
+        <dl class="version-details update-details">
+            <div>
+                <dt>Version locale</dt>
+                <dd id="update-local-version">{{ update_status.local_version or '-' }}</dd>
+            </div>
+            <div>
+                <dt>Version distante</dt>
+                <dd id="update-remote-version">{{ update_status.remote_version or '-' }}</dd>
+            </div>
+            <div>
+                <dt>Branche courante</dt>
+                <dd id="update-ref">{{ update_status.branch or update_status.current_ref or '-' }}</dd>
+            </div>
+            <div>
+                <dt>Branche cible</dt>
+                <dd id="update-target-branch">{{ update_status.target_branch or '-' }}</dd>
+            </div>
+            <div>
+                <dt>État Git</dt>
+                <dd id="update-git-state">{{ update_status.git_state or '-' }}</dd>
+            </div>
+            <div>
+                <dt>Commit local</dt>
+                <dd id="update-local-commit">{{ update_status.local_commit or '-' }}</dd>
+            </div>
+            <div>
+                <dt>Commit distant</dt>
+                <dd id="update-remote-commit">{{ update_status.remote_commit or '-' }}</dd>
+            </div>
+            <div>
+                <dt>Remote</dt>
+                <dd id="update-remote">{{ update_status.remote or '-' }}</dd>
+            </div>
+        </dl>
+
+        <div class="update-checks" id="update-checks"></div>
+
+        <div class="update-confirm" id="update-confirm" hidden>
+            <strong>Confirmation requise</strong>
+            <span>Une mise à jour est disponible. Elle ne sera appliquée qu'après clic sur Appliquer.</span>
+        </div>
+
+        <pre class="update-log" id="update-log" aria-live="polite" hidden></pre>
+    </section>
 </div>
 
 <style>
@@ -145,6 +214,16 @@
     background: var(--success-color);
     box-shadow: 0 0 0 5px color-mix(in srgb, var(--success-color) 16%, transparent);
 }
+.version-status-card[data-tone="info"] .version-status-dot,
+.update-state[data-tone="info"] .version-status-dot {
+    background: var(--primary);
+    box-shadow: 0 0 0 5px var(--primary-bg);
+}
+.version-status-card[data-tone="danger"] .version-status-dot,
+.update-state[data-tone="danger"] .version-status-dot {
+    background: var(--danger-color);
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--danger-color) 16%, transparent);
+}
 .version-status-label {
     font-weight: 800;
 }
@@ -194,10 +273,111 @@
     min-width: 0;
     overflow-wrap: anywhere;
 }
+.update-panel {
+    display: flex;
+    flex-direction: column;
+}
+.update-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    align-items: center;
+}
+.update-header p {
+    margin: 4px 0 0;
+    color: var(--text-2);
+    font-size: .86rem;
+}
+.update-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.update-state {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+}
+.update-state[data-tone="warning"] .version-status-dot {
+    background: var(--warning-color);
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--warning-color) 16%, transparent);
+}
+.update-state[data-tone="success"] .version-status-dot {
+    background: var(--success-color);
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--success-color) 16%, transparent);
+}
+.update-details {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.update-details div {
+    border-bottom: 1px solid var(--border);
+}
+.update-checks {
+    display: grid;
+    gap: 8px;
+    padding: 14px 16px;
+}
+.update-check {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr);
+    gap: 8px;
+    align-items: start;
+    color: var(--text-2);
+    font-size: .86rem;
+}
+.update-check-mark {
+    width: 10px;
+    height: 10px;
+    margin-top: 4px;
+    border-radius: 999px;
+    background: var(--success-color);
+}
+.update-check[data-ok="false"] .update-check-mark {
+    background: var(--danger-color);
+}
+.update-check strong {
+    color: var(--text);
+}
+.update-check-detail {
+    margin-top: 2px;
+    overflow-wrap: anywhere;
+}
+.update-confirm {
+    margin: 0 16px 14px;
+    padding: 12px 14px;
+    border: 1px solid color-mix(in srgb, var(--warning-color) 36%, var(--border));
+    background: var(--warning-bg);
+    color: var(--warning-text);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.update-log {
+    margin: 0 16px 16px;
+    padding: 12px;
+    max-height: 340px;
+    overflow: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--code-bg, #111827);
+    color: #e5e7eb;
+    font-size: .8rem;
+    line-height: 1.45;
+    white-space: pre-wrap;
+}
 @media (max-width: 900px) {
     .version-hero,
-    .version-grid {
+    .version-grid,
+    .update-details {
         grid-template-columns: 1fr;
+    }
+    .update-header {
+        align-items: stretch;
+        flex-direction: column;
     }
     .version-details div {
         grid-template-columns: 1fr;
@@ -205,4 +385,211 @@
     }
 }
 </style>
+<script>
+(function() {
+    const panel = document.getElementById('server-update-panel');
+    if (!panel) return;
+
+    const checkBtn = document.getElementById('update-check-btn');
+    const applyBtn = document.getElementById('update-apply-btn');
+    const restartBtn = document.getElementById('update-restart-btn');
+    const stateBox = document.getElementById('update-state');
+    const label = document.getElementById('update-status-label');
+    const reason = document.getElementById('update-status-reason');
+    const checksBox = document.getElementById('update-checks');
+    const confirmBox = document.getElementById('update-confirm');
+    const logBox = document.getElementById('update-log');
+
+    const fields = {
+        local_version: document.getElementById('update-local-version'),
+        remote_version: document.getElementById('update-remote-version'),
+        target_branch: document.getElementById('update-target-branch'),
+        git_state: document.getElementById('update-git-state'),
+        local_commit: document.getElementById('update-local-commit'),
+        remote_commit: document.getElementById('update-remote-commit'),
+        remote: document.getElementById('update-remote'),
+    };
+    const refField = document.getElementById('update-ref');
+
+    let currentStatus = {};
+    try {
+        currentStatus = JSON.parse(panel.dataset.initialStatus || '{}');
+    } catch (error) {
+        currentStatus = {};
+    }
+
+    function text(value) {
+        return value ? String(value) : '-';
+    }
+
+    function setBusy(isBusy) {
+        checkBtn.disabled = isBusy;
+        applyBtn.disabled = isBusy;
+        restartBtn.disabled = isBusy;
+    }
+
+    function appendLog(message, isError) {
+        logBox.hidden = false;
+        const prefix = isError ? 'ERREUR: ' : '';
+        logBox.textContent += `${prefix}${message || ''}\n`;
+        logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    function renderStatus(status) {
+        currentStatus = status || {};
+        stateBox.dataset.tone = currentStatus.status_tone || 'warning';
+        label.textContent = currentStatus.status_label || 'État inconnu';
+        reason.textContent = currentStatus.reason || (
+            currentStatus.status === 'update_available'
+                ? 'Une confirmation est requise avant application.'
+                : 'Aucune action automatique ne sera lancée.'
+        );
+
+        Object.keys(fields).forEach((key) => {
+            fields[key].textContent = text(currentStatus[key]);
+        });
+        refField.textContent = text(currentStatus.branch || currentStatus.current_ref);
+
+        checksBox.innerHTML = '';
+        (currentStatus.checks || []).forEach((item) => {
+            const row = document.createElement('div');
+            row.className = 'update-check';
+            row.dataset.ok = item.ok ? 'true' : 'false';
+
+            const mark = document.createElement('span');
+            mark.className = 'update-check-mark';
+
+            const body = document.createElement('div');
+            const title = document.createElement('strong');
+            title.textContent = item.label || item.key || 'Vérification';
+            body.appendChild(title);
+
+            if (item.detail) {
+                const detail = document.createElement('div');
+                detail.className = 'update-check-detail';
+                detail.textContent = item.detail;
+                body.appendChild(detail);
+            }
+
+            row.appendChild(mark);
+            row.appendChild(body);
+            checksBox.appendChild(row);
+        });
+
+        applyBtn.hidden = !currentStatus.can_apply;
+        restartBtn.hidden = currentStatus.status !== 'restart_required';
+        confirmBox.hidden = currentStatus.status !== 'update_available';
+    }
+
+    async function refreshStatus(fetchRemote) {
+        setBusy(true);
+        logBox.hidden = true;
+        logBox.textContent = '';
+        try {
+            const response = await fetch(`/admin/version/update/status${fetchRemote ? '?fetch=1' : ''}`, {
+                headers: { 'Accept': 'application/json' },
+                cache: 'no-store',
+            });
+            const payload = await response.json();
+            if (!response.ok || !payload.ok) {
+                throw new Error(payload.error || 'Vérification impossible.');
+            }
+            renderStatus(payload.status);
+        } catch (error) {
+            appendLog(error?.message || 'Vérification impossible.', true);
+            renderStatus({
+                status: 'error',
+                status_label: 'Erreur',
+                status_tone: 'danger',
+                reason: error?.message || 'Vérification impossible.',
+                checks: currentStatus.checks || [],
+            });
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    async function streamAction(url, startMessage) {
+        setBusy(true);
+        logBox.hidden = false;
+        logBox.textContent = '';
+        appendLog(startMessage);
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/x-ndjson',
+                    'X-CSRF-Token': window.CSRF_TOKEN,
+                },
+            });
+            if (!response.ok || !response.body) {
+                throw new Error('Action impossible.');
+            }
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            let finalStatus = null;
+            let failed = false;
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+                for (const line of lines) {
+                    if (!line.trim()) continue;
+                    const payload = JSON.parse(line);
+                    if (payload.type === 'log') {
+                        appendLog(payload.message || '');
+                    } else if (payload.type === 'error') {
+                        failed = true;
+                        appendLog(payload.message || 'Action échouée.', true);
+                    } else if (payload.type === 'done') {
+                        finalStatus = payload.status;
+                    }
+                }
+            }
+
+            if (failed) {
+                renderStatus({
+                    ...currentStatus,
+                    status: 'error',
+                    status_label: 'Erreur',
+                    status_tone: 'danger',
+                    reason: 'La mise à jour n’a pas abouti. Consultez les logs ci-dessous.',
+                    can_apply: false,
+                });
+            } else if (finalStatus) {
+                renderStatus(finalStatus);
+                appendLog('Terminé.');
+            }
+        } catch (error) {
+            appendLog(error?.message || 'Action échouée.', true);
+            renderStatus({
+                ...currentStatus,
+                status: 'error',
+                status_label: 'Erreur',
+                status_tone: 'danger',
+                reason: error?.message || 'Action échouée.',
+                can_apply: false,
+            });
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    checkBtn.addEventListener('click', () => refreshStatus(true));
+    applyBtn.addEventListener('click', () => {
+        if (!window.confirm('Appliquer maintenant la mise à jour serveur affichée ?')) return;
+        streamAction('/admin/version/update/apply-stream', 'Application de la mise à jour...');
+    });
+    restartBtn.addEventListener('click', () => {
+        if (!window.confirm('Redémarrer la stack Docker maintenant ?')) return;
+        streamAction('/admin/version/update/restart-stream', 'Redémarrage de la stack Docker...');
+    });
+
+    renderStatus(currentStatus);
+})();
+</script>
 {% endblock %}

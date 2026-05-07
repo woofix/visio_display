@@ -1,8 +1,10 @@
 # Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 import os
+import shlex
 import shutil
 import subprocess
+import time
 from dataclasses import dataclass
 
 from services.version_svc import _compare_versions
@@ -119,6 +121,70 @@ def _with_compose_project(command, project_name):
     if len(command) >= 2 and os.path.basename(command[0]) == "docker" and command[1] == "compose":
         return [command[0], command[1], "--project-name", project_name, *command[2:]]
     return [command[0], "--project-name", project_name, *command[1:]]
+
+
+def _shell_join(command):
+    return " ".join(shlex.quote(str(part)) for part in command)
+
+
+def _current_container_id():
+    result = _run(["hostname"], cwd=_repo_dir(), timeout=4)
+    return result.stdout.strip() if result.ok else ""
+
+
+def _current_container_image(docker_path, container_id):
+    result = _run(
+        [docker_path, "inspect", "--format", "{{.Config.Image}}", container_id],
+        cwd=_repo_dir(),
+        timeout=8,
+    )
+    return result.stdout.strip() if result.ok else ""
+
+
+def _start_restart_helper(command, *, repo_dir, progress_callback=None):
+    docker_path = shutil.which("docker")
+    if not docker_path:
+        raise RuntimeError("Docker est requis pour lancer le redémarrage détaché.")
+
+    container_id = _current_container_id()
+    if not container_id:
+        raise RuntimeError("Le conteneur courant est introuvable.")
+
+    image = _current_container_image(docker_path, container_id)
+    if not image:
+        raise RuntimeError("L'image du conteneur courant est introuvable.")
+
+    helper_name = f"visio-display-restart-{int(time.time())}"
+    helper_script = "\n".join([
+        "sleep 2",
+        f"cd {shlex.quote(repo_dir)}",
+        _shell_join(command),
+    ])
+    helper_command = [
+        docker_path,
+        "run",
+        "-d",
+        "--rm",
+        "--name",
+        helper_name,
+        "--volumes-from",
+        container_id,
+        "-v",
+        "/var/run/docker.sock:/var/run/docker.sock",
+        "-w",
+        repo_dir,
+        image,
+        "sh",
+        "-lc",
+        helper_script,
+    ]
+    if progress_callback:
+        progress_callback(f"$ {' '.join(helper_command[:8])} ...")
+    result = _run(helper_command, cwd=repo_dir, timeout=20)
+    if not result.ok:
+        raise RuntimeError(result.stderr or result.stdout or "Impossible de lancer le conteneur de redémarrage.")
+    if progress_callback:
+        progress_callback(f"Redémarrage Docker lancé via helper {helper_name}.")
 
 
 def _current_ref():
@@ -392,9 +458,14 @@ def restart_stack(*, progress_callback=None):
         raise RuntimeError(compose_error)
     project_name = _current_compose_project_name()
     command = [*_with_compose_project(compose_cmd, project_name), "up", "-d", "--build"]
-    _stream_command(command, cwd=status["repo_dir"], progress_callback=progress_callback)
-    refreshed = get_update_status(fetch_remote=False)
-    refreshed["status"] = "up_to_date"
-    refreshed["status_label"] = "Stack redémarrée"
-    refreshed["status_tone"] = "success"
-    return refreshed
+    if progress_callback:
+        progress_callback("Le redémarrage va continuer en arrière-plan.")
+        progress_callback(f"$ {' '.join(command)}")
+    _start_restart_helper(command, repo_dir=status["repo_dir"], progress_callback=progress_callback)
+    status["status"] = "restart_scheduled"
+    status["status_label"] = "Redémarrage lancé"
+    status["status_tone"] = "success"
+    status["can_apply"] = False
+    status["can_restart"] = False
+    status["reason"] = "La stack Docker redémarre en arrière-plan. Rechargez la page dans quelques secondes."
+    return status

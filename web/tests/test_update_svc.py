@@ -145,6 +145,13 @@ class UpdateServiceTests(unittest.TestCase):
         self.assertEqual(status["local_version"], "1.6.13")
         self.assertEqual(status["remote_version"], "1.6.12")
 
+    def test_compose_project_is_injected_for_restart_commands(self):
+        docker_compose = update_svc._with_compose_project(["docker", "compose"], "visio_display")
+        legacy_compose = update_svc._with_compose_project(["docker-compose"], "visio_display")
+
+        self.assertEqual(docker_compose, ["docker", "compose", "--project-name", "visio_display"])
+        self.assertEqual(legacy_compose, ["docker-compose", "--project-name", "visio_display"])
+
 
 if __name__ == "__main__":
     unittest.main()

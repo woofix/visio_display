@@ -87,6 +87,40 @@ def _docker_compose_command():
     return [], "Docker Compose est introuvable ou inaccessible depuis le serveur."
 
 
+def _current_compose_project_name():
+    env_project = os.environ.get("COMPOSE_PROJECT_NAME", "").strip()
+    if env_project:
+        return env_project
+
+    docker_path = shutil.which("docker")
+    if not docker_path:
+        return ""
+
+    hostname = _run(["hostname"], cwd=_repo_dir(), timeout=4).stdout.strip()
+    if not hostname:
+        return ""
+    result = _run(
+        [
+            docker_path,
+            "inspect",
+            "--format",
+            '{{ index .Config.Labels "com.docker.compose.project" }}',
+            hostname,
+        ],
+        cwd=_repo_dir(),
+        timeout=8,
+    )
+    return result.stdout.strip() if result.ok else ""
+
+
+def _with_compose_project(command, project_name):
+    if not project_name:
+        return command
+    if len(command) >= 2 and os.path.basename(command[0]) == "docker" and command[1] == "compose":
+        return [command[0], command[1], "--project-name", project_name, *command[2:]]
+    return [command[0], "--project-name", project_name, *command[1:]]
+
+
 def _current_ref():
     branch = _git(["rev-parse", "--abbrev-ref", "HEAD"])
     if not branch.ok:
@@ -356,7 +390,8 @@ def restart_stack(*, progress_callback=None):
     compose_cmd, compose_error = _docker_compose_command()
     if not compose_cmd:
         raise RuntimeError(compose_error)
-    command = [*compose_cmd, "up", "-d", "--build"]
+    project_name = _current_compose_project_name()
+    command = [*_with_compose_project(compose_cmd, project_name), "up", "-d", "--build"]
     _stream_command(command, cwd=status["repo_dir"], progress_callback=progress_callback)
     refreshed = get_update_status(fetch_remote=False)
     refreshed["status"] = "up_to_date"

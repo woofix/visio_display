@@ -197,6 +197,13 @@ def _remote_ref_for_branch(remote_name, branch):
     return remote_branch if exists.ok else ""
 
 
+def _commit_is_ancestor(ancestor, descendant):
+    if not ancestor or not descendant:
+        return False
+    result = _git(["merge-base", "--is-ancestor", ancestor, descendant])
+    return result.returncode == 0
+
+
 def _latest_tag():
     result = _git(["for-each-ref", "--sort=-creatordate", "--format=%(refname:short)", "refs/tags"], timeout=10)
     if not result.ok:
@@ -351,12 +358,30 @@ def get_update_status(*, fetch_remote=False):
         can_apply = False
         reason = "La version distante de la branche cible est plus ancienne que la version locale."
     else:
-        update_available = bool(remote_commit and local_commit and remote_commit != local_commit)
-        status_name = "update_available" if update_available else "up_to_date"
-        status_label = "Mise à jour disponible" if update_available else "À jour"
-        status_tone = "warning" if update_available else "success"
-        can_apply = update_available
-        reason = ""
+        if not remote_commit or not local_commit or remote_commit == local_commit:
+            status_name = "up_to_date"
+            status_label = "À jour"
+            status_tone = "success"
+            can_apply = False
+            reason = ""
+        elif _commit_is_ancestor(local_commit, remote_commit):
+            status_name = "update_available"
+            status_label = "Mise à jour disponible"
+            status_tone = "warning"
+            can_apply = True
+            reason = ""
+        elif _commit_is_ancestor(remote_commit, local_commit):
+            status_name = "local_ahead"
+            status_label = "Version locale en avance"
+            status_tone = "info"
+            can_apply = False
+            reason = "La version est identique, mais le commit local contient déjà le commit distant."
+        else:
+            status_name = "diverged"
+            status_label = "Historique Git divergent"
+            status_tone = "info"
+            can_apply = False
+            reason = "La version est identique, mais les commits local et distant ne sont pas sur le même historique."
 
     return {
         "status": status_name,

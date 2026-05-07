@@ -74,6 +74,21 @@ class UpdateServiceTests(unittest.TestCase):
         self._git(remote_work, "commit", "-m", "remote update")
         self._git(remote_work, "push", "origin", "main")
 
+    def _advance_remote_same_version(self):
+        remote_work = self.root / "remote-work"
+        subprocess.run(
+            ["git", "clone", str(self.root / "remote.git"), str(remote_work)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        self._git(remote_work, "config", "user.email", "tests@example.invalid")
+        self._git(remote_work, "config", "user.name", "Tests")
+        (remote_work / "remote.txt").write_text("remote change\n", encoding="utf-8")
+        self._git(remote_work, "add", "remote.txt")
+        self._git(remote_work, "commit", "-m", "remote same-version update")
+        self._git(remote_work, "push", "origin", "main")
+
     def test_missing_git_directory_is_incompatible(self):
         repo = self.root / "repo"
         repo.mkdir()
@@ -125,6 +140,47 @@ class UpdateServiceTests(unittest.TestCase):
         self.assertEqual(status["local_version"], "1.0.0")
         self.assertEqual(status["remote_version"], "1.1.0")
         self.assertNotEqual(status["local_commit"], status["remote_commit"])
+
+    def test_same_version_remote_ahead_is_update_available(self):
+        self._init_repo()
+        self._advance_remote_same_version()
+
+        status = update_svc.get_update_status(fetch_remote=True)
+
+        self.assertEqual(status["status"], "update_available")
+        self.assertTrue(status["can_apply"])
+        self.assertEqual(status["local_version"], "1.0.0")
+        self.assertEqual(status["remote_version"], "1.0.0")
+        self.assertNotEqual(status["local_commit"], status["remote_commit"])
+
+    def test_same_version_local_ahead_is_not_update_available(self):
+        repo = self._init_repo()
+        (repo / "local.txt").write_text("local change\n", encoding="utf-8")
+        self._git(repo, "add", "local.txt")
+        self._git(repo, "commit", "-m", "local same-version change")
+
+        status = update_svc.get_update_status(fetch_remote=True)
+
+        self.assertEqual(status["status"], "local_ahead")
+        self.assertFalse(status["can_apply"])
+        self.assertEqual(status["local_version"], "1.0.0")
+        self.assertEqual(status["remote_version"], "1.0.0")
+        self.assertIn("commit local", status["reason"])
+
+    def test_same_version_diverged_is_not_update_available(self):
+        repo = self._init_repo()
+        (repo / "local.txt").write_text("local change\n", encoding="utf-8")
+        self._git(repo, "add", "local.txt")
+        self._git(repo, "commit", "-m", "local same-version change")
+        self._advance_remote_same_version()
+
+        status = update_svc.get_update_status(fetch_remote=True)
+
+        self.assertEqual(status["status"], "diverged")
+        self.assertFalse(status["can_apply"])
+        self.assertEqual(status["local_version"], "1.0.0")
+        self.assertEqual(status["remote_version"], "1.0.0")
+        self.assertIn("identique", status["reason"])
 
     def test_status_targets_main_even_when_current_branch_is_dev(self):
         repo = self._init_repo()

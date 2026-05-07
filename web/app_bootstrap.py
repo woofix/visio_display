@@ -439,6 +439,7 @@ def register_request_hooks(app):
             or request.path.startswith("/api/config")
             or request.path.startswith("/api/activity")
             or request.path.startswith("/api/queue")
+            or request.path.startswith("/api/system")
         )
         if sensitive_path and not cacheable_static:
             response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"

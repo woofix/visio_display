@@ -418,6 +418,8 @@
 
     async function streamAction(url, startMessage) {
         setBusy(true);
+        const lockType = url.includes('restart') ? 'reboot' : 'update';
+        window.adminSystemLock?.show(lockType, startMessage, 5);
         logBox.hidden = false;
         logBox.textContent = '';
         appendLog(startMessage);
@@ -430,7 +432,12 @@
                 },
             });
             if (!response.ok || !response.body) {
-                throw new Error('Action impossible.');
+                let errorMessage = 'Action impossible.';
+                try {
+                    const payload = await response.json();
+                    errorMessage = payload.error || errorMessage;
+                } catch {}
+                throw new Error(errorMessage);
             }
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
@@ -470,9 +477,11 @@
             } else if (finalStatus) {
                 renderStatus(finalStatus);
                 appendLog('Terminé.');
+                window.adminSystemLock?.refresh();
             }
         } catch (error) {
             appendLog(error?.message || 'Action échouée.', true);
+            window.adminSystemLock?.refresh();
             renderStatus({
                 ...currentStatus,
                 status: 'error',

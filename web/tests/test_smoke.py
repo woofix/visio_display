@@ -211,13 +211,30 @@ class AppSmokeTests(unittest.TestCase):
             "remote_version": "1.0.0",
             "fetch_error": "",
         }
-        with patch("blueprints.version.get_version_status", return_value=version_status), patch(
+        with patch("blueprints.version.get_update_status", return_value=version_status), patch(
             "services.version_svc.get_version_status",
             return_value=version_status,
         ):
             response = self.client.get("/admin/version")
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"1.0.0", response.data)
+
+    def test_admin_system_status_reports_active_lock(self):
+        self._login()
+        from services import system_lock_svc
+
+        token = system_lock_svc.acquire_lock("update", "Mise à jour en cours...", progress=25)
+        try:
+            response = self.client.get("/api/system/status")
+        finally:
+            system_lock_svc.release_lock(token)
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertTrue(payload["ok"])
+        self.assertTrue(payload["system"]["active"])
+        self.assertEqual(payload["system"]["type"], "update")
+        self.assertEqual(payload["system"]["progress"], 25)
 
     def test_admin_update_alert_appears_only_when_update_available(self):
         self._login()

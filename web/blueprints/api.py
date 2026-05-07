@@ -12,6 +12,7 @@ from services.config_svc import (
 )
 from services.clients_svc import record_client_heartbeat
 from services.display_token_svc import screen_token_is_valid
+from services.system_lock_svc import get_system_status
 from services.users_svc import is_admin
 from services.media_svc import (
     get_all_media, get_media_type, is_media_scheduled, get_disk_usage,
@@ -76,6 +77,13 @@ def api_config():
     if not is_admin():
         return jsonify({"error": "unauthorized"}), 401
     return jsonify(load_config())
+
+
+@bp.route('/api/system/status')
+def api_system_status():
+    if not is_admin():
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
+    return jsonify({"ok": True, "system": get_system_status()})
 
 
 @bp.route('/api/priority-alert')

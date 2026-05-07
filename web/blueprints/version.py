@@ -10,6 +10,12 @@ from blueprints.guards import superadmin_guard
 from services.activity_svc import log_config_change
 from services.config_svc import load_config
 from services.media_svc import get_logo_path
+from services.system_lock_svc import (
+    SystemTaskAlreadyRunning,
+    acquire_lock,
+    release_lock,
+    update_lock,
+)
 from services.update_svc import apply_update, get_update_status, restart_stack
 
 
@@ -39,28 +45,42 @@ def update_status():
     return jsonify({"ok": True, "status": get_update_status(fetch_remote=request.args.get("fetch") == "1")})
 
 
-def _stream_operation(operation, *, activity_message):
+def _stream_operation(operation, *, activity_message, task_type, start_message, keep_lock_after_success=False):
     redir = superadmin_guard()
     if redir:
         return jsonify({"ok": False, "error": "forbidden"}), 403
+
+    try:
+        lock_token = acquire_lock(task_type, start_message, progress=5)
+    except SystemTaskAlreadyRunning as exc:
+        return jsonify({"ok": False, "error": str(exc) or "Une opération système est déjà en cours."}), 409
 
     app = current_app._get_current_object()
     username = session.get("user")
     events = queue.Queue()
     done = threading.Event()
+    successful = threading.Event()
+    lock_timeout = 600 if task_type == "reboot" else 1800
 
     def emit(event_type, **payload):
         events.put({"type": event_type, **payload})
 
+    def progress(message):
+        emit("log", message=message)
+        update_lock(lock_token, message=message or start_message, timeout_seconds=lock_timeout)
+
     def worker():
         try:
             with app.app_context():
-                result = operation(progress_callback=lambda message: emit("log", message=message))
+                result = operation(progress_callback=progress, lock_token=lock_token)
                 log_config_change(username, activity_message)
             emit("done", status=result)
+            successful.set()
         except Exception as exc:
             emit("error", message=str(exc) or exc.__class__.__name__)
         finally:
+            if not keep_lock_after_success or not successful.is_set():
+                release_lock(lock_token)
             done.set()
 
     thread = threading.Thread(target=worker, daemon=True)
@@ -68,7 +88,7 @@ def _stream_operation(operation, *, activity_message):
 
     @stream_with_context
     def generate():
-        yield json.dumps({"type": "log", "message": "Préparation..."}) + "\n"
+        yield json.dumps({"type": "log", "message": start_message}) + "\n"
         while not done.is_set() or not events.empty():
             try:
                 payload = events.get(timeout=0.2)
@@ -81,9 +101,20 @@ def _stream_operation(operation, *, activity_message):
 
 @bp.route("/admin/version/update/apply-stream", methods=["POST"])
 def apply_update_stream():
-    return _stream_operation(apply_update, activity_message="server update applied")
+    return _stream_operation(
+        apply_update,
+        activity_message="server update applied",
+        task_type="update",
+        start_message="Mise à jour serveur en cours...",
+    )
 
 
 @bp.route("/admin/version/update/restart-stream", methods=["POST"])
 def restart_update_stream():
-    return _stream_operation(restart_stack, activity_message="docker stack restarted after update")
+    return _stream_operation(
+        restart_stack,
+        activity_message="docker stack restarted after update",
+        task_type="reboot",
+        start_message="Redémarrage Docker en cours...",
+        keep_lock_after_success=True,
+    )

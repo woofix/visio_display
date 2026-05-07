@@ -7,6 +7,7 @@ import subprocess
 import time
 from dataclasses import dataclass
 
+from services.system_lock_svc import update_lock
 from services.version_svc import _compare_versions
 
 
@@ -127,13 +128,29 @@ def _shell_join(command):
     return " ".join(shlex.quote(str(part)) for part in command)
 
 
-def _start_restart_helper(command, *, repo_dir, compose_cmd, project_name, progress_callback=None):
+def _start_restart_helper(command, *, repo_dir, compose_cmd, project_name, progress_callback=None, lock_token=None):
     helper_name = f"visio-display-restart-{int(time.time())}"
-    helper_script = "\n".join([
+    helper_lines = [
         "sleep 2",
         f"cd {shlex.quote(repo_dir)}",
         _shell_join(command),
-    ])
+    ]
+    if lock_token:
+        cleanup_command = [
+            "python",
+            "-c",
+            (
+                "from services.system_lock_svc import release_lock; "
+                f"release_lock({lock_token!r})"
+            ),
+        ]
+        helper_lines.extend([
+            f"status=$?",
+            "cd /app",
+            f"PYTHONPATH=/app {_shell_join(cleanup_command)} || true",
+            "exit $status",
+        ])
+    helper_script = "\n".join(helper_lines)
     helper_command = [
         *_with_compose_project(compose_cmd, project_name),
         "run",
@@ -395,7 +412,7 @@ def _stream_command(command, *, cwd, env=None, progress_callback=None):
         raise RuntimeError(f"La commande a échoué avec le code {returncode}.")
 
 
-def apply_update(*, progress_callback=None):
+def apply_update(*, progress_callback=None, lock_token=None):
     status = get_update_status(fetch_remote=True)
     if not status.get("compatible"):
         raise RuntimeError(status.get("reason") or "Installation incompatible.")
@@ -410,6 +427,8 @@ def apply_update(*, progress_callback=None):
     if status.get("current_ref_type") == "tag" and status.get("target"):
         command.append(status["target"])
     _stream_command(command, cwd=repo_dir, env=env, progress_callback=progress_callback)
+    if lock_token:
+        update_lock(lock_token, message="Mise à jour appliquée. Redémarrage requis.", progress=100)
     refreshed = get_update_status(fetch_remote=False)
     refreshed["status"] = "restart_required"
     refreshed["status_label"] = "Redémarrage requis"
@@ -418,7 +437,7 @@ def apply_update(*, progress_callback=None):
     return refreshed
 
 
-def restart_stack(*, progress_callback=None):
+def restart_stack(*, progress_callback=None, lock_token=None):
     status = get_update_status(fetch_remote=False)
     if not status.get("compatible"):
         raise RuntimeError(status.get("reason") or "Installation incompatible.")
@@ -430,13 +449,18 @@ def restart_stack(*, progress_callback=None):
     if progress_callback:
         progress_callback("Le redémarrage va continuer en arrière-plan.")
         progress_callback(f"$ {' '.join(command)}")
+    if lock_token:
+        update_lock(lock_token, message="Redémarrage Docker en arrière-plan...", progress=60)
     _start_restart_helper(
         command,
         repo_dir=status["repo_dir"],
         compose_cmd=compose_cmd,
         project_name=project_name,
         progress_callback=progress_callback,
+        lock_token=lock_token,
     )
+    if lock_token:
+        update_lock(lock_token, message="Redémarrage Docker lancé. Connexion au serveur...", progress=85)
     status["status"] = "restart_scheduled"
     status["status_label"] = "Redémarrage lancé"
     status["status_tone"] = "success"

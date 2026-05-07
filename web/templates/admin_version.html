@@ -356,6 +356,10 @@
     flex-direction: column;
     gap: 3px;
 }
+.update-confirm[hidden],
+.update-log[hidden] {
+    display: none !important;
+}
 .update-log {
     margin: 0 16px 16px;
     padding: 12px;
@@ -476,9 +480,10 @@
             checksBox.appendChild(row);
         });
 
-        applyBtn.hidden = !currentStatus.can_apply;
+        const canApply = currentStatus.can_apply === true && currentStatus.status === 'update_available';
+        applyBtn.hidden = !canApply;
         restartBtn.hidden = currentStatus.status !== 'restart_required';
-        confirmBox.hidden = currentStatus.status !== 'update_available';
+        confirmBox.hidden = !canApply;
     }
 
     async function refreshStatus(fetchRemote) {

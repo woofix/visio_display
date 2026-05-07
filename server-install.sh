@@ -106,8 +106,8 @@ SECRET_KEY="$(python3 -c 'import secrets; print(secrets.token_hex(32))' 2>/dev/n
 # ── Data directories ──────────────────────────────────────────────────────────
 header "Data directories"
 
-MEDIA_DIR_DEFAULT="$INSTALL_DIR/web/static/data"
-PRIVATE_DIR_DEFAULT="$INSTALL_DIR/web/data/private"
+MEDIA_DIR_DEFAULT="$INSTALL_DIR/media"
+PRIVATE_DIR_DEFAULT="$INSTALL_DIR/private"
 
 read -rp "Media directory [${MEDIA_DIR_DEFAULT}]: " MEDIA_DIR
 MEDIA_DIR="${MEDIA_DIR:-$MEDIA_DIR_DEFAULT}"

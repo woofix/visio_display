@@ -7,7 +7,8 @@ MODE="${1:-}"
 INSTALL_DIR="${2:-${VISIO_INSTALL_DIR:-$(pwd)}}"
 ENV_FILE="${VISIO_ENV_FILE:-$INSTALL_DIR/.env}"
 PLACEHOLDER_SECRET="replace_with_a_random_string"
-DEFAULT_PRIVATE_DIR="$INSTALL_DIR/web/data/private"
+DEFAULT_MEDIA_DIR="$INSTALL_DIR/media"
+DEFAULT_PRIVATE_DIR="$INSTALL_DIR/private"
 
 OK_COUNT=0
 FIXED_COUNT=0
@@ -198,6 +199,28 @@ ensure_optional_generated_key() {
     fixed "$label generated"
 }
 
+ensure_required_path() {
+    key="$1"
+    label="$2"
+    default_value="$3"
+    value="$(env_value "$key")"
+
+    if env_has_key "$key" && [ -n "$value" ]; then
+        ok "$label present: $value"
+        return 0
+    fi
+    if [ "$MODE" = "check" ]; then
+        error "$label missing; renseignez $key dans $ENV_FILE"
+        return 1
+    fi
+
+    set_env_value "$key" "$default_value" || {
+        error "cannot write $label to $ENV_FILE"
+        return 1
+    }
+    fixed "$label added: $default_value"
+}
+
 ensure_permissions() {
     if [ -f "$ENV_FILE" ]; then
         if chmod 600 "$ENV_FILE" 2>/dev/null; then
@@ -207,8 +230,39 @@ ensure_permissions() {
         fi
     fi
 
+    media_dir="$(env_value MEDIA_DIR)"
     private_dir="$(env_value PRIVATE_DIR)"
-    [ -n "$private_dir" ] || private_dir="${VISIO_DATA_DIR:-$DEFAULT_PRIVATE_DIR}"
+
+    if [ -z "$media_dir" ]; then
+        if [ "$MODE" = "check" ]; then
+            error "MEDIA_DIR missing; cannot prepare media directory"
+        else
+            media_dir="$DEFAULT_MEDIA_DIR"
+        fi
+    fi
+    if [ -z "$private_dir" ]; then
+        if [ "$MODE" = "check" ]; then
+            error "PRIVATE_DIR missing; cannot prepare private directory"
+            return 1
+        else
+            private_dir="$DEFAULT_PRIVATE_DIR"
+        fi
+    fi
+
+    if [ -n "$media_dir" ]; then
+        if [ -d "$media_dir" ]; then
+            ok "MEDIA_DIR exists: $media_dir"
+        elif mkdir -p "$media_dir" 2>/dev/null; then
+            fixed "MEDIA_DIR created: $media_dir"
+        else
+            if [ "$MODE" = "check" ]; then
+                warning "cannot create $media_dir"
+            else
+                error "cannot create $media_dir"
+            fi
+        fi
+    fi
+
     backups_dir="${private_dir%/}/backups"
 
     if [ -d "$backups_dir" ]; then
@@ -245,10 +299,14 @@ ensure_env_file || true
 if [ -f "$ENV_FILE" ]; then
     ensure_secret_key "SECRET_KEY" "SECRET_KEY"
     ensure_secret_key "POSTGRES_PASSWORD" "POSTGRES_PASSWORD"
+    ensure_secret_key "DISPLAY_API_TOKEN" "DISPLAY_API_TOKEN"
     ensure_optional_generated_key "CLIENT_HEARTBEAT_TOKEN" "CLIENT_HEARTBEAT_TOKEN"
+    ensure_required_path "MEDIA_DIR" "MEDIA_DIR" "$DEFAULT_MEDIA_DIR"
+    ensure_required_path "PRIVATE_DIR" "PRIVATE_DIR" "$DEFAULT_PRIVATE_DIR"
 
     secret_key="$(env_value SECRET_KEY)"
     postgres_password="$(env_value POSTGRES_PASSWORD)"
+    display_api_token="$(env_value DISPLAY_API_TOKEN)"
 
     if is_weak_secret_key "$secret_key"; then
         if [ "$MODE" = "install" ]; then
@@ -268,6 +326,12 @@ if [ -f "$ENV_FILE" ]; then
         fi
     else
         ok "POSTGRES_PASSWORD is strong"
+    fi
+
+    if [ -z "$display_api_token" ]; then
+        error "DISPLAY_API_TOKEN is mandatory and cannot be empty"
+    else
+        ok "DISPLAY_API_TOKEN is present"
     fi
 fi
 

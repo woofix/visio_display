@@ -181,15 +181,19 @@ VISIO_VERSION_BUMP=none git commit -m "..."
 | `ADMIN_PASSWORD` | Mot de passe du super-admin (10 caractères minimum)                |
 | `SECRET_KEY`     | Clé de signature des sessions Flask (obligatoire)                  |
 | `POSTGRES_PASSWORD` | Mot de passe du rôle PostgreSQL `visio` utilisé par la stack Docker |
+| `MEDIA_DIR` | Dossier hôte obligatoire contenant les médias publics et leurs rendus |
+| `PRIVATE_DIR` | Dossier hôte obligatoire contenant les données privées d’exécution |
 | `CLIENT_HEARTBEAT_TOKEN` | Jeton partagé exigé par `/api/client-heartbeat` |
-| `DISPLAY_API_TOKEN` | Jeton écran optionnel exigé par les endpoints publics d'affichage lorsqu'il est défini |
+| `DISPLAY_API_TOKEN` | Jeton écran obligatoire exigé par `/` et les endpoints publics d'affichage |
 | `SESSION_COOKIE_SECURE` | Force le cookie de session en mode `Secure` (recommandé derrière HTTPS) |
 | `SESSION_COOKIE_NAME` | Nom du cookie de session Flask (défaut : `visio_session`) |
 | `SESSION_LIFETIME_MINUTES` | Durée de vie maximale d’une session connectée (défaut : `480`) |
 | `TRUSTED_HOSTS` | Liste d’hôtes autorisés séparés par des virgules pour filtrer l’en-tête `Host` |
 | `TRUST_PROXY_COUNT` | Nombre de proxies inverse de confiance pour interpréter `X-Forwarded-*` |
 
-`scripts/security_bootstrap.sh install .` crée les secrets absents, refuse les valeurs faibles pendant une installation, applique `chmod 600` sur `.env`, crée `PRIVATE_DIR/backups` et applique `chmod 700` sur `PRIVATE_DIR` et ses sauvegardes. En mise à jour, `scripts/security_bootstrap.sh update .` ajoute uniquement les clés manquantes et signale les valeurs faibles sans remplacer `SECRET_KEY` ni `POSTGRES_PASSWORD`. Le conteneur exécute aussi un contrôle non bloquant au démarrage et affiche des warnings utiles si `.env` ou les volumes sont en lecture seule.
+`scripts/security_bootstrap.sh install .` crée les secrets absents, refuse les valeurs faibles pendant une installation, ajoute `MEDIA_DIR` et `PRIVATE_DIR` s’ils manquent, applique `chmod 600` sur `.env`, crée `MEDIA_DIR` et `PRIVATE_DIR/backups`, puis applique `chmod 700` sur `PRIVATE_DIR` et ses sauvegardes. En mise à jour, `scripts/security_bootstrap.sh update .` ajoute uniquement les clés manquantes et signale les valeurs faibles sans remplacer `SECRET_KEY` ni `POSTGRES_PASSWORD`. La stack Docker exige `MEDIA_DIR`, `PRIVATE_DIR` et `DISPLAY_API_TOKEN` dans `.env` et refuse de démarrer s’ils sont absents.
+
+`web/` est la seule arborescence applicative runtime. Les chemins racine `services`, `templates`, `translations.py` et `tools` sont uniquement des liens symboliques contrôlés vers `web/` pour compatibilité de développement. Dans Docker, `MEDIA_DIR` et `PRIVATE_DIR` de `.env` désignent les dossiers hôte persistants; ils sont montés dans le conteneur sur `/app/static/data` et `/app/data`, qui sont seulement des chemins internes de conteneur.
 
 > Ces variables d'initialisation applicative ne sont lues qu'une seule fois, lors du premier démarrage (base de données absente).
 >
@@ -210,7 +214,7 @@ VISIO_VERSION_BUMP=none git commit -m "..."
 - Déconnexion réalisée en `POST` protégé par CSRF, pas en simple lien `GET`
 - Filtrage d'hôtes via `TRUSTED_HOSTS` et prise en charge d'un reverse proxy via `TRUST_PROXY_COUNT`
 - `CLIENT_HEARTBEAT_TOKEN` protège l'endpoint de heartbeat client et doit être partagé avec les clients kiosque installés
-- `DISPLAY_API_TOKEN` protège les endpoints publics d'affichage lorsqu'il est renseigné côté serveur. Les écrans existants continuent de fonctionner sans changement tant que la variable est absente ; sinon envoyer `X-Screen-Token: <jeton>` ou `?screen_token=<jeton>`.
+- `DISPLAY_API_TOKEN` est obligatoire. Il protège la page `/` et les endpoints publics d'affichage ; envoyer `X-Screen-Token: <jeton>` ou `?screen_token=<jeton>`. Les anciens clients sans jeton reçoivent `403` et n'affichent rien.
 - Les sauvegardes dans `PRIVATE_DIR/backups` peuvent contenir des données sensibles et sont verrouillées en `chmod 700`
 - Les archives de sauvegarde peuvent inclure une copie de `.env` (`env.backup`) et doivent être manipulées comme des secrets.
 - En-têtes de sécurité appliqués: CSP, HSTS en HTTPS, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `Cross-Origin-Opener-Policy` et `Cross-Origin-Resource-Policy`
@@ -235,14 +239,14 @@ La modification régénère automatiquement la carte éphéméride.
 
 ### Utilisation
 
-**Diaporama (affichage) :** ouvrir `http://<hôte>:8081` dans un navigateur plein écran.
+**Diaporama (affichage) :** ouvrir `http://<hôte>:8081?screen_token=<DISPLAY_API_TOKEN>` dans un navigateur plein écran.
 
-**Diaporama sur un écran nommé :** `http://<hôte>:8081?screen=<nom>`
+**Diaporama sur un écran nommé :** `http://<hôte>:8081?screen=<nom>&screen_token=<DISPLAY_API_TOKEN>`
 
 **Mode kiosque sur Raspberry Pi :**
 
 ```bash
-chromium-browser --kiosk --noerrdialogs --disable-infobars http://localhost:8081
+chromium-browser --kiosk --noerrdialogs --disable-infobars 'http://localhost:8081?screen_token=<DISPLAY_API_TOKEN>'
 ```
 
 Avec le client installé via `scripts/install.sh`, la session kiosque désactive automatiquement la mise en veille de l'écran (DPMS/X11) et inhibe la veille machine tant que le navigateur d'affichage est lancé.
@@ -257,15 +261,15 @@ Depuis l'onglet **Paramètres > Installation client**, renseigner :
 - le **mot de passe SSH** (requis — nécessite `sshpass` installé sur le serveur) ;
 - le **mot de passe admin / sudo** (optionnel — réutilise le mot de passe SSH si identique) ;
 - l'utilisateur local à configurer pour l'autologin ;
-- l'URL de base du serveur (ex. `https://visio.example.com`) ;
+- l'URL d'écran générée par l'interface, qui inclut `screen_token` ;
 - le nom d'écran (ex. `reception` ou `cuisine`) ;
 - le nom de la machine cliente.
 
 Le script distant configure alors automatiquement :
 - l'autologin et le mode kiosque ;
 - le nom de machine Linux ;
-- l'URL d'affichage finale, avec `?screen=<nom>` si un écran est défini ;
-- le heartbeat client vers `/api/client-heartbeat`.
+- l'URL d'affichage finale, avec `screen_token` et `screen=<nom>` si un écran est défini ;
+- le heartbeat client vers `/api/client-heartbeat` avec `CLIENT_HEARTBEAT_TOKEN`.
 
 **Surveillance des clients :**
 
@@ -415,7 +419,7 @@ Depuis `/admin/superadmin`, le super-admin peut limiter chaque utilisateur à un
 
 ### Gestion des écrans multiples
 
-Les écrans sont créés depuis la médiathèque (`/admin/media`). Chaque écran nommé est accessible en lecture à l'adresse `/?screen=<nom>`.
+Les écrans sont créés depuis la médiathèque (`/admin/media`). Chaque écran nommé est accessible en lecture à l'adresse `/?screen=<nom>&screen_token=<DISPLAY_API_TOKEN>`.
 
 - Les noms d'écran sont limités à 1–32 caractères (minuscules, chiffres, tirets, underscores)
 - Les noms réservés (`default`, `admin`, `api`, `static`, `login`, `logout`) ne peuvent pas être utilisés
@@ -446,6 +450,10 @@ Visio-Display/
 ├── .env.example
 ├── LICENSE
 ├── README.md
+├── services -> web/services     # Lien de compatibilité, non source runtime
+├── templates -> web/templates   # Lien de compatibilité, non source runtime
+├── translations.py -> web/translations.py
+├── tools -> web/tools           # Lien de compatibilité, non source runtime
 └── web/
     ├── app.py                   # Flask factory (create_app)
     ├── wsgi.py                  # Point d'entrée Gunicorn
@@ -489,7 +497,6 @@ Visio-Display/
     │   ├── server_stats_svc.py  # Statistiques CPU/RAM du serveur
     │   └── users_svc.py         # CRUD utilisateurs + permissions
     ├── static/
-    │   ├── data/                # Médias et rendus générés (non versionné)
     │   └── images/              # Logo et ressources statiques
     └── templates/               # Templates Jinja2
         ├── index.html           # Diaporama plein écran
@@ -510,22 +517,22 @@ Visio-Display/
         └── admin_wiki.html      # Page d'aide intégrée
 ```
 
-> `web/static/data/` est exclu du contrôle de version.
+> Les médias ne vivent pas dans `web/`; ils vivent dans le dossier hôte défini par `MEDIA_DIR`.
 
 ### API
 
 | Endpoint                                  | Méthode | Auth               | Description                                          |
 |-------------------------------------------|---------|--------------------|------------------------------------------------------|
-| `/api/images`                             | GET     | Non / `DISPLAY_API_TOKEN` | Liste des médias actifs (`?screen=<nom>` optionnel)  |
-| `/api/durations`                          | GET     | Non / `DISPLAY_API_TOKEN` | Durées d'affichage par fichier (`?screen=<nom>`)     |
-| `/api/pools`                              | GET     | Non / `DISPLAY_API_TOKEN` | Pools de groupes de médias                           |
+| `/api/images`                             | GET     | `DISPLAY_API_TOKEN` | Liste des médias actifs (`?screen=<nom>` optionnel)  |
+| `/api/durations`                          | GET     | `DISPLAY_API_TOKEN` | Durées d'affichage par fichier (`?screen=<nom>`)     |
+| `/api/pools`                              | GET     | `DISPLAY_API_TOKEN` | Pools de groupes de médias                           |
 | `/api/config`                             | GET     | Connecté           | Configuration complète                               |
 | `/api/diskusage`                          | GET     | Connecté           | Statistiques disque                                  |
-| `/api/screens`                            | GET     | Non / `DISPLAY_API_TOKEN` | Liste des écrans nommés                              |
-| `/api/halo`                               | GET     | Non / `DISPLAY_API_TOKEN` | Couleur de halo de l'écran courant (`?screen=<nom>`) |
+| `/api/screens`                            | GET     | `DISPLAY_API_TOKEN` | Liste des écrans nommés                              |
+| `/api/halo`                               | GET     | `DISPLAY_API_TOKEN` | Couleur de halo de l'écran courant (`?screen=<nom>`) |
 | `/api/client-policy`                      | GET     | Non                | Politique watchdog envoyée aux clients kiosque       |
 | `/api/client-heartbeat`                   | POST    | `CLIENT_HEARTBEAT_TOKEN` | Remontée d'état d'un client d'affichage              |
-| `/api/priority-alert`                     | GET     | Non / `DISPLAY_API_TOKEN` | Message d'alerte prioritaire en cours                |
+| `/api/priority-alert`                     | GET     | `DISPLAY_API_TOKEN` | Message d'alerte prioritaire en cours                |
 | `/api/queue`                              | GET     | Connecté           | État de la file d'encodage (compression + upload)    |
 | `/upload`                                 | POST    | `upload`           | Importer des fichiers (retourne JSON + jobs d'encodage) |
 | `/delete/<filename>`                      | POST    | `delete`           | Supprimer un fichier                                 |
@@ -700,7 +707,7 @@ Une campagne active et non archivée peut cibler des groupes, des médias isolé
 
 ### Stockage des données
 
-Les médias uploadés et leurs rendus sont stockés dans `web/static/data/` en local, ou dans le volume Docker défini par `MEDIA_DIR`. Les données privées d’exécution (sauvegardes, cache de version, fichiers privés) vivent dans `data/private/` ou dans le volume `PRIVATE_DIR`. La configuration applicative, les utilisateurs, les rôles, le journal et les jobs sont stockés en PostgreSQL.
+Les médias uploadés et leurs rendus sont stockés dans le dossier hôte défini par `MEDIA_DIR`. Les données privées d’exécution (sauvegardes, cache de version, fichiers privés) vivent dans le dossier hôte défini par `PRIVATE_DIR`. Ces deux variables sont obligatoires dans `.env`; la stack Docker et les scripts de sauvegarde/restauration refusent de continuer si elles sont absentes. Dans le conteneur, ces dossiers sont montés sur `/app/static/data` et `/app/data`; ces chemins sont des points de montage internes, pas une configuration applicative alternative. La configuration applicative, les utilisateurs, les rôles, le journal et les jobs sont stockés en PostgreSQL.
 
 ```json
 {
@@ -923,15 +930,19 @@ VISIO_VERSION_BUMP=none git commit -m "..."
 | `ADMIN_PASSWORD` | Super-admin password (minimum 10 characters)                      |
 | `SECRET_KEY`     | Flask session signing key (required)                              |
 | `POSTGRES_PASSWORD` | Password for the PostgreSQL `visio` role used by the Docker stack |
+| `MEDIA_DIR` | Required host directory containing public media and generated renditions |
+| `PRIVATE_DIR` | Required host directory containing private runtime data |
 | `CLIENT_HEARTBEAT_TOKEN` | Shared token required by `/api/client-heartbeat` |
-| `DISPLAY_API_TOKEN` | Optional screen token required by public display endpoints when set |
+| `DISPLAY_API_TOKEN` | Required screen token for `/` and public display endpoints |
 | `SESSION_COOKIE_SECURE` | Forces the session cookie to use `Secure` (recommended behind HTTPS) |
 | `SESSION_COOKIE_NAME` | Flask session cookie name (default: `visio_session`) |
 | `SESSION_LIFETIME_MINUTES` | Maximum lifetime of an authenticated session (default: `480`) |
 | `TRUSTED_HOSTS` | Comma-separated allowlist of hostnames accepted from the `Host` header |
 | `TRUST_PROXY_COUNT` | Number of trusted reverse proxies for `X-Forwarded-*` headers |
 
-`scripts/security_bootstrap.sh install .` creates missing secrets, rejects weak values during installation, applies `chmod 600` to `.env`, creates `PRIVATE_DIR/backups`, and applies `chmod 700` to `PRIVATE_DIR` and its backups. During updates, `scripts/security_bootstrap.sh update .` only adds missing keys and reports weak values without replacing `SECRET_KEY` or `POSTGRES_PASSWORD`. The container also runs a non-blocking startup check and prints useful warnings when `.env` or volumes are read-only.
+`scripts/security_bootstrap.sh install .` creates missing secrets, rejects weak values during installation, adds `MEDIA_DIR` and `PRIVATE_DIR` when missing, applies `chmod 600` to `.env`, creates `MEDIA_DIR` and `PRIVATE_DIR/backups`, then applies `chmod 700` to `PRIVATE_DIR` and its backups. During updates, `scripts/security_bootstrap.sh update .` only adds missing keys and reports weak values without replacing `SECRET_KEY` or `POSTGRES_PASSWORD`. The Docker stack requires `MEDIA_DIR`, `PRIVATE_DIR`, and `DISPLAY_API_TOKEN` in `.env` and refuses to start when they are absent.
+
+`web/` is the only runtime application tree. The root paths `services`, `templates`, `translations.py`, and `tools` are controlled symlinks to `web/` for development compatibility only. In Docker, `MEDIA_DIR` and `PRIVATE_DIR` from `.env` name the persistent host directories; they are mounted inside the container at `/app/static/data` and `/app/data`, which are container mount points only.
 
 > These application initialization variables are only read once, on first boot (when the database does not yet exist).
 >
@@ -952,7 +963,7 @@ VISIO_VERSION_BUMP=none git commit -m "..."
 - Logout is performed through a CSRF-protected `POST`, not a plain `GET` link
 - Host header filtering is available through `TRUSTED_HOSTS`, with reverse-proxy awareness via `TRUST_PROXY_COUNT`
 - `CLIENT_HEARTBEAT_TOKEN` protects the client heartbeat endpoint and must be shared with installed kiosk clients
-- `DISPLAY_API_TOKEN` protects public display endpoints when configured on the server. Existing screens keep working unchanged while the variable is absent; otherwise send `X-Screen-Token: <token>` or `?screen_token=<token>`.
+- `DISPLAY_API_TOKEN` is required. It protects `/` and public display endpoints; send `X-Screen-Token: <token>` or `?screen_token=<token>`. Legacy clients without a token receive `403` and display nothing.
 - Backups in `PRIVATE_DIR/backups` can contain sensitive data and are locked down with `chmod 700`
 - Backup archives can include a copy of `.env` (`env.backup`) and must be handled as secrets.
 - Security headers are applied: CSP, HSTS on HTTPS, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `Cross-Origin-Opener-Policy`, and `Cross-Origin-Resource-Policy`
@@ -979,14 +990,14 @@ When the ephemeris is regenerated, the slideshow reloads it automatically withou
 
 ### Usage
 
-**Slideshow (display):** open `http://<host>:8081` in a fullscreen browser.
+**Slideshow (display):** open `http://<host>:8081?screen_token=<DISPLAY_API_TOKEN>` in a fullscreen browser.
 
-**Slideshow on a named screen:** `http://<host>:8081?screen=<name>`
+**Slideshow on a named screen:** `http://<host>:8081?screen=<name>&screen_token=<DISPLAY_API_TOKEN>`
 
 **Kiosk mode on Raspberry Pi:**
 
 ```bash
-chromium-browser --kiosk --noerrdialogs --disable-infobars http://localhost:8081
+chromium-browser --kiosk --noerrdialogs --disable-infobars 'http://localhost:8081?screen_token=<DISPLAY_API_TOKEN>'
 ```
 
 When the client is installed with `scripts/install.sh`, the kiosk session automatically disables display sleep (DPMS/X11) and inhibits system sleep while the display browser is running.
@@ -1001,15 +1012,15 @@ From **Settings > Client installation**, provide:
 - the **SSH password** (required — `sshpass` must be installed on the server);
 - the **admin / sudo password** (optional — reuses the SSH password when identical);
 - the local user to configure for autologin;
-- the base server URL (for example `https://visio.example.com`);
+- the display URL generated by the UI, including `screen_token`;
 - the screen name (for example `reception` or `cuisine`);
 - the client machine name.
 
 The remote script then configures:
 - autologin and kiosk mode;
 - the Linux hostname;
-- the final display URL, with `?screen=<name>` when a screen is defined;
-- the client heartbeat to `/api/client-heartbeat`.
+- the final display URL, with `screen_token` and `screen=<name>` when a screen is defined;
+- the client heartbeat to `/api/client-heartbeat` with `CLIENT_HEARTBEAT_TOKEN`.
 
 **Client monitoring:**
 
@@ -1087,7 +1098,7 @@ From `/admin/superadmin`, the super-admin can restrict each user to a subset of 
 
 ### Multi-screen management
 
-Screens are created from the media library (`/admin/media`). Each named screen is accessible at `/?screen=<name>`.
+Screens are created from the media library (`/admin/media`). Each named screen is accessible at `/?screen=<name>&screen_token=<DISPLAY_API_TOKEN>`.
 
 - Screen names are limited to 1–32 characters (lowercase letters, digits, hyphens, underscores)
 - Reserved names (`default`, `admin`, `api`, `static`, `login`, `logout`) cannot be used
@@ -1118,6 +1129,10 @@ Visio-Display/
 ├── .env.example
 ├── LICENSE
 ├── README.md
+├── services -> web/services     # Compatibility link, not a runtime source
+├── templates -> web/templates   # Compatibility link, not a runtime source
+├── translations.py -> web/translations.py
+├── tools -> web/tools           # Compatibility link, not a runtime source
 └── web/
     ├── app.py                   # Flask factory (create_app)
     ├── wsgi.py                  # Gunicorn entry point
@@ -1161,7 +1176,6 @@ Visio-Display/
     │   ├── server_stats_svc.py  # Server CPU/RAM stats
     │   └── users_svc.py         # User CRUD + permissions
     ├── static/
-    │   ├── data/                # Media files and generated renders (not versioned)
     │   └── images/              # Logo and static assets
     └── templates/               # Jinja2 templates
         ├── index.html           # Fullscreen slideshow
@@ -1182,22 +1196,22 @@ Visio-Display/
         └── admin_wiki.html      # Built-in help page
 ```
 
-> `web/static/data/` is excluded from version control.
+> Media files do not live in `web/`; they live in the host directory defined by `MEDIA_DIR`.
 
 ### API
 
 | Endpoint                                  | Method  | Auth               | Description                                             |
 |-------------------------------------------|---------|--------------------|-------------------------------------------------------|
-| `/api/images`                             | GET     | No / `DISPLAY_API_TOKEN` | Active media list (`?screen=<name>` optional)           |
-| `/api/durations`                          | GET     | No / `DISPLAY_API_TOKEN` | Per-file display durations (`?screen=<name>`)           |
-| `/api/pools`                              | GET     | No / `DISPLAY_API_TOKEN` | Media group pools                                      |
+| `/api/images`                             | GET     | `DISPLAY_API_TOKEN` | Active media list (`?screen=<name>` optional)           |
+| `/api/durations`                          | GET     | `DISPLAY_API_TOKEN` | Per-file display durations (`?screen=<name>`)           |
+| `/api/pools`                              | GET     | `DISPLAY_API_TOKEN` | Media group pools                                      |
 | `/api/config`                             | GET     | Logged in          | Full configuration                                      |
 | `/api/diskusage`                          | GET     | Logged in          | Disk usage stats                                        |
-| `/api/screens`                            | GET     | No / `DISPLAY_API_TOKEN` | List of named screens                                   |
-| `/api/halo`                               | GET     | No / `DISPLAY_API_TOKEN` | Halo color for the current screen (`?screen=<name>`)     |
+| `/api/screens`                            | GET     | `DISPLAY_API_TOKEN` | List of named screens                                   |
+| `/api/halo`                               | GET     | `DISPLAY_API_TOKEN` | Halo color for the current screen (`?screen=<name>`)     |
 | `/api/client-policy`                      | GET     | No                 | Watchdog policy sent to kiosk clients                   |
 | `/api/client-heartbeat`                   | POST    | `CLIENT_HEARTBEAT_TOKEN` | Display client status heartbeat                         |
-| `/api/priority-alert`                     | GET     | No / `DISPLAY_API_TOKEN` | Current priority alert message                          |
+| `/api/priority-alert`                     | GET     | `DISPLAY_API_TOKEN` | Current priority alert message                          |
 | `/api/queue`                              | GET     | Logged in          | Encoding queue state (compression + upload jobs)        |
 | `/upload`                                 | POST    | `upload`           | Upload files (returns JSON with encoding job list)      |
 | `/delete/<filename>`                      | POST    | `delete`           | Delete a file                                           |
@@ -1372,7 +1386,7 @@ An empty or absent `message` means no banner is displayed.
 
 ### Data storage
 
-Application configuration, users, roles, activity log entries and jobs are stored in PostgreSQL when using the Docker stack. Uploaded media live in the `MEDIA_DIR` volume and private runtime files such as backups and the version cache live in the `PRIVATE_DIR` volume.
+Application configuration, users, roles, activity log entries and jobs are stored in PostgreSQL when using the Docker stack. Uploaded media live in the host directory defined by `MEDIA_DIR`; private runtime files such as backups and the version cache live in the host directory defined by `PRIVATE_DIR`. Both variables are required in `.env`; the Docker stack and backup/restore scripts refuse to continue when they are absent. Inside the container these directories are mounted at `/app/static/data` and `/app/data`; those are internal mount points, not alternate application configuration.
 
 ### Docker backup and restore
 

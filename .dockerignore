@@ -7,10 +7,9 @@
 # Runtime data
 data/
 private/
-web/data/private/
+media/
 
 # Generated media / uploads
-web/static/data/
 
 # Databases
 *.db

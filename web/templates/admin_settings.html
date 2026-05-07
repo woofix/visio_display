@@ -1482,13 +1482,17 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
     const screenNameInput = document.getElementById('install-screen-name');
     if (!sel) return;
     const base = window.location.origin;
+    const screenToken = {{ display_api_token | tojson }};
     function buildUrl(screen) {
-        return screen ? base + '/?screen=' + encodeURIComponent(screen) : base + '/';
+        const params = new URLSearchParams();
+        if (screen) params.set('screen', screen);
+        params.set({{ screen_token_query_param | tojson }}, screenToken);
+        return base + '/?' + params.toString();
     }
     // options already have screen names as textContent from Jinja
     function sync() {
         const screen = sel.value;
-        if (serverUrlInput) serverUrlInput.value = base;
+        if (serverUrlInput) serverUrlInput.value = buildUrl(screen);
         if (screenNameInput) screenNameInput.value = screen;
     }
     sel.addEventListener('change', sync);

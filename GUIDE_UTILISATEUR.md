@@ -38,8 +38,8 @@ Visio-Display est une application d'**affichage dynamique** (digital signage) qu
 
 | Usage | Adresse |
 |---|---|
-| Affichage public (écran par défaut) | `http://<adresse-du-serveur>:8081` |
-| Affichage d'un écran nommé | `http://<adresse-du-serveur>:8081?screen=nom-ecran` |
+| Affichage public (écran par défaut) | `http://<adresse-du-serveur>:8081?screen_token=<jeton>` |
+| Affichage d'un écran nommé | `http://<adresse-du-serveur>:8081?screen=nom-ecran&screen_token=<jeton>` |
 | Interface d'administration | `http://<adresse-du-serveur>:8081/admin` |
 
 Remplacez `<adresse-du-serveur>` par l'adresse IP ou le nom d'hôte de votre serveur (ex. : `192.168.1.50` ou `raspberrypi.local`).
@@ -56,9 +56,9 @@ La page d'affichage est conçue pour fonctionner en plein écran, sans interacti
 - La liste des médias se **met à jour en temps réel** : tout changement effectué dans l'administration prend effet au prochain changement de diapositive, sans rechargement de la page.
 - Un **sélecteur d'écran** est affiché en bas de la page — semi-transparent au repos, pleinement visible au survol. Cliquez sur un écran pour y basculer directement sans retaper l'URL.
 
-> **Conseil d'utilisation** : Sur un Raspberry Pi, configurez le navigateur en mode kiosk (`chromium-browser --kiosk http://localhost:8081`) pour un affichage plein écran sans barre de navigation.
+> **Conseil d'utilisation** : Sur un Raspberry Pi, configurez le navigateur en mode kiosk (`chromium-browser --kiosk 'http://localhost:8081?screen_token=<jeton>'`) pour un affichage plein écran sans barre de navigation.
 
-Si vous utilisez l'installation client automatique depuis l'administration, saisissez l'**URL de base du serveur** (par exemple `https://visio.example.com`) puis, si besoin, le **nom d'écran**. Le client reconstruit lui-même l'URL finale d'affichage et ajoute `?screen=<nom>` uniquement quand un écran nommé est configuré.
+Si vous utilisez l'installation client automatique depuis l'administration, choisissez l'écran dans la liste. L'administration transmet au client une URL d'affichage contenant le jeton `screen_token` et ajoute le nom d'écran uniquement quand un écran nommé est configuré.
 
 ### À savoir
 
@@ -264,7 +264,7 @@ Noms réservés (interdits) : `default`, `admin`, `api`, `static`, `login`, `log
 
 ### Accéder à un écran
 
-- **Affichage public :** `http://<serveur>:8081?screen=nom-ecran` — le sélecteur d'écran en bas de la page permet aussi de basculer directement.
+- **Affichage public :** `http://<serveur>:8081?screen=nom-ecran&screen_token=<jeton>` — le sélecteur d'écran en bas de la page conserve aussi le jeton en basculant d'un écran à l'autre.
 - **Médiathèque :** sélectionnez l'écran via les onglets en haut ; le bouton **Prévisualiser** (à droite de la barre) ouvre une fenêtre d'aperçu de l'écran actif.
 - **Tableau de bord :** la carte **Prévisualiser** propose un bouton par écran pour ouvrir le diaporama correspondant dans un nouvel onglet.
 
@@ -275,7 +275,7 @@ Noms réservés (interdits) : `default`, `admin`, `api`, `static`, `login`, `log
 - Les utilisateurs peuvent être **restreints à certains écrans** (voir section 11).
 - Le super-admin peut personnaliser le **nom affiché de l'écran par défaut** et la **couleur de halo** utilisée autour des médias pendant la lecture.
 
-> **Conseil :** lors de l'installation d'un client d'affichage, indiquez l'URL de base du serveur puis, si nécessaire, le nom d'écran. Le poste client construit lui-même l'URL finale à ouvrir.
+> **Conseil :** lors de l'installation d'un client d'affichage depuis l'administration, utilisez la sélection d'écran proposée : l'URL finale contient déjà le jeton d'affichage requis.
 
 ### Installer un client d'affichage
 

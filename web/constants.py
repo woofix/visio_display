@@ -20,20 +20,20 @@ def _resolve_app_path(*parts):
     return os.path.join(BASE_DIR, *parts)
 
 
-def _resolve_env_path(name, *default_parts):
-    configured = os.environ.get(name)
-    if not configured:
-        return _resolve_app_path(*default_parts)
-    if os.path.isabs(configured):
-        return configured
-    return _resolve_app_path(configured)
+def _resolve_required_env_path(name):
+    configured = os.environ.get(name, '').strip()
+    if configured:
+        if os.path.isabs(configured):
+            return configured
+        return _resolve_app_path(configured)
+    raise RuntimeError(f"{name} absent. Lancez le module d'installation ou renseignez .env.")
 
 
 def _resolve_data_dir():
-    return _resolve_env_path('VISIO_DATA_DIR', 'data', 'private')
+    return _resolve_required_env_path('PRIVATE_DIR')
 
 
-STATIC_MEDIA_DIR = _resolve_env_path('VISIO_STATIC_MEDIA_DIR', 'static', 'data')
+STATIC_MEDIA_DIR = _resolve_required_env_path('MEDIA_DIR')
 LEGACY_STATIC_MEDIA_DIR = _resolve_app_path('static', 'media')
 ORIGINAL_MEDIA_SUBDIR = 'original'
 STATIC_MEDIA_URL = '/static/data'

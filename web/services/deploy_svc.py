@@ -60,7 +60,8 @@ def _supports_password_mode():
 
 
 def build_manual_install_commands(host, port, ssh_user, kiosk_user, server_url='',
-                                  screen_name='', machine_name=''):
+                                  screen_name='', machine_name='', heartbeat_token='',
+                                  screen_token=''):
     target = f'{ssh_user}@{host}'
     remote_script = '/tmp/visio-install.sh'
     extra_args = []
@@ -70,6 +71,10 @@ def build_manual_install_commands(host, port, ssh_user, kiosk_user, server_url='
         extra_args.append(f"--screen-name {shlex.quote(screen_name)}")
     if machine_name:
         extra_args.append(f"--machine-name {shlex.quote(machine_name)}")
+    if heartbeat_token:
+        extra_args.append(f"--heartbeat-token {shlex.quote(heartbeat_token)}")
+    if screen_token:
+        extra_args.append(f"--screen-token {shlex.quote(screen_token)}")
     extra_args_str = f" {' '.join(extra_args)}" if extra_args else ''
     copy_cmd = (
         f"scp -P {port} {shlex.quote(str(INSTALL_SCRIPT))} "
@@ -140,7 +145,7 @@ def _build_remote_elevated_command(base_cmd, elevation_pw_q):
 
 def deploy_client_install(host, port, ssh_user, kiosk_user, server_url='',
                           screen_name='', machine_name='', ssh_password='',
-                          sudo_password=''):
+                          sudo_password='', heartbeat_token='', screen_token=''):
     missing = [tool for tool in ('ssh', 'scp') if shutil.which(tool) is None]
     if missing:
         return {
@@ -169,6 +174,8 @@ def deploy_client_install(host, port, ssh_user, kiosk_user, server_url='',
     server_url_q = shlex.quote(server_url)
     screen_name_q = shlex.quote(screen_name)
     machine_name_q = shlex.quote(machine_name)
+    heartbeat_token_q = shlex.quote(heartbeat_token)
+    screen_token_q = shlex.quote(screen_token)
     elevation_pw = sudo_password if sudo_password else ssh_password
     elevation_pw_q = shlex.quote(elevation_pw)
     extra_args = [f"--server-url {server_url_q}"]
@@ -176,6 +183,10 @@ def deploy_client_install(host, port, ssh_user, kiosk_user, server_url='',
         extra_args.append(f"--screen-name {screen_name_q}")
     if machine_name:
         extra_args.append(f"--machine-name {machine_name_q}")
+    if heartbeat_token:
+        extra_args.append(f"--heartbeat-token {heartbeat_token_q}")
+    if screen_token:
+        extra_args.append(f"--screen-token {screen_token_q}")
     base_cmd = f"bash {script_q} --user {user_q} {' '.join(extra_args)}"
     remote_cmd = f"chmod +x {script_q} && {_build_remote_elevated_command(base_cmd, elevation_pw_q)}"
 
@@ -196,7 +207,8 @@ def deploy_client_install(host, port, ssh_user, kiosk_user, server_url='',
             'summary_key': 'install_summary_copy_failed',
             'output': _join_output(copy_res.stdout, copy_res.stderr),
             'commands': build_manual_install_commands(
-                host, port, ssh_user, kiosk_user, server_url, screen_name, machine_name
+                host, port, ssh_user, kiosk_user, server_url, screen_name, machine_name,
+                heartbeat_token, screen_token
             ),
         }
 
@@ -231,7 +243,8 @@ def deploy_client_install(host, port, ssh_user, kiosk_user, server_url='',
         ),
         'output': output or '(no output)',
         'commands': build_manual_install_commands(
-            host, port, ssh_user, kiosk_user, server_url, screen_name, machine_name
+            host, port, ssh_user, kiosk_user, server_url, screen_name, machine_name,
+            heartbeat_token, screen_token
         ),
     }
 

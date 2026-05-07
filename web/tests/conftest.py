@@ -12,8 +12,8 @@ if str(WEB_DIR) not in sys.path:
 _TEST_MEDIA_DIR = tempfile.mkdtemp(prefix="visio-test-media-")
 _TEST_PRIVATE_DIR = tempfile.mkdtemp(prefix="visio-test-private-")
 
-os.environ.setdefault("VISIO_STATIC_MEDIA_DIR", _TEST_MEDIA_DIR)
-os.environ.setdefault("VISIO_DATA_DIR", _TEST_PRIVATE_DIR)
+os.environ.setdefault("MEDIA_DIR", _TEST_MEDIA_DIR)
+os.environ.setdefault("PRIVATE_DIR", _TEST_PRIVATE_DIR)
 
 
 def pytest_sessionfinish(session, exitstatus):

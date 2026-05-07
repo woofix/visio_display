@@ -39,8 +39,8 @@ class AppSmokeTests(unittest.TestCase):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.fake_redis = FakeRedis()
         self._env_backup = {key: os.environ.get(key) for key in (
-            "VISIO_DATA_DIR",
-            "VISIO_STATIC_MEDIA_DIR",
+            "PRIVATE_DIR",
+            "MEDIA_DIR",
             "ADMIN_USER",
             "ADMIN_PASSWORD",
             "SECRET_KEY",
@@ -49,14 +49,14 @@ class AppSmokeTests(unittest.TestCase):
             "DISPLAY_API_TOKEN",
             "TRUST_PROXY_COUNT",
         )}
-        os.environ["VISIO_DATA_DIR"] = os.path.join(self.temp_dir.name, "private")
-        os.environ["VISIO_STATIC_MEDIA_DIR"] = os.path.join(self.temp_dir.name, "media")
+        os.environ["PRIVATE_DIR"] = os.path.join(self.temp_dir.name, "private")
+        os.environ["MEDIA_DIR"] = os.path.join(self.temp_dir.name, "media")
         os.environ["ADMIN_USER"] = "admin"
         os.environ["ADMIN_PASSWORD"] = "supersecure123"
         os.environ["SECRET_KEY"] = "test-secret-key"
         os.environ["DATABASE_URL"] = f"sqlite:///{os.path.join(self.temp_dir.name, 'test.sqlite')}"
         os.environ["CLIENT_HEARTBEAT_TOKEN"] = "heartbeat-secret"
-        os.environ.pop("DISPLAY_API_TOKEN", None)
+        os.environ["DISPLAY_API_TOKEN"] = "screen-secret"
         os.environ.pop("TRUST_PROXY_COUNT", None)
 
         redis_module = types.ModuleType("redis")
@@ -475,7 +475,7 @@ class AppSmokeTests(unittest.TestCase):
 
             save_config({"features": {"videos": False, "ephemeris": False}, "order": ["clip.mp4", "poster.jpg"]})
 
-        response = self.client.get("/api/images")
+        response = self.client.get("/api/images", headers={"X-Screen-Token": "screen-secret"})
 
         self.assertEqual(response.status_code, 200)
         payload = response.get_json()
@@ -632,7 +632,7 @@ class AppSmokeTests(unittest.TestCase):
                 handle.write(gif_bytes)
 
         with patch("blueprints.api.generate_ephemeride_image", side_effect=RuntimeError("boom")):
-            response = self.client.get("/api/images")
+            response = self.client.get("/api/images", headers={"X-Screen-Token": "screen-secret"})
 
         self.assertEqual(response.status_code, 200)
         payload = response.get_json()
@@ -651,8 +651,8 @@ class AppSmokeTests(unittest.TestCase):
                 },
             })
 
-        default_response = self.client.get("/api/halo")
-        hall_response = self.client.get("/api/halo?screen=hall")
+        default_response = self.client.get("/api/halo", headers={"X-Screen-Token": "screen-secret"})
+        hall_response = self.client.get("/api/halo?screen=hall", headers={"X-Screen-Token": "screen-secret"})
 
         self.assertEqual(default_response.status_code, 200)
         self.assertEqual(hall_response.status_code, 200)
@@ -665,15 +665,33 @@ class AppSmokeTests(unittest.TestCase):
             "rgb": "171, 205, 239",
         })
 
-    def test_public_display_endpoints_can_require_screen_token(self):
-        os.environ["DISPLAY_API_TOKEN"] = "screen-secret"
-
+    def test_public_display_endpoints_require_screen_token(self):
         blocked = self.client.get("/api/screens")
         allowed = self.client.get("/api/screens", headers={"X-Screen-Token": "screen-secret"})
+        blocked_page = self.client.get("/")
+        allowed_page = self.client.get("/?screen_token=screen-secret")
 
         self.assertEqual(blocked.status_code, 403)
         self.assertEqual(blocked.get_json()["error"], "screen_token_required")
         self.assertEqual(allowed.status_code, 200)
+        self.assertEqual(blocked_page.status_code, 403)
+        self.assertEqual(allowed_page.status_code, 200)
+
+    def test_admin_preview_links_include_display_token(self):
+        self._login()
+
+        response = self.client.get("/admin")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'href="/?screen_token=screen-secret"', response.data)
+
+    def test_app_refuses_to_start_without_display_api_token(self):
+        from app import create_app
+
+        os.environ.pop("DISPLAY_API_TOKEN", None)
+
+        with self.assertRaisesRegex(RuntimeError, "DISPLAY_API_TOKEN absent"):
+            create_app(start_scheduler=False, test_config={"TESTING": True})
 
     def test_server_stats_service_parses_cpu_and_memory(self):
         from services.server_stats_svc import get_server_stats
@@ -703,7 +721,7 @@ class AppSmokeTests(unittest.TestCase):
                 },
             })
 
-        response = self.client.get("/api/halo?screen=reception")
+        response = self.client.get("/api/halo?screen=reception", headers={"X-Screen-Token": "screen-secret"})
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json(), {
@@ -778,7 +796,7 @@ class AppSmokeTests(unittest.TestCase):
             from services import media_svc
             media_svc.generate_standard_renditions(filename)
 
-        response = self.client.get("/api/images?w=1280&h=720")
+        response = self.client.get("/api/images?w=1280&h=720", headers={"X-Screen-Token": "screen-secret"})
 
         self.assertEqual(response.status_code, 200)
         payload = response.get_json()
@@ -1163,7 +1181,7 @@ class AppSmokeTests(unittest.TestCase):
                  patch.object(backup_svc, "_restore_postgres_database", side_effect=fake_restore):
                 with open(os.path.join(media_dir, "hello.txt"), "w", encoding="utf-8") as handle:
                     handle.write("before")
-                with open(os.path.join(os.environ["VISIO_DATA_DIR"], "note.txt"), "w", encoding="utf-8") as handle:
+                with open(os.path.join(os.environ["PRIVATE_DIR"], "note.txt"), "w", encoding="utf-8") as handle:
                     handle.write("private-before")
                 save_config({"app_name": "Before restore"})
 
@@ -1189,7 +1207,7 @@ class AppSmokeTests(unittest.TestCase):
 
                 with open(os.path.join(media_dir, "hello.txt"), "w", encoding="utf-8") as handle:
                     handle.write("after")
-                with open(os.path.join(os.environ["VISIO_DATA_DIR"], "note.txt"), "w", encoding="utf-8") as handle:
+                with open(os.path.join(os.environ["PRIVATE_DIR"], "note.txt"), "w", encoding="utf-8") as handle:
                     handle.write("private-after")
                 save_config({"app_name": "After change"})
 
@@ -1212,7 +1230,7 @@ class AppSmokeTests(unittest.TestCase):
                 self.assertEqual(restored_cfg.get("app_name"), "Before restore")
                 with open(os.path.join(media_dir, "hello.txt"), "r", encoding="utf-8") as handle:
                     self.assertEqual(handle.read(), "before")
-                with open(os.path.join(os.environ["VISIO_DATA_DIR"], "note.txt"), "r", encoding="utf-8") as handle:
+                with open(os.path.join(os.environ["PRIVATE_DIR"], "note.txt"), "r", encoding="utf-8") as handle:
                     self.assertEqual(handle.read(), "private-before")
 
     def test_backup_service_keeps_only_five_most_recent_archives(self):

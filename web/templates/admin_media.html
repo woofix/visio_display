@@ -786,9 +786,13 @@ const ALL_SCREENS             = {{ screens | tojson }};
     const overlay = document.getElementById('screen-preview-overlay');
     const iframe  = document.getElementById('screen-preview-iframe');
     const closeBtn = document.getElementById('screen-preview-close-btn');
+    const screenToken = {{ display_api_token | tojson }};
 
     function open() {
-        iframe.src = CURRENT_SCREEN ? '/?screen=' + encodeURIComponent(CURRENT_SCREEN) : '/';
+        const params = new URLSearchParams();
+        if (CURRENT_SCREEN) params.set('screen', CURRENT_SCREEN);
+        params.set({{ screen_token_query_param | tojson }}, screenToken);
+        iframe.src = '/?' + params.toString();
         overlay.classList.add('open');
     }
     function close() {

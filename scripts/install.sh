@@ -8,6 +8,8 @@ SCRIPT_PATH="$(realpath "$0")"
 USER_NAME_INPUT="${VISIO_USER_NAME:-}"
 SERVER_URL_INPUT="${VISIO_SERVER_URL:-}"
 SCREEN_NAME_INPUT="${VISIO_SCREEN_NAME:-}"
+SCREEN_TOKEN_INPUT="${VISIO_SCREEN_TOKEN:-}"
+HEARTBEAT_TOKEN_INPUT="${VISIO_CLIENT_HEARTBEAT_TOKEN:-}"
 MACHINE_NAME_INPUT="${VISIO_MACHINE_NAME:-}"
 AUTO_REBOOT=1
 
@@ -34,6 +36,20 @@ while [ $# -gt 0 ]; do
         --screen-name=*)
             SCREEN_NAME_INPUT="${1#*=}"
             ;;
+        --screen-token)
+            shift
+            SCREEN_TOKEN_INPUT="${1:-}"
+            ;;
+        --screen-token=*)
+            SCREEN_TOKEN_INPUT="${1#*=}"
+            ;;
+        --heartbeat-token)
+            shift
+            HEARTBEAT_TOKEN_INPUT="${1:-}"
+            ;;
+        --heartbeat-token=*)
+            HEARTBEAT_TOKEN_INPUT="${1#*=}"
+            ;;
         --machine-name)
             shift
             MACHINE_NAME_INPUT="${1:-}"
@@ -46,12 +62,14 @@ while [ $# -gt 0 ]; do
             ;;
         -h|--help)
             cat <<'EOF'
-Usage: install.sh [--user NOM_UTILISATEUR] [--server-url URL] [--screen-name NOM] [--machine-name NOM] [--no-reboot]
+Usage: install.sh [--user NOM_UTILISATEUR] [--server-url URL] [--screen-name NOM] [--screen-token JETON] [--heartbeat-token JETON] [--machine-name NOM] [--no-reboot]
 
 Options:
   --user NOM_UTILISATEUR  Utilisateur local a configurer pour l'autologin/kiosk
   --server-url URL        URL du serveur a ouvrir au demarrage du client
   --screen-name NOM       Nom d'ecran a enregistrer dans la configuration client
+  --screen-token JETON    Jeton DISPLAY_API_TOKEN a ajouter a l'URL d'affichage
+  --heartbeat-token JETON Jeton CLIENT_HEARTBEAT_TOKEN pour identifier le client
   --machine-name NOM      Nom d'hote Linux a appliquer sur la machine cliente
   --no-reboot             N'effectue pas le reboot final automatiquement
 EOF
@@ -75,6 +93,12 @@ if [ "$(id -u)" -ne 0 ]; then
     fi
     if [ -n "$SCREEN_NAME_INPUT" ]; then
         REEXEC_CMD="$REEXEC_CMD --screen-name $(printf '%q' "$SCREEN_NAME_INPUT")"
+    fi
+    if [ -n "$SCREEN_TOKEN_INPUT" ]; then
+        REEXEC_CMD="$REEXEC_CMD --screen-token $(printf '%q' "$SCREEN_TOKEN_INPUT")"
+    fi
+    if [ -n "$HEARTBEAT_TOKEN_INPUT" ]; then
+        REEXEC_CMD="$REEXEC_CMD --heartbeat-token $(printf '%q' "$HEARTBEAT_TOKEN_INPUT")"
     fi
     if [ -n "$MACHINE_NAME_INPUT" ]; then
         REEXEC_CMD="$REEXEC_CMD --machine-name $(printf '%q' "$MACHINE_NAME_INPUT")"
@@ -136,7 +160,7 @@ mkdir -p \
 echo "==> Preparing configuration file"
 touch "$CONFIG_FILE"
 chown "$USER_NAME:$USER_NAME" "$CONFIG_FILE"
-chmod 664 "$CONFIG_FILE"
+chmod 600 "$CONFIG_FILE"
 
 if [ -n "$MACHINE_NAME_INPUT" ]; then
     echo "==> Setting machine name: $MACHINE_NAME_INPUT"
@@ -154,6 +178,8 @@ if [ -n "$SERVER_URL_INPUT" ]; then
     cat > "$CONFIG_FILE" <<EOC
 SERVER_URL=$SERVER_URL_INPUT
 SCREEN_NAME=$SCREEN_NAME_INPUT
+SCREEN_TOKEN=$SCREEN_TOKEN_INPUT
+CLIENT_HEARTBEAT_TOKEN=$HEARTBEAT_TOKEN_INPUT
 WATCHDOG_CHECK_INTERVAL=30
 WATCHDOG_GRACE_PERIOD=90
 WATCHDOG_FAILURES_BEFORE_REBOOT=1
@@ -186,8 +212,10 @@ cat > "$VISIO_DIR/bootstrap.sh" <<'EOF'
 CONFIG="/etc/visio/client.conf"
 TMP_URL="/tmp/visio_url_input"
 TMP_NAME="/tmp/visio_name_input"
+TMP_SCREEN_TOKEN="/tmp/visio_screen_token_input"
+TMP_HEARTBEAT_TOKEN="/tmp/visio_heartbeat_token_input"
 
-rm -f "$TMP_URL" "$TMP_NAME"
+rm -f "$TMP_URL" "$TMP_NAME" "$TMP_SCREEN_TOKEN" "$TMP_HEARTBEAT_TOKEN"
 
 xterm -fa Monospace -fs 14 -fullscreen -bg black -fg green -e bash -c '
 clear
@@ -198,19 +226,27 @@ echo "========================================"
 echo
 read -rp "Entrez l URL du serveur : " URL
 read -rp "Nom de l ecran (optionnel) : " NAME
+read -rp "Jeton d affichage DISPLAY_API_TOKEN : " SCREEN_TOKEN
+read -rp "Jeton heartbeat CLIENT_HEARTBEAT_TOKEN : " HEARTBEAT_TOKEN
 echo "$URL" > /tmp/visio_url_input
 echo "$NAME" > /tmp/visio_name_input
+echo "$SCREEN_TOKEN" > /tmp/visio_screen_token_input
+echo "$HEARTBEAT_TOKEN" > /tmp/visio_heartbeat_token_input
 '
 
 URL="$(cat "$TMP_URL" 2>/dev/null || true)"
 NAME="$(cat "$TMP_NAME" 2>/dev/null || true)"
-rm -f "$TMP_URL" "$TMP_NAME"
+SCREEN_TOKEN="$(cat "$TMP_SCREEN_TOKEN" 2>/dev/null || true)"
+HEARTBEAT_TOKEN="$(cat "$TMP_HEARTBEAT_TOKEN" 2>/dev/null || true)"
+rm -f "$TMP_URL" "$TMP_NAME" "$TMP_SCREEN_TOKEN" "$TMP_HEARTBEAT_TOKEN"
 
 [ -z "$URL" ] && exit 1
 
 cat > "$CONFIG" <<EOC
 SERVER_URL=$URL
 SCREEN_NAME=$NAME
+SCREEN_TOKEN=$SCREEN_TOKEN
+CLIENT_HEARTBEAT_TOKEN=$HEARTBEAT_TOKEN
 WATCHDOG_CHECK_INTERVAL=30
 WATCHDOG_GRACE_PERIOD=90
 WATCHDOG_FAILURES_BEFORE_REBOOT=1
@@ -290,19 +326,23 @@ read_conf() {
 
 SERVER_URL="$(read_conf SERVER_URL)"
 SCREEN_NAME="$(read_conf SCREEN_NAME)"
+SCREEN_TOKEN="$(read_conf SCREEN_TOKEN)"
 TARGET_HOST="$(extract_host "$SERVER_URL")"
 
 DISPLAY_URL="$(
-python3 - <<'PY' "$SERVER_URL" "$SCREEN_NAME"
+python3 - <<'PY' "$SERVER_URL" "$SCREEN_NAME" "$SCREEN_TOKEN"
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 import sys
 
 raw_url = (sys.argv[1] or '').strip()
 screen_name = (sys.argv[2] or '').strip()
+screen_token = (sys.argv[3] or '').strip()
 parts = urlsplit(raw_url)
 query = dict(parse_qsl(parts.query, keep_blank_values=True))
 if screen_name:
     query['screen'] = screen_name
+if screen_token:
+    query['screen_token'] = screen_token
 display_url = urlunsplit((
     parts.scheme,
     parts.netloc,
@@ -447,8 +487,10 @@ read_conf() {
 
 SERVER_URL="$(read_conf SERVER_URL)"
 SCREEN_NAME="$(read_conf SCREEN_NAME)"
+CLIENT_HEARTBEAT_TOKEN="$(read_conf CLIENT_HEARTBEAT_TOKEN)"
 
 [ -n "$SERVER_URL" ] || exit 0
+[ -n "$CLIENT_HEARTBEAT_TOKEN" ] || exit 0
 
 HEARTBEAT_URL="$(
 python3 - <<'PY' "$SERVER_URL"
@@ -469,8 +511,20 @@ MACHINE_ID="$HOSTNAME_VALUE"
 [ -n "$MACHINE_ID" ] || MACHINE_ID="$(cat /etc/machine-id 2>/dev/null || true)"
 CLIENT_VERSION="2026.04"
 
+SERVER_URL_PUBLIC="$(
+python3 - <<'PY' "$SERVER_URL"
+from urllib.parse import urlsplit, urlunsplit
+import sys
+
+raw = (sys.argv[1] or '').strip()
+parts = urlsplit(raw)
+base = urlunsplit((parts.scheme, parts.netloc, parts.path or '/', '', '')).rstrip('/')
+print(base)
+PY
+)"
+
 payload=$(
-python3 - <<'PY' "$MACHINE_ID" "$HOSTNAME_VALUE" "$SCREEN_NAME" "$SERVER_URL" "$CLIENT_VERSION"
+python3 - <<'PY' "$MACHINE_ID" "$HOSTNAME_VALUE" "$SCREEN_NAME" "$SERVER_URL_PUBLIC" "$CLIENT_VERSION"
 import json
 import os
 import shutil
@@ -643,6 +697,7 @@ PY
 
 curl -fsS --max-time 10 \
   -H "Content-Type: application/json" \
+  -H "X-Client-Token: $CLIENT_HEARTBEAT_TOKEN" \
   -d "$payload" \
   "$HEARTBEAT_URL" >/dev/null
 EOF

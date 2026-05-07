@@ -78,8 +78,8 @@ if [ -f "$ROOT_DIR/.env" ]; then
 fi
 set +a
 
-media_dir="${MEDIA_DIR:-./web/static/data}"
-private_dir="${PRIVATE_DIR:-./web/data/private}"
+media_dir="${MEDIA_DIR:?MEDIA_DIR absent. Lancez le module d'installation ou renseignez .env.}"
+private_dir="${PRIVATE_DIR:?PRIVATE_DIR absent. Lancez le module d'installation ou renseignez .env.}"
 postgres_db="${POSTGRES_DB:-visio}"
 postgres_user="${POSTGRES_USER:-visio}"
 

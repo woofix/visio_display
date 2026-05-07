@@ -11,6 +11,7 @@ from services.config_svc import (
     load_config,
 )
 from services.clients_svc import record_client_heartbeat
+from services.display_token_svc import screen_token_is_valid
 from services.users_svc import is_admin
 from services.media_svc import (
     get_all_media, get_media_type, is_media_scheduled, get_disk_usage,
@@ -25,16 +26,7 @@ bp = Blueprint('api', __name__)
 
 
 def _screen_api_token_is_valid():
-    expected = os.environ.get('DISPLAY_API_TOKEN', '').strip()
-    if not expected:
-        return True
-    provided = (
-        request.headers.get('X-Screen-Token')
-        or request.args.get('screen_token')
-        or request.args.get('token')
-        or ''
-    )
-    return bool(provided) and secrets.compare_digest(str(provided), expected)
+    return screen_token_is_valid(request)
 
 
 def _screen_api_guard():

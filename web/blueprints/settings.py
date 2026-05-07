@@ -508,7 +508,7 @@ def install_client():
     host = request.form.get('host', '').strip()
     ssh_user = request.form.get('ssh_user', '').strip()
     kiosk_user = request.form.get('kiosk_user', '').strip()
-    server_url = request.form.get('server_url', '').strip().rstrip('/')
+    server_url = request.form.get('server_url', '').strip()
     screen_name = request.form.get('screen_name', '').strip()
     machine_name = _normalize_machine_name(request.form.get('machine_name', ''))
     ssh_password = request.form.get('ssh_password', '')
@@ -541,6 +541,8 @@ def install_client():
         machine_name=machine_name,
         ssh_password=ssh_password,
         sudo_password=sudo_password,
+        heartbeat_token=os.environ.get('CLIENT_HEARTBEAT_TOKEN', '').strip(),
+        screen_token=current_app.config.get('DISPLAY_API_TOKEN', ''),
     )
     install_result['summary'] = _t(install_result.get('summary_key', ''))
 

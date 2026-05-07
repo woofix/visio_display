@@ -20,8 +20,27 @@
     const DEFAULT_DURATION = 15000;
     const FADE_DURATION    = 1500;
     const DEFAULT_SCREEN_NAME = {{ default_screen_name | tojson }};
+    const DISPLAY_API_TOKEN = {{ display_api_token | tojson }};
     const SCREEN           = new URLSearchParams(location.search).get('screen') || '';
-    const SCREEN_PARAM     = SCREEN ? `?screen=${encodeURIComponent(SCREEN)}` : '';
+
+    function displayApiUrl(path, extraParams = {}) {
+        const params = new URLSearchParams();
+        if (SCREEN) params.set('screen', SCREEN);
+        params.set('screen_token', DISPLAY_API_TOKEN);
+        Object.entries(extraParams).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && value !== '') {
+                params.set(key, value);
+            }
+        });
+        return `${path}?${params.toString()}`;
+    }
+
+    function displayPageUrl(screen = '') {
+        const params = new URLSearchParams();
+        if (screen) params.set('screen', screen);
+        params.set('screen_token', DISPLAY_API_TOKEN);
+        return `/?${params.toString()}`;
+    }
 
     function getDisplayBounds() {
         const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
@@ -36,8 +55,7 @@
 
     function mediaApiUrl() {
         const bounds = getDisplayBounds();
-        const separator = SCREEN_PARAM ? '&' : '?';
-        return `/api/images${SCREEN_PARAM}${separator}w=${encodeURIComponent(bounds.width)}&h=${encodeURIComponent(bounds.height)}`;
+        return displayApiUrl('/api/images', { w: bounds.width, h: bounds.height });
     }
 
     let media        = [];
@@ -74,7 +92,7 @@
 
     async function fetchPools() {
         try {
-            const res = await fetch('/api/pools' + SCREEN_PARAM, { cache: 'no-store' });
+            const res = await fetch(displayApiUrl('/api/pools'), { cache: 'no-store' });
             if (!res.ok) return {};
             return await res.json();
         } catch (e) {
@@ -84,7 +102,7 @@
 
     async function fetchHalo() {
         try {
-            const res = await fetch('/api/halo' + SCREEN_PARAM, { cache: 'no-store' });
+            const res = await fetch(displayApiUrl('/api/halo'), { cache: 'no-store' });
             if (!res.ok) return null;
             return await res.json();
         } catch (e) {
@@ -155,7 +173,7 @@
 
     async function fetchDurations() {
         try {
-            const res = await fetch('/api/durations' + SCREEN_PARAM, { cache: 'no-store' });
+            const res = await fetch(displayApiUrl('/api/durations'), { cache: 'no-store' });
             if (!res.ok) return {};
             return await res.json();
         } catch (e) {
@@ -165,7 +183,7 @@
 
     async function fetchPriorityAlert() {
         try {
-            const res = await fetch('/api/priority-alert', { cache: 'no-store' });
+            const res = await fetch(displayApiUrl('/api/priority-alert'), { cache: 'no-store' });
             if (!res.ok) return alertMessage;
             const data = await res.json();
             return (data.message || '').trim();
@@ -422,7 +440,7 @@
 
         async function buildSwitcher() {
             try {
-                const res = await fetch('/api/screens', { cache: 'no-store' });
+                const res = await fetch(displayApiUrl('/api/screens'), { cache: 'no-store' });
                 if (!res.ok) return;
                 const screens = await res.json();
                 if (!screens.length) { switcher.remove(); return; }
@@ -432,7 +450,7 @@
                     btn.className = 'screen-btn' + (s === SCREEN ? ' active' : '');
                     btn.textContent = s || DEFAULT_SCREEN_NAME;
                     btn.addEventListener('click', () => {
-                        window.location.href = s ? '/?screen=' + encodeURIComponent(s) : '/';
+                        window.location.href = displayPageUrl(s);
                     });
                     switcher.appendChild(btn);
                 });

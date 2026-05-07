@@ -1,5 +1,21 @@
 # Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
+x-visio-container-env: &visio-container-env
+  REDIS_URL: redis://redis:6379
+  # Internal container mount points. The host directories come strictly from
+  # MEDIA_DIR and PRIVATE_DIR in .env through the volume mappings below.
+  MEDIA_DIR: /app/static/data
+  PRIVATE_DIR: /app/data
+  VISIO_GIT_ROOT: /opt/visio-display
+  DISPLAY_API_TOKEN: ${DISPLAY_API_TOKEN:?DISPLAY_API_TOKEN absent. Lancez scripts/security_bootstrap.sh install . ou renseignez .env.}
+  DATABASE_URL: postgresql://visio:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD absent. Lancez scripts/security_bootstrap.sh install . ou renseignez .env.}@postgres:5432/visio
+
+x-visio-volumes: &visio-volumes
+  - .:/opt/visio-display
+  - ./.env:/app/.env:ro
+  - ${MEDIA_DIR:?MEDIA_DIR absent. Lancez le module d'installation ou renseignez .env.}:/app/static/data
+  - ${PRIVATE_DIR:?PRIVATE_DIR absent. Lancez le module d'installation ou renseignez .env.}:/app/data
+
 services:
   redis:
     image: redis:7-alpine
@@ -26,16 +42,8 @@ services:
     build: .
     container_name: Visio
     env_file: .env
-    environment:
-      - REDIS_URL=redis://redis:6379
-      - VISIO_DATA_DIR=/app/data
-      - VISIO_GIT_ROOT=/opt/visio-display
-      - DATABASE_URL=postgresql://visio:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD absent. Lancez scripts/security_bootstrap.sh install . ou renseignez .env.}@postgres:5432/visio
-    volumes:
-      - .:/opt/visio-display
-      - ./.env:/app/.env:ro
-      - ${MEDIA_DIR:-./web/static/data}:/app/static/data
-      - ${PRIVATE_DIR:-./web/data/private}:/app/data
+    environment: *visio-container-env
+    volumes: *visio-volumes
     ports:
       - "${PORT:-8081}:8080"
     restart: always
@@ -45,7 +53,7 @@ services:
       redis:
         condition: service_started
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/')"]
+      test: ["CMD", "python", "-c", "import os, urllib.parse, urllib.request; token=os.environ['DISPLAY_API_TOKEN']; urllib.request.urlopen('http://localhost:8080/?screen_token=' + urllib.parse.quote(token))"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -53,16 +61,8 @@ services:
   worker:
     build: .
     env_file: .env
-    environment:
-      - REDIS_URL=redis://redis:6379
-      - VISIO_DATA_DIR=/app/data
-      - VISIO_GIT_ROOT=/opt/visio-display
-      - DATABASE_URL=postgresql://visio:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD absent. Lancez scripts/security_bootstrap.sh install . ou renseignez .env.}@postgres:5432/visio
-    volumes:
-      - .:/opt/visio-display
-      - ./.env:/app/.env:ro
-      - ${MEDIA_DIR:-./web/static/data}:/app/static/data
-      - ${PRIVATE_DIR:-./web/data/private}:/app/data
+    environment: *visio-container-env
+    volumes: *visio-volumes
     command: rq worker --url redis://redis:6379 visio-display:upload visio-display:compress
     restart: always
     depends_on:

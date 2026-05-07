@@ -32,6 +32,11 @@ from services.config_svc import (
     is_feature_enabled,
     load_config,
 )
+from services.display_token_svc import (
+    SCREEN_TOKEN_QUERY_PARAM,
+    require_display_api_token,
+    screen_token_is_valid,
+)
 from services.i18n import _flash, _trans, get_language
 from services.rbac_svc import init_rbac
 from services.users_svc import get_user, has_permission, init_users, is_superadmin, load_users
@@ -288,6 +293,7 @@ def load_or_generate_secret_key():
 
 def configure_app(app, *, max_batch_upload_size):
     app.secret_key = os.environ.get("SECRET_KEY") or load_or_generate_secret_key()
+    app.config["DISPLAY_API_TOKEN"] = require_display_api_token()
     app.config["MAX_CONTENT_LENGTH"] = max_batch_upload_size
     app.config["MAX_FORM_MEMORY_SIZE"] = max_batch_upload_size
     app.config["SESSION_COOKIE_HTTPONLY"] = True
@@ -513,6 +519,8 @@ def register_template_context(app):
             app_name=cfg.get("app_name", "Helios"),
             lang=lang,
             static_version=static_version,
+            display_api_token=app.config["DISPLAY_API_TOKEN"],
+            screen_token_query_param=SCREEN_TOKEN_QUERY_PARAM,
             repository_url=os.environ.get("APP_REPOSITORY_URL", "https://github.com/woofix/visio_display").strip(),
             t=t,
             all_permissions=translated_permissions,
@@ -524,6 +532,8 @@ def register_template_context(app):
 def register_public_routes(app):
     @app.route("/")
     def index():
+        if not screen_token_is_valid(request):
+            return "", 403
         cfg = load_config()
         screen = request.args.get("screen", "").strip().lower()
         halo_color = get_screen_halo_color(screen, cfg)

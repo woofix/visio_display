@@ -1,6 +1,882 @@
 <!-- Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details. -->
 
-# Guide utilisateur — Visio-Display
+# Visio-Display — User Guide
+
+[🇺🇸 English](#english) · [🇫🇷 Français](#français)
+
+---
+
+## English
+
+Visio-Display is a **digital signage** application that automatically rotates images, videos, and a weather/almanac card on one or more screens. It is managed from any browser through a web administration interface.
+
+---
+
+## Table of Contents
+
+1. [Accessing the Application](#1-accessing-the-application)
+2. [Public Display](#2-public-display)
+3. [Signing in to Administration](#3-signing-in-to-administration)
+4. [Adding Media](#4-adding-media)
+5. [Managing the Media Library](#5-managing-the-media-library)
+6. [Media Groups](#6-media-groups)
+7. [Scheduling Media Display](#7-scheduling-media-display)
+8. [Managing Multiple Screens](#8-managing-multiple-screens)
+9. [The Almanac Card](#9-the-almanac-card)
+10. [Personal Settings](#10-personal-settings)
+11. [User Management (Super Admin)](#11-user-management-super-admin)
+12. [Video Encoding Queue](#12-video-encoding-queue)
+13. [Priority Alert (Super Admin)](#13-priority-alert-super-admin)
+14. [Available Permissions](#14-available-permissions)
+15. [Activity Log](#15-activity-log)
+16. [Wiki — Built-in Help](#16-wiki--built-in-help)
+17. [Backing Up and Restoring the Server](#17-backing-up-and-restoring-the-server)
+18. [Temporary Campaigns](#18-temporary-campaigns)
+19. [Global Search](#19-global-search)
+20. [Role Management (RBAC)](#20-role-management-rbac)
+21. [Feature Management (Super Admin)](#21-feature-management-super-admin)
+22. [Server Version (Super Admin)](#22-server-version-super-admin)
+23. [About](#23-about)
+
+---
+
+## 1. Accessing the Application
+
+| Use | Address |
+|---|---|
+| Public display (default screen) | `http://<server-address>:8081?screen_token=<token>` |
+| Named screen display | `http://<server-address>:8081?screen=screen-name&screen_token=<token>` |
+| Administration interface | `http://<server-address>:8081/admin` |
+
+Replace `<server-address>` with the IP address or hostname of your server, for example `192.168.1.50` or `raspberrypi.local`.
+
+---
+
+## 2. Public Display
+
+The public display page is designed to run full screen without user interaction.
+
+- The **slideshow advances automatically**: each media item stays on screen for its configured duration (15 seconds by default), then fades into the next item.
+- **Videos** play through completely, or until the configured maximum duration is reached.
+- The **almanac card** (weather, sunrise/sunset, saint of the day, countdowns) is automatically inserted into the rotation.
+- The media list **updates in real time**: changes made in administration take effect on the next slide change without reloading the page.
+- A **screen selector** appears at the bottom of the page. It is semi-transparent when idle and fully visible on hover. Select a screen to switch directly without retyping the URL.
+
+> **Usage tip:** On a Raspberry Pi, configure the browser in kiosk mode (`chromium-browser --kiosk 'http://localhost:8081?screen_token=<token>'`) for a full-screen display without browser chrome.
+
+If you use the automated client installation from administration, select the screen from the list. Administration sends the client a display URL containing the `screen_token` and only adds the screen name when a named screen is configured.
+
+### Good to Know
+
+- A **disabled** media item or one **outside its broadcast window** does not appear on the public screen, even if it remains visible in administration.
+- Each **named screen** has its own media selection, order, and rules.
+- Public display changes become visible **without reloading** the page. Wait for the next transition.
+
+---
+
+## 3. Signing in to Administration
+
+1. Open `http://<server-address>:8081/admin` in your browser.
+2. Enter your **username** and **password**.
+3. Select **Log in**.
+
+The dashboard shows a summary: media count, disk space used/available, and quick links to the main sections.
+
+To sign out, select your name in the upper-right corner, then **Log out**.
+
+### After Sign-In
+
+- The menus shown depend on your **permissions**. Some sections may be hidden if your account does not have access.
+- The dashboard is mainly a **quick entry point**. Detailed management is handled in the media library, settings, and broadcast windows.
+
+### Super Admin vs. User
+
+| Profile | What they can do | Limits |
+|---|---|---|
+| **Super admin** | Access the entire application, all screens, all global settings, account management, backups, client installation, system features, and priority alerts. | The super-admin account cannot be deleted from the interface, and its permissions are protected differently from regular user permissions. |
+| **User** | Access only the menus and actions matching permissions granted by the super admin. Users may also be limited to specific screens. | Cannot manage accounts, grant permissions, create/delete screens, restore the server, publish priority alerts, or modify super-admin-only settings. |
+
+---
+
+## 4. Adding Media
+
+> **Required permission:** `upload`
+
+1. In the navigation menu, go to **Upload**.
+2. **Drag and drop** files into the upload area, or select the area to open the file picker.
+3. You can upload **multiple files at once**.
+
+### Supported Formats
+
+| Type | Extensions |
+|---|---|
+| Images | `.jpg`, `.jpeg`, `.png` |
+| Videos | `.mp4`, `.mov`, `.avi`, `.mkv`, `.webm` |
+| Documents | `.pdf` (automatically converted to an image) |
+
+### Automatic Video Encoding
+
+Videos that are not already H.264/MP4 are **automatically re-encoded** in the background. During this process:
+
+- A per-file progress bar shows the current progress.
+- The media item becomes usable as soon as on-the-fly encoding is complete.
+- Additional compression may be scheduled overnight (8 PM to 6 AM) to reduce disk usage.
+
+After upload completes, the **View media** button takes you to the media library.
+
+### Best Practices
+
+- Use **clear file names**. They are reused in the media library, broadcast windows, and activity log.
+- After upload, check the **display duration**, **enabled state**, and **target screen** in the media library.
+- **PDFs** are handled as visual content. If rendering is not suitable, preparing an exported image at the correct format is often better.
+
+---
+
+## 5. Managing the Media Library
+
+> **Required permissions depend on the action:** `toggle`, `reorder`, `duration`, `delete`
+
+Open **Media** from the menu.
+
+### Overview
+
+Each media item shows:
+
+- Its **thumbnail preview** or a video icon
+- Its **file name**, size, and dimensions for images
+- Its **status**: enabled or disabled
+- Its custom **display duration**, if set
+- Its **scheduling rules**, if set
+
+### Available Actions
+
+| Action | Description |
+|---|---|
+| **Enable / Disable** | A disabled media item stays in the library but does not appear in the slideshow. |
+| **Edit duration** | Set how many seconds this media item should be displayed. Leave empty to use the default value (15 seconds). |
+| **Schedule** | Restrict display to specific times or dates. |
+| **Preview** | Opens the media item full screen for review. |
+| **Delete** | Permanently deletes the file. |
+
+### Reordering
+
+Drag media items to change the slideshow order. The order is **specific to each screen**.
+
+### Assigning Media to a Screen
+
+Unassigned media appears in a separate section at the bottom of the page. Select **Add to screen** to include it on the currently selected screen.
+
+### Reading the Library
+
+- **Search** and **filters** help isolate active media, disabled media, or a specific file type.
+- Badges on a card can indicate a disabled media item, saved broadcast window, or disabled group.
+- The view depends on the **selected screen**. Always check the screen tab before changing order or assignments.
+- On mobile, **Tile** view prioritizes large previews, while **List** view becomes compact with a thumbnail on the left and details/actions on the right.
+
+---
+
+## 6. Media Groups
+
+> **Required permission:** `toggle`
+
+Groups, or tags, organize media by topic and let you enable or disable a set of media items with one action.
+
+### Assigning Groups to Media
+
+1. In the media library, open the **Actions** menu for the media item.
+2. Enter group names separated by commas, for example `menu`, `info`, `alerts`.
+3. Select **Save groups**.
+
+A media item can belong to multiple groups at the same time.
+
+### Enabling or Disabling a Group
+
+The **Groups** section in the media library sidebar lists all defined groups. Select **Enable group** or **Disable group** to toggle every media item in that group at once.
+
+A **GROUP DISABLED** badge appears on affected media items in the grid.
+
+The **Media Library** menu item does not show a media count.
+
+> **Note:** A media item disabled individually remains disabled even if its group is enabled.
+
+### Linking a Group to Screens
+
+By default, a group is **global**: it appears in the group bar no matter which screen is selected.
+
+You can restrict a group to one or more specific screens:
+
+1. In the **Groups** panel at the top of the media library, find the group.
+2. Select the link icon at the end of the chip to open the screen selector.
+3. Select the screens this group should be linked to. Active buttons are highlighted. **Default** represents the screen without a `?screen=` parameter.
+4. The link is saved immediately. The group will only appear on the selected screens.
+
+> **Note:** If no screen is selected, the group becomes global again and is visible on every screen.
+
+---
+
+## 7. Scheduling Media Display
+
+> **Required permission:** `schedule`
+
+Scheduling displays a media item only during a defined **time window** or **date range**. Both conditions can be combined.
+
+The **Broadcast Windows** page also provides a **weekly calendar**. Day names follow the selected interface language.
+
+### Configuring a Schedule
+
+1. In the media library, select the schedule icon for the media item.
+2. Fill in the desired fields:
+
+| Field | Format | Example |
+|---|---|---|
+| Start time | HH:MM | `11:00` |
+| End time | HH:MM | `13:30` |
+| Start date | YYYY-MM-DD | `2026-06-02` |
+| End date | YYYY-MM-DD | `2026-06-15` |
+
+3. Select **Save**. The rule takes effect on the next slide change.
+
+### How Rules Are Interpreted
+
+- If you only enter **times**, the media item reappears **every day** during that time window, with no end date.
+- If you only enter **dates**, the media item remains visible **all day** between those dates, inclusive.
+- If you combine **dates and times**, both conditions must be true at the same time.
+- If you leave **all fields empty**, the restriction is removed and the media item becomes continuously visible again.
+- Scheduling applies to the media item on the **current screen**. The same file can therefore have different rules per screen.
+
+### Reading the Broadcast Windows Page
+
+- The list summarizes each saved rule with its screen, media item, groups, and active range.
+- The weekly calendar shows planned windows day by day, making gaps and overlaps easier to spot.
+- Day names follow the interface language.
+
+> **Example:** For a cafeteria menu visible only from 11 AM to 1 PM, Monday through Friday, configure `11:00` to `13:00` as the time window. Display stops and resumes automatically.
+
+To delete a schedule, clear the fields and save.
+
+---
+
+## 8. Managing Multiple Screens
+
+Visio-Display can create **independent named screens**, each with its own media list, order, and rules.
+
+### Creating a Screen
+
+> **Required right:** super admin
+
+1. In the media library, open the screen management menu.
+2. Enter a name using lowercase letters, numbers, `-`, and `_` only, from 1 to 32 characters.
+3. Select **Create**.
+
+Reserved names that cannot be used: `default`, `admin`, `api`, `static`, `login`, `logout`.
+
+### Accessing a Screen
+
+- **Public display:** `http://<server>:8081?screen=screen-name&screen_token=<token>`. The screen selector at the bottom keeps the token when switching screens.
+- **Media library:** select the screen using the tabs at the top. The **Preview** button opens a preview window for the active screen.
+- **Dashboard:** the **Preview** card offers one button per screen to open the matching slideshow in a new tab.
+
+### Per-Screen Behavior
+
+- Each screen manages media order, enabled state, duration, and schedule **independently**.
+- The same file can be **assigned to multiple screens**.
+- Users can be **restricted to specific screens**.
+- The super admin can customize the **display name of the default screen** and the **halo color** used around media while playing.
+
+> **Tip:** When installing a display client from administration, use the provided screen selection. The final URL already includes the required display token.
+
+### Installing a Display Client
+
+From **Settings > Client Installation**:
+
+1. Enter the client host or IP address, SSH port, SSH user, and local user to configure.
+2. Enter the remote account **SSH password** (required and needs `sshpass` installed on the server).
+3. Enter the **admin / sudo password** if different from the SSH password, or leave it blank to reuse it.
+4. Enter the **server base URL** (for example `https://visio.example.com`), not a hard-coded per-screen URL.
+5. Enter the **screen name** if the workstation should open a named screen, for example `reception` or `kitchen`.
+6. Enter the client machine name.
+7. Start the installation.
+
+The script configures auto-login, kiosk mode, Linux hostname, sleep prevention during display, and client heartbeat reporting back to the server.
+
+### Detected Clients
+
+In **Settings > Client Installation**, the **Detected clients** area updates automatically. New installations report their IP address, machine name, and screen about every 30 seconds.
+
+### Remote Client Control
+
+> **Required right:** super admin
+
+From **Settings > Client Installation**, the **Client control** area lets you act directly on a known workstation:
+
+- Choose the host from the detected clients list. This form does not accept a manually typed IP address.
+- **Shut down client** sends an immediate shutdown command.
+- **Restart client** sends an immediate reboot command.
+- **Reinstall client** reruns the workstation installation script.
+- **Update Debian** runs the workstation system update.
+
+> **Warning:** Reinstalling the client is not a simple system update. It reruns the display client installation procedure.
+
+### Kiosk Watchdog
+
+The super admin can configure the monitoring policy sent to installed clients:
+
+- the interval between checks;
+- the grace period after startup;
+- the number of consecutive failures before automatic restart.
+
+This policy helps a kiosk client return to service automatically if the display browser stops working for a sustained period.
+
+---
+
+## 9. The Almanac Card
+
+The almanac card is an automatically generated image that is inserted into the slideshow rotation.
+
+### Displayed Content
+
+- **Saint of the day**
+- **Current weather**: temperature, feels-like temperature, wind speed, precipitation
+- **Sunrise and sunset**
+- Custom **dated events**, for example *Summer break: 42 days*
+
+### Updates
+
+- The card is **regenerated every 2 hours** and automatically at midnight.
+- If the almanac file is missing, it is **automatically regenerated** on the next slideshow refresh.
+- When the card is created or updated, it appears in the slideshow without reloading the page.
+
+### Managing Dated Events
+
+> **Required access:** super admin
+
+Only **upcoming events** are shown on the card. The label entered in settings is reused as-is.
+
+In **Settings > Events**:
+
+1. Select **Add event**.
+2. Enter a label, for example `Final exams`, and the target date in `YYYY-MM-DD` format.
+3. Select **Save**.
+
+The countdown appears on the card after the next regeneration. Select the trash icon to delete an event.
+
+---
+
+## 10. Personal Settings
+
+Open **Settings** from the menu.
+
+### Interface Theme
+
+Choose one of three visual themes for your session:
+
+- **Purple** (default)
+- **Dark**
+- **Blue**
+
+This setting is **personal** and does not change the display for other users.
+
+On mobile, the interface automatically adapts to the theme selected for your session. There is no separate mobile theme to choose.
+
+Navigation also adapts to screen width: on desktop, the sidebar remains visible; on mobile only, a menu button opens or closes navigation.
+
+### Interface Language
+
+Choose between **French (FR)** and **English (EN)**.
+
+The selected language changes the **administration labels** and the **built-in wiki**. It does not affect the media files themselves.
+
+### Weather Location (Super Admin)
+
+From **Settings > Weather**, the super admin can change the location used for the almanac card:
+
+| Field | Example | Description |
+|---|---|---|
+| City | `Montpellier` | City name displayed on the almanac card |
+| Latitude | `43.6119` | GPS coordinate (decimal, between -90 and 90) |
+| Longitude | `3.8772` | GPS coordinate (decimal, between -180 and 180) |
+| Time zone | `Europe/Paris` | IANA identifier |
+| School zone | `A` / `B` / `C` | French national education zone, auto-detected if left empty |
+
+A city-name search field with Open-Meteo autocomplete fills coordinates and time zone automatically. Select **Save** to apply the new location and regenerate the card immediately.
+
+### Changing Your Password
+
+1. In **Settings > Admins**, scroll to **Change password**.
+2. Enter your current password, then the new one (minimum 10 characters).
+3. Select **Save**.
+
+---
+
+## 11. User Management (Super Admin)
+
+Open **Settings > Users**.
+
+The **Users** menu item does not show an account count.
+
+> **Super admin only:** only the super admin can create accounts, delete user accounts, modify permissions, and limit users to specific screens.
+
+### Creating an Account
+
+1. Select **Add account**.
+2. Enter a username and password (minimum 10 characters).
+3. Select **Create**.
+
+The account is created **without permissions**. Assign the required rights afterward.
+
+### Assigning Permissions
+
+In the user list, select a user to modify permissions. Check or uncheck each permission individually.
+
+A user **without permissions** can sign in, but only sees the sections allowed by their profile.
+
+### Restricting Screen Access
+
+In a user profile, under **Allowed screens**:
+
+- **No boxes checked** means the user can manage all screens.
+- **Boxes checked** means the user only sees and manages selected screens.
+
+### Resetting a Password
+
+Select **Reset password** in the user profile and enter the new password.
+
+The **super-admin** password cannot be reset from the interface. If it is lost, use the local maintenance script from the server. With Docker Compose, run it from the project root with `docker compose exec app python3 /app/tools/reset_superadmin_password.py`. The script only replaces the PostgreSQL hash, forces a password change on next login, and writes an activity log entry.
+
+### Deleting an Account
+
+Select **Delete** in the user profile. The super-admin account cannot be deleted.
+
+---
+
+## 12. Video Encoding Queue
+
+Open **Encoding Queue** from the menu.
+
+### Automatic Encoding Window
+
+By default, video compression is scheduled overnight between **8 PM and 6 AM** to reduce performance impact.
+
+### Task Monitoring
+
+- **Current jobs:** lists active compressions with their progress percentage.
+- **Recent jobs:** shows completed compressions with statistics such as before/after size and compression rate.
+
+### Forcing Encoding (Super Admin)
+
+- **Force all:** immediately starts all pending compression jobs outside the overnight window.
+- **Force file:** in the media library, select the compression icon for a specific media item.
+
+### Canceling a Task
+
+Users with the `compress` permission can cancel a **pending** task before it starts from the encoding queue.
+
+> **Note:** Encoding mainly improves compatibility and reduces video disk usage. It is usually not useful for an image or PDF.
+
+---
+
+## 13. Priority Alert (Super Admin)
+
+> **Required right:** super admin
+
+The priority alert immediately displays a banner message on the display screen without interrupting the slideshow.
+
+### Usage
+
+1. From **Administration > Super Admin**, open **Priority Alert**.
+2. Enter your message in the field provided (maximum 280 characters).
+3. The banner is published **automatically** after each keystroke. No button is required.
+4. To remove the banner, select **Clear banner**.
+
+> **Warning:** The banner remains visible on **all screens** until it is manually removed, regardless of the `?screen=` parameter.
+
+---
+
+## 14. Available Permissions
+
+| Permission | Authorized actions |
+|---|---|
+| `upload` | Upload media |
+| `delete` | Delete media |
+| `reorder` | Change media order |
+| `toggle` | Enable/disable media and groups, assign to a screen |
+| `duration` | Change display duration |
+| `compress` | Queue encoding, cancel a task |
+| `logo` | Change or reset the application logo |
+| `schedule` | Define time and date schedules |
+
+### Roles and Limits
+
+| Account type | Can do | Cannot do |
+|---|---|---|
+| **Super admin** | Everything permissions allow, plus global administration actions: users, screens, backups, weather, client installation, features, priority alert, and forced encoding. | The account and its permissions are protected in the current interface. |
+| **User** | Only actions covered by assigned permissions, and only on allowed screens if restrictions are configured. | Create/delete accounts, grant permissions, create/delete screens, restore the server, publish priority alerts, or modify reserved global settings. |
+
+The super admin has **all permissions** and can additionally create/delete accounts, create/delete screens, customize the application name, configure weather location, publish a priority alert, and force encoding outside the overnight window.
+
+Permissions can be **freely combined**. Grant only the rights needed for the user's task.
+
+---
+
+## 15. Activity Log
+
+Open **Activity Log** from the navigation menu.
+
+The log is an **operations history**: it helps quickly verify who did what before assuming a malfunction.
+
+It records actions performed by signed-in users and some automatic system operations.
+
+On mobile, log entries are displayed as stacked cards to avoid horizontal table overflow.
+
+Sensitive administration operations use an authenticated session protected by a secure server-side cookie, CSRF protection on forms and write calls, and sign-out confirmed by a protected `POST` action.
+
+### Recorded Actions
+
+| Action | Description |
+|---|---|
+| **Upload** | File upload (image, video, or PDF), including user and file |
+| **Deletion** | Permanent file deletion |
+| **Login** | Session start |
+| **Logout** | Session end through a secured action |
+| **Activation** | Media or group enable/disable action, including resulting state (`enabled` / `disabled`) and screen |
+| **Compression** | Automatic video compression start and result (before/after size, reduction rate), performed by `system` |
+| **Configuration** | Administration changes: durations, media order, broadcast windows, groups, screens, logo, theme, language, weather, users, permissions, priority alert, and more |
+| **Campaign** | Campaign creation, update, duplication, enable/disable, and archival |
+
+### Available Filters
+
+- **Free search** by file name, user, or details
+- **Action type**: Upload, Deletion, Login, Logout, Activation, Compression, Configuration, Campaign
+- **User**
+
+### Retention and Disk Space
+
+The log is **automatically purged** to prevent unbounded PostgreSQL growth:
+
+- entries older than the retention period are deleted automatically;
+- a maximum row count is enforced even when activity is high;
+- retention rules can be applied immediately from administration.
+
+Defaults:
+
+- **retention:** `90` days;
+- **maximum size:** `20000` entries;
+- **cleanup frequency:** `1` hour.
+
+These values can be adjusted with `ACTIVITY_LOG_RETENTION_DAYS`, `ACTIVITY_LOG_MAX_ROWS`, and `ACTIVITY_LOG_CLEANUP_INTERVAL_SECONDS`. The super admin can also change retention, row limit, purge old entries, or clear the log from **Activity Log**.
+
+> **Note:** Automatic overnight video compressions are recorded under the `system` user. Configuration operations appear with the **Configuration** action, and campaign operations with the **Campaign** action.
+
+---
+
+## 16. Wiki — Built-in Help
+
+Open **Wiki** from the navigation menu.
+
+The Wiki page is an interactive documentation area built directly into the administration interface. It covers Visio-Display features such as media management, scheduling, multiple screens, video encoding, permissions, and more.
+
+It also reflects interface security rules: administrator session, CSRF-protected forms, and sign-out through a secured button.
+
+- Available at any time from any administration page.
+- Organized into sections with a sidebar table of contents.
+- No external connection required. The content is embedded in the application.
+
+---
+
+## 17. Backing Up and Restoring the Server
+
+If you need to recreate the server on another machine or start again with a new Docker stack, use the scripts provided at the project root.
+
+### Creating a Backup
+
+From the project directory:
+
+```bash
+scripts/docker_backup.sh
+```
+
+The script creates a folder in `backups/` containing:
+
+- `postgres.dump`: the PostgreSQL database
+- `media.tar.gz`: uploaded media
+- `private.tar.gz`: private application data
+- `env.backup`: a copy of `.env`, if present
+
+You can also choose the destination folder:
+
+```bash
+scripts/docker_backup.sh /path/to/visio-backup
+```
+
+### Restoring an Identical Instance
+
+1. Copy the project and backup folder to the new machine.
+2. Move into the project directory.
+3. Run:
+
+```bash
+scripts/docker_restore.sh backups/visio-backup-YYYYMMDD-HHMMSS
+```
+
+The restore:
+
+- temporarily stops the application;
+- starts PostgreSQL and Redis;
+- restores media and private data;
+- restores the PostgreSQL database;
+- restarts the full stack.
+
+To also reapply the saved `.env` even if one already exists:
+
+```bash
+scripts/docker_restore.sh --force-env backups/visio-backup-YYYYMMDD-HHMMSS
+```
+
+> Tip: run backups when no large upload or video processing job is in progress so the snapshot is clean.
+
+### Backup from Administration
+
+The **super admin** can also create backups without using the command line:
+
+1. Open **Settings > Backups**.
+2. Select **Create backup**.
+3. Wait for the progress animation to finish.
+4. Download the archive from the list, or configure an `smb://...` link and use **Copy to SMB** to send it to a Windows server or NAS.
+
+Notes:
+
+- the interface archives the application database, media, and private data;
+- a copy of `.env` is included in the archive when available;
+- only the **5 most recent backups** are kept automatically. Older backups are deleted when a new one is created.
+
+To restore to another already-running instance:
+
+1. Sign in as super admin.
+2. Open **Settings > Backups**.
+3. Select the backup file.
+4. Select **Restore now**.
+
+> Restore reinjects application data, media, and private data. The saved `.env` remains included as a reference copy, but the interface does not automatically rewrite it.
+
+---
+
+## 18. Temporary Campaigns
+
+Open **Temporary Campaigns** from the menu.
+
+Campaigns temporarily take over the normal rotation for an event, time period, or prepared emergency.
+
+> **Required permission:** `schedule` or `toggle`
+
+### Creating a Campaign
+
+1. Select **New campaign**.
+2. Enter a name, optional start/end period, priority, and target screens.
+3. Select at least one group or media item in the embedded media library.
+4. Enable the campaign and save.
+
+### Priority and Broadcast
+
+- If multiple campaigns are active on the same screen, the one with the highest priority takes over.
+- A campaign can target groups, individual media items, or both.
+- Campaigns respect the signed-in user's screen restrictions.
+- An archived campaign cannot be enabled until it is restored.
+- On mobile, target screens are displayed as full-width rows with the full screen name, and target media uses larger thumbnails.
+
+### Campaign Ownership
+
+Only the **campaign creator** or a super admin can modify, enable/disable, archive, or delete a campaign. The **Duplicate** button remains available to all users with the required permissions.
+
+### Available Actions
+
+| Action | Description | Who can act |
+|---|---|---|
+| **Edit** | Updates dates, priority, screens, and targeted content. | Owner or super admin |
+| **Enable / Disable** | Quickly toggles a non-archived campaign. | Owner or super admin |
+| **Duplicate** | Creates a reusable copy for a new event. | Any authorized user |
+| **Archive / Restore** | Removes a campaign from daily operation without losing its configuration. | Owner or super admin |
+| **Delete** | Permanently deletes the campaign. | Owner or super admin |
+
+Campaign actions are recorded in the **Activity Log** under **Campaign**.
+
+---
+
+## 19. Global Search
+
+The search bar at the top of the interface helps quickly find administration content.
+
+### Quick Access
+
+- Select the search bar in the topbar, or press **Cmd+K** (Mac) / **Ctrl+K** (Windows/Linux) from any page.
+- Type at least 2 characters. Results appear in real time in a dropdown menu.
+- Use **↑ ↓** to move through results and **Enter** to open the selected item. **Esc** closes the menu.
+- On mobile, search remains available in the topbar as a full-width field below the title.
+
+### Search Scope
+
+| Category | What is searched |
+|---|---|
+| **Pages** | Direct access to administration sections |
+| **Media** | File names in the media library |
+| **Campaigns** | Campaign names |
+| **Configuration** | Settings sections |
+| **Users** | Account names (super admin only) |
+| **Activity Log** | Recent matching entries |
+
+### Full Results Page
+
+The **All results →** link at the bottom of the dropdown, or pressing Enter without a selection, opens `/admin/search` with all results grouped by category.
+
+---
+
+## 20. Role Management (RBAC)
+
+Open **Administration > Roles** from the menu.
+
+> **Super admin only.**
+
+Roles group permissions under a reusable name and can then be assigned to one or more users. A user's effective permissions are the **union** of all assigned role permissions.
+
+### Predefined Roles
+
+Three roles are created automatically on first startup:
+
+| Role | Included permissions |
+|---|---|
+| **Administrator** | All available permissions |
+| **Editor** | `upload`, `delete`, `reorder`, `toggle`, `duration` |
+| **Reader** | None (dashboard access only) |
+
+The **Administrator** role is a *system* role and cannot be deleted.
+
+### Creating a Role
+
+1. On the **Roles** page, enter an identifier using lowercase letters, numbers, `-`, and `_` (2 to 64 characters), a display name, and an optional description.
+2. Check the permissions to include.
+3. Select **Create role**.
+
+### Editing a Role
+
+Select **Edit** to change the display name and description. Permissions are modified separately using the dedicated form on the same page.
+
+### Deleting a Role
+
+Select **Delete**. A system role cannot be deleted. Deleting a role automatically removes it from all affected users.
+
+### Assigning Roles to a User
+
+In **Role assignment**, check the desired roles for each user and save. Changes take effect on the user's next action.
+
+> **Note:** Direct permissions assigned account by account and permissions inherited from roles are cumulative.
+
+---
+
+## 21. Feature Management (Super Admin)
+
+Open **Settings > Features** from the navigation menu.
+
+> **Super admin only.**
+
+This page enables or disables whole application modules. A disabled module hides its menus, buttons, and API endpoints for **all users**, including the super admin.
+
+### Available Modules
+
+| Module | What it controls |
+|---|---|
+| **Media upload** | Uploading image and PDF files, and videos when the Videos module is active |
+| **Videos** | Video upload, previews, display, and encoding. Disabling it hides all existing videos |
+| **Media deletion** | Permanent deletion of files from the media library |
+| **Video compression** | Encoding queue and compression of videos limited to 1080p |
+| **Almanac** | Generation and display of the daily almanac card |
+| **Campaigns** | Creation and management of temporary campaigns |
+| **Broadcast windows** | Time and date schedule configuration per media item |
+| **Media groups** | Media organization into groups and collective enable/disable |
+| **Multi-screen** | Creation and management of independent named screens |
+| **Priority alert** | Real-time critical alert banner on all screens |
+| **Activity log** | Recording and viewing user action history |
+
+### Enabling or Disabling a Module
+
+Select the toggle next to the module. The change is immediate and does not require a restart.
+
+> **Tip:** Disable a module only when you are sure it is not needed. Re-enabling restores access to the module as it was before being disabled.
+
+---
+
+## 22. Server Version (Super Admin)
+
+Open **Settings > Version** from the navigation menu.
+
+> **Super admin only.**
+
+This page compares the installed version with the remote version published on GitHub and can apply a server update when the local installation is compatible.
+
+### Checking Version Status
+
+1. Open **Settings > Version**.
+2. Select **Check** to query the remote repository.
+3. Review the displayed status:
+   - **Up to date:** the installed version matches the known remote version.
+   - **Update available:** a newer version was detected.
+   - **Restart required:** the update was applied and Docker must be restarted.
+   - **Incompatible installation:** a prerequisite is missing or the local state prevents the action.
+   - **Check unavailable:** the remote source could not be reached or versions could not be compared.
+
+### Displayed Information
+
+| Area | Description |
+|---|---|
+| **Installed version** | Version read from the `VERSION` file or `APP_VERSION` environment variable |
+| **Remote version** | Published version read from GitHub |
+| **Current / target branch** | Local Git branch and branch used for the update |
+| **Git state** | Must be clean to apply an update |
+| **Commits** | Short IDs of local and remote commits |
+
+### Applying an Update
+
+When the status is **Update available**, select **Apply**, confirm the action, and follow the log displayed on the page.
+
+The update:
+
+- uses the already-installed Git repository without recloning the application;
+- refuses to continue if local changes are present;
+- checks the remote, target branch, `scripts/update.sh`, and Docker Compose;
+- switches to or pulls the configured target branch, then prepares the application code.
+
+After applying the update, select **Restart Docker** to relaunch the stack with the new version.
+
+During an update or restart, administration displays a **blocking overlay**. It prevents clicks, forms, and shortcuts until the operation finishes. If the server restarts and responds more slowly for a moment, the page shows automatic reconnection.
+
+### Best Practices
+
+- Run a backup before a major update.
+- Avoid updating during a large upload or restore.
+- If the check fails, verify the server's network access, local Git state, and Docker Compose availability.
+
+---
+
+## 23. About
+
+Open **About** from the navigation menu. It is available to all signed-in users.
+
+The **About** page displays technical information for the running instance:
+
+- application **version**, read from the `VERSION` file or `APP_VERSION` environment variable;
+- deployment **Git commit**, when available;
+- **technical stack**: backend, database, deployment;
+- **license** link to the project's `LICENSE` file.
+
+This information is useful when identifying the installed version for support or updates.
+
+---
+
+*Documentation generated for Visio-Display — Digital signage application.*
+
+---
+
+## Français
+
+### Guide utilisateur — Visio-Display
 
 Visio-Display est une application d'**affichage dynamique** (digital signage) qui fait défiler automatiquement des images, vidéos et une carte météo/éphéméride sur un ou plusieurs écrans. Elle se pilote depuis n'importe quel navigateur via une interface d'administration web.
 

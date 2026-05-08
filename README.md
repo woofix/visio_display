@@ -88,7 +88,7 @@ Application web légère de signalétique numérique. Elle affiche un diaporama 
 **Wiki intégré**
 - Page d'aide accessible depuis l'interface d'administration (`/admin/wiki`)
 - Documentation interactive couvrant toutes les fonctionnalités, disponible sans quitter l'application
-- Version Markdown fournie dans `GUIDE_UTILISATEUR.md` pour la documentation du projet
+- Version Markdown fournie dans `USER_GUIDE.md` pour la documentation du projet
 
 **Gestion des rôles (RBAC)**
 - Créer des rôles personnalisés (identifiant, nom affiché, description, permissions) depuis `/admin/roles`
@@ -855,7 +855,7 @@ A lightweight web-based digital signage. It displays a fullscreen slideshow of i
 **Built-in wiki**
 - Help page accessible from the admin interface (`/admin/wiki`)
 - Interactive documentation covering all features, available without leaving the application
-- Markdown project guide available in `GUIDE_UTILISATEUR.md`
+- Markdown project guide available in `USER_GUIDE.md`
 
 **Role management (RBAC)**
 - Create custom roles (identifier, display name, description, permissions) from `/admin/roles`

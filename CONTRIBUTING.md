@@ -14,7 +14,7 @@ Contributions are welcome.
 ## Before submitting
 
 - Keep changes scoped and consistent with the existing Flask/Jinja structure.
-- Update `README.md`, `GUIDE_UTILISATEUR.md` and the built-in wiki when behavior changes.
+- Update `README.md`, `USER_GUIDE.md` and the built-in wiki when behavior changes.
 - Run the available smoke tests or, at minimum, compile touched Python files.
 - Avoid committing generated media, backups, private data or local environment files.
 

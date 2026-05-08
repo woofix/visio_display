@@ -88,6 +88,32 @@ class SecurityBootstrapTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("erreur:", result.stderr)
 
+    def test_install_generates_empty_secret_values(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            install_dir = Path(tmp)
+            env_file = install_dir / ".env"
+            env_file.write_text(
+                "\n".join(
+                    [
+                        "SECRET_KEY=",
+                        "POSTGRES_PASSWORD=",
+                        "DISPLAY_API_TOKEN=",
+                        "CLIENT_HEARTBEAT_TOKEN=",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_bootstrap("install", install_dir)
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            values = self.read_env(env_file)
+            self.assertTrue(values["SECRET_KEY"])
+            self.assertTrue(values["POSTGRES_PASSWORD"])
+            self.assertTrue(values["DISPLAY_API_TOKEN"])
+            self.assertTrue(values["CLIENT_HEARTBEAT_TOKEN"])
+
     def test_update_warns_about_weak_values_without_overwriting(self):
         with tempfile.TemporaryDirectory() as tmp:
             install_dir = Path(tmp)

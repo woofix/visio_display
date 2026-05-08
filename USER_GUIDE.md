@@ -29,14 +29,13 @@ Visio-Display is a **digital signage** application that automatically rotates im
 13. [Priority Alert (Super Admin)](#13-priority-alert-super-admin)
 14. [Available Permissions](#14-available-permissions)
 15. [Activity Log](#15-activity-log)
-16. [Wiki — Built-in Help](#16-wiki--built-in-help)
-17. [Backing Up and Restoring the Server](#17-backing-up-and-restoring-the-server)
-18. [Temporary Campaigns](#18-temporary-campaigns)
-19. [Global Search](#19-global-search)
-20. [Role Management (RBAC)](#20-role-management-rbac)
-21. [Feature Management (Super Admin)](#21-feature-management-super-admin)
-22. [Server Version (Super Admin)](#22-server-version-super-admin)
-23. [About](#23-about)
+16. [Backing Up and Restoring the Server](#16-backing-up-and-restoring-the-server)
+17. [Temporary Campaigns](#17-temporary-campaigns)
+18. [Global Search](#18-global-search)
+19. [Role Management (RBAC)](#19-role-management-rbac)
+20. [Feature Management (Super Admin)](#20-feature-management-super-admin)
+21. [Server Version (Super Admin)](#21-server-version-super-admin)
+22. [About](#22-about)
 
 ---
 
@@ -569,21 +568,7 @@ These values can be adjusted with `ACTIVITY_LOG_RETENTION_DAYS`, `ACTIVITY_LOG_M
 
 ---
 
-## 16. Wiki — Built-in Help
-
-Open **Wiki** from the navigation menu.
-
-The Wiki page is an interactive documentation area built directly into the administration interface. It covers Visio-Display features such as media management, scheduling, multiple screens, video encoding, permissions, and more.
-
-It also reflects interface security rules: administrator session, CSRF-protected forms, and sign-out through a secured button.
-
-- Available at any time from any administration page.
-- Organized into sections with a sidebar table of contents.
-- No external connection required. The content is embedded in the application.
-
----
-
-## 17. Backing Up and Restoring the Server
+## 16. Backing Up and Restoring the Server
 
 If you need to recreate the server on another machine or start again with a new Docker stack, use the scripts provided at the project root.
 
@@ -660,7 +645,7 @@ To restore to another already-running instance:
 
 ---
 
-## 18. Temporary Campaigns
+## 17. Temporary Campaigns
 
 Open **Temporary Campaigns** from the menu.
 
@@ -701,7 +686,7 @@ Campaign actions are recorded in the **Activity Log** under **Campaign**.
 
 ---
 
-## 19. Global Search
+## 18. Global Search
 
 The search bar at the top of the interface helps quickly find administration content.
 
@@ -729,7 +714,7 @@ The **All results →** link at the bottom of the dropdown, or pressing Enter wi
 
 ---
 
-## 20. Role Management (RBAC)
+## 19. Role Management (RBAC)
 
 Open **Administration > Roles** from the menu.
 
@@ -771,7 +756,7 @@ In **Role assignment**, check the desired roles for each user and save. Changes 
 
 ---
 
-## 21. Feature Management (Super Admin)
+## 20. Feature Management (Super Admin)
 
 Open **Settings > Features** from the navigation menu.
 
@@ -803,7 +788,7 @@ Select the toggle next to the module. The change is immediate and does not requi
 
 ---
 
-## 22. Server Version (Super Admin)
+## 21. Server Version (Super Admin)
 
 Open **Settings > Version** from the navigation menu.
 
@@ -855,7 +840,7 @@ During an update or restart, administration displays a **blocking overlay**. It 
 
 ---
 
-## 23. About
+## 22. About
 
 Open **About** from the navigation menu. It is available to all signed-in users.
 
@@ -899,14 +884,13 @@ Visio-Display est une application d'**affichage dynamique** (digital signage) qu
 13. [Alerte prioritaire (super-admin)](#13-alerte-prioritaire-super-admin)
 14. [Permissions disponibles](#14-permissions-disponibles)
 15. [Journal d'activité](#15-journal-dactivité)
-16. [Wiki — aide intégrée](#16-wiki--aide-intégrée)
-17. [Sauvegarder et restaurer le serveur](#17-sauvegarder-et-restaurer-le-serveur)
-18. [Campagnes temporaires](#18-campagnes-temporaires)
-19. [Recherche globale](#19-recherche-globale)
-20. [Gestion des rôles (RBAC)](#20-gestion-des-rôles-rbac)
-21. [Gestion des fonctionnalités (super-admin)](#21-gestion-des-fonctionnalités-super-admin)
-22. [Version (super-admin)](#22-version-super-admin)
-23. [À propos](#23-à-propos)
+16. [Sauvegarder et restaurer le serveur](#16-sauvegarder-et-restaurer-le-serveur)
+17. [Campagnes temporaires](#17-campagnes-temporaires)
+18. [Recherche globale](#18-recherche-globale)
+19. [Gestion des rôles (RBAC)](#19-gestion-des-rôles-rbac)
+20. [Gestion des fonctionnalités (super-admin)](#20-gestion-des-fonctionnalités-super-admin)
+21. [Version (super-admin)](#21-version-super-admin)
+22. [À propos](#22-à-propos)
 
 ---
 
@@ -1435,19 +1419,7 @@ Le super-admin peut aussi modifier la conservation, le plafond de lignes, purger
 
 ---
 
-## 16. Wiki — aide intégrée
-
-Accessible depuis **Wiki** dans le menu de navigation.
-
-La page Wiki est une documentation interactive intégrée directement à l'interface d'administration. Elle couvre l'ensemble des fonctionnalités de Visio-Display : gestion des médias, planification, écrans multiples, encodage vidéo, permissions, etc.
-
-Elle reflète aussi les règles de sécurité de l'interface : session administrateur, formulaires protégés par jeton CSRF et déconnexion via bouton sécurisé.
-
-- Disponible à tout moment depuis n'importe quelle page de l'administration.
-- Organisée par sections avec une table des matières latérale pour naviguer rapidement.
-- Aucune connexion externe requise — le contenu est embarqué dans l'application.
-
-## 17. Sauvegarder et restaurer le serveur
+## 16. Sauvegarder et restaurer le serveur
 
 Si vous devez recréer le serveur sur une autre machine ou repartir sur une nouvelle stack Docker, utilisez les scripts fournis à la racine du projet.
 
@@ -1524,7 +1496,7 @@ Pour restaurer sur une autre instance déjà démarrée :
 
 ---
 
-## 18. Campagnes temporaires
+## 17. Campagnes temporaires
 
 Accessible depuis **Campagnes temporaires** dans le menu.
 
@@ -1565,7 +1537,7 @@ Les actions de campagne sont enregistrées dans le **Journal d'activité** sous 
 
 ---
 
-## 19. Recherche globale
+## 18. Recherche globale
 
 La barre de recherche en haut de l'interface permet de retrouver rapidement n'importe quel contenu de l'administration.
 
@@ -1593,7 +1565,7 @@ Le lien **Tous les résultats →** en bas du menu déroulant, ou la touche Entr
 
 ---
 
-## 20. Gestion des rôles (RBAC)
+## 19. Gestion des rôles (RBAC)
 
 Accessible depuis **Administration → Rôles** dans le menu.
 
@@ -1635,7 +1607,7 @@ Dans la section **Attribution des rôles** de la page, cochez les rôles souhait
 
 ---
 
-## 21. Gestion des fonctionnalités (super-admin)
+## 20. Gestion des fonctionnalités (super-admin)
 
 Accessible depuis **Paramètres → Fonctionnalités** dans le menu de navigation.
 
@@ -1667,7 +1639,7 @@ Cliquez sur le bouton bascule en regard du module concerné. Le changement est i
 
 ---
 
-## 22. Version (super-admin)
+## 21. Version (super-admin)
 
 Accessible depuis **Paramètres → Version** dans le menu de navigation.
 
@@ -1719,7 +1691,7 @@ Pendant une mise à jour ou un redémarrage, l'administration affiche un **overl
 
 ---
 
-## 23. À propos
+## 22. À propos
 
 Accessible depuis **À propos** dans le menu de navigation (tous les utilisateurs connectés).
 

@@ -395,7 +395,7 @@ async function cancelJob(id) {
         titleText: JS_CANCEL_BTN,
         messageText: JS_CONFIRM_CANCEL,
         tone: 'warning',
-        confirmLabel: JS_CANCEL_BTN,
+        confirmLabel: 'OK',
     })) return;
     await fetch(`/queue/cancel/${id}`, { method: 'POST' });
     refreshQueue();

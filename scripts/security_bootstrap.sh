@@ -154,6 +154,16 @@ ensure_secret_key() {
     if env_has_key "$key"; then
         if [ -n "$value" ]; then
             ok "$label present"
+        elif [ "$MODE" = "install" ]; then
+            generated_value="$(generate_secret)" || {
+                error "cannot generate $label"
+                return 1
+            }
+            set_env_value "$key" "$generated_value" || {
+                error "cannot write $label to $ENV_FILE"
+                return 1
+            }
+            fixed "$label generated because it was empty"
         else
             warning "$label present but empty; existing value kept"
         fi
@@ -180,12 +190,12 @@ ensure_optional_generated_key() {
     label="$2"
     value="$(env_value "$key")"
 
-    if env_has_key "$key"; then
+    if env_has_key "$key" && [ -n "$value" ]; then
         ok "$label present"
         return 0
     fi
     if [ "$MODE" = "check" ]; then
-        warning "$label missing"
+        warning "$label missing or empty"
         return 0
     fi
 

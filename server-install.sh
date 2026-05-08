@@ -6,6 +6,7 @@ set -euo pipefail
 REPO_URL="https://github.com/woofix/visio_display.git"
 DEFAULT_INSTALL_DIR="$(pwd)/visio_display"
 DEFAULT_PORT="8081"
+DEFAULT_UPDATE_BRANCH="main"
 
 # ── Colors ────────────────────────────────────────────────────────────────────
 BOLD='\033[1m'
@@ -19,6 +20,19 @@ header() { echo -e "\n${CYAN}${BOLD}==> $1${NC}"; }
 ok()     { echo -e "${GREEN}✓ $1${NC}"; }
 warn()   { echo -e "${YELLOW}⚠ $1${NC}"; }
 die()    { echo -e "${RED}✗ $1${NC}" >&2; exit 1; }
+
+generate_secret() {
+    if command -v python3 >/dev/null 2>&1; then
+        python3 -c 'import secrets; print(secrets.token_urlsafe(48))'
+    elif command -v python >/dev/null 2>&1; then
+        python -c 'import secrets; print(secrets.token_urlsafe(48))'
+    elif command -v openssl >/dev/null 2>&1; then
+        openssl rand -base64 48 | tr -d '\n'
+        echo
+    else
+        die "Cannot generate secrets: install python3 or openssl."
+    fi
+}
 
 # ── Prerequisites ─────────────────────────────────────────────────────────────
 header "Checking prerequisites"
@@ -99,9 +113,10 @@ done
 
 ok "PostgreSQL password configured."
 
-# ── Flask secret key ──────────────────────────────────────────────────────────
-SECRET_KEY="$(python3 -c 'import secrets; print(secrets.token_hex(32))' 2>/dev/null \
-    || openssl rand -hex 32)"
+# ── Application secrets ───────────────────────────────────────────────────────
+SECRET_KEY="$(generate_secret)"
+CLIENT_HEARTBEAT_TOKEN="$(generate_secret)"
+DISPLAY_API_TOKEN="$(generate_secret)"
 
 # ── Data directories ──────────────────────────────────────────────────────────
 header "Data directories"
@@ -137,6 +152,9 @@ PRIVATE_DIR=${PRIVATE_DIR}
 POSTGRES_USER=visio
 POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
 POSTGRES_DB=visio
+CLIENT_HEARTBEAT_TOKEN=${CLIENT_HEARTBEAT_TOKEN}
+DISPLAY_API_TOKEN=${DISPLAY_API_TOKEN}
+VISIO_UPDATE_BRANCH=${DEFAULT_UPDATE_BRANCH}
 COMPOSE_PROJECT_NAME=${PROJECT_NAME}
 EOF
 

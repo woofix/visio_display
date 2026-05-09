@@ -14,18 +14,13 @@ def test_runtime_source_tree_is_web_only():
     assert "COPY translations.py" not in dockerfile
 
 
-def test_root_application_paths_are_controlled_symlinks():
-    expected_links = {
-        "services": WEB_DIR / "services",
-        "templates": WEB_DIR / "templates",
-        "translations.py": WEB_DIR / "translations.py",
-        "tools": WEB_DIR / "tools",
-    }
+def test_root_application_paths_are_not_runtime_shortcuts():
+    removed_shortcuts = ("services", "templates", "translations.py", "tools")
 
-    for name, target in expected_links.items():
+    for name in removed_shortcuts:
         path = ROOT_DIR / name
-        assert path.is_symlink(), f"{name} must be a symlink, not an active runtime copy"
-        assert path.resolve() == target.resolve()
+        assert not path.exists(), f"{name} must live under web/, not at the repository root"
+        assert not path.is_symlink(), f"{name} must not be a root-level runtime symlink"
 
 
 def test_persistent_paths_are_env_source_of_truth():

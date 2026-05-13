@@ -6,7 +6,7 @@ import tempfile
 import types
 import unittest
 from io import BytesIO
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from importlib import import_module
 from unittest.mock import patch
 
@@ -687,6 +687,136 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.get_json()
         self.assertTrue(any(item["name"] == "fallback.jpg" for item in payload))
+
+    def test_api_images_serves_ephemeris_original_not_stale_variant(self):
+        with self.app.app_context():
+            from constants import IMAGE_VARIANT_FOLDER, UPLOAD_FOLDER
+            from services.config_svc import save_config
+            from services.media_svc import get_image_rendition_name
+
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            os.makedirs(IMAGE_VARIANT_FOLDER, exist_ok=True)
+            filename = "ephemeride_2026-05-13_12h.jpg"
+            with open(os.path.join(UPLOAD_FOLDER, filename), "wb") as handle:
+                handle.write(b"fresh-ephemeris")
+            stale_variant = get_image_rendition_name(filename, "large")
+            with open(os.path.join(IMAGE_VARIANT_FOLDER, stale_variant), "wb") as handle:
+                handle.write(b"stale-variant")
+            save_config({"features": {"ephemeris": True}, "order": [filename]})
+
+        with patch("blueprints.api.generate_ephemeride_image", return_value=None):
+            response = self.client.get(
+                "/api/images?w=1920&h=1080",
+                headers={"X-Screen-Token": "screen-secret"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        ephemeris_item = next(item for item in payload if item["name"] == filename)
+        self.assertIn("/static/data/original/ephemeride_2026-05-13_12h.jpg", ephemeris_item["path"])
+        self.assertNotIn("/static/data/variants/", ephemeris_item["path"])
+
+    def test_ephemeris_slot_uses_configured_timezone(self):
+        with self.app.app_context():
+            from services.config_svc import save_config
+            from services import ephemeris_svc
+
+            class FixedDateTime:
+                @classmethod
+                def now(cls, tz=None):
+                    value = datetime(2026, 1, 1, 23, 30, 0, tzinfo=timezone.utc)
+                    if tz is None:
+                        return value.replace(tzinfo=None)
+                    return value.astimezone(tz)
+
+            save_config({"meteo_tz": "Europe/Paris"})
+            with patch.object(ephemeris_svc, "datetime", FixedDateTime):
+                self.assertEqual(ephemeris_svc.get_ephemeride_slot(), "2026-01-02_00h")
+
+            save_config({"meteo_tz": "UTC"})
+            with patch.object(ephemeris_svc, "datetime", FixedDateTime):
+                self.assertEqual(ephemeris_svc.get_ephemeride_slot(), "2026-01-01_22h")
+
+    def test_ephemeris_uses_nameday_instead_of_generic_nominis_celebration(self):
+        with self.app.app_context():
+            from services import ephemeris_svc
+
+            class FakeResponse:
+                def __init__(self, payload):
+                    self.payload = payload
+                    self.text = ""
+
+                def raise_for_status(self):
+                    return None
+
+                def json(self):
+                    return self.payload
+
+            responses = [
+                FakeResponse({
+                    "success": True,
+                    "data": {"fr": "Rolande"},
+                }),
+                FakeResponse({
+                    "response": {
+                        "saintdujour": {
+                            "nom": "Notre-Dame de Fatima",
+                            "description": "Mémoire de Notre-Dame de Fatima",
+                            "contenu": "Notre-Dame de Fatima.",
+                        }
+                    }
+                }),
+            ]
+
+            with patch.object(ephemeris_svc.requests, "get", side_effect=responses):
+                name, description = ephemeris_svc.get_ephemeride_nominis(date(2026, 5, 13))
+
+        self.assertEqual(name, "Rolande")
+        self.assertIn("Fatima", description)
+
+    def test_nameday_cache_is_used_when_online_sources_fail(self):
+        with self.app.app_context():
+            from services import ephemeris_svc
+
+            target_date = date(2026, 5, 18)
+            ephemeris_svc._update_cached_nameday(target_date, "Eric", "test")
+
+            with patch.object(ephemeris_svc.requests, "get", side_effect=RuntimeError("offline")):
+                name = ephemeris_svc.get_nameday_for_date(target_date)
+
+        self.assertEqual(name, "Eric")
+
+    def test_ephemeris_does_not_use_notre_dame_when_nameday_sources_fail(self):
+        with self.app.app_context():
+            from services import ephemeris_svc
+
+            class FakeResponse:
+                text = ""
+
+                def raise_for_status(self):
+                    return None
+
+                def json(self):
+                    return {
+                        "response": {
+                            "saintdujour": {
+                                "nom": "Notre-Dame de Fatima",
+                                "description": "",
+                                "contenu": "Notre-Dame de Fatima.",
+                            }
+                        }
+                    }
+
+            responses = [
+                RuntimeError("nameday offline"),
+                RuntimeError("fetedujour offline"),
+                FakeResponse(),
+            ]
+
+            with patch.object(ephemeris_svc.requests, "get", side_effect=responses):
+                name, _description = ephemeris_svc.get_ephemeride_nominis(date(2026, 5, 13))
+
+        self.assertIsNone(name)
 
     def test_api_halo_returns_effective_screen_halo(self):
         with self.app.app_context():

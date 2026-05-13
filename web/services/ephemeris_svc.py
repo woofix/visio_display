@@ -1,24 +1,53 @@
 # Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 import contextlib
+import json
 import math
 import os
+import re
 import threading
 import unicodedata
 from datetime import date, datetime, timezone, timedelta
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import requests
 from PIL import Image, ImageDraw, ImageFont
 
-from constants import UPLOAD_FOLDER, LAT, LNG, DEFAULT_METEO_VILLE, DEFAULT_METEO_TZ
+from constants import UPLOAD_FOLDER, LAT, LNG, DEFAULT_METEO_VILLE, DEFAULT_METEO_TZ, PRIVATE_DATA_DIR
 from services.config_svc import load_config
 from services.i18n import _t, get_language
 from services.media_svc import strip_html
 from translations import JOURS_BY_LANG, MOIS_BY_LANG, WMO_CODES_BY_LANG
 
 _EPHEMERIS_LOCK = threading.Lock()
-def get_utc_offset():
-    return 2 if 4 <= datetime.now().month <= 10 else 1
+NAMEDAY_CACHE_FILE = os.path.join(PRIVATE_DATA_DIR, "ephemeris_namedays.json")
+
+
+def _configured_zoneinfo(cfg=None):
+    if cfg is None:
+        cfg = load_config()
+    _lat, _lng, tz_name, _ville = _get_meteo_location(cfg)
+    try:
+        return ZoneInfo(str(tz_name or DEFAULT_METEO_TZ))
+    except (ZoneInfoNotFoundError, ValueError, TypeError):
+        return None
+
+
+def _now_for_ephemeris(cfg=None):
+    tz = _configured_zoneinfo(cfg)
+    return datetime.now(tz) if tz else datetime.now()
+
+
+def _today_for_ephemeris(cfg=None):
+    return _now_for_ephemeris(cfg).date()
+
+
+def get_utc_offset(cfg=None):
+    now = _now_for_ephemeris(cfg)
+    offset = now.utcoffset()
+    if offset is None:
+        return 2 if 4 <= now.month <= 10 else 1
+    return int(offset.total_seconds() // 3600)
 
 
 def _get_meteo_location(cfg):
@@ -40,6 +69,128 @@ def _normalize_text(value):
     normalized = unicodedata.normalize("NFKD", str(value))
     normalized = "".join(ch for ch in normalized if not unicodedata.combining(ch))
     return normalized.casefold().strip()
+
+
+def _nameday_key(target_date):
+    return f"{target_date.month:02d}-{target_date.day:02d}"
+
+
+def _load_nameday_cache():
+    try:
+        with open(NAMEDAY_CACHE_FILE, "r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+    except (OSError, json.JSONDecodeError, TypeError, ValueError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _save_nameday_cache(cache):
+    os.makedirs(os.path.dirname(NAMEDAY_CACHE_FILE), exist_ok=True)
+    tmp_path = f"{NAMEDAY_CACHE_FILE}.{os.getpid()}.{threading.get_ident()}.tmp"
+    with open(tmp_path, "w", encoding="utf-8") as handle:
+        json.dump(cache, handle, ensure_ascii=False, indent=2, sort_keys=True)
+    os.replace(tmp_path, NAMEDAY_CACHE_FILE)
+    with contextlib.suppress(OSError):
+        os.chmod(NAMEDAY_CACHE_FILE, 0o600)
+
+
+def _cached_nameday(target_date):
+    entry = _load_nameday_cache().get(_nameday_key(target_date), {})
+    if isinstance(entry, dict):
+        return str(entry.get("name") or "").strip()
+    return str(entry or "").strip()
+
+
+def _update_cached_nameday(target_date, name, source):
+    name = _clean_nameday_candidate(name)
+    if not name:
+        return
+    cache = _load_nameday_cache()
+    cache[_nameday_key(target_date)] = {
+        "name": name,
+        "source": source,
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+    }
+    _save_nameday_cache(cache)
+
+
+def _clean_nameday_candidate(value):
+    name = strip_html(str(value or ""))
+    name = re.sub(r"\s+", " ", name).strip(" .,:;!?\t\r\n")
+    if not name:
+        return ""
+    name = _displayable_saint_name(name)
+    if not name:
+        return ""
+    blocked = {
+        "notre-dame", "notre dame", "assomption", "nativite", "nativité",
+        "toussaint", "ascension", "pentecote", "pentecôte", "rameaux",
+        "paques", "pâques", "epiphanie", "épiphanie", "fatima", "fátima",
+        "notre", "dame", "vierge", "seigneur",
+    }
+    if _normalize_text(name) in blocked:
+        return ""
+    if not re.search(r"[A-Za-zÀ-ÖØ-öø-ÿ]", name):
+        return ""
+    return name[:1].upper() + name[1:]
+
+
+def _first_valid_nameday(value):
+    for raw_part in re.split(r"[,;/]", str(value or "")):
+        candidate = _clean_nameday_candidate(raw_part)
+        if candidate:
+            return candidate
+    return ""
+
+
+def _fetch_nameday_from_abalin(target_date):
+    response = requests.get(
+        "https://nameday.abalin.net/api/V2/date",
+        params={"day": target_date.day, "month": target_date.month, "country": "fr"},
+        timeout=5,
+    )
+    response.raise_for_status()
+    payload = response.json()
+    data = payload.get("data") if isinstance(payload, dict) else {}
+    if isinstance(data, dict):
+        return _first_valid_nameday(data.get("fr"))
+    return ""
+
+
+def _fetch_nameday_from_fetedujour(target_date):
+    month_slugs = {
+        1: "janvier", 2: "fevrier", 3: "mars", 4: "avril",
+        5: "mai", 6: "juin", 7: "juillet", 8: "aout",
+        9: "septembre", 10: "octobre", 11: "novembre", 12: "decembre",
+    }
+    slug = month_slugs.get(target_date.month)
+    if not slug:
+        return ""
+    response = requests.get(f"https://fetedujour.fr/{slug}/", timeout=5)
+    response.raise_for_status()
+    text = response.text
+    pattern = rf"Fête du {target_date.day}\s+[A-Za-zéûîôàèùçÉÛÎÔÀÈÙÇ]+(?:\s*:\s*|\s*</[^>]+>\s*)([^<\n\r]+)"
+    match = re.search(pattern, text, flags=re.IGNORECASE)
+    return _first_valid_nameday(match.group(1)) if match else ""
+
+
+def get_nameday_for_date(target_date=None):
+    target_date = target_date or _today_for_ephemeris()
+    cached = _cached_nameday(target_date)
+    for source, fetcher in (
+        ("nameday.abalin.net", _fetch_nameday_from_abalin),
+        ("fetedujour.fr", _fetch_nameday_from_fetedujour),
+    ):
+        try:
+            online_name = fetcher(target_date)
+        except Exception as exc:
+            print(f"[NAMEDAY ERROR] {source}: {exc}")
+            continue
+        if online_name:
+            if online_name != cached:
+                _update_cached_nameday(target_date, online_name, source)
+            return online_name
+    return cached
 
 
 def _normalize_school_zone(zone):
@@ -139,7 +290,7 @@ def get_next_school_holiday(cfg=None):
     zone_label = f"Zone {zone}" if zone in {"A", "B", "C"} else zone
     normalized_zone_label = _normalize_text(zone_label)
     try:
-        today = date.today()
+        today = _today_for_ephemeris(cfg)
         today_iso = today.isoformat()
         best = None
         endpoints = (
@@ -339,8 +490,8 @@ def _draw_left_lines(draw, left_x, top_y, lines, font, fill, line_gap=8):
     return y
 
 
-def get_ephemeride_slot():
-    now  = datetime.now()
+def get_ephemeride_slot(cfg=None):
+    now  = _now_for_ephemeris(cfg)
     slot = (now.hour // 2) * 2
     return now.strftime(f"%Y-%m-%d_{slot:02d}h")
 
@@ -390,7 +541,8 @@ def _extract_modern_name(contenu):
 
 
 def get_ephemeride_nominis(target_date=None):
-    target_date = target_date or date.today()
+    target_date = target_date or _today_for_ephemeris()
+    nameday = get_nameday_for_date(target_date)
     url = "https://nominis.cef.fr/json/saintdujour.php"
     try:
         r = requests.get(url, timeout=5)
@@ -401,12 +553,12 @@ def get_ephemeride_nominis(target_date=None):
         if traditional_name:
             desc = strip_html(saint.get("description", "")).strip()
             modern = _extract_modern_name(saint.get("contenu", ""))
-            display = modern or _displayable_saint_name(traditional_name) or traditional_name
-            return display, desc
-        return None, ""
+            display = nameday or _clean_nameday_candidate(modern) or _clean_nameday_candidate(traditional_name)
+            return display or None, desc
+        return nameday or None, ""
     except Exception as e:
         print("[NOMINIS ERROR]", e)
-        return None, ""
+        return nameday or None, ""
 
 
 def get_sun_times(cfg=None):
@@ -421,7 +573,7 @@ def get_sun_times(cfg=None):
         )
         r.raise_for_status()
         data    = r.json()["results"]
-        tz      = timezone(timedelta(hours=get_utc_offset()))
+        tz      = _configured_zoneinfo(cfg) or timezone(timedelta(hours=get_utc_offset(cfg)))
         lever   = datetime.fromisoformat(data["sunrise"]).astimezone(tz).strftime("%H:%M")
         coucher = datetime.fromisoformat(data["sunset"]).astimezone(tz).strftime("%H:%M")
         return lever, coucher
@@ -592,8 +744,9 @@ def generate_ephemeride_image(force=False):
     lang  = get_language()
     JOURS = JOURS_BY_LANG.get(lang, JOURS_BY_LANG['fr'])
     MOIS  = MOIS_BY_LANG.get(lang, MOIS_BY_LANG['fr'])
+    cfg   = load_config()
 
-    slot     = get_ephemeride_slot()
+    slot     = get_ephemeride_slot(cfg)
     filename = f"ephemeride_{slot}.jpg"
     path     = os.path.join(UPLOAD_FOLDER, filename)
 
@@ -609,12 +762,11 @@ def generate_ephemeride_image(force=False):
                 with contextlib.suppress(OSError):
                     os.remove(os.path.join(UPLOAD_FOLDER, f))
 
-        cfg              = load_config()
         nom, description = get_ephemeride_nominis()
         lever, coucher   = get_sun_times(cfg)
         meteo            = get_meteo(cfg)
         school_holiday   = get_next_school_holiday(cfg)
-        today            = date.today()
+        today            = _today_for_ephemeris(cfg)
         date_str         = f"{JOURS[today.weekday()]} {today.day} {MOIS[today.month]} {today.year}"
 
         img  = Image.new("RGB", (1920, 1080), (0, 0, 0))

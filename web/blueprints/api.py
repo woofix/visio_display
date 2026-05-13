@@ -48,6 +48,8 @@ def _requested_display_bounds():
 
 
 def _media_path(filename, media_type, bounds):
+    if filename.startswith('ephemeride_'):
+        return get_original_media_url(filename)
     return get_media_url(
         filename,
         context='display',

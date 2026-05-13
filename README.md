@@ -38,12 +38,14 @@ Application web légère de signalétique numérique. Elle affiche un diaporama 
 - Sélecteur d'écran intégré à la page d'affichage public — barre flottante en bas, permet de basculer d'écran sans retaper l'URL
 - Tableau de bord : la carte **Prévisualiser** affiche un bouton par écran pour ouvrir directement le diaporama correspondant dans un nouvel onglet
 - Médiathèque : bouton **Prévisualiser** à droite de la barre d'écrans pour ouvrir une fenêtre d'aperçu de l'écran actif
+- Diffusion d'une liste d'écran vers d'autres écrans : ordre, activations, groupes désactivés, durées et programmations sont copiés vers les cibles sélectionnées
 
 **Groupes de médias**
 - Taguer les médias avec un ou plusieurs groupes libres (ex. `menu`, `infos`, `urgences`)
 - Activer ou désactiver tous les médias d'un groupe d'un seul clic depuis la médiathèque
 - Les groupes sont indépendants par écran (désactivation individuelle ou par groupe)
 - Liaison écrans : chaque groupe peut être restreint à un ou plusieurs écrans spécifiques — sans liaison il est global (visible sur tous les écrans)
+- Tirage par groupe : définir combien de médias d'un groupe sont affichés par passage (`0` = tous)
 
 **Campagnes temporaires**
 - Créer des campagnes événementielles ciblant des groupes et/ou des médias précis
@@ -401,7 +403,7 @@ L'interface conserve automatiquement uniquement les **5 sauvegardes les plus ré
 - Accès complet à toutes les fonctionnalités, seul compte ne pouvant pas être supprimé
 - Peut forcer l'encodage vidéo hors de la fenêtre nocturne
 - Peut personnaliser le nom de l'application
-- Accède au panneau dédié sur `/admin/superadmin`
+- Gère les comptes, permissions, écrans, sauvegardes et réglages globaux depuis les sections de **Paramètres**
 
 **Utilisateurs réguliers**
 - Créés par le super-admin, aucune permission par défaut
@@ -421,7 +423,7 @@ L'interface conserve automatiquement uniquement les **5 sauvegardes les plus ré
 
 ### Restrictions d'écrans par utilisateur
 
-Depuis `/admin/superadmin`, le super-admin peut limiter chaque utilisateur à un sous-ensemble d'écrans nommés. Un utilisateur restreint ne voit que ses écrans autorisés dans la médiathèque et ne peut pas modifier les autres.
+Depuis `Paramètres > Administration` / `Paramètres > Comptes & permissions`, le super-admin peut limiter chaque utilisateur à un sous-ensemble d'écrans nommés. Un utilisateur restreint ne voit que ses écrans autorisés dans la médiathèque et ne peut pas modifier les autres.
 
 - Laisser toutes les cases décochées = accès à tous les écrans (comportement par défaut)
 - Cocher un ou plusieurs écrans = accès limité à ces écrans uniquement
@@ -429,13 +431,14 @@ Depuis `/admin/superadmin`, le super-admin peut limiter chaque utilisateur à un
 
 ### Gestion des écrans multiples
 
-Les écrans sont créés depuis la médiathèque (`/admin/media`). Chaque écran nommé est accessible en lecture à l'adresse `/?screen=<nom>&screen_token=<DISPLAY_API_TOKEN>`.
+Les écrans sont créés depuis `Paramètres > Gestion des écrans`. Chaque écran nommé est accessible en lecture à l'adresse `/?screen=<nom>&screen_token=<DISPLAY_API_TOKEN>`.
 
 - Les noms d'écran sont limités à 1–32 caractères (minuscules, chiffres, tirets, underscores)
 - Les noms réservés (`default`, `admin`, `api`, `static`, `login`, `logout`) ne peuvent pas être utilisés
 - Un même média peut appartenir à plusieurs écrans simultanément
 - Chaque écran hérite des médias assignés mais dispose de son propre ordre, ses désactivations, durées et programmations
 - Le super-admin peut renommer l'écran par défaut côté interface et définir une couleur de halo par écran
+- Un utilisateur autorisé peut diffuser la liste d'un écran vers d'autres écrans accessibles ; les modifications ultérieures de la source sont propagées tant que la diffusion reste active
 
 ### Assignation des médias aux écrans
 
@@ -460,14 +463,10 @@ Visio-Display/
 ├── .env                         # Créé/local, non versionné
 ├── LICENSE
 ├── README.md
-├── services -> web/services     # Lien de compatibilité, non source runtime
-├── templates -> web/templates   # Lien de compatibilité, non source runtime
-├── translations.py -> web/translations.py
-├── tools -> web/tools           # Lien de compatibilité, non source runtime
 └── web/
     ├── app.py                   # Flask factory (create_app)
     ├── wsgi.py                  # Point d'entrée Gunicorn
-    ├── db.py                    # Modèles SQLAlchemy (AppConfig, User, EncodeJob)
+    ├── db.py                    # Modèles SQLAlchemy (configuration, utilisateurs, rôles, jobs, journal, recherche, clients)
     ├── constants.py             # Constantes partagées
     ├── translations.py          # Traductions FR/EN
     ├── encode_now.py            # Encodage vidéo (exécuté par le worker RQ)
@@ -525,7 +524,7 @@ Visio-Display/
         ├── admin_roles.html     # Gestion des rôles RBAC
         ├── admin_search.html    # Page de résultats de la recherche globale
         ├── admin_settings.html  # Logo, thème, langue, mot de passe, événements, météo, fonctionnalités
-        ├── admin_superadmin.html # Gestion des comptes, permissions et écrans
+        ├── admin_settings_*.html # Sections spécialisées des paramètres
         ├── admin_upload.html    # Import de médias + suivi d'encodage
         ├── admin_version.html   # Version, mise à jour serveur et redémarrage Docker
         └── admin_wiki.html      # Page d'aide intégrée
@@ -549,6 +548,8 @@ Visio-Display/
 | `/api/client-heartbeat`                   | POST    | `CLIENT_HEARTBEAT_TOKEN` | Remontée d'état d'un client d'affichage              |
 | `/api/priority-alert`                     | GET     | `DISPLAY_API_TOKEN` | Message d'alerte prioritaire en cours                |
 | `/api/queue`                              | GET     | Connecté           | État de la file d'encodage (compression + upload)    |
+| `/api/activity`                           | GET     | Connecté           | Dernières entrées du journal d'activité              |
+| `/api/search`                             | GET     | Connecté           | Résultats JSON de la recherche globale               |
 | `/upload`                                 | POST    | `upload`           | Importer des fichiers (retourne JSON + jobs d'encodage) |
 | `/delete/<filename>`                      | POST    | `delete`           | Supprimer un fichier                                 |
 | `/toggle/<filename>`                      | POST    | `toggle`           | Activer / désactiver un fichier                      |
@@ -557,24 +558,36 @@ Visio-Display/
 | `/set_groups/<filename>`                  | POST    | `toggle`           | Définir les groupes/tags d'un média                  |
 | `/toggle_group/<group_name>`              | POST    | `toggle`           | Activer / désactiver tous les médias d'un groupe     |
 | `/set_group_screens/<group_name>`         | POST    | `toggle`           | Lier un groupe à des écrans spécifiques (liste vide = global) |
+| `/set_group_pool/<group_name>`            | POST    | `toggle`           | Définir le tirage par passage d'un groupe            |
 | `/compress/<filename>`                    | POST    | `compress`         | Mettre une vidéo en file de compression              |
 | `/queue/cancel/<job_id>`                  | POST    | `compress`         | Annuler un job en attente                            |
+| `/queue/clear-recent`                     | POST    | `compress`         | Masquer les jobs récents terminés                    |
 | `/regen_ephemeride`                       | POST    | Super-admin        | Déclencher manuellement la régénération de l'éphéméride (compatibilité / usage interne) |
 | `/schedule/<filename>`                    | POST    | `schedule`         | Définir la programmation horaire/date d'un média     |
+| `/programming/save`                       | POST    | `schedule`         | Créer ou modifier une plage depuis la page dédiée    |
+| `/programming/delete`                     | POST    | `schedule`         | Supprimer une plage depuis la page dédiée            |
 | `/screen_assign/<filename>`               | POST    | `toggle`           | Assigner / retirer un média d'un écran nommé         |
-| `/admin/screens/add`                      | POST    | Connecté           | Créer un écran nommé                                 |
-| `/admin/screens/delete/<name>`            | POST    | Connecté           | Supprimer un écran nommé                             |
+| `/admin/screens/add`                      | POST    | Super-admin        | Créer un écran nommé                                 |
+| `/admin/screens/delete/<name>`            | POST    | Super-admin        | Supprimer un écran nommé                             |
 | `/admin/screens/default-name`             | POST    | Super-admin        | Renommer l'écran par défaut dans l'interface         |
 | `/admin/screens/halo`                     | POST    | Super-admin        | Définir la couleur de halo d'un écran                |
+| `/admin/screens/broadcast`                | POST    | Connecté + accès écran | Diffuser une liste d'écran vers d'autres écrans   |
+| `/admin/screens/broadcast/stop`           | POST    | Connecté + accès écran | Arrêter la diffusion liée à un écran source       |
+| `/admin/campaigns`                        | GET     | Connecté           | Page des campagnes temporaires                       |
 | `/admin/campaigns/create`                 | POST    | `schedule` ou `toggle` | Créer une campagne temporaire                     |
 | `/admin/campaigns/<id>/update`            | POST    | `schedule` ou `toggle` | Modifier une campagne                             |
 | `/admin/campaigns/<id>/toggle`            | POST    | `schedule` ou `toggle` | Activer/désactiver une campagne                   |
 | `/admin/campaigns/<id>/duplicate`         | POST    | `schedule` ou `toggle` | Dupliquer une campagne                            |
+| `/admin/campaigns/<id>/delete`            | POST    | `schedule` ou `toggle` | Supprimer une campagne                            |
 | `/admin/campaigns/<id>/archive`           | POST    | `schedule` ou `toggle` | Archiver/restaurer une campagne                   |
+| `/admin/settings`                         | GET     | Connecté           | Page Paramètres, section par défaut ou `?tab=`       |
+| `/admin/settings/<section>`               | GET     | Connecté           | Section spécialisée des paramètres                   |
 | `/admin/settings/client-watchdog`         | POST    | Super-admin        | Configurer le watchdog des clients kiosque           |
 | `/admin/settings/known-clients`           | GET     | Super-admin        | Liste JSON des clients détectés                      |
 | `/admin/settings/install-client`          | POST    | Super-admin        | Installer/réinstaller un client distant via SSH      |
 | `/admin/settings/client-power`            | POST    | Super-admin        | Arrêter, redémarrer, réinstaller ou mettre à jour un client |
+| `/admin/settings/backups/create`          | POST    | Super-admin        | Créer une sauvegarde puis revenir aux paramètres     |
+| `/admin/settings/backups/remote`          | POST    | Super-admin        | Enregistrer la destination SMB des sauvegardes       |
 | `/admin/settings/backups/create-stream`   | POST    | Super-admin        | Créer une sauvegarde avec progression NDJSON         |
 | `/admin/settings/backups/download/<file>` | GET     | Super-admin        | Télécharger une sauvegarde                           |
 | `/admin/settings/backups/copy/<file>`     | POST    | Super-admin        | Copier une sauvegarde vers SMB                       |
@@ -584,16 +597,24 @@ Visio-Display/
 | `/admin/settings/language`                | POST    | Connecté           | Changer la langue de l'interface (fr/en)             |
 | `/admin/settings/appname`                 | POST    | Super-admin        | Personnaliser le nom de l'application                |
 | `/admin/settings/meteo`                   | POST    | Super-admin        | Configurer la localisation météo (ville, GPS, fuseau) |
+| `/admin/features`                         | GET     | Super-admin        | Rediriger vers la section Fonctionnalités             |
 | `/admin/features/toggle`                  | POST    | Super-admin        | Activer ou désactiver un module fonctionnel          |
 | `/admin/logo/upload`                      | POST    | `logo`             | Uploader un logo personnalisé                        |
 | `/admin/logo/reset`                       | POST    | `logo`             | Réinitialiser le logo par défaut                     |
 | `/admin/users/add`                        | POST    | Super-admin        | Créer un compte utilisateur                          |
+| `/admin/users/create`                     | POST    | Super-admin        | Alias de création d'un compte utilisateur            |
+| `/admin/users`                            | GET/POST | Super-admin       | Redirection vers les paramètres / alias de création  |
 | `/admin/users/delete/<username>`          | POST    | Super-admin        | Supprimer un compte utilisateur                      |
 | `/admin/users/permissions/<username>`     | POST    | Super-admin        | Mettre à jour les permissions directes               |
 | `/admin/users/screens/<username>`         | POST    | Super-admin        | Définir les écrans accessibles à un utilisateur      |
 | `/admin/users/<username>/roles`           | POST    | Super-admin        | Attribuer des rôles RBAC à un utilisateur            |
 | `/admin/users/password`                   | POST    | Connecté           | Modifier son propre mot de passe                     |
 | `/admin/users/reset_password/<username>`  | POST    | Super-admin        | Réinitialiser le mot de passe d'un utilisateur       |
+| `/admin/users/reset_password`             | POST    | Super-admin        | Réinitialiser le mot de passe d'un utilisateur choisi |
+| `/admin/search`                           | GET     | Connecté           | Page complète de recherche globale                   |
+| `/admin/activity`                         | GET     | Connecté           | Page du journal d'activité                           |
+| `/admin/activity/settings`                | POST    | Super-admin        | Modifier la rétention du journal                     |
+| `/admin/activity/purge`                   | POST    | Super-admin        | Purger une partie ou tout le journal                 |
 | `/admin/roles`                            | GET     | Super-admin        | Page de gestion des rôles                            |
 | `/admin/roles/create`                     | POST    | Super-admin        | Créer un rôle                                        |
 | `/admin/roles/<id>/edit`                  | POST    | Super-admin        | Modifier le nom/description d'un rôle                |
@@ -622,7 +643,9 @@ Visio-Display/
 }
 ```
 
-### Format de `config.json`
+### Structure de la configuration applicative
+
+La configuration ci-dessous est stockée en PostgreSQL dans la table `app_config`. Les exemples montrent la forme JSON interne utilisée par l'application ; il ne s'agit plus d'un fichier `config.json` à modifier à la main.
 
 **Programmation (`schedules`)**
 
@@ -643,7 +666,7 @@ Visio-Display/
 
 Les quatre champs (`time_start`, `time_end`, `date_start`, `date_end`) sont tous optionnels et combinables. Un média sans entrée dans `schedules` s'affiche toujours.
 
-**Groupes (`groups`, `group_screens`)**
+**Groupes (`groups`, `group_screens`, `group_pools`)**
 
 ```json
 {
@@ -655,11 +678,14 @@ Les quatre champs (`time_start`, `time_end`, `date_start`, `date_end`) sont tous
     "menu": ["", "cafeteria"],
     "infos": ["hall"]
   },
+  "group_pools": {
+    "infos": 3
+  },
   "disabled_groups": ["urgences"]
 }
 ```
 
-Chaque média peut appartenir à zéro, un ou plusieurs groupes. `disabled_groups` liste les groupes dont tous les médias sont masqués. `group_screens` restreint un groupe à des écrans spécifiques — `""` désigne l'écran par défaut ; une entrée absente ou liste vide = groupe global (visible sur tous les écrans).
+Chaque média peut appartenir à zéro, un ou plusieurs groupes. `disabled_groups` liste les groupes dont tous les médias sont masqués. `group_screens` restreint un groupe à des écrans spécifiques — `""` désigne l'écran par défaut ; une entrée absente ou liste vide = groupe global (visible sur tous les écrans). `group_pools` définit le nombre de médias à tirer dans un groupe à chaque passage ; une valeur absente ou `0` affiche tout le groupe.
 
 **Campagnes temporaires (`campaigns`)**
 
@@ -723,27 +749,21 @@ Une campagne active et non archivée peut cibler des groupes, des médias isolé
 }
 ```
 
-### Stockage des données
-
-Les médias uploadés et leurs rendus sont stockés dans le dossier hôte défini par `MEDIA_DIR`. Les données privées d’exécution (sauvegardes, cache de version, fichiers privés) vivent dans le dossier hôte défini par `PRIVATE_DIR`. Ces deux variables sont obligatoires dans `.env`; la stack Docker et les scripts de sauvegarde/restauration refusent de continuer si elles sont absentes. Dans le conteneur, ces dossiers sont montés sur `/app/static/data` et `/app/data`; ces chemins sont des points de montage internes, pas une configuration applicative alternative. La configuration applicative, les utilisateurs, les rôles, le journal et les jobs sont stockés en PostgreSQL.
+**Diffusion d'écran (`broadcast_links`)**
 
 ```json
 {
-  "alice": {
-    "password_hash": "<bcrypt>",
-    "superadmin":  true,
-    "permissions": []
-  },
-  "bob": {
-    "password_hash": "<bcrypt>",
-    "superadmin":  false,
-    "permissions": ["upload", "toggle", "duration"],
-    "screens":     ["hall", "refectoire"]
+  "broadcast_links": {
+    "hall": ["cafeteria", "accueil"]
   }
 }
 ```
 
-Le champ `screens` est optionnel. Absent ou `null` = accès à tous les écrans. Une liste vide ou un sous-ensemble = accès restreint aux écrans listés.
+Une entrée signifie que la liste de l'écran source est diffusée vers les écrans cibles. L'ordre, les désactivations, les groupes désactivés, les durées et les programmations sont propagés vers les cibles accessibles.
+
+### Stockage des données
+
+Les médias uploadés et leurs rendus sont stockés dans le dossier hôte défini par `MEDIA_DIR`. Les données privées d’exécution (sauvegardes, cache de version, fichiers privés) vivent dans le dossier hôte défini par `PRIVATE_DIR`. Ces deux variables sont obligatoires dans `.env`; la stack Docker et les scripts de sauvegarde/restauration refusent de continuer si elles sont absentes. Dans le conteneur, ces dossiers sont montés sur `/app/static/data` et `/app/data`; ces chemins sont des points de montage internes, pas une configuration applicative alternative. La configuration applicative, les utilisateurs, les rôles, le journal et les jobs sont stockés en PostgreSQL.
 
 ### Rétention du journal d'activité
 
@@ -805,12 +825,14 @@ A lightweight web-based digital signage. It displays a fullscreen slideshow of i
 - Built-in screen selector on the public display page — floating bar at the bottom, switch screens without retyping the URL
 - Dashboard: the **Preview** card shows one button per screen to open the corresponding slideshow directly in a new tab
 - Media library: **Preview** button on the right side of the screen bar opens a preview window for the active screen
+- Broadcast a screen list to other screens: order, enabled/disabled states, disabled groups, durations and schedules are copied to selected targets
 
 **Media groups**
 - Tag media items with one or more free-form groups (e.g. `menu`, `news`, `alerts`)
 - Enable or disable all media in a group with a single click from the media library
 - Groups are independent per screen (individual or group-level disabling)
 - Screen linking: each group can be restricted to one or more specific screens — with no link it is global (visible on all screens)
+- Group pool size: choose how many items from a group are shown per cycle (`0` = all)
 
 **Temporary campaigns**
 - Create event-based campaigns targeting specific groups and/or media items
@@ -1098,7 +1120,7 @@ If there is only one super-admin account, you can omit `--user <super-admin-name
 - Full access to every feature, the only account that cannot be deleted
 - Can force video encoding outside the overnight window
 - Can customize the application name
-- Accesses the dedicated panel at `/admin/superadmin`
+- Manages accounts, permissions, screens, backups and global settings from **Settings** sections
 
 **Regular users**
 - Created by the super-admin, no permissions by default
@@ -1118,7 +1140,7 @@ If there is only one super-admin account, you can omit `--user <super-admin-name
 
 ### Per-screen access restrictions
 
-From `/admin/superadmin`, the super-admin can restrict each user to a subset of named screens. A restricted user only sees their allowed screens in the media library and cannot modify others.
+From `Settings > Administration` / `Settings > Accounts & permissions`, the super-admin can restrict each user to a subset of named screens. A restricted user only sees their allowed screens in the media library and cannot modify others.
 
 - All boxes unchecked = access to all screens (default behaviour)
 - One or more boxes checked = access limited to those screens only
@@ -1126,13 +1148,14 @@ From `/admin/superadmin`, the super-admin can restrict each user to a subset of 
 
 ### Multi-screen management
 
-Screens are created from the media library (`/admin/media`). Each named screen is accessible at `/?screen=<name>&screen_token=<DISPLAY_API_TOKEN>`.
+Screens are created from `Settings > Screen management`. Each named screen is accessible at `/?screen=<name>&screen_token=<DISPLAY_API_TOKEN>`.
 
 - Screen names are limited to 1–32 characters (lowercase letters, digits, hyphens, underscores)
 - Reserved names (`default`, `admin`, `api`, `static`, `login`, `logout`) cannot be used
 - A single media item can be assigned to multiple screens at once
 - Each screen inherits the assigned media but has its own order, disabled list, durations, and schedules
 - The super-admin can rename the default screen in the interface and set a per-screen halo color
+- An authorized user can broadcast one screen list to other accessible screens; later source changes keep propagating while the broadcast link stays active
 
 ### Assigning media to screens
 
@@ -1157,14 +1180,10 @@ Visio-Display/
 ├── .env                         # Created locally, not versioned
 ├── LICENSE
 ├── README.md
-├── services -> web/services     # Compatibility link, not a runtime source
-├── templates -> web/templates   # Compatibility link, not a runtime source
-├── translations.py -> web/translations.py
-├── tools -> web/tools           # Compatibility link, not a runtime source
 └── web/
     ├── app.py                   # Flask factory (create_app)
     ├── wsgi.py                  # Gunicorn entry point
-    ├── db.py                    # SQLAlchemy models (AppConfig, User, EncodeJob)
+    ├── db.py                    # SQLAlchemy models (config, users, roles, jobs, activity, search, clients)
     ├── constants.py             # Shared constants
     ├── translations.py          # FR/EN translations
     ├── encode_now.py            # Video encoding (run by the RQ worker)
@@ -1222,7 +1241,7 @@ Visio-Display/
         ├── admin_roles.html     # RBAC role management
         ├── admin_search.html    # Global search results page
         ├── admin_settings.html  # Logo, theme, language, password, events, weather, features
-        ├── admin_superadmin.html # Account, permission and screen management
+        ├── admin_settings_*.html # Specialized settings sections
         ├── admin_upload.html    # Media import + encoding progress
         ├── admin_version.html   # Version, server update and Docker restart
         └── admin_wiki.html      # Built-in help page
@@ -1246,6 +1265,8 @@ Visio-Display/
 | `/api/client-heartbeat`                   | POST    | `CLIENT_HEARTBEAT_TOKEN` | Display client status heartbeat                         |
 | `/api/priority-alert`                     | GET     | `DISPLAY_API_TOKEN` | Current priority alert message                          |
 | `/api/queue`                              | GET     | Logged in          | Encoding queue state (compression + upload jobs)        |
+| `/api/activity`                           | GET     | Logged in          | Latest activity log entries                             |
+| `/api/search`                             | GET     | Logged in          | JSON global search results                              |
 | `/upload`                                 | POST    | `upload`           | Upload files (returns JSON with encoding job list)      |
 | `/delete/<filename>`                      | POST    | `delete`           | Delete a file                                           |
 | `/toggle/<filename>`                      | POST    | `toggle`           | Enable / disable a file                                 |
@@ -1254,24 +1275,36 @@ Visio-Display/
 | `/set_groups/<filename>`                  | POST    | `toggle`           | Set groups/tags for a media item                        |
 | `/toggle_group/<group_name>`              | POST    | `toggle`           | Enable / disable all media in a group                   |
 | `/set_group_screens/<group_name>`         | POST    | `toggle`           | Link a group to specific screens (empty list = global)  |
+| `/set_group_pool/<group_name>`            | POST    | `toggle`           | Set the per-cycle pool size for a group                 |
 | `/compress/<filename>`                    | POST    | `compress`         | Queue a video for compression                           |
 | `/queue/cancel/<job_id>`                  | POST    | `compress`         | Cancel a pending compression job                        |
+| `/queue/clear-recent`                     | POST    | `compress`         | Hide completed recent jobs                              |
 | `/regen_ephemeride`                       | POST    | Super-admin        | Manually trigger ephemeris card regeneration (compatibility / internal use) |
 | `/schedule/<filename>`                    | POST    | `schedule`         | Set time/date scheduling for a media item               |
+| `/programming/save`                       | POST    | `schedule`         | Create or update a schedule from the dedicated page     |
+| `/programming/delete`                     | POST    | `schedule`         | Delete a schedule from the dedicated page               |
 | `/screen_assign/<filename>`               | POST    | `toggle`           | Assign / remove a media item from a named screen        |
-| `/admin/screens/add`                      | POST    | Logged in          | Create a named screen                                   |
-| `/admin/screens/delete/<name>`            | POST    | Logged in          | Delete a named screen                                   |
+| `/admin/screens/add`                      | POST    | Super-admin        | Create a named screen                                   |
+| `/admin/screens/delete/<name>`            | POST    | Super-admin        | Delete a named screen                                   |
 | `/admin/screens/default-name`             | POST    | Super-admin        | Rename the default screen in the interface              |
 | `/admin/screens/halo`                     | POST    | Super-admin        | Set the halo color for a screen                         |
+| `/admin/screens/broadcast`                | POST    | Logged in + screen access | Broadcast a screen list to other screens          |
+| `/admin/screens/broadcast/stop`           | POST    | Logged in + screen access | Stop the broadcast link for a source screen       |
+| `/admin/campaigns`                        | GET     | Logged in          | Temporary campaign page                                 |
 | `/admin/campaigns/create`                 | POST    | `schedule` or `toggle` | Create a temporary campaign                         |
 | `/admin/campaigns/<id>/update`            | POST    | `schedule` or `toggle` | Update a campaign                                   |
 | `/admin/campaigns/<id>/toggle`            | POST    | `schedule` or `toggle` | Enable/disable a campaign                           |
 | `/admin/campaigns/<id>/duplicate`         | POST    | `schedule` or `toggle` | Duplicate a campaign                                |
+| `/admin/campaigns/<id>/delete`            | POST    | `schedule` or `toggle` | Delete a campaign                                   |
 | `/admin/campaigns/<id>/archive`           | POST    | `schedule` or `toggle` | Archive/restore a campaign                          |
+| `/admin/settings`                         | GET     | Logged in          | Settings page, default section or `?tab=`              |
+| `/admin/settings/<section>`               | GET     | Logged in          | Specialized settings section                           |
 | `/admin/settings/client-watchdog`         | POST    | Super-admin        | Configure kiosk client watchdog                         |
 | `/admin/settings/known-clients`           | GET     | Super-admin        | JSON list of detected clients                           |
 | `/admin/settings/install-client`          | POST    | Super-admin        | Install/reinstall a remote client over SSH              |
 | `/admin/settings/client-power`            | POST    | Super-admin        | Shut down, restart, reinstall, or update a client       |
+| `/admin/settings/backups/create`          | POST    | Super-admin        | Create a backup then return to settings                 |
+| `/admin/settings/backups/remote`          | POST    | Super-admin        | Save the SMB backup destination                         |
 | `/admin/settings/backups/create-stream`   | POST    | Super-admin        | Create a backup with NDJSON progress                    |
 | `/admin/settings/backups/download/<file>` | GET     | Super-admin        | Download a backup archive                               |
 | `/admin/settings/backups/copy/<file>`     | POST    | Super-admin        | Copy a backup to SMB                                    |
@@ -1281,16 +1314,24 @@ Visio-Display/
 | `/admin/settings/language`                | POST    | Logged in          | Change the UI language (fr/en)                          |
 | `/admin/settings/appname`                 | POST    | Super-admin        | Set the application name                                |
 | `/admin/settings/meteo`                   | POST    | Super-admin        | Configure weather location (city, GPS, timezone)        |
+| `/admin/features`                         | GET     | Super-admin        | Redirect to the Features settings section               |
 | `/admin/features/toggle`                  | POST    | Super-admin        | Enable or disable a feature module                      |
 | `/admin/logo/upload`                      | POST    | `logo`             | Upload a custom logo                                    |
 | `/admin/logo/reset`                       | POST    | `logo`             | Reset to default logo                                   |
 | `/admin/users/add`                        | POST    | Super-admin        | Create a user account                                   |
+| `/admin/users/create`                     | POST    | Super-admin        | User creation alias                                     |
+| `/admin/users`                            | GET/POST | Super-admin       | Redirect to settings / user creation alias              |
 | `/admin/users/delete/<username>`          | POST    | Super-admin        | Delete a user account                                   |
 | `/admin/users/permissions/<username>`     | POST    | Super-admin        | Update a user's direct permissions                      |
 | `/admin/users/screens/<username>`         | POST    | Super-admin        | Set accessible screens for a user                       |
 | `/admin/users/<username>/roles`           | POST    | Super-admin        | Assign RBAC roles to a user                             |
 | `/admin/users/password`                   | POST    | Logged in          | Change own password                                     |
 | `/admin/users/reset_password/<username>`  | POST    | Super-admin        | Reset another user's password                           |
+| `/admin/users/reset_password`             | POST    | Super-admin        | Reset the password for a selected user                  |
+| `/admin/search`                           | GET     | Logged in          | Full global search page                                 |
+| `/admin/activity`                         | GET     | Logged in          | Activity log page                                       |
+| `/admin/activity/settings`                | POST    | Super-admin        | Update activity log retention                           |
+| `/admin/activity/purge`                   | POST    | Super-admin        | Purge part or all of the activity log                   |
 | `/admin/roles`                            | GET     | Super-admin        | Role management page                                    |
 | `/admin/roles/create`                     | POST    | Super-admin        | Create a role                                           |
 | `/admin/roles/<id>/edit`                  | POST    | Super-admin        | Update a role name / description                        |
@@ -1319,7 +1360,9 @@ Visio-Display/
 }
 ```
 
-### `config.json` format
+### Application configuration structure
+
+The configuration below is stored in PostgreSQL in the `app_config` table. The examples show the internal JSON shape used by the application; there is no longer a `config.json` file to edit by hand.
 
 **Scheduling (`schedules`)**
 
@@ -1340,7 +1383,7 @@ Visio-Display/
 
 All four fields (`time_start`, `time_end`, `date_start`, `date_end`) are optional and combinable. A media item with no entry in `schedules` is always displayed.
 
-**Groups (`groups`, `group_screens`)**
+**Groups (`groups`, `group_screens`, `group_pools`)**
 
 ```json
 {
@@ -1352,11 +1395,14 @@ All four fields (`time_start`, `time_end`, `date_start`, `date_end`) are optiona
     "menu": ["", "cafeteria"],
     "news": ["hall"]
   },
+  "group_pools": {
+    "news": 3
+  },
   "disabled_groups": ["alerts"]
 }
 ```
 
-Each media item can belong to zero, one or several groups. `disabled_groups` lists groups whose media are all hidden. `group_screens` restricts a group to specific screens — `""` refers to the default screen; a missing entry or empty list = global group (visible on all screens).
+Each media item can belong to zero, one or several groups. `disabled_groups` lists groups whose media are all hidden. `group_screens` restricts a group to specific screens — `""` refers to the default screen; a missing entry or empty list = global group (visible on all screens). `group_pools` defines how many items from a group are picked per cycle; a missing value or `0` shows the whole group.
 
 **Temporary campaigns (`campaigns`)**
 
@@ -1420,6 +1466,18 @@ An empty or absent `message` means no banner is displayed.
 }
 ```
 
+**Screen broadcast (`broadcast_links`)**
+
+```json
+{
+  "broadcast_links": {
+    "hall": ["cafeteria", "reception"]
+  }
+}
+```
+
+An entry means the source screen list is broadcast to the target screens. Order, disabled items, disabled groups, durations and schedules are propagated to accessible targets.
+
 ### Data storage
 
 Application configuration, users, roles, activity log entries and jobs are stored in PostgreSQL when using the Docker stack. Uploaded media live in the host directory defined by `MEDIA_DIR`; private runtime files such as backups and the version cache live in the host directory defined by `PRIVATE_DIR`. Both variables are required in `.env`; the Docker stack and backup/restore scripts refuse to continue when they are absent. Inside the container these directories are mounted at `/app/static/data` and `/app/data`; those are internal mount points, not alternate application configuration.
@@ -1455,24 +1513,6 @@ The super-admin can also manage backups from the web interface in `Settings > Ba
 - restore it on another running instance with `Restore now`
 
 Only the **5 most recent backups** are kept automatically in the web interface. When a new archive is created, older ones are removed.
-
-```json
-{
-  "alice": {
-    "password_hash": "<bcrypt>",
-    "superadmin":  true,
-    "permissions": []
-  },
-  "bob": {
-    "password_hash": "<bcrypt>",
-    "superadmin":  false,
-    "permissions": ["upload", "toggle", "duration"],
-    "screens":     ["hall", "cafeteria"]
-  }
-}
-```
-
-The `screens` field is optional. Absent or `null` = access to all screens. An empty list or a subset = restricted to the listed screens only.
 
 ### Migration from earlier versions
 

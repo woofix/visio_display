@@ -236,6 +236,39 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(payload["system"]["type"], "update")
         self.assertEqual(payload["system"]["progress"], 25)
 
+    def test_restart_stream_releases_system_lock_after_scheduling(self):
+        self._login()
+        from services import system_lock_svc
+
+        with self.client.session_transaction() as session:
+            token = session["_csrf_token"]
+
+        def fake_restart(*, progress_callback=None, lock_token=None):
+            if progress_callback:
+                progress_callback("Redémarrage Docker lancé.")
+            return {
+                "status": "restart_scheduled",
+                "status_label": "Redémarrage lancé",
+                "status_tone": "success",
+                "can_apply": False,
+                "can_restart": False,
+                "reason": "La stack Docker redémarre en arrière-plan.",
+            }
+
+        with patch("blueprints.version.restart_stack", side_effect=fake_restart):
+            response = self.client.post(
+                "/admin/version/update/restart-stream",
+                headers={
+                    "Accept": "application/x-ndjson",
+                    "X-CSRF-Token": token,
+                },
+            )
+            body = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('"type": "done"', body)
+        self.assertFalse(system_lock_svc.get_system_status()["active"])
+
     def test_admin_update_alert_appears_only_when_update_available(self):
         self._login()
         with patch("services.version_svc.get_version_status", return_value={

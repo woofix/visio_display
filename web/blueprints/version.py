@@ -116,5 +116,4 @@ def restart_update_stream():
         activity_message="docker stack restarted after update",
         task_type="reboot",
         start_message="Redémarrage Docker en cours...",
-        keep_lock_after_success=True,
     )

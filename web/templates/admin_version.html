@@ -444,6 +444,7 @@
             let buffer = '';
             let finalStatus = null;
             let failed = false;
+            const returnsBeforeConnectionClose = lockType === 'reboot';
 
             while (true) {
                 const { value, done } = await reader.read();
@@ -461,8 +462,15 @@
                         appendLog(payload.message || 'Action échouée.', true);
                     } else if (payload.type === 'done') {
                         finalStatus = payload.status;
+                        if (returnsBeforeConnectionClose) {
+                            try {
+                                await reader.cancel();
+                            } catch {}
+                            break;
+                        }
                     }
                 }
+                if (returnsBeforeConnectionClose && finalStatus) break;
             }
 
             if (failed) {

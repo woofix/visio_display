@@ -786,6 +786,22 @@ class AppSmokeTests(unittest.TestCase):
 
         self.assertEqual(name, "Eric")
 
+    def test_ephemeris_existing_file_is_stale_when_nameday_cache_is_newer(self):
+        with self.app.app_context():
+            from constants import UPLOAD_FOLDER
+            from services import ephemeris_svc
+
+            target_date = date(2026, 5, 13)
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            image_path = os.path.join(UPLOAD_FOLDER, "ephemeride_2026-05-13_14h.jpg")
+            with open(image_path, "wb") as handle:
+                handle.write(b"old-card")
+            os.utime(image_path, (1, 1))
+
+            ephemeris_svc._update_cached_nameday(target_date, "Rolande", "test")
+
+            self.assertFalse(ephemeris_svc._ephemeride_file_is_current(image_path, target_date))
+
     def test_ephemeris_does_not_use_notre_dame_when_nameday_sources_fail(self):
         with self.app.app_context():
             from services import ephemeris_svc
@@ -817,6 +833,32 @@ class AppSmokeTests(unittest.TestCase):
                 name, _description = ephemeris_svc.get_ephemeride_nominis(date(2026, 5, 13))
 
         self.assertIsNone(name)
+
+    def test_superadmin_can_force_ephemeris_regeneration_from_admin(self):
+        self._login()
+        with self.client.session_transaction() as session:
+            token = session["_csrf_token"]
+
+        with patch("blueprints.ephemeris.generate_ephemeride_image") as generate:
+            response = self.client.post(
+                "/regen_ephemeride",
+                data={"_csrf_token": token},
+                headers={"Accept": "text/html"},
+                follow_redirects=False,
+            )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers["Location"], "/admin/settings/meteo")
+        generate.assert_called_once_with(force=True)
+
+    def test_meteo_settings_page_has_ephemeris_regeneration_button(self):
+        self._login()
+
+        response = self.client.get("/admin/settings/meteo")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'action="/regen_ephemeride"', response.data)
+        self.assertIn("Régénérer l".encode("utf-8"), response.data)
 
     def test_api_halo_returns_effective_screen_halo(self):
         with self.app.app_context():

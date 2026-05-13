@@ -20,6 +20,10 @@ def regen_ephemeride():
     g = feature_guard_json('ephemeris')
     if g: return g
     generate_ephemeride_image(force=True)
+    log_config_change(session.get('user'), 'ephemeris regenerated')
+    if 'application/json' not in request.headers.get('Accept', ''):
+        _flash('flash_ephemeris_regenerated', 'success')
+        return redirect('/admin/settings/meteo')
     return jsonify({"ok": True})
 
 

@@ -1066,6 +1066,13 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
         </div>
         <p style="font-size:.82rem;color:var(--text-3);margin-bottom:20px">{{ t('settings_meteo_subtitle') }}</p>
 
+        <form action="/regen_ephemeride" method="post" style="margin-bottom:18px">
+            <button type="submit" class="btn sm secondary">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M16 8h5V3"/></svg>
+                {{ t('settings_ephemeris_regen_btn') }}
+            </button>
+        </form>
+
         <!-- Current configuration -->
         <div style="background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 18px;margin-bottom:24px;display:flex;align-items:center;gap:16px;max-width:560px">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;flex-shrink:0;color:var(--primary)"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/></svg>

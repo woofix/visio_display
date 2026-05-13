@@ -95,10 +95,26 @@ def _save_nameday_cache(cache):
 
 
 def _cached_nameday(target_date):
-    entry = _load_nameday_cache().get(_nameday_key(target_date), {})
+    entry = _nameday_cache_entry(target_date)
     if isinstance(entry, dict):
         return str(entry.get("name") or "").strip()
     return str(entry or "").strip()
+
+
+def _nameday_cache_entry(target_date):
+    return _load_nameday_cache().get(_nameday_key(target_date), {})
+
+
+def _nameday_cache_checked_at_ts(target_date):
+    entry = _nameday_cache_entry(target_date)
+    if not isinstance(entry, dict):
+        return 0
+    raw_value = str(entry.get("checked_at") or "").strip()
+    if not raw_value:
+        return 0
+    with contextlib.suppress(ValueError):
+        return datetime.fromisoformat(raw_value.replace("Z", "+00:00")).timestamp()
+    return 0
 
 
 def _update_cached_nameday(target_date, name, source):
@@ -191,6 +207,19 @@ def get_nameday_for_date(target_date=None):
                 _update_cached_nameday(target_date, online_name, source)
             return online_name
     return cached
+
+
+def _ephemeride_file_is_current(path, target_date):
+    if not os.path.exists(path):
+        return False
+    if not _cached_nameday(target_date):
+        get_nameday_for_date(target_date)
+    checked_at_ts = _nameday_cache_checked_at_ts(target_date)
+    if checked_at_ts <= 0:
+        return False
+    with contextlib.suppress(OSError):
+        return os.path.getmtime(path) >= checked_at_ts
+    return False
 
 
 def _normalize_school_zone(zone):
@@ -750,11 +779,13 @@ def generate_ephemeride_image(force=False):
     filename = f"ephemeride_{slot}.jpg"
     path     = os.path.join(UPLOAD_FOLDER, filename)
 
-    if os.path.exists(path) and not force:
+    today = _today_for_ephemeris(cfg)
+
+    if not force and _ephemeride_file_is_current(path, today):
         return
 
     with _EPHEMERIS_LOCK:
-        if os.path.exists(path) and not force:
+        if not force and _ephemeride_file_is_current(path, today):
             return
 
         for f in os.listdir(UPLOAD_FOLDER):
@@ -766,7 +797,6 @@ def generate_ephemeride_image(force=False):
         lever, coucher   = get_sun_times(cfg)
         meteo            = get_meteo(cfg)
         school_holiday   = get_next_school_holiday(cfg)
-        today            = _today_for_ephemeris(cfg)
         date_str         = f"{JOURS[today.weekday()]} {today.day} {MOIS[today.month]} {today.year}"
 
         img  = Image.new("RGB", (1920, 1080), (0, 0, 0))

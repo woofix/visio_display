@@ -787,6 +787,7 @@ TRANSLATIONS = {
         'settings_meteo_tz_ph':       'ex : Europe/Paris',
         'settings_meteo_search_btn':  'Rechercher',
         'settings_meteo_apply_btn':   'Appliquer',
+        'settings_ephemeris_regen_btn': 'Régénérer l’éphéméride',
         'settings_meteo_current':     'Configuration actuelle',
         'settings_meteo_search_hint': 'Entrez un nom de ville puis cliquez sur Rechercher pour remplir automatiquement les coordonnées.',
         'settings_school_zone_label': 'Zone scolaire',
@@ -794,6 +795,7 @@ TRANSLATIONS = {
         'settings_school_zone_hint':  "Utilisé pour afficher les prochaines vacances scolaires. Laissez en détection automatique si la zone proposée est correcte.",
         'flash_meteo_updated':        'Localisation météo mise à jour : {ville}',
         'flash_meteo_invalid':        'Coordonnées invalides. Veuillez saisir des valeurs numériques correctes.',
+        'flash_ephemeris_regenerated': 'Éphéméride régénérée.',
 
         # ── Ephemeris image ──
         'ephemeris_title': 'EPHEMERIDE DU JOUR',
@@ -2102,6 +2104,7 @@ TRANSLATIONS = {
         'settings_meteo_tz_ph':       'e.g.: Europe/London',
         'settings_meteo_search_btn':  'Search',
         'settings_meteo_apply_btn':   'Apply',
+        'settings_ephemeris_regen_btn': 'Regenerate ephemeris',
         'settings_meteo_current':     'Current configuration',
         'settings_meteo_search_hint': 'Enter a city name and click Search to automatically fill in the coordinates.',
         'settings_school_zone_label': 'School zone',
@@ -2109,6 +2112,7 @@ TRANSLATIONS = {
         'settings_school_zone_hint':  'Used to display the next school holidays on the ephemeris. Leave auto-detect enabled if the suggested zone is correct.',
         'flash_meteo_updated':        'Weather location updated: {ville}',
         'flash_meteo_invalid':        'Invalid coordinates. Please enter correct numeric values.',
+        'flash_ephemeris_regenerated': 'Ephemeris regenerated.',
 
         # ── Ephemeris image ──
         'ephemeris_title': 'TODAY\'S EPHEMERIS',

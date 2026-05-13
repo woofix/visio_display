@@ -11,6 +11,7 @@ from services.config_svc import load_config
 from services.i18n import get_language
 from services.media_svc import get_all_media, get_media_url, is_media_disabled
 from services.search_engine_svc import normalize, parse_query, rank_items
+from services.settings_sections import superadmin_nav_prefixes
 from services.users_svc import is_superadmin, load_users, has_permission
 
 bp = Blueprint('search', __name__)
@@ -29,19 +30,7 @@ _URL_FEATURE_MAP = [
     ('/admin/activity', 'activity'),
 ]
 
-_URL_SUPERADMIN_PREFIXES = (
-    '/admin/roles',
-    '/admin/version',
-    '/admin/settings/administration',
-    '/admin/settings/comptes-permissions',
-    '/admin/settings/ajouter-compte',
-    '/admin/settings/gestion-ecrans',
-    '/admin/settings/alerte-prioritaire',
-    '/admin/settings/sauvegardes',
-    '/admin/settings/meteo',
-    '/admin/settings/fonctionnalites',
-    '/admin/settings/installation',
-)
+_URL_SUPERADMIN_PREFIXES = superadmin_nav_prefixes()
 
 _CANONICAL_URL_ALIASES = {
     '/admin/settings#logo': '/admin/settings/logo',

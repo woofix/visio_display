@@ -36,6 +36,12 @@ from services.users_svc import (
 from services.media_svc import get_logo_path
 from services.media_svc import is_safe_svg_file, is_valid_uploaded_image
 from services.i18n import _flash, _t
+from services.settings_sections import (
+    is_superadmin_settings_tab,
+    normalize_settings_tab,
+    settings_section_template,
+    settings_section_url,
+)
 from blueprints.guards import admin_guard, superadmin_guard
 from services.ephemeris_svc import get_school_zone
 from services.deploy_svc import (
@@ -67,75 +73,6 @@ def _normalize_machine_name(raw_value):
             previous_dash = True
     result = ''.join(normalized).strip('-')
     return result[:63]
-
-
-def _normalize_settings_tab(raw_tab):
-    tab = (raw_tab or 'logo').strip().lower()
-    aliases = {
-        'events': 'meteo',
-        'event': 'meteo',
-        'evenements': 'meteo',
-        'install': 'installation',
-        'installer': 'installation',
-        'superadmin': 'administration',
-        'alerte-prioritaire': 'priority-alert',
-        'alert': 'priority-alert',
-        'comptes-permissions': 'accounts',
-        'users': 'accounts',
-        'utilisateurs': 'accounts',
-        'ajouter-compte': 'add-account',
-        'gestion-ecrans': 'screens',
-        'mot-de-passe': 'password',
-        'backup': 'sauvegardes',
-        'backups': 'sauvegardes',
-        'fonctionnalites': 'features',
-        'features': 'features',
-    }
-    return aliases.get(tab, tab)
-
-
-def settings_section_url(tab):
-    tab = _normalize_settings_tab(tab)
-    slugs = {
-        'logo': 'logo',
-        'admins': 'admins',
-        'password': 'mot-de-passe',
-        'administration': 'administration',
-        'priority-alert': 'alerte-prioritaire',
-        'accounts': 'comptes-permissions',
-        'add-account': 'ajouter-compte',
-        'screens': 'gestion-ecrans',
-        'theme': 'theme',
-        'application': 'application',
-        'meteo': 'meteo',
-        'language': 'language',
-        'installation': 'installation',
-        'sauvegardes': 'sauvegardes',
-        'features': 'fonctionnalites',
-    }
-    return f"/admin/settings/{slugs.get(tab, 'logo')}"
-
-
-def settings_section_template(tab):
-    tab = _normalize_settings_tab(tab)
-    templates = {
-        'logo': 'admin_settings_logo.html',
-        'admins': 'admin_settings_admins.html',
-        'password': 'admin_settings_password.html',
-        'administration': 'admin_settings_accounts.html',
-        'priority-alert': 'admin_settings_priority_alert.html',
-        'accounts': 'admin_settings_accounts.html',
-        'add-account': 'admin_settings_add_account.html',
-        'screens': 'admin_settings_screens.html',
-        'theme': 'admin_settings_theme.html',
-        'application': 'admin_settings_application.html',
-        'meteo': 'admin_settings_meteo.html',
-        'language': 'admin_settings_language.html',
-        'installation': 'admin_settings_installation.html',
-        'sauvegardes': 'admin_settings_backups.html',
-        'features': 'admin_settings_features.html',
-    }
-    return templates.get(tab, 'admin_settings_logo.html')
 
 
 def _settings_topbar_subtitle(active_tab, is_sa):
@@ -196,8 +133,8 @@ def _build_settings_context(tab='logo', install_defaults=None, install_result=No
     }
     screen_names = list(cfg.get('screens', {}).keys())
     manageable_screens = screen_names if is_sa else [name for name in screen_names if has_screen_access(name)]
-    active_tab = _normalize_settings_tab(tab)
-    if active_tab in {'installation', 'sauvegardes', 'administration', 'priority-alert', 'accounts', 'add-account', 'screens', 'features', 'meteo'} and not is_sa:
+    active_tab = normalize_settings_tab(tab)
+    if is_superadmin_settings_tab(active_tab) and not is_sa:
         active_tab = 'logo'
     effective_permissions_map = {}
     role_permissions_map = {}

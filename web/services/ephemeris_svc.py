@@ -1,26 +1,23 @@
 # Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 import contextlib
-import json
 import math
 import os
-import re
 import threading
-import unicodedata
 from datetime import date, datetime, timezone, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import requests
 from PIL import Image, ImageDraw, ImageFont
 
-from constants import UPLOAD_FOLDER, LAT, LNG, DEFAULT_METEO_VILLE, DEFAULT_METEO_TZ, PRIVATE_DATA_DIR
+from constants import UPLOAD_FOLDER, LAT, LNG, DEFAULT_METEO_VILLE, DEFAULT_METEO_TZ
 from services.config_svc import load_config
+from services import ephemeris_nameday_svc as nameday_svc
 from services.i18n import _t, get_language
 from services.media_svc import strip_html
 from translations import JOURS_BY_LANG, MOIS_BY_LANG, WMO_CODES_BY_LANG
 
 _EPHEMERIS_LOCK = threading.Lock()
-NAMEDAY_CACHE_FILE = os.path.join(PRIVATE_DATA_DIR, "ephemeris_namedays.json")
 
 
 def _configured_zoneinfo(cfg=None):
@@ -64,149 +61,44 @@ def _get_meteo_location(cfg):
 
 
 def _normalize_text(value):
-    if value is None:
-        return ""
-    normalized = unicodedata.normalize("NFKD", str(value))
-    normalized = "".join(ch for ch in normalized if not unicodedata.combining(ch))
-    return normalized.casefold().strip()
-
-
-def _nameday_key(target_date):
-    return f"{target_date.month:02d}-{target_date.day:02d}"
-
-
-def _load_nameday_cache():
-    try:
-        with open(NAMEDAY_CACHE_FILE, "r", encoding="utf-8") as handle:
-            payload = json.load(handle)
-    except (OSError, json.JSONDecodeError, TypeError, ValueError):
-        return {}
-    return payload if isinstance(payload, dict) else {}
-
-
-def _save_nameday_cache(cache):
-    os.makedirs(os.path.dirname(NAMEDAY_CACHE_FILE), exist_ok=True)
-    tmp_path = f"{NAMEDAY_CACHE_FILE}.{os.getpid()}.{threading.get_ident()}.tmp"
-    with open(tmp_path, "w", encoding="utf-8") as handle:
-        json.dump(cache, handle, ensure_ascii=False, indent=2, sort_keys=True)
-    os.replace(tmp_path, NAMEDAY_CACHE_FILE)
-    with contextlib.suppress(OSError):
-        os.chmod(NAMEDAY_CACHE_FILE, 0o600)
+    return nameday_svc.normalize_text(value)
 
 
 def _cached_nameday(target_date):
-    entry = _nameday_cache_entry(target_date)
-    if isinstance(entry, dict):
-        return str(entry.get("name") or "").strip()
-    return str(entry or "").strip()
+    return nameday_svc.cached_nameday(target_date)
 
 
 def _nameday_cache_entry(target_date):
-    return _load_nameday_cache().get(_nameday_key(target_date), {})
+    return nameday_svc.nameday_cache_entry(target_date)
 
 
 def _nameday_cache_checked_at_ts(target_date):
-    entry = _nameday_cache_entry(target_date)
-    if not isinstance(entry, dict):
-        return 0
-    raw_value = str(entry.get("checked_at") or "").strip()
-    if not raw_value:
-        return 0
-    with contextlib.suppress(ValueError):
-        return datetime.fromisoformat(raw_value.replace("Z", "+00:00")).timestamp()
-    return 0
+    return nameday_svc.nameday_cache_checked_at_ts(target_date)
 
 
 def _update_cached_nameday(target_date, name, source):
-    name = _clean_nameday_candidate(name)
-    if not name:
-        return
-    cache = _load_nameday_cache()
-    cache[_nameday_key(target_date)] = {
-        "name": name,
-        "source": source,
-        "checked_at": datetime.now(timezone.utc).isoformat(),
-    }
-    _save_nameday_cache(cache)
+    return nameday_svc.update_cached_nameday(target_date, name, source)
 
 
 def _clean_nameday_candidate(value):
-    name = strip_html(str(value or ""))
-    name = re.sub(r"\s+", " ", name).strip(" .,:;!?\t\r\n")
-    if not name:
-        return ""
-    name = _displayable_saint_name(name)
-    if not name:
-        return ""
-    blocked = {
-        "notre-dame", "notre dame", "assomption", "nativite", "nativité",
-        "toussaint", "ascension", "pentecote", "pentecôte", "rameaux",
-        "paques", "pâques", "epiphanie", "épiphanie", "fatima", "fátima",
-        "notre", "dame", "vierge", "seigneur",
-    }
-    if _normalize_text(name) in blocked:
-        return ""
-    if not re.search(r"[A-Za-zÀ-ÖØ-öø-ÿ]", name):
-        return ""
-    return name[:1].upper() + name[1:]
+    return nameday_svc.clean_nameday_candidate(value)
 
 
 def _first_valid_nameday(value):
-    for raw_part in re.split(r"[,;/]", str(value or "")):
-        candidate = _clean_nameday_candidate(raw_part)
-        if candidate:
-            return candidate
-    return ""
+    return nameday_svc.first_valid_nameday(value)
 
 
 def _fetch_nameday_from_abalin(target_date):
-    response = requests.get(
-        "https://nameday.abalin.net/api/V2/date",
-        params={"day": target_date.day, "month": target_date.month, "country": "fr"},
-        timeout=5,
-    )
-    response.raise_for_status()
-    payload = response.json()
-    data = payload.get("data") if isinstance(payload, dict) else {}
-    if isinstance(data, dict):
-        return _first_valid_nameday(data.get("fr"))
-    return ""
+    return nameday_svc.fetch_nameday_from_abalin(target_date)
 
 
 def _fetch_nameday_from_fetedujour(target_date):
-    month_slugs = {
-        1: "janvier", 2: "fevrier", 3: "mars", 4: "avril",
-        5: "mai", 6: "juin", 7: "juillet", 8: "aout",
-        9: "septembre", 10: "octobre", 11: "novembre", 12: "decembre",
-    }
-    slug = month_slugs.get(target_date.month)
-    if not slug:
-        return ""
-    response = requests.get(f"https://fetedujour.fr/{slug}/", timeout=5)
-    response.raise_for_status()
-    text = response.text
-    pattern = rf"Fête du {target_date.day}\s+[A-Za-zéûîôàèùçÉÛÎÔÀÈÙÇ]+(?:\s*:\s*|\s*</[^>]+>\s*)([^<\n\r]+)"
-    match = re.search(pattern, text, flags=re.IGNORECASE)
-    return _first_valid_nameday(match.group(1)) if match else ""
+    return nameday_svc.fetch_nameday_from_fetedujour(target_date)
 
 
 def get_nameday_for_date(target_date=None):
     target_date = target_date or _today_for_ephemeris()
-    cached = _cached_nameday(target_date)
-    for source, fetcher in (
-        ("nameday.abalin.net", _fetch_nameday_from_abalin),
-        ("fetedujour.fr", _fetch_nameday_from_fetedujour),
-    ):
-        try:
-            online_name = fetcher(target_date)
-        except Exception as exc:
-            print(f"[NAMEDAY ERROR] {source}: {exc}")
-            continue
-        if online_name:
-            if online_name != cached:
-                _update_cached_nameday(target_date, online_name, source)
-            return online_name
-    return cached
+    return nameday_svc.get_nameday_for_date(target_date)
 
 
 def _ephemeride_file_is_current(path, target_date):
@@ -526,47 +418,11 @@ def get_ephemeride_slot(cfg=None):
 
 
 def _displayable_saint_name(raw_name):
-    name = " ".join(str(raw_name or "").split())
-    if not name:
-        return ""
-
-    prefixes = (
-        "Saint ", "Sainte ", "Saints ", "Saintes ",
-        "Bienheureux ", "Bienheureuse ", "Bienheureux et Bienheureuses ",
-    )
-    for prefix in prefixes:
-        if name.startswith(prefix):
-            name = name[len(prefix):].strip()
-            break
-
-    for separator in (" ,", ",", " (", " de ", " d’", " d'"):
-        if separator in name:
-            name = name.split(separator, 1)[0].strip()
-            break
-
-    if not name:
-        return ""
-
-    parts = name.split()
-    if len(parts) == 1:
-        return parts[0]
-
-    compound_starters = {"Jean", "Marie", "Anne", "Charles"}
-    if parts[0] in compound_starters and parts[1][:1].isupper():
-        return f"{parts[0]} {parts[1]}"
-    return parts[0]
+    return nameday_svc.displayable_saint_name(raw_name)
 
 
 def _extract_modern_name(contenu):
-    if not contenu:
-        return None
-    import re
-    text = re.split(r'<', contenu, maxsplit=1)[0].strip()
-    match = re.match(r'^([A-ZÀ-Ÿa-zà-ÿ]+(?:\s+ou\s+[A-ZÀ-Ÿa-zà-ÿ]+)*)\s*\.', text)
-    if not match:
-        return None
-    parts = re.split(r'\s+ou\s+', match.group(1), flags=re.IGNORECASE)
-    return parts[-1].strip() if parts else None
+    return nameday_svc.extract_modern_name(contenu)
 
 
 def get_ephemeride_nominis(target_date=None):

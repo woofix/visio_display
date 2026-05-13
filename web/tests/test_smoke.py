@@ -219,6 +219,34 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"1.0.0", response.data)
 
+    def test_settings_admin_nav_links_stay_accessible(self):
+        self._login()
+        from services.settings_sections import settings_nav_groups
+
+        links = [
+            item["href"]
+            for group in settings_nav_groups("/admin", superadmin=True)
+            for item in group["items"]
+        ]
+        version_status = {
+            "status": "up_to_date",
+            "status_label": "Up to date",
+            "status_tone": "success",
+            "local_version": "1.0.0",
+            "remote_version": "1.0.0",
+            "fetch_error": "",
+        }
+        with patch("blueprints.version.get_update_status", return_value=version_status), patch(
+            "services.version_svc.get_version_status",
+            return_value=version_status,
+        ):
+            admin_page = self.client.get("/admin")
+            html = admin_page.get_data(as_text=True)
+            for link in links:
+                self.assertIn(f'href="{link}"', html)
+                response = self.client.get(link)
+                self.assertEqual(response.status_code, 200, link)
+
     def test_admin_system_status_reports_active_lock(self):
         self._login()
         from services import system_lock_svc
@@ -548,7 +576,7 @@ class AppSmokeTests(unittest.TestCase):
             session["_csrf_token"] = "upload-token"
             token = session["_csrf_token"]
 
-        with patch("blueprints.media.enqueue_compress_job", return_value="job-123") as enqueue_job:
+        with patch("services.upload_svc.enqueue_compress_job", return_value="job-123") as enqueue_job:
             response = self.client.post(
                 "/upload",
                 data={"file": (BytesIO(b"fake-video"), "clip.mp4"), "_csrf_token": token},
@@ -568,6 +596,66 @@ class AppSmokeTests(unittest.TestCase):
             self.assertTrue(os.path.exists(os.path.join(UPLOAD_FOLDER, "clip.mp4")))
             cfg = load_config()
             self.assertIn("clip.mp4", cfg.get("disabled", []))
+
+    def test_image_upload_is_saved_and_renditions_are_generated(self):
+        from PIL import Image
+
+        image = Image.new("RGB", (24, 16), "blue")
+        payload = BytesIO()
+        image.save(payload, format="JPEG")
+        payload.seek(0)
+
+        with self.client.session_transaction() as session:
+            session["user"] = "admin"
+            session["_csrf_token"] = "upload-token"
+            token = session["_csrf_token"]
+
+        response = self.client.post(
+            "/upload",
+            data={"file": (payload, "photo.jpg"), "_csrf_token": token},
+            content_type="multipart/form-data",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["redirect"], "/admin/media")
+
+        with self.app.app_context():
+            from constants import UPLOAD_FOLDER
+            from services.media_svc import get_existing_image_rendition_url
+
+            self.assertTrue(os.path.exists(os.path.join(UPLOAD_FOLDER, "photo.jpg")))
+            self.assertIsNotNone(get_existing_image_rendition_url("photo.jpg", "thumb"))
+
+    def test_pdf_upload_is_converted_to_document_pages(self):
+        from PIL import Image
+
+        with self.client.session_transaction() as session:
+            session["user"] = "admin"
+            session["_csrf_token"] = "upload-token"
+            token = session["_csrf_token"]
+
+        pages = [
+            Image.new("RGB", (24, 16), "white"),
+            Image.new("RGB", (24, 16), "black"),
+        ]
+        with patch("pdf2image.convert_from_path", return_value=pages):
+            response = self.client.post(
+                "/upload",
+                data={"file": (BytesIO(b"%PDF-1.4 fake"), "document.pdf"), "_csrf_token": token},
+                content_type="multipart/form-data",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["redirect"], "/admin/media")
+
+        with self.app.app_context():
+            from constants import UPLOAD_FOLDER
+            from services.media_svc import get_existing_image_rendition_url
+
+            self.assertFalse(os.path.exists(os.path.join(UPLOAD_FOLDER, "document.pdf")))
+            self.assertTrue(os.path.exists(os.path.join(UPLOAD_FOLDER, "document_page_1.jpg")))
+            self.assertTrue(os.path.exists(os.path.join(UPLOAD_FOLDER, "document_page_2.jpg")))
+            self.assertIsNotNone(get_existing_image_rendition_url("document_page_1.jpg", "thumb"))
 
     def test_encoding_window_uses_configured_application_timezone(self):
         with self.app.app_context():
@@ -830,9 +918,49 @@ class AppSmokeTests(unittest.TestCase):
             ]
 
             with patch.object(ephemeris_svc.requests, "get", side_effect=responses):
-                name, _description = ephemeris_svc.get_ephemeride_nominis(date(2026, 5, 13))
+                name, _description = ephemeris_svc.get_ephemeride_nominis(date(2026, 5, 14))
 
         self.assertIsNone(name)
+
+    def test_ephemeris_generation_writes_current_card(self):
+        from PIL import Image
+
+        with self.app.app_context():
+            from constants import UPLOAD_FOLDER
+            from services import ephemeris_svc
+            from services.config_svc import save_config
+
+            save_config({
+                "meteo_ville": "Paris",
+                "meteo_lat": 48.8566,
+                "meteo_lng": 2.3522,
+                "meteo_tz": "Europe/Paris",
+                "events": [],
+            })
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+            with (
+                patch.object(ephemeris_svc, "get_ephemeride_nominis", return_value=("Rolande", "Description courte")),
+                patch.object(ephemeris_svc, "get_sun_times", return_value=("06:12", "21:34")),
+                patch.object(ephemeris_svc, "get_meteo", return_value={
+                    "temp": "20°C",
+                    "ressenti": "19°C",
+                    "condition": "CIEL CLAIR",
+                    "vent": "8 km/h",
+                    "precip": "0.0 mm",
+                    "code": 0,
+                }),
+                patch.object(ephemeris_svc, "get_next_school_holiday", return_value=None),
+            ):
+                ephemeris_svc.generate_ephemeride_image(force=True)
+
+            filename = f"ephemeride_{ephemeris_svc.get_ephemeride_slot()}.jpg"
+            path = os.path.join(UPLOAD_FOLDER, filename)
+            self.assertTrue(os.path.exists(path))
+            with Image.open(path) as image:
+                image.verify()
+            with Image.open(path) as image:
+                self.assertEqual(image.size, (1920, 1080))
 
     def test_superadmin_can_force_ephemeris_regeneration_from_admin(self):
         self._login()

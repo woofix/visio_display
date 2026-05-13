@@ -14,6 +14,9 @@ select = ["E", "F", "W"]
 # Chaînes de traduction et appels draw.text() alignés — longueur inévitable
 "translations.py" = ["E501"]
 "services/ephemeris_svc.py" = ["E501"]
+"services/ephemeris_nameday_svc.py" = ["E501"]
+"services/settings_sections.py" = ["E501"]
+"services/upload_svc.py" = ["E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

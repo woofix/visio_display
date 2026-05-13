@@ -211,6 +211,14 @@ You can restrict a group to one or more specific screens:
 
 > **Note:** If no screen is selected, the group becomes global again and is visible on every screen.
 
+### Random Group Pool
+
+For each group, you can set how many media items from that group should appear during one slideshow cycle.
+
+- `0` or an empty value means **show all media** in the group.
+- A positive number limits the group to that many items per cycle.
+- This is useful for large groups where you want variety without showing every item every time.
+
 ---
 
 ## 7. Scheduling Media Display
@@ -263,7 +271,7 @@ Visio-Display can create **independent named screens**, each with its own media 
 
 > **Required right:** super admin
 
-1. In the media library, open the screen management menu.
+1. Open **Settings > Screen Management**.
 2. Enter a name using lowercase letters, numbers, `-`, and `_` only, from 1 to 32 characters.
 3. Select **Create**.
 
@@ -283,6 +291,14 @@ Reserved names that cannot be used: `default`, `admin`, `api`, `static`, `login`
 - The super admin can customize the **display name of the default screen** and the **halo color** used around media while playing.
 
 > **Tip:** When installing a display client from administration, use the provided screen selection. The final URL already includes the required display token.
+
+### Broadcasting a Screen List
+
+From the media library, an authorized user can broadcast the current screen list to other accessible screens.
+
+- The broadcast copies media order, enabled/disabled states, disabled groups, durations, and schedules.
+- Later changes on the source screen are propagated while the broadcast link remains active.
+- Use **Stop broadcast** when the target screens should become independent again.
 
 ### Installing a Display Client
 
@@ -482,7 +498,7 @@ The priority alert immediately displays a banner message on the display screen w
 
 ### Usage
 
-1. From **Administration > Super Admin**, open **Priority Alert**.
+1. Open **Settings > Priority Alert**.
 2. Enter your message in the field provided (maximum 280 characters).
 3. The banner is published **automatically** after each keystroke. No button is required.
 4. To remove the banner, select **Clear banner**.
@@ -1064,6 +1080,14 @@ Vous pouvez restreindre un groupe à un ou plusieurs écrans spécifiques :
 
 > **Remarque :** Si aucun écran n'est sélectionné, le groupe redevient global (visible sur tous les écrans).
 
+### Tirage aléatoire par groupe
+
+Pour chaque groupe, vous pouvez définir combien de médias de ce groupe apparaissent pendant un passage du diaporama.
+
+- `0` ou une valeur vide signifie **afficher tous les médias** du groupe.
+- Une valeur positive limite le groupe à ce nombre de médias par passage.
+- C'est utile pour les grands groupes, quand on veut varier les contenus sans tout afficher à chaque cycle.
+
 ---
 
 ## 7. Planifier l'affichage d'un média
@@ -1116,7 +1140,7 @@ Visio-Display permet de créer des **écrans nommés indépendants**, chacun ave
 
 > **Droit requis :** super-admin
 
-1. Dans la médiathèque, ouvrez le menu de gestion des écrans.
+1. Ouvrez **Paramètres > Gestion des écrans**.
 2. Saisissez un nom (lettres minuscules, chiffres, `-` et `_` ; entre 1 et 32 caractères).
 3. Cliquez sur **Créer**.
 
@@ -1136,6 +1160,14 @@ Noms réservés (interdits) : `default`, `admin`, `api`, `static`, `login`, `log
 - Le super-admin peut personnaliser le **nom affiché de l'écran par défaut** et la **couleur de halo** utilisée autour des médias pendant la lecture.
 
 > **Conseil :** lors de l'installation d'un client d'affichage depuis l'administration, utilisez la sélection d'écran proposée : l'URL finale contient déjà le jeton d'affichage requis.
+
+### Diffuser une liste d'écran
+
+Depuis la médiathèque, un utilisateur autorisé peut diffuser la liste de l'écran courant vers d'autres écrans accessibles.
+
+- La diffusion copie l'ordre des médias, les activations/désactivations, les groupes désactivés, les durées et les planifications.
+- Les changements ultérieurs sur l'écran source sont propagés tant que le lien de diffusion reste actif.
+- Utilisez **Arrêter la diffusion** quand les écrans cibles doivent redevenir indépendants.
 
 ### Installer un client d'affichage
 
@@ -1332,7 +1364,7 @@ L'alerte prioritaire permet de diffuser **immédiatement** un message en banniè
 
 ### Utilisation
 
-1. Depuis **Administration → Super-Admin**, section **Alerte prioritaire**.
+1. Ouvrez **Paramètres > Alerte prioritaire**.
 2. Saisissez votre message dans le champ prévu (280 caractères maximum).
 3. La bannière est publiée **automatiquement** après chaque frappe — aucun bouton à cliquer.
 4. Pour retirer la bannière, cliquez sur **Effacer la bannière**.

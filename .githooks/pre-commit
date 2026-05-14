@@ -7,8 +7,18 @@ ROOT_DIR="$(git rev-parse --show-toplevel)"
 VERSION_FILE="$ROOT_DIR/VERSION"
 BUMP_KIND="${VISIO_VERSION_BUMP:-auto}"
 
+staged_names="$(git -C "$ROOT_DIR" diff --cached --name-only --diff-filter=ACMRT)"
+
+blocked_media="$(printf '%s\n' "$staged_names" | grep -Ei '(^|/)(media|data|private)/|^web/static/data/|^web/data/private/|\.(avif|avi|gif|jpe?g|mkv|mov|mp4|png|webm|webp)$' || true)"
+
+if [ -n "$blocked_media" ]; then
+    echo "pre-commit: fichiers media/runtime interdits dans Git:" >&2
+    printf '%s\n' "$blocked_media" >&2
+    echo "pre-commit: retirez-les de l'index avec git rm --cached <fichier> ou gardez-les non suivis." >&2
+    exit 1
+fi
+
 detect_bump_kind() {
-    changed_names="$(git -C "$ROOT_DIR" diff --cached --name-only --diff-filter=ACMRT)"
     deleted_names="$(git -C "$ROOT_DIR" diff --cached --name-only --diff-filter=D)"
 
     if [ -n "$deleted_names" ]; then

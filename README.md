@@ -124,11 +124,7 @@ Application web légère de signalétique numérique. Elle affiche un diaporama 
 **Cette section concerne uniquement l'installation du serveur Visio-Display.**
 
 ```bash
-git clone <url-du-dépôt>
-cd Visio-Display
-./scripts/security_bootstrap.sh install .
-# Éditer .env si besoin : ADMIN_USER, ADMIN_PASSWORD, chemins et options de déploiement
-docker compose up -d --build
+bash <(curl -fsSL https://raw.githubusercontent.com/woofix/visio_display/main/server-install.sh)
 ```
 
 L'application est disponible sur `http://<hôte>:8081`.
@@ -911,11 +907,7 @@ A lightweight web-based digital signage. It displays a fullscreen slideshow of i
 **This section only covers the Visio-Display server installation.**
 
 ```bash
-git clone <repository-url>
-cd Visio-Display
-./scripts/security_bootstrap.sh install .
-# Edit .env if needed: ADMIN_USER, ADMIN_PASSWORD, paths and deployment options
-docker compose up -d --build
+bash <(curl -fsSL https://raw.githubusercontent.com/woofix/visio_display/main/server-install.sh)
 ```
 
 The application will be available at `http://<host>:8081`.

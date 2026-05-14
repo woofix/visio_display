@@ -345,6 +345,12 @@ def get_update_status(*, fetch_remote=False):
             target = latest_tag
 
     version_comparison = _compare_versions(local_version, remote_version)
+    branch_switch_required = (
+        ref_type == "branch"
+        and bool(ref_name)
+        and bool(target_branch)
+        and ref_name != target_branch
+    )
     if version_comparison > 0:
         status_name = "update_available"
         status_label = "Mise à jour disponible"
@@ -359,11 +365,18 @@ def get_update_status(*, fetch_remote=False):
         reason = "La version distante de la branche cible est plus ancienne que la version locale."
     else:
         if not remote_commit or not local_commit or remote_commit == local_commit:
-            status_name = "up_to_date"
-            status_label = "À jour"
-            status_tone = "success"
-            can_apply = False
-            reason = ""
+            if branch_switch_required:
+                status_name = "branch_switch_required"
+                status_label = "Changement de branche requis"
+                status_tone = "warning"
+                can_apply = True
+                reason = f"La branche courante est {ref_name}, mais la branche cible est {target_branch}."
+            else:
+                status_name = "up_to_date"
+                status_label = "À jour"
+                status_tone = "success"
+                can_apply = False
+                reason = ""
         elif _commit_is_ancestor(local_commit, remote_commit):
             status_name = "update_available"
             status_label = "Mise à jour disponible"

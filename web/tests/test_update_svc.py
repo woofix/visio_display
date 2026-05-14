@@ -202,6 +202,21 @@ class UpdateServiceTests(unittest.TestCase):
         self.assertEqual(status["local_version"], "1.6.13")
         self.assertEqual(status["remote_version"], "1.6.12")
 
+    def test_same_commit_on_wrong_branch_requires_branch_switch(self):
+        repo = self._init_repo()
+        self._git(repo, "checkout", "-b", "dev")
+
+        status = update_svc.get_update_status(fetch_remote=True)
+
+        self.assertEqual(status["status"], "branch_switch_required")
+        self.assertTrue(status["can_apply"])
+        self.assertEqual(status["branch"], "dev")
+        self.assertEqual(status["target_branch"], "main")
+        self.assertEqual(status["local_version"], "1.0.0")
+        self.assertEqual(status["remote_version"], "1.0.0")
+        self.assertEqual(status["local_commit"], status["remote_commit"])
+        self.assertIn("branche cible", status["reason"])
+
     def test_compose_project_is_injected_for_restart_commands(self):
         docker_compose = update_svc._with_compose_project(["docker", "compose"], "visio_display")
         legacy_compose = update_svc._with_compose_project(["docker-compose"], "visio_display")

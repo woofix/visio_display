@@ -104,6 +104,7 @@ ALL_PERMISSIONS = [
 
 ALL_FEATURES = [
     ("upload",         "feature_upload",         "feature_upload_desc"),
+    ("announcements",  "feature_announcements",  "feature_announcements_desc"),
     ("videos",         "feature_videos",         "feature_videos_desc"),
     ("delete",         "feature_delete",          "feature_delete_desc"),
     ("compress",       "feature_compress",        "feature_compress_desc"),

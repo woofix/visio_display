@@ -685,6 +685,71 @@ class AppSmokeTests(unittest.TestCase):
             self.assertTrue(os.path.exists(os.path.join(UPLOAD_FOLDER, "photo.jpg")))
             self.assertIsNotNone(get_existing_image_rendition_url("photo.jpg", "thumb"))
 
+    def test_announcements_page_renders_for_upload_user(self):
+        with self.client.session_transaction() as session:
+            session["user"] = "admin"
+
+        response = self.client.get("/admin/announcements")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"announcement-form", response.data)
+
+    def test_announcements_feature_can_be_disabled(self):
+        with self.app.app_context():
+            from services.config_svc import save_config
+
+            save_config({"features": {"announcements": False}})
+
+        with self.client.session_transaction() as session:
+            session["user"] = "admin"
+
+        menu_response = self.client.get("/admin/media")
+        self.assertEqual(menu_response.status_code, 200)
+        self.assertNotIn(b"/admin/announcements", menu_response.data)
+
+        response = self.client.get("/admin/announcements")
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.headers["Location"].endswith("/admin"))
+
+    def test_color_announcement_creates_png_media(self):
+        with self.client.session_transaction() as session:
+            session["user"] = "admin"
+            session["_csrf_token"] = "announcement-token"
+            token = session["_csrf_token"]
+
+        response = self.client.post(
+            "/admin/announcements/create",
+            data={
+                "_csrf_token": token,
+                "title": "Reunion test",
+                "body": "Salle polyvalente",
+                "background_mode": "color",
+                "background_color": "#123456",
+                "text_color": "#ffffff",
+                "accent_color": "#7c3aed",
+                "overlay_strength": "20",
+                "duration": "12",
+            },
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.headers["Location"].endswith("/admin/media"))
+
+        with self.app.app_context():
+            from constants import UPLOAD_FOLDER
+            from services.config_svc import load_config
+            from services.media_svc import get_existing_image_rendition_url
+
+            cfg = load_config()
+            created = [filename for filename in cfg.get("order", []) if filename.startswith("annonce_reunion_test")]
+            self.assertEqual(len(created), 1)
+            filename = created[0]
+            self.assertTrue(filename.endswith(".png"))
+            self.assertTrue(os.path.exists(os.path.join(UPLOAD_FOLDER, filename)))
+            self.assertEqual(cfg.get("durations", {}).get(filename), 12)
+            self.assertIsNotNone(get_existing_image_rendition_url(filename, "thumb"))
+
     def test_pdf_upload_is_converted_to_document_pages(self):
         from PIL import Image
 

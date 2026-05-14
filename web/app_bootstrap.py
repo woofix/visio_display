@@ -345,6 +345,7 @@ def initialize_database(app):
 def register_blueprints(app):
     from blueprints.activity import bp as activity_bp
     from blueprints.admin import bp as admin_bp
+    from blueprints.announcements import bp as announcements_bp
     from blueprints.api import bp as api_bp
     from blueprints.auth import bp as auth_bp
     from blueprints.campaigns import bp as campaigns_bp
@@ -363,6 +364,7 @@ def register_blueprints(app):
     for blueprint in (
         auth_bp,
         admin_bp,
+        announcements_bp,
         campaigns_bp,
         media_bp,
         screens_bp,

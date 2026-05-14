@@ -334,6 +334,7 @@ def _shell_join(command):
 def _start_restart_helper(command, *, repo_dir, compose_cmd, project_name, progress_callback=None, lock_token=None, verify_runtime=False):
     helper_name = f"visio-display-restart-{int(time.time())}"
     restart_command = _shell_join(command)
+    helper_pythonpath = f"{repo_dir}/web:/app"
     helper_lines = [
         "sleep 2",
         f"cd {shlex.quote(repo_dir)}",
@@ -347,7 +348,7 @@ def _start_restart_helper(command, *, repo_dir, compose_cmd, project_name, progr
         )
         helper_lines.extend([
             "if [ \"$status\" -eq 0 ]; then",
-            f"  PYTHONPATH=/app python -c {shlex.quote(wait_code)}",
+            f"  PYTHONPATH={shlex.quote(helper_pythonpath)} python -c {shlex.quote(wait_code)}",
             "  status=$?",
             "fi",
         ])
@@ -364,11 +365,11 @@ def _start_restart_helper(command, *, repo_dir, compose_cmd, project_name, progr
             "error=True, timeout_seconds=1800)"
         )
         helper_lines.extend([
-            "cd /app",
+            f"cd {shlex.quote(repo_dir)}",
             "if [ \"$status\" -eq 0 ]; then",
-            f"  PYTHONPATH=/app python -c {shlex.quote(success_cleanup)} || true",
+            f"  PYTHONPATH={shlex.quote(helper_pythonpath)} python -c {shlex.quote(success_cleanup)} || true",
             "else",
-            f"  PYTHONPATH=/app python -c {shlex.quote(failure_cleanup)} || true",
+            f"  PYTHONPATH={shlex.quote(helper_pythonpath)} python -c {shlex.quote(failure_cleanup)} || true",
             "fi",
             "exit $status",
         ])

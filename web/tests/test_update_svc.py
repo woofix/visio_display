@@ -256,6 +256,23 @@ class UpdateServiceTests(unittest.TestCase):
         self.assertFalse(result["can_restart"])
         self.assertIn("arrière-plan", result["reason"])
 
+    def test_restart_helper_uses_updated_repo_code_for_runtime_checks(self):
+        repo_dir = str(self.root / "repo")
+
+        with patch.object(update_svc, "_run", return_value=update_svc.CommandResult(True)) as run:
+            update_svc._start_restart_helper(
+                ["docker-compose", "up", "-d", "--build"],
+                repo_dir=repo_dir,
+                compose_cmd=["docker-compose"],
+                project_name="visio_display",
+                lock_token="lock-token",
+                verify_runtime=True,
+            )
+
+        helper_script = run.call_args.args[0][-1]
+        self.assertIn(f"PYTHONPATH={repo_dir}/web:/app", helper_script)
+        self.assertNotIn("PYTHONPATH=/app python -c", helper_script)
+
     def test_system_lock_prevents_parallel_tasks(self):
         lock_file = str(self.root / "system_task.lock")
         with patch.object(system_lock_svc, "LOCK_FILE", lock_file):

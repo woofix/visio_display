@@ -146,34 +146,6 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 
 ### Configuration
 
-**Version automatique au commit Git**
-
-Sur le serveur où les commits sont effectués (ex. `ramses`), activez le hook Git une seule fois :
-
-```bash
-./scripts/install_git_hooks.sh
-```
-
-Ensuite, chaque `git commit` incrémente automatiquement le fichier `VERSION` et l'ajoute au commit.
-
-Le type de version est détecté à partir des fichiers préparés :
-
-- changement courant : patch (`1.0.0` → `1.0.1`)
-- changement sensible (`web/db.py`, `Dockerfile`, `docker-compose.yml`, dépendances) ou suppression de fichier : majeur (`1.0.0` → `2.0.0`)
-
-Pour une montée ponctuelle de version mineure ou majeure :
-
-```bash
-VISIO_VERSION_BUMP=minor git commit -m "..."
-VISIO_VERSION_BUMP=major git commit -m "..."
-```
-
-Pour créer un commit sans changer la version :
-
-```bash
-VISIO_VERSION_BUMP=none git commit -m "..."
-```
-
 **Variables d'environnement (`.env`)**
 
 | Variable         | Description                                                        |
@@ -928,34 +900,6 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 - that part explains remote SSH setup, autologin, kiosk mode, and the client heartbeat visible in the admin UI.
 
 ### Configuration
-
-**Automatic Git commit versioning**
-
-On the server where commits are created (for example `ramses`), enable the Git hook once:
-
-```bash
-./scripts/install_git_hooks.sh
-```
-
-After that, each `git commit` automatically bumps the `VERSION` file and stages it into the commit.
-
-The version bump is detected from the staged files:
-
-- regular change: patch (`1.0.0` → `1.0.1`)
-- sensitive change (`web/db.py`, `Dockerfile`, `docker-compose.yml`, dependencies) or deleted file: major (`1.0.0` → `2.0.0`)
-
-For a one-off minor or major version bump:
-
-```bash
-VISIO_VERSION_BUMP=minor git commit -m "..."
-VISIO_VERSION_BUMP=major git commit -m "..."
-```
-
-To create a commit without changing the version:
-
-```bash
-VISIO_VERSION_BUMP=none git commit -m "..."
-```
 
 **Environment variables (`.env`)**
 

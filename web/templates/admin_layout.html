@@ -27,7 +27,7 @@
         display: flex;
     }
     .admin-system-lock-card {
-        width: min(420px, 100%);
+        width: min(520px, 100%);
         border: 1px solid var(--border);
         border-radius: 8px;
         background: color-mix(in srgb, var(--surface) 90%, rgba(0, 0, 0, .38));
@@ -75,6 +75,49 @@
         background: var(--primary);
         transition: width .2s ease;
     }
+    .admin-system-lock-steps {
+        display: none;
+        margin: 18px 0 0;
+        padding: 0;
+        list-style: none;
+        text-align: left;
+    }
+    .admin-system-lock-steps.is-visible {
+        display: grid;
+        gap: 9px;
+    }
+    .admin-system-lock-step {
+        display: grid;
+        grid-template-columns: 18px minmax(0, 1fr);
+        gap: 9px;
+        align-items: center;
+        color: var(--text-2);
+        font-size: .86rem;
+    }
+    .admin-system-lock-step::before {
+        content: "";
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--text-2) 35%, transparent);
+        justify-self: center;
+    }
+    .admin-system-lock-step[data-state="done"]::before {
+        background: var(--success-color);
+    }
+    .admin-system-lock-step[data-state="active"]::before {
+        background: var(--primary);
+        box-shadow: 0 0 0 5px color-mix(in srgb, var(--primary) 16%, transparent);
+    }
+    .admin-system-lock-step[data-state="failed"]::before {
+        background: var(--danger-color);
+        box-shadow: 0 0 0 5px color-mix(in srgb, var(--danger-color) 16%, transparent);
+    }
+    .admin-system-lock-error .admin-system-lock-spinner {
+        animation: none;
+        border-color: color-mix(in srgb, var(--danger-color) 18%, transparent);
+        border-top-color: var(--danger-color);
+    }
     @keyframes admin-system-lock-spin {
         to { transform: rotate(360deg); }
     }
@@ -109,6 +152,7 @@
         <div class="admin-system-lock-progress" id="admin-system-lock-progress" aria-hidden="true">
             <span id="admin-system-lock-progress-bar"></span>
         </div>
+        <ul class="admin-system-lock-steps" id="admin-system-lock-steps"></ul>
     </div>
 </div>
 

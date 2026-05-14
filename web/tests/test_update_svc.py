@@ -249,6 +249,7 @@ class UpdateServiceTests(unittest.TestCase):
             project_name="visio_display",
             progress_callback=messages.append,
             lock_token=None,
+            verify_runtime=True,
         )
         self.assertEqual(result["status"], "restart_scheduled")
         self.assertEqual(result["status_label"], "Redémarrage lancé")

@@ -41,19 +41,26 @@ def _public_status(lock_data):
             "message": "",
             "progress": None,
         }
-    return {
-        "active": True,
-        "task": {
-            "type": lock_data.get("type"),
-            "message": lock_data.get("message") or "Opération système en cours...",
-            "progress": lock_data.get("progress"),
-            "started_at": lock_data.get("started_at"),
-            "updated_at": lock_data.get("updated_at"),
-            "expires_at": lock_data.get("expires_at"),
-        },
+    task = {
         "type": lock_data.get("type"),
         "message": lock_data.get("message") or "Opération système en cours...",
         "progress": lock_data.get("progress"),
+        "started_at": lock_data.get("started_at"),
+        "updated_at": lock_data.get("updated_at"),
+        "expires_at": lock_data.get("expires_at"),
+        "stage": lock_data.get("stage"),
+        "steps": lock_data.get("steps") or [],
+        "error": bool(lock_data.get("error")),
+    }
+    return {
+        "active": True,
+        "task": task,
+        "type": lock_data.get("type"),
+        "message": lock_data.get("message") or "Opération système en cours...",
+        "progress": lock_data.get("progress"),
+        "stage": lock_data.get("stage"),
+        "steps": lock_data.get("steps") or [],
+        "error": bool(lock_data.get("error")),
     }
 
 
@@ -102,7 +109,7 @@ def get_system_status():
     return _public_status(data)
 
 
-def acquire_lock(task_type, message, *, progress=None, timeout_seconds=None):
+def acquire_lock(task_type, message, *, progress=None, timeout_seconds=None, stage=None, steps=None):
     cleanup_expired_lock()
     token = uuid.uuid4().hex
     now = _now()
@@ -112,6 +119,9 @@ def acquire_lock(task_type, message, *, progress=None, timeout_seconds=None):
         "type": task_type,
         "message": message,
         "progress": progress,
+        "stage": stage,
+        "steps": steps or [],
+        "error": False,
         "started_at": _iso(now),
         "updated_at": _iso(now),
         "expires_at": _iso(now + ttl),
@@ -132,7 +142,7 @@ def acquire_lock(task_type, message, *, progress=None, timeout_seconds=None):
     return token
 
 
-def update_lock(token, *, message=None, progress=None, timeout_seconds=None):
+def update_lock(token, *, message=None, progress=None, timeout_seconds=None, stage=None, steps=None, error=None):
     data = _read_lock_raw()
     if not data or data.get("token") != token:
         return False
@@ -141,6 +151,12 @@ def update_lock(token, *, message=None, progress=None, timeout_seconds=None):
         data["message"] = str(message)
     if progress is not None:
         data["progress"] = progress
+    if stage is not None:
+        data["stage"] = stage
+    if steps is not None:
+        data["steps"] = steps
+    if error is not None:
+        data["error"] = bool(error)
     data["updated_at"] = _iso(now)
     if timeout_seconds is not None:
         ttl = _timeout_for(data.get("type"), timeout_seconds)
@@ -168,8 +184,15 @@ def release_lock(token=None, *, force=False):
 
 
 @contextmanager
-def system_task_lock(task_type, message, *, progress=None, timeout_seconds=None):
-    token = acquire_lock(task_type, message, progress=progress, timeout_seconds=timeout_seconds)
+def system_task_lock(task_type, message, *, progress=None, timeout_seconds=None, stage=None, steps=None):
+    token = acquire_lock(
+        task_type,
+        message,
+        progress=progress,
+        timeout_seconds=timeout_seconds,
+        stage=stage,
+        steps=steps,
+    )
     try:
         yield token
     finally:

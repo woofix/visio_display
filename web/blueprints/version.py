@@ -14,9 +14,10 @@ from services.system_lock_svc import (
     SystemTaskAlreadyRunning,
     acquire_lock,
     release_lock,
+    get_system_status,
     update_lock,
 )
-from services.update_svc import apply_update, get_update_status, restart_stack
+from services.update_svc import UPDATE_STEPS, apply_update_and_restart, get_update_status, restart_stack, runtime_readiness_status
 
 
 bp = Blueprint("version", __name__)
@@ -45,13 +46,35 @@ def update_status():
     return jsonify({"ok": True, "status": get_update_status(fetch_remote=request.args.get("fetch") == "1")})
 
 
+@bp.route("/admin/version/update/runtime-status")
+def update_runtime_status():
+    redir = superadmin_guard()
+    if redir:
+        return jsonify({"ok": False, "error": "forbidden"}), 403
+    return jsonify({
+        "ok": True,
+        "system": get_system_status(),
+        "runtime": runtime_readiness_status(),
+    })
+
+
 def _stream_operation(operation, *, activity_message, task_type, start_message, keep_lock_after_success=False):
     redir = superadmin_guard()
     if redir:
         return jsonify({"ok": False, "error": "forbidden"}), 403
 
     try:
-        lock_token = acquire_lock(task_type, start_message, progress=5)
+        initial_steps = [
+            {"key": key, "label": label, "state": "active" if index == 0 else "pending"}
+            for index, (key, label) in enumerate(UPDATE_STEPS)
+        ] if task_type == "update" else None
+        lock_token = acquire_lock(
+            task_type,
+            start_message,
+            progress=5,
+            stage="pull" if task_type == "update" else None,
+            steps=initial_steps,
+        )
     except SystemTaskAlreadyRunning as exc:
         return jsonify({"ok": False, "error": str(exc) or "Une opération système est déjà en cours."}), 409
 
@@ -102,10 +125,11 @@ def _stream_operation(operation, *, activity_message, task_type, start_message, 
 @bp.route("/admin/version/update/apply-stream", methods=["POST"])
 def apply_update_stream():
     return _stream_operation(
-        apply_update,
+        apply_update_and_restart,
         activity_message="server update applied",
         task_type="update",
         start_message="Mise à jour serveur en cours...",
+        keep_lock_after_success=True,
     )
 
 
@@ -116,4 +140,5 @@ def restart_update_stream():
         activity_message="docker stack restarted after update",
         task_type="reboot",
         start_message="Redémarrage Docker en cours...",
+        keep_lock_after_success=True,
     )

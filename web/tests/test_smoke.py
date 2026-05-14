@@ -264,7 +264,7 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(payload["system"]["type"], "update")
         self.assertEqual(payload["system"]["progress"], 25)
 
-    def test_restart_stream_releases_system_lock_after_scheduling(self):
+    def test_restart_stream_keeps_lock_during_docker_restart(self):
         self._login()
         from services import system_lock_svc
 
@@ -292,10 +292,69 @@ class AppSmokeTests(unittest.TestCase):
                 },
             )
             body = response.get_data(as_text=True)
+            status = system_lock_svc.get_system_status()
+            if status["active"]:
+                system_lock_svc.release_lock(force=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertIn('"type": "done"', body)
-        self.assertFalse(system_lock_svc.get_system_status()["active"])
+        self.assertTrue(status["active"])
+        self.assertEqual(status["type"], "reboot")
+
+    def test_apply_stream_keeps_lock_during_docker_restart(self):
+        self._login()
+        from services import system_lock_svc
+
+        with self.client.session_transaction() as session:
+            token = session["_csrf_token"]
+
+        def fake_apply_and_restart(*, progress_callback=None, lock_token=None):
+            if progress_callback:
+                progress_callback("Redémarrage Docker lancé.")
+            return {
+                "status": "restart_scheduled",
+                "status_label": "Redémarrage lancé",
+                "status_tone": "success",
+                "can_apply": False,
+                "can_restart": False,
+                "reason": "La stack Docker redémarre en arrière-plan.",
+            }
+
+        with patch("blueprints.version.apply_update_and_restart", side_effect=fake_apply_and_restart):
+            response = self.client.post(
+                "/admin/version/update/apply-stream",
+                headers={
+                    "Accept": "application/x-ndjson",
+                    "X-CSRF-Token": token,
+                },
+            )
+            body = response.get_data(as_text=True)
+            status = system_lock_svc.get_system_status()
+            if status["active"]:
+                system_lock_svc.release_lock(force=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('"type": "done"', body)
+        self.assertTrue(status["active"])
+        self.assertEqual(status["type"], "update")
+
+    def test_update_runtime_status_reports_runtime_checks(self):
+        self._login()
+        runtime = {
+            "ready": True,
+            "checks": [
+                {"key": "containers", "label": "Conteneurs running", "ok": True, "detail": "app"},
+                {"key": "http", "label": "Réponse HTTP de l'application", "ok": True, "detail": "HTTP 200"},
+            ],
+        }
+        with patch("blueprints.version.runtime_readiness_status", return_value=runtime):
+            response = self.client.get("/admin/version/update/runtime-status")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertTrue(payload["ok"])
+        self.assertTrue(payload["runtime"]["ready"])
+        self.assertEqual(payload["runtime"]["checks"][0]["key"], "containers")
 
     def test_admin_update_alert_appears_only_when_update_available(self):
         self._login()

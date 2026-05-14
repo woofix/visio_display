@@ -24,6 +24,13 @@
     const refField = document.getElementById('update-ref');
 
     let currentStatus = {};
+    const updateSteps = [
+        { key: 'pull', label: 'Téléchargement / pull', state: 'active' },
+        { key: 'stop', label: 'Arrêt des services', state: 'pending' },
+        { key: 'restart', label: 'Redémarrage Docker', state: 'pending' },
+        { key: 'containers', label: 'Vérification des conteneurs', state: 'pending' },
+        { key: 'app', label: "Vérification de l'application", state: 'pending' },
+    ];
     try {
         currentStatus = JSON.parse(panel.dataset.initialStatus || '{}');
     } catch (error) {
@@ -45,6 +52,48 @@
         const prefix = isError ? 'ERREUR: ' : '';
         logBox.textContent += `${prefix}${message || ''}\n`;
         logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function pollRuntimeStatus() {
+        const deadline = Date.now() + 8 * 60 * 1000;
+        while (Date.now() < deadline) {
+            try {
+                const response = await fetch('/admin/version/update/runtime-status', {
+                    headers: { 'Accept': 'application/json' },
+                    cache: 'no-store',
+                });
+                if (!response.ok) throw new Error('runtime unavailable');
+                const payload = await response.json();
+                if (!payload.ok) throw new Error(payload.error || 'runtime unavailable');
+                const system = payload.system || {};
+                const runtime = payload.runtime || {};
+                if (system.active) {
+                    window.adminSystemLock?.refresh();
+                } else if (runtime.ready) {
+                    appendLog('Application disponible.');
+                    window.adminSystemLock?.hide();
+                    await refreshStatus(false);
+                    return true;
+                }
+            } catch {
+                window.adminSystemLock?.showConnecting();
+            }
+            await sleep(2000);
+        }
+        appendLog('Le redémarrage prend trop longtemps. Vérifiez Docker puis relancez une vérification.', true);
+        renderStatus({
+            ...currentStatus,
+            status: 'error',
+            status_label: 'Timeout de redémarrage',
+            status_tone: 'danger',
+            reason: 'Les conteneurs ou l’application ne sont pas revenus dans le délai prévu.',
+            can_apply: false,
+        });
+        return false;
     }
 
     function renderStatus(status) {
@@ -88,7 +137,7 @@
             checksBox.appendChild(row);
         });
 
-        const canApply = currentStatus.can_apply === true && currentStatus.status === 'update_available';
+        const canApply = currentStatus.can_apply === true && ['update_available', 'branch_switch_required'].includes(currentStatus.status);
         applyBtn.hidden = !canApply;
         restartBtn.hidden = currentStatus.status !== 'restart_required';
         confirmBox.hidden = !canApply;
@@ -125,7 +174,11 @@
     async function streamAction(url, startMessage) {
         setBusy(true);
         const lockType = url.includes('restart') ? 'reboot' : 'update';
-        window.adminSystemLock?.show(lockType, startMessage, 5);
+        if (lockType === 'update') {
+            window.adminSystemLock?.showDetailed(lockType, startMessage, 5, updateSteps);
+        } else {
+            window.adminSystemLock?.show(lockType, startMessage, 5);
+        }
         logBox.hidden = false;
         logBox.textContent = '';
         appendLog(startMessage);
@@ -192,6 +245,9 @@
                 renderStatus(finalStatus);
                 appendLog('Terminé.');
                 window.adminSystemLock?.refresh();
+                if (finalStatus.status === 'restart_scheduled') {
+                    pollRuntimeStatus();
+                }
             }
         } catch (error) {
             appendLog(error?.message || 'Action échouée.', true);

@@ -147,11 +147,13 @@ setInterval(updateQueueBadge, 30000);
     const message = document.getElementById('admin-system-lock-message');
     const progress = document.getElementById('admin-system-lock-progress');
     const progressBar = document.getElementById('admin-system-lock-progress-bar');
-    if (!overlay || !title || !message || !progress || !progressBar) return;
+    const stepsList = document.getElementById('admin-system-lock-steps');
+    if (!overlay || !title || !message || !progress || !progressBar || !stepsList) return;
 
     let active = false;
     let serverWasUnavailable = false;
     let pollTimer = null;
+    let lastTask = null;
 
     function taskTitle(type) {
         if (type === 'reboot') return 'Redémarrage en cours';
@@ -159,12 +161,31 @@ setInterval(updateQueueBadge, 30000);
         return 'Opération système en cours';
     }
 
-    function renderLock({ type = null, messageText = '', progressValue = null, connecting = false } = {}) {
+    function renderSteps(steps) {
+        stepsList.innerHTML = '';
+        if (!Array.isArray(steps) || !steps.length) {
+            stepsList.classList.remove('is-visible');
+            return;
+        }
+        steps.forEach(step => {
+            const item = document.createElement('li');
+            item.className = 'admin-system-lock-step';
+            item.dataset.state = step.state || 'pending';
+            item.textContent = step.label || step.key || 'Étape';
+            stepsList.appendChild(item);
+        });
+        stepsList.classList.add('is-visible');
+    }
+
+    function renderLock({ type = null, messageText = '', progressValue = null, connecting = false, steps = [], error = false } = {}) {
         active = true;
         overlay.classList.add('is-active');
+        overlay.classList.toggle('admin-system-lock-error', Boolean(error));
         overlay.setAttribute('aria-hidden', 'false');
-        title.textContent = connecting ? 'Connexion au serveur...' : taskTitle(type);
-        message.textContent = connecting
+        title.textContent = error ? 'Mise à jour interrompue' : (connecting ? 'Connexion au serveur...' : taskTitle(type));
+        message.textContent = error
+            ? (messageText || 'La mise à jour ou le redémarrage a pris trop longtemps.')
+            : connecting
             ? 'Le serveur redémarre ou répond temporairement lentement. Reconnexion automatique...'
             : (messageText || 'Veuillez patienter...');
 
@@ -176,15 +197,19 @@ setInterval(updateQueueBadge, 30000);
             progress.classList.remove('is-visible');
             progressBar.style.width = '0';
         }
+        renderSteps(steps);
     }
 
     function hideLock() {
         active = false;
         serverWasUnavailable = false;
+        lastTask = null;
         overlay.classList.remove('is-active');
+        overlay.classList.remove('admin-system-lock-error');
         overlay.setAttribute('aria-hidden', 'true');
         progress.classList.remove('is-visible');
         progressBar.style.width = '0';
+        renderSteps([]);
     }
 
     function renderStatus(system) {
@@ -193,10 +218,13 @@ setInterval(updateQueueBadge, 30000);
             return;
         }
         const task = system.task || {};
+        lastTask = task;
         renderLock({
             type: task.type || system.type,
             messageText: task.message || system.message,
             progressValue: task.progress ?? system.progress,
+            steps: task.steps || system.steps || [],
+            error: task.error || system.error,
         });
     }
 
@@ -215,7 +243,12 @@ setInterval(updateQueueBadge, 30000);
         } catch {
             if (active || serverWasUnavailable) {
                 serverWasUnavailable = true;
-                renderLock({ connecting: true });
+                renderLock({
+                    connecting: true,
+                    type: lastTask?.type,
+                    steps: lastTask?.steps || [],
+                    progressValue: lastTask?.progress,
+                });
             }
         }
     }
@@ -235,6 +268,10 @@ setInterval(updateQueueBadge, 30000);
         show(type, messageText, progressValue) {
             renderLock({ type, messageText, progressValue });
         },
+        showDetailed(type, messageText, progressValue, steps) {
+            lastTask = { type, message: messageText, progress: progressValue, steps: steps || [] };
+            renderLock({ type, messageText, progressValue, steps: steps || [] });
+        },
         showConnecting() {
             renderLock({ connecting: true });
         },
@@ -247,6 +284,11 @@ setInterval(updateQueueBadge, 30000);
 
     pollSystemStatus();
     pollTimer = setInterval(pollSystemStatus, 2000);
+    window.addEventListener('beforeunload', event => {
+        if (!active) return;
+        event.preventDefault();
+        event.returnValue = '';
+    });
     window.addEventListener('beforeunload', () => {
         if (pollTimer) clearInterval(pollTimer);
     });

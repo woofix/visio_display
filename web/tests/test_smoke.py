@@ -622,6 +622,40 @@ class AppSmokeTests(unittest.TestCase):
         self.assertNotIn("/admin/roles", urls)
         self.assertNotIn("/admin/settings/gestion-ecrans", config_urls)
 
+    def test_search_finds_announcements_for_allowed_users(self):
+        with self.app.app_context():
+            from services.users_svc import create_user
+
+            create_user("announcer", "operator-pass-123", permissions=["announcements"])
+
+        with self.client.session_transaction() as session:
+            session["user"] = "announcer"
+
+        response = self.client.get("/api/search?q=annonces")
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        urls = {item["url"] for item in payload["pages"]}
+
+        self.assertIn("/admin/announcements", urls)
+
+    def test_search_restricts_announcements_without_required_permission(self):
+        with self.app.app_context():
+            from services.users_svc import create_user
+
+            create_user("operator", "operator-pass-123", permissions=[])
+
+        with self.client.session_transaction() as session:
+            session["user"] = "operator"
+
+        response = self.client.get("/api/search?q=annonces")
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        page_urls = {item["url"] for item in payload["pages"]}
+        restricted_urls = {item["url"] for item in payload["restricted"]}
+
+        self.assertNotIn("/admin/announcements", page_urls)
+        self.assertIn("/admin/announcements", restricted_urls)
+
     def test_save_config_normalizes_missing_sections(self):
         with self.app.app_context():
             from services.config_svc import load_config, save_config

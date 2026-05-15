@@ -19,12 +19,14 @@ bp = Blueprint('search', __name__)
 MAX_PER_CATEGORY = 20
 
 _URL_PERMISSION_MAP = [
-    ('/admin/upload', 'upload'),
-    ('/admin/programming', 'schedule'),
+    ('/admin/upload', ('upload',)),
+    ('/admin/announcements', ('announcements', 'upload')),
+    ('/admin/programming', ('schedule',)),
 ]
 
 _URL_FEATURE_MAP = [
     ('/admin/upload', 'upload'),
+    ('/admin/announcements', 'announcements'),
     ('/admin/campaigns', 'campaigns'),
     ('/admin/programming', 'schedule'),
     ('/admin/activity', 'activity'),
@@ -75,8 +77,8 @@ def _split_restricted(pages, has_perm_fn, *, superadmin=False, feature_enabled_f
         if not _is_url_available(url, superadmin=superadmin, feature_enabled_fn=feature_enabled_fn):
             continue
         required = next((p for prefix, p in _URL_PERMISSION_MAP if url.startswith(prefix)), None)
-        if required and not has_perm_fn(required):
-            restricted.append({**page, 'required_perm': required})
+        if required and not any(has_perm_fn(permission) for permission in required):
+            restricted.append({**page, 'required_perm': required[0]})
         else:
             accessible.append(page)
     return accessible, restricted

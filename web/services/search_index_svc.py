@@ -25,6 +25,12 @@ _PAGES_FR = [
         'keywords': 'médiathèque médias images photos vidéos fichiers bibliothèque galerie désactiver planifier gestion',
     },
     {
+        'title': 'Annonces',
+        'url': '/admin/announcements',
+        'description': 'Créer des annonces graphiques 16:9 et les exporter en PNG',
+        'keywords': 'annonces éditeur affiche poster canvas texte formes images icônes png export médiathèque',
+    },
+    {
         'title': 'Campagnes',
         'url': '/admin/campaigns',
         'description': 'Créer et gérer les campagnes de diffusion temporaires',
@@ -328,6 +334,12 @@ _PAGES_EN = [
         'url': '/admin/media',
         'description': 'Manage media, scheduling, enable, disable',
         'keywords': 'media library images photos videos files gallery disable schedule manage',
+    },
+    {
+        'title': 'Announcements',
+        'url': '/admin/announcements',
+        'description': 'Create 16:9 graphic announcements and export them as PNG',
+        'keywords': 'announcements editor poster canvas text shapes images icons png export media library',
     },
     {
         'title': 'Campaigns',

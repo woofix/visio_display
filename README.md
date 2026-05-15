@@ -108,6 +108,7 @@ Visio-Display s'exécute comme une stack self-hosted Docker Compose :
 - Barre d'outils gauche pour ajouter texte, formes, lignes, images et icônes
 - Panneau contextuel droit avec réglages de document, style, position et calques selon la sélection
 - Système de calques compact : renommage, ordre, visibilité, verrouillage et déplacement
+- Gestion avancée des images : plusieurs images libres, remplissage d'un rectangle ou d'un cercle avec masque conservé, zoom/positionnement dans la forme et choix cover/contain/stretch pour le fond
 - Export PNG 1920×1080 vers la médiathèque, avec durée d'affichage et écrans ciblés
 - Bibliothèques d'icônes locales Lucide et Tabler chargées dynamiquement
 
@@ -326,7 +327,8 @@ Depuis **Paramètres > Version**, le super-admin peut vérifier la version dista
 - Cliquez sur **Texte**, **Rectangle**, **Cercle**, **Ligne** ou **Icône** pour créer un nouveau calque.
 - Cliquez sur un élément du canvas pour afficher ses propriétés : style, position/taille et calques.
 - Cliquez dans le vide du canvas ou sur **Aperçu** pour revenir aux réglages du document : titre, message, fond, durée et écrans.
-- L'outil **Image** ouvre directement le panneau **Fond** avec les options couleur, upload d'image, médiathèque et banque externe.
+- L'outil **Image** ouvre le panneau **Fond / Images** : choisissez un fond depuis upload, médiathèque ou banque externe, ou ajoutez plusieurs images comme calques indépendants.
+- Sélectionnez un rectangle ou un cercle puis utilisez **Remplir la forme** pour y placer une image ; les réglages de zoom et de décalage déplacent l'image dans son masque sans la faire dépasser.
 - Le bouton **Snap** active ou désactive l'alignement automatique sur la grille, les guides centraux et les autres objets.
 - Le bouton **Exporter** crée un PNG 1920×1080 et l'ajoute à la médiathèque avec la durée et les écrans choisis.
 
@@ -499,10 +501,10 @@ Une fois l'encodage initial effectué, la vidéo est ajoutée en file de compres
 L'éditeur d'annonces est implémenté dans `web/templates/admin_announcements.html` et exporte via `web/blueprints/announcements.py` vers `web/services/announcement_svc.py`.
 
 - Le canvas client est un artboard 16:9 de référence `1920×1080`, rendu en HTML/CSS dans l'administration puis sérialisé dans le champ caché `layout_json`.
-- Chaque objet est un calque JSON avec `id`, `type`, `name`, `x`, `y`, `w`, `h`, `z`, `rotation`, `opacity`, `hidden`, `locked` et des propriétés spécifiques (`text`, `fontSize`, `align`, `color`, `src`, `media`, etc.).
+- Chaque objet est un calque JSON avec `id`, `type`, `name`, `x`, `y`, `w`, `h`, `z`, `rotation`, `opacity`, `hidden`, `locked` et des propriétés spécifiques (`text`, `fontSize`, `align`, `color`, `src`, `media`, `imageFit`, `imageZoom`, `imageX`, `imageY`, etc.).
 - Les propriétés contextuelles sont pilotées côté client : aucun élément sélectionné affiche le document/export/réglages, un texte affiche les options typographiques, une image ou une forme affiche surtout style et position.
 - Le snap combine grille fixe, centres du document, marges de sécurité et points des autres objets. Les guides visuels sont seulement client-side ; les valeurs finales sont celles du JSON.
-- L'export image est rendu côté serveur par Pillow dans `announcement_svc.py` : le fond est résolu, chaque calque est dessiné dans l'ordre `z`, puis le PNG est enregistré comme média.
+- L'export image est rendu côté serveur par Pillow dans `announcement_svc.py` : le fond est résolu avec cover/contain/stretch, chaque calque est dessiné dans l'ordre `z`, les images de formes sont masquées côté serveur, puis le PNG est enregistré comme média.
 - Les icônes sont des SVG locaux servis depuis `web/static/assets/lucide/`, `web/static/assets/tabler/outline/` et `web/static/assets/tabler/filled/`; elles sont listées dynamiquement par `/admin/announcements/icons`, converties en image côté client pour le canvas, puis exportées comme calques image.
 
 ### Structure du projet
@@ -953,6 +955,7 @@ Visio-Display runs as a self-hosted Docker Compose stack:
 - Left toolbar for adding text, shapes, lines, images and icons
 - Contextual right panel with document, style, position and layer controls depending on selection
 - Compact layer system: rename, reorder, show/hide, lock and drag layers
+- Advanced image handling: multiple free image layers, rectangle/circle image fills with preserved masks, in-shape zoom/positioning, and cover/contain/stretch background modes
 - Export the final 1920×1080 PNG to the media library, with display duration and target screens
 - Local Lucide and Tabler icon libraries loaded dynamically
 
@@ -1173,7 +1176,8 @@ From **Settings > Version**, the super-admin can check the remote version, apply
 - Click **Text**, **Rectangle**, **Circle**, **Line**, or **Icon** to create a new layer.
 - Click an element on the canvas to edit its properties: style, position/size, and layers.
 - Click the empty canvas area or **Preview** to return to document settings: title, message, background, duration, and screens.
-- The **Image** tool opens the **Background** panel directly with color, image upload, media library, and external image bank options.
+- The **Image** tool opens the **Background / Images** panel: choose a background from upload, media library, or external bank, or add multiple images as independent layers.
+- Select a rectangle or circle, then use **Fill shape** to place an image inside it; zoom and offset controls move the image within the mask without visual overflow.
 - The **Snap** button toggles automatic alignment to the grid, center guides, safe areas, and other objects.
 - The **Export** button renders a 1920×1080 PNG and adds it to the media library with the selected duration and screens.
 
@@ -1274,10 +1278,10 @@ After initial encoding, the video is queued for overnight compression (8 PM–6 
 The announcement editor lives in `web/templates/admin_announcements.html` and exports through `web/blueprints/announcements.py` into `web/services/announcement_svc.py`.
 
 - The client canvas is a reference `1920×1080` 16:9 artboard, rendered with HTML/CSS in the admin UI and serialized into the hidden `layout_json` field.
-- Each object is a JSON layer with `id`, `type`, `name`, `x`, `y`, `w`, `h`, `z`, `rotation`, `opacity`, `hidden`, `locked`, plus type-specific properties (`text`, `fontSize`, `align`, `color`, `src`, `media`, etc.).
+- Each object is a JSON layer with `id`, `type`, `name`, `x`, `y`, `w`, `h`, `z`, `rotation`, `opacity`, `hidden`, `locked`, plus type-specific properties (`text`, `fontSize`, `align`, `color`, `src`, `media`, `imageFit`, `imageZoom`, `imageX`, `imageY`, etc.).
 - Contextual properties are handled client-side: no selection shows document/export/settings, text shows typography options, and images or shapes focus on style and position.
 - Snapping combines a fixed grid, document centers, safe margins, and points from other objects. Visual guides are client-side only; the exported values come from the JSON.
-- Image export is rendered server-side by Pillow in `announcement_svc.py`: the background is resolved, layers are drawn in `z` order, then the PNG is saved as a media item.
+- Image export is rendered server-side by Pillow in `announcement_svc.py`: the background is resolved with cover/contain/stretch, layers are drawn in `z` order, shape images are masked server-side, then the PNG is saved as a media item.
 - Icons are local SVG assets served from `web/static/assets/lucide/`, `web/static/assets/tabler/outline/`, and `web/static/assets/tabler/filled/`; `/admin/announcements/icons` lists them dynamically, the client converts them for the canvas, and the server exports them as image layers.
 
 ### Project structure

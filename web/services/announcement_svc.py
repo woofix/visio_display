@@ -11,7 +11,7 @@ from datetime import datetime
 from urllib.parse import urlparse
 
 import requests
-from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
+from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
 
 from constants import IMAGES_FOLDER, UPLOAD_FOLDER
 from services.activity_svc import log_activity
@@ -274,6 +274,28 @@ def _cover(image, size=ANNOUNCEMENT_SIZE):
     return ImageOps.fit(frame, size, method=Image.Resampling.LANCZOS, centering=(0.5, 0.5))
 
 
+def _compose_image_in_box(image, size, *, fit="cover", zoom=1, offset_x=0, offset_y=0):
+    width, height = (max(1, int(size[0])), max(1, int(size[1])))
+    frame = ImageOps.exif_transpose(image).convert("RGBA")
+    iw, ih = frame.size
+    if iw <= 0 or ih <= 0:
+        return Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    fit = str(fit or "cover").strip().lower()
+    if fit == "stretch":
+        return frame.resize((width, height), Image.Resampling.LANCZOS)
+    if fit == "contain":
+        ratio = min(width / iw, height / ih)
+    else:
+        ratio = max(width / iw, height / ih)
+    ratio *= _num(zoom, 1, 0.05, 8)
+    resized = frame.resize((max(1, int(iw * ratio)), max(1, int(ih * ratio))), Image.Resampling.LANCZOS)
+    layer = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    x = int((width - resized.width) / 2 + _num(offset_x, 0))
+    y = int((height - resized.height) / 2 + _num(offset_y, 0))
+    layer.alpha_composite(resized, (x, y))
+    return layer
+
+
 def _safe_image_url(url):
     parsed = urlparse(str(url or ""))
     return parsed.scheme == "https" and parsed.hostname in ALLOWED_IMAGE_HOSTS
@@ -301,6 +323,21 @@ def _download_image(url):
         raise ValueError(_t("announcement_external_image_too_large"))
     with Image.open(io.BytesIO(response.content)) as image:
         return image.copy()
+
+
+def _uploaded_image(uploaded_files, index):
+    try:
+        upload = list(uploaded_files or [])[int(index)]
+    except (TypeError, ValueError, IndexError):
+        return None
+    if not upload or not getattr(upload, "filename", ""):
+        return None
+    try:
+        upload.stream.seek(0)
+        with Image.open(upload.stream) as image:
+            return ImageOps.exif_transpose(image).convert("RGBA")
+    except Exception:
+        return None
 
 
 def fetch_thumbnail_bytes(url, *, max_bytes=16 * 1024 * 1024):
@@ -376,6 +413,11 @@ def _media_image_from_src(src):
                 return ImageOps.exif_transpose(image).convert("RGBA")
         except Exception:
             return None
+    if _safe_image_url(raw):
+        try:
+            return ImageOps.exif_transpose(_download_image(raw)).convert("RGBA")
+        except Exception:
+            return None
     filename = os.path.basename(raw.split("?", 1)[0])
     if not filename:
         return None
@@ -388,6 +430,19 @@ def _media_image_from_src(src):
             except Exception:
                 return None
     return None
+
+
+def _element_image(element, layer_uploads=None):
+    media = element.get("media")
+    if isinstance(media, dict):
+        source = str(media.get("source") or "").strip()
+        if source == "upload":
+            return _uploaded_image(layer_uploads, media.get("index"))
+        if source == "media":
+            return _media_image_from_src(media.get("filename"))
+        if source == "external":
+            return _media_image_from_src(media.get("url"))
+    return _media_image_from_src(media or element.get("src") or element.get("imageSrc"))
 
 
 def _alpha(color, opacity):
@@ -449,13 +504,17 @@ def _draw_text_element(canvas, draw, element):
     _paste_layer(canvas, text_layer, x, y, w, h, _num(element.get("rotation"), 0), 1)
 
 
-def _render_layout_json(form, uploaded_file=None):
+def _render_layout_json(form, uploaded_file=None, layer_uploads=None):
     layout = json.loads(form.get("layout_json") or "{}")
     background_form = {
         "background_mode": layout.get("background", {}).get("mode") or form.get("background_mode"),
         "background_color": layout.get("background", {}).get("color") or form.get("background_color"),
         "background_media": layout.get("background", {}).get("media") or form.get("background_media"),
         "external_url": layout.get("background", {}).get("external_url") or form.get("external_url"),
+        "background_fit": layout.get("background", {}).get("fit") or form.get("background_fit"),
+        "background_zoom": layout.get("background", {}).get("zoom") or form.get("background_zoom"),
+        "background_x": layout.get("background", {}).get("x") or form.get("background_x"),
+        "background_y": layout.get("background", {}).get("y") or form.get("background_y"),
     }
     background = build_background(background_form, uploaded_file).convert("RGBA")
     draw = ImageDraw.Draw(background)
@@ -472,37 +531,80 @@ def _render_layout_json(form, uploaded_file=None):
             _draw_text_element(background, draw, element)
         elif kind == "rect":
             layer = Image.new("RGBA", (int(w), int(h)), (0, 0, 0, 0))
-            ImageDraw.Draw(layer).rounded_rectangle((0, 0, w, h), radius=_num(element.get("radius"), 0, 0, 160), fill=fill)
-            _paste_layer(background, layer, x, y, w, h, _num(element.get("rotation"), 0), 1)
+            radius = _num(element.get("radius"), 0, 0, 160)
+            image = _element_image(element, layer_uploads)
+            if image:
+                layer = _compose_image_in_box(
+                    image,
+                    (w, h),
+                    fit=element.get("imageFit") or "cover",
+                    zoom=element.get("imageZoom") or 1,
+                    offset_x=element.get("imageX") or 0,
+                    offset_y=element.get("imageY") or 0,
+                )
+                mask = Image.new("L", (int(w), int(h)), 0)
+                ImageDraw.Draw(mask).rounded_rectangle((0, 0, w, h), radius=radius, fill=255)
+                layer.putalpha(ImageChops.multiply(layer.getchannel("A"), mask))
+            else:
+                ImageDraw.Draw(layer).rounded_rectangle((0, 0, w, h), radius=radius, fill=fill)
+            _paste_layer(background, layer, x, y, w, h, _num(element.get("rotation"), 0), opacity if image else 1)
         elif kind == "circle":
             layer = Image.new("RGBA", (int(w), int(h)), (0, 0, 0, 0))
-            ImageDraw.Draw(layer).ellipse((0, 0, w, h), fill=fill)
-            _paste_layer(background, layer, x, y, w, h, _num(element.get("rotation"), 0), 1)
+            image = _element_image(element, layer_uploads)
+            if image:
+                layer = _compose_image_in_box(
+                    image,
+                    (w, h),
+                    fit=element.get("imageFit") or "cover",
+                    zoom=element.get("imageZoom") or 1,
+                    offset_x=element.get("imageX") or 0,
+                    offset_y=element.get("imageY") or 0,
+                )
+                mask = Image.new("L", (int(w), int(h)), 0)
+                ImageDraw.Draw(mask).ellipse((0, 0, w, h), fill=255)
+                layer.putalpha(ImageChops.multiply(layer.getchannel("A"), mask))
+            else:
+                ImageDraw.Draw(layer).ellipse((0, 0, w, h), fill=fill)
+            _paste_layer(background, layer, x, y, w, h, _num(element.get("rotation"), 0), opacity if image else 1)
         elif kind == "line":
             stroke = int(_num(element.get("strokeWidth"), 8, 1, 80))
             layer = Image.new("RGBA", (int(w), max(stroke * 2, int(h), 2)), (0, 0, 0, 0))
             ImageDraw.Draw(layer).line((0, layer.height / 2, w, layer.height / 2), fill=fill, width=stroke)
             _paste_layer(background, layer, x, y - layer.height / 2, w, layer.height, _num(element.get("rotation"), 0), 1)
         elif kind in {"image", "icon"}:
-            image = _media_image_from_src(element.get("media") or element.get("src"))
+            image = _element_image(element, layer_uploads)
             if image:
-                _paste_layer(background, image, x, y, w, h, _num(element.get("rotation"), 0), opacity)
+                layer = _compose_image_in_box(
+                    image,
+                    (w, h),
+                    fit=element.get("imageFit") or "contain",
+                    zoom=element.get("imageZoom") or 1,
+                    offset_x=element.get("imageX") or 0,
+                    offset_y=element.get("imageY") or 0,
+                )
+                _paste_layer(background, layer, x, y, w, h, _num(element.get("rotation"), 0), opacity)
     return background
 
 
 def build_background(form, uploaded_file=None):
     mode = str(form.get("background_mode") or "color").strip()
     color = _hex_to_rgb(form.get("background_color"), (30, 41, 59))
+    fit = str(form.get("background_fit") or "cover").strip()
+    zoom = form.get("background_zoom") or 1
+    offset_x = form.get("background_x") or 0
+    offset_y = form.get("background_y") or 0
+    def fitted(image):
+        return _compose_image_in_box(image, ANNOUNCEMENT_SIZE, fit=fit, zoom=zoom, offset_x=offset_x, offset_y=offset_y).convert("RGB")
     if mode == "upload" and uploaded_file and uploaded_file.filename:
         with Image.open(uploaded_file.stream) as image:
-            return _cover(image)
+            return fitted(image)
     if mode == "media":
         image = _media_background(form.get("background_media"))
         if image:
-            return _cover(image)
+            return fitted(image)
     if mode == "external":
         image = _download_image(form.get("external_url"))
-        return _cover(image)
+        return fitted(image)
     return Image.new("RGB", ANNOUNCEMENT_SIZE, color)
 
 
@@ -611,13 +713,13 @@ def _template_layout(canvas, form):
         draw.text((1888 - bbox[2], 1038), credit, font=_font(20), fill=tuple(min(255, int(ch * 0.82)) for ch in text_color))
 
 
-def create_announcement(form, uploaded_file=None, username=None):
+def create_announcement(form, uploaded_file=None, layer_uploads=None, username=None):
     title = str(form.get("title") or "").strip()
     if not title:
         raise ValueError(_t("announcement_title_required"))
 
     if form.get("layout_json"):
-        background = _render_layout_json(form, uploaded_file)
+        background = _render_layout_json(form, uploaded_file, layer_uploads=layer_uploads)
     else:
         background = build_background(form, uploaded_file).convert("RGBA")
         blur = max(0, min(18, int(form.get("background_blur") or 0)))

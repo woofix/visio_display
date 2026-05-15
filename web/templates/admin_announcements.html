@@ -100,7 +100,7 @@ button.chip { font:inherit; cursor:pointer; }
     box-shadow:0 24px 70px rgba(0,0,0,.34), 0 0 0 1px rgba(255,255,255,.10), 0 0 0 12px rgba(15,23,42,.18);
 }
 .announcement-stage { position:absolute; left:0; top:0; width:1920px; height:1080px; transform-origin:0 0; background:#1e293b; overflow:hidden; }
-.announcement-bg { position:absolute; inset:0; background:#1e293b center/cover no-repeat; }
+.announcement-bg { position:absolute; inset:0; background:#1e293b center/cover no-repeat; transform-origin:center; }
 .stage-grid {
     position:absolute; inset:0; pointer-events:none; opacity:.22;
     background-image:linear-gradient(rgba(255,255,255,.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.08) 1px, transparent 1px);
@@ -128,6 +128,10 @@ button.chip { font:inherit; cursor:pointer; }
 .ann-el.circle { border-radius:999px; }
 .ann-el.line { height:0 !important; transform-origin:left center; border-top-style:solid; cursor:move; }
 .ann-el img { width:100%; height:100%; object-fit:contain; display:block; pointer-events:none; }
+.ann-el .image-fill { position:absolute; inset:0; overflow:hidden; pointer-events:none; }
+.ann-el .image-fill img { position:absolute; left:50%; top:50%; width:auto; height:auto; max-width:none; max-height:none; transform-origin:center; }
+.ann-el.rect .image-fill { border-radius:inherit; }
+.ann-el.circle .image-fill { border-radius:999px; }
 .resize-handle {
     position:absolute; width:13px; height:13px; border-radius:4px; background:#fff; border:1.5px solid var(--studio-blue);
     box-shadow:0 2px 8px rgba(15,23,42,.20); display:none; z-index:20;
@@ -174,6 +178,10 @@ button.chip { font:inherit; cursor:pointer; }
 .announcement-field input:focus,.announcement-field textarea:focus,.announcement-field select:focus { border-color:var(--primary); box-shadow:0 0 0 3px var(--primary-fade); }
 .announcement-field textarea { min-height:74px; resize:vertical; line-height:1.35; }
 .announcement-actions { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; margin-top:12px; }
+.announcement-actions.image-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:stretch; }
+.announcement-actions.image-actions .btn { width:100%; min-width:0; min-height:34px; padding:6px 8px; justify-content:center; white-space:nowrap; line-height:1.1; font-size:.68rem; overflow:hidden; text-overflow:ellipsis; }
+.announcement-actions.image-actions.single { grid-template-columns:1fr; }
+.image-selection-state { margin-top:6px; color:var(--text-3); font-size:.65rem; font-weight:800; line-height:1.2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .announcement-screen-list { display:flex; flex-wrap:wrap; gap:7px; }
 .announcement-screen-list label { display:inline-flex; gap:7px; align-items:center; font-size:.75rem; font-weight:800; border:1px solid color-mix(in srgb, var(--primary) 24%, var(--border)); border-radius:999px; padding:8px 11px; background:var(--surface-alt); color:var(--text-2); }
 .announcement-screen-list input { width:auto; min-height:0; accent-color:var(--primary); }
@@ -201,6 +209,11 @@ button.chip { font:inherit; cursor:pointer; }
 .icon-card { border:1px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text); padding:9px 10px; font:inherit; font-size:.78rem; font-weight:800; cursor:pointer; text-align:left; display:grid; place-items:center; min-height:48px; }
 .icon-card:hover { border-color:var(--primary); background:var(--primary-bg); }
 .icon-card img { width:24px; height:24px; filter:var(--icon-filter, none); }
+.external-card { border:1px solid var(--border); border-radius:8px; background:var(--surface); padding:6px; display:grid; gap:6px; }
+.external-card img { width:100%; aspect-ratio:16 / 9; object-fit:cover; border-radius:6px; background:var(--surface-alt); }
+.external-actions { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; }
+.external-actions button { min-height:26px; border:1px solid var(--border); border-radius:6px; background:var(--surface-alt); color:var(--text-2); font:inherit; font-size:.62rem; font-weight:900; cursor:pointer; }
+.external-actions button:hover { border-color:var(--primary); color:var(--primary); background:var(--primary-bg); }
 .mini-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
 .layer-list { display:grid; gap:4px; max-height:360px; overflow:auto; }
 .layer-row {
@@ -233,6 +246,7 @@ button.chip { font:inherit; cursor:pointer; }
     <input type="hidden" name="layout_json" id="layout-json">
     <input type="hidden" name="external_url" id="external-url">
     <input type="hidden" name="external_credit" id="external-credit">
+    <input type="file" name="layer_uploads" id="layer-upload" accept=".jpg,.jpeg,.png" multiple hidden>
     <div class="announcement-editor">
         <section class="announcement-tools" aria-label="{{ t('wiki_s23_tools_title') }}">
             <div class="announcement-toolbar">
@@ -344,7 +358,7 @@ button.chip { font:inherit; cursor:pointer; }
                                 <select id="background-media" name="background_media">
                                     <option value="">-</option>
                                     {% for filename in media_choices %}
-                                    <option value="{{ filename }}" data-preview="{{ media_preview_map.get(filename, '') }}">{{ filename }}</option>
+                                    <option value="{{ filename }}" data-preview="{{ media_preview_map.get(filename, '') }}" data-original="{{ media_original_map.get(filename, '') }}">{{ filename }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
@@ -353,6 +367,35 @@ button.chip { font:inherit; cursor:pointer; }
                             <div class="announcement-field"><label>{{ t('announcements_external_search') }}</label><input id="external-query" type="search"></div>
                             <button type="button" class="btn secondary" id="external-search-btn">{{ t('announcements_external_btn') }}</button>
                             <div class="icon-grid" id="external-results"></div>
+                        </div>
+                        <div class="bg-source active">
+                            <div class="announcement-field">
+                                <label>{{ t('announcements_image_layers') }}</label>
+                                <button type="button" class="btn secondary" id="layer-upload-btn">{{ t('announcements_image_upload_layers') }}</button>
+                            </div>
+                            <div class="announcement-field">
+                                <label>{{ t('announcements_image_from_media') }}</label>
+                                <select id="layer-media">
+                                    <option value="">-</option>
+                                    {% for filename in media_choices %}
+                                    <option value="{{ filename }}" data-preview="{{ media_preview_map.get(filename, '') }}" data-original="{{ media_original_map.get(filename, '') }}">{{ filename }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+	                            <div class="announcement-actions image-actions">
+	                                <button type="button" class="btn secondary" id="layer-media-add">{{ t('announcements_image_add_layer') }}</button>
+	                                <button type="button" class="btn secondary" id="layer-media-fill">{{ t('announcements_image_fill_selection') }}</button>
+	                            </div>
+	                            <div class="image-selection-state" id="layer-media-state"></div>
+                            <div class="mini-row">
+                                <div class="announcement-field">
+                                    <label>{{ t('announcements_background_fit') }}</label>
+                                    <select id="background-fit" name="background_fit"><option value="cover">{{ t('announcements_image_fit_cover') }}</option><option value="contain">{{ t('announcements_image_fit_contain') }}</option><option value="stretch">{{ t('announcements_image_fit_stretch') }}</option></select>
+                                </div>
+                                <div class="announcement-field"><label>{{ t('announcements_image_zoom') }}</label><input id="background-zoom" name="background_zoom" type="range" min=".2" max="3" step=".05" value="1"></div>
+                                <div class="announcement-field"><label>X</label><input id="background-x" name="background_x" type="number" value="0"></div>
+                                <div class="announcement-field"><label>Y</label><input id="background-y" name="background_y" type="number" value="0"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -442,6 +485,35 @@ button.chip { font:inherit; cursor:pointer; }
                         <label>{{ t('announcements_alignment') }}</label>
                         <select id="prop-align"><option value="left">{{ t('announcements_align_left') }}</option><option value="center">{{ t('announcements_align_center_option') }}</option><option value="right">{{ t('announcements_align_right') }}</option></select>
                     </div>
+                    <div data-field="image-adjust">
+                        <div class="announcement-field">
+                            <label>{{ t('announcements_image_source') }}</label>
+                            <button type="button" class="btn secondary" id="prop-image-upload">{{ t('announcements_image_upload_layers') }}</button>
+                        </div>
+                        <div class="announcement-field">
+                            <label>{{ t('announcements_image_from_media') }}</label>
+                            <select id="prop-image-media">
+                                <option value="">-</option>
+                                {% for filename in media_choices %}
+                                <option value="{{ filename }}" data-preview="{{ media_preview_map.get(filename, '') }}" data-original="{{ media_original_map.get(filename, '') }}">{{ filename }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+	                        <div class="announcement-actions image-actions">
+	                            <button type="button" class="btn secondary" id="prop-image-media-fill">{{ t('announcements_image_apply_selection') }}</button>
+	                            <button type="button" class="btn secondary" id="prop-image-clear">{{ t('announcements_image_clear') }}</button>
+	                        </div>
+	                        <div class="image-selection-state" id="prop-image-media-state"></div>
+                        <div class="announcement-field">
+                            <label>{{ t('announcements_image_fit') }}</label>
+                            <select id="prop-image-fit"><option value="cover">{{ t('announcements_image_fit_cover') }}</option><option value="contain">{{ t('announcements_image_fit_contain') }}</option><option value="stretch">{{ t('announcements_image_fit_stretch') }}</option></select>
+                        </div>
+                        <div class="mini-row">
+                            <div class="announcement-field"><label>{{ t('announcements_image_zoom') }}</label><input id="prop-image-zoom" type="range" min=".2" max="4" step=".05"></div>
+                            <div class="announcement-field"><label>{{ t('announcements_image_offset_x') }}</label><input id="prop-image-x" type="number"></div>
+                            <div class="announcement-field"><label>{{ t('announcements_image_offset_y') }}</label><input id="prop-image-y" type="number"></div>
+                        </div>
+                    </div>
                 </div>
             </section>
             </div>
@@ -500,11 +572,13 @@ button.chip { font:inherit; cursor:pointer; }
     const stage = qs('#stage'), outer = qs('#stage-outer'), viewport = qs('#canvas-viewport'), bg = qs('#stage-bg');
     const guideV = qs('#guide-v'), guideH = qs('#guide-h'), minimap = qs('#minimap-stage');
     const els = []; let selected = null, seq = 1, iconOffset = 0, iconLoading = false, zoom = 1, isRestoring = false, snapEnabled = true, activeTab = 'style';
+    const layerFiles = [];
     const undoStack = [], redoStack = [];
     const themeColor = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
     const primaryColor = () => themeColor('--primary') || '#4f46e5';
     const accentColor = () => themeColor('--primary-light') || primaryColor();
     const mediaPreviews = {{ media_preview_map|tojson }};
+    const mediaOriginals = {{ media_original_map|tojson }};
     const labels = {
         noLayers: {{ t('announcements_no_layers')|tojson }},
         moveLayer: {{ t('announcements_move_layer')|tojson }},
@@ -527,6 +601,14 @@ button.chip { font:inherit; cursor:pointer; }
         layerBanner: {{ t('announcements_layer_banner')|tojson }},
         layerFooter: {{ t('announcements_layer_footer')|tojson }},
         layerNewText: {{ t('announcements_layer_new_text')|tojson }},
+        layerImage: {{ t('announcements_layer_image')|tojson }},
+        imageApplySelection: {{ t('announcements_image_apply_selection')|tojson }},
+        imageAddLayer: {{ t('announcements_image_add_layer')|tojson }},
+        imageFillSelection: {{ t('announcements_image_fill_selection')|tojson }},
+        selectedValue: {{ t('announcements_selected_value', value='__VALUE__')|tojson }},
+        externalUseBackground: {{ t('announcements_external_use_background')|tojson }},
+        externalAddLayer: {{ t('announcements_external_add_layer')|tojson }},
+        externalFillShape: {{ t('announcements_external_fill_shape')|tojson }},
         toolRect: {{ t('announcements_tool_rect')|tojson }},
         toolCircle: {{ t('announcements_tool_circle')|tojson }},
         toolLine: {{ t('announcements_tool_line')|tojson }},
@@ -535,6 +617,11 @@ button.chip { font:inherit; cursor:pointer; }
     };
     const clamp = (n,min,max) => Math.max(min, Math.min(max, Number(n) || 0));
     const esc = v => String(v || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'":'&#39;'}[c]));
+    const bindValueChange = (node, handler) => {
+        if (!node) return;
+        node.addEventListener('input', handler);
+        node.addEventListener('change', handler);
+    };
     const icons = {
         eye:'<svg viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="3"/></svg>',
         eyeOff:'<svg viewBox="0 0 24 24"><path d="m3 3 18 18"/><path d="M10.6 10.6a2 2 0 0 0 2.8 2.8"/><path d="M9.9 5.2A10.8 10.8 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.1"/><path d="M6.6 6.6C3.6 8.5 2 12 2 12s3.5 7 10 7c1.3 0 2.5-.3 3.5-.7"/></svg>',
@@ -614,7 +701,9 @@ button.chip { font:inherit; cursor:pointer; }
         qsa('.inspector-tab').forEach(tab => tab.classList.toggle('active', tab.dataset.tab === activeTab));
         qsa('.inspector-panel').forEach(panel => { panel.hidden = panel.dataset.panel !== activeTab || !item; });
         const isTextLike = item && item.type === 'text';
+        const hasImageControls = isImageTarget(item);
         qsa('[data-field="typography"],[data-field="text"]').forEach(field => { field.hidden = !isTextLike; });
+        qsa('[data-field="image-adjust"]').forEach(field => { field.hidden = !hasImageControls; });
     }
     function setToolPanel(panel) {
         const showImage = panel === 'image';
@@ -656,6 +745,77 @@ button.chip { font:inherit; cursor:pointer; }
     function handles() {
         return ['nw','n','ne','e','se','s','sw','w'].map(h => `<span class="resize-handle" data-handle="${h}"></span>`).join('');
     }
+    function isImageTarget(item) {
+        return item && ['image','icon','rect','circle'].includes(item.type);
+    }
+    function selectedShape() {
+        const item = current();
+        return item && ['rect','circle'].includes(item.type) ? item : null;
+    }
+    function imageMedia(kind, value) {
+        if (kind === 'upload') return {source:'upload', index:value};
+        if (kind === 'media') return {source:'media', filename:value};
+        if (kind === 'external') return {source:'external', url:value};
+        return value;
+    }
+    function mediaUrl(filename, option=null) {
+        if (!filename) return '';
+        return option?.dataset.original || mediaOriginals[filename] || option?.dataset.preview || mediaPreviews[filename] || '';
+    }
+    function selectedOptionLabel(select) {
+        const opt = select?.selectedOptions?.[0];
+        return select?.value ? (opt?.textContent || select.value).trim() : '';
+    }
+    function setButtonSelection(button, baseLabel, value) {
+        if (!button) return;
+        button.textContent = baseLabel;
+        button.title = value ? `${baseLabel} - ${labels.selectedValue.replace('__VALUE__', value)}` : baseLabel;
+    }
+    function setSelectionState(node, value) {
+        if (!node) return;
+        const label = value ? labels.selectedValue.replace('__VALUE__', value) : '';
+        node.textContent = label;
+        node.title = label;
+    }
+    function updateImageActionLabels() {
+        const layerSelection = selectedOptionLabel(qs('#layer-media'));
+        setButtonSelection(qs('#layer-media-add'), labels.imageAddLayer, layerSelection);
+        setButtonSelection(qs('#layer-media-fill'), labels.imageFillSelection, layerSelection);
+        setSelectionState(qs('#layer-media-state'), layerSelection);
+        const item = current();
+        const currentName = item?.media?.source === 'media' ? item.media.filename : '';
+        const propSelection = selectedOptionLabel(qs('#prop-image-media')) || currentName || item?.name || '';
+        setButtonSelection(
+            qs('#prop-image-media-fill'),
+            labels.imageApplySelection,
+            propSelection
+        );
+        setSelectionState(qs('#prop-image-media-state'), propSelection);
+    }
+    function applyImageToItem(item, {src, media, name, fit='cover'}) {
+        if (!item || !src) return;
+        item.src = src;
+        item.media = media;
+        item.name = item.name || name || labels.layerImage;
+        item.imageFit = item.imageFit || fit;
+        item.imageZoom = item.imageZoom || 1;
+        item.imageX = item.imageX || 0;
+        item.imageY = item.imageY || 0;
+        renderAll(); syncProps(false); updateImageActionLabels(); pushHistory();
+    }
+    function addImageLayer({src, media, name}) {
+        return addElement({name:name || labels.layerImage, type:'image', src, media, w:520, h:300, imageFit:'contain', imageZoom:1, imageX:0, imageY:0});
+    }
+    function imageTransform(item, fit, boxW, boxH) {
+        const zoomValue = Number(item.imageZoom || 1);
+        const x = Number(item.imageX || 0), y = Number(item.imageY || 0);
+        if (fit === 'stretch') return `translate(-50%, -50%) translate(${x}px, ${y}px) scale(${zoomValue})`;
+        return `translate(-50%, -50%) translate(${x}px, ${y}px) scale(${zoomValue})`;
+    }
+    function imageStyle(item, fit) {
+        const objectFit = fit === 'stretch' ? 'fill' : fit;
+        return `width:100%;height:100%;object-fit:${objectFit};`;
+    }
     function renderElement(item) {
         let node = item.node;
         if (!node) {
@@ -674,12 +834,18 @@ button.chip { font:inherit; cursor:pointer; }
             node.innerHTML = `${esc(item.text || '')}${handles()}`;
         } else if (item.type === 'rect' || item.type === 'circle') {
             node.style.background = item.color || primaryColor(); node.style.borderRadius = item.type === 'circle' ? '999px' : ((item.radius ?? 18) + 'px');
-            node.innerHTML = handles();
+            if (item.src) {
+                const fit = item.imageFit || 'cover';
+                node.innerHTML = `<span class="image-fill"><img src="${esc(item.src || '')}" alt="" style="${imageStyle(item, fit)}transform:${imageTransform(item, fit, item.w, item.h)};"></span>${handles()}`;
+            } else {
+                node.innerHTML = handles();
+            }
         } else if (item.type === 'line') {
             node.style.borderTopColor = item.color || '#fff'; node.style.borderTopWidth = (item.strokeWidth || 8) + 'px';
             node.innerHTML = handles();
         } else if (item.type === 'image' || item.type === 'icon') {
-            node.innerHTML = `<img src="${esc(item.src || '')}" alt="">${handles()}`;
+            const fit = item.imageFit || (item.type === 'icon' ? 'contain' : 'contain');
+            node.innerHTML = `<span class="image-fill"><img src="${esc(item.src || '')}" alt="" style="${imageStyle(item, fit)}transform:${imageTransform(item, fit, item.w, item.h)};"></span>${handles()}`;
         }
     }
 
@@ -697,8 +863,9 @@ button.chip { font:inherit; cursor:pointer; }
         renderLayers();
         renderMinimap();
         updateFeedback();
-        updateInspectorContext();
-    }
+	        updateInspectorContext();
+	        updateImageActionLabels();
+	    }
     function current() { return els.find(e => e.id === selected); }
     function select(id) { selected = id; setToolPanel(''); renderAll(); syncProps(); }
 
@@ -868,19 +1035,29 @@ button.chip { font:inherit; cursor:pointer; }
         qs('#prop-font').value = item?.fontSize || '';
         qs('#prop-font-family').value = item?.fontFamily || "'DejaVu Sans', Arial, sans-serif";
         qs('#prop-text').value = item?.text || '';
-        qs('#prop-align').value = item?.align || 'left';
+	        qs('#prop-align').value = item?.align || 'left';
+	        qs('#prop-image-media').value = item?.media?.source === 'media' ? item.media.filename : '';
+	        qs('#prop-image-fit').value = item?.imageFit || (item?.type === 'image' || item?.type === 'icon' ? 'contain' : 'cover');
+        qs('#prop-image-zoom').value = item?.imageZoom ?? 1;
+        qs('#prop-image-x').value = item?.imageX ?? 0;
+        qs('#prop-image-y').value = item?.imageY ?? 0;
         updateFeedback();
         if (write) renderAll();
     }
-    qsa('[id^="prop-"]').forEach(input => input.addEventListener('input', () => {
-        const item = current(); if (!item) return;
-        item.name = qs('#prop-name').value || item.name;
+	    const propValueControls = qsa('#prop-name,#prop-text,#prop-color,#prop-opacity,#prop-font,#prop-rotation,#prop-font-family,#prop-align,#prop-image-fit,#prop-image-zoom,#prop-image-x,#prop-image-y,#prop-x,#prop-y,#prop-w,#prop-h');
+	    propValueControls.forEach(input => input.addEventListener('input', () => {
+	        const item = current(); if (!item) return;
+	        item.name = qs('#prop-name').value || item.name;
         item.x = Number(qs('#prop-x').value); item.y = Number(qs('#prop-y').value); item.w = Math.max(1, Number(qs('#prop-w').value)); item.h = Math.max(1, Number(qs('#prop-h').value));
         item.rotation = Number(qs('#prop-rotation').value); item.opacity = Number(qs('#prop-opacity').value); item.color = qs('#prop-color').value;
         item.fontSize = Number(qs('#prop-font').value) || item.fontSize; item.fontFamily = qs('#prop-font-family').value || item.fontFamily; item.text = qs('#prop-text').value; item.align = qs('#prop-align').value;
-        renderAll();
-    }));
-    qsa('[id^="prop-"]').forEach(input => input.addEventListener('change', pushHistory));
+        item.imageFit = qs('#prop-image-fit').value || item.imageFit;
+        item.imageZoom = Number(qs('#prop-image-zoom').value) || 1;
+        item.imageX = Number(qs('#prop-image-x').value) || 0;
+	        item.imageY = Number(qs('#prop-image-y').value) || 0;
+	        renderAll();
+	    }));
+	    propValueControls.forEach(input => input.addEventListener('change', pushHistory));
     qs('#element-list').addEventListener('change', e => select(e.target.value));
     qsa('.inspector-tab').forEach(tab => tab.addEventListener('click', () => {
         activeTab = tab.dataset.tab;
@@ -894,17 +1071,81 @@ button.chip { font:inherit; cursor:pointer; }
         const mode = qs('#background-mode').value;
         qsa('.bg-source').forEach(el => el.classList.toggle('active', el.dataset.bg === mode));
         bg.style.backgroundImage = '';
+        bg.style.backgroundSize = qs('#background-fit').value === 'stretch' ? '100% 100%' : qs('#background-fit').value;
+        bg.style.backgroundPosition = `calc(50% + ${Number(qs('#background-x').value || 0)}px) calc(50% + ${Number(qs('#background-y').value || 0)}px)`;
         if (mode === 'color') bg.style.backgroundColor = qs('#background-color').value;
         if (mode === 'media') {
             const opt = qs('#background-media').selectedOptions[0];
-            bg.style.backgroundImage = opt?.dataset.preview ? `url("${opt.dataset.preview}")` : '';
+            const url = mediaUrl(qs('#background-media').value, opt);
+            bg.style.backgroundImage = url ? `url("${url}")` : '';
         }
         if (mode === 'upload' && qs('#background-upload').files[0]) bg.style.backgroundImage = `url("${URL.createObjectURL(qs('#background-upload').files[0])}")`;
+        if (mode === 'external' && qs('#external-url').value) bg.style.backgroundImage = `url("${qs('#external-url').value}")`;
+        const bgZoom = Number(qs('#background-zoom').value || 1);
+        bg.style.transform = bgZoom === 1 ? '' : `scale(${bgZoom})`;
     }
-    qs('#background-mode').addEventListener('input', setBackground);
-    qs('#background-color').addEventListener('input', () => { qs('#background-mode').value = 'color'; setBackground(); });
-    qs('#background-media').addEventListener('input', () => { qs('#background-mode').value = 'media'; setBackground(); });
-    qs('#background-upload').addEventListener('input', () => { qs('#background-mode').value = 'upload'; setBackground(); });
+    bindValueChange(qs('#background-mode'), setBackground);
+    bindValueChange(qs('#background-color'), () => { qs('#background-mode').value = 'color'; setBackground(); });
+    bindValueChange(qs('#background-media'), () => { qs('#background-mode').value = 'media'; setBackground(); });
+    bindValueChange(qs('#background-upload'), () => { qs('#background-mode').value = 'upload'; setBackground(); });
+    qsa('#background-fit,#background-zoom,#background-x,#background-y').forEach(input => bindValueChange(input, setBackground));
+
+    function syncLayerUploadInput() {
+        const dt = new DataTransfer();
+        layerFiles.forEach(file => dt.items.add(file));
+        qs('#layer-upload').files = dt.files;
+    }
+    function addUploadedImages(files) {
+        Array.from(files || []).forEach((file, fileIndex) => {
+            const uploadIndex = layerFiles.push(file) - 1;
+            const src = URL.createObjectURL(file);
+            const target = fileIndex === 0 && isImageTarget(current()) ? current() : null;
+            const payload = {src, media:imageMedia('upload', uploadIndex), name:file.name || labels.layerImage};
+            if (target) applyImageToItem(target, payload);
+            else addImageLayer(payload);
+        });
+        syncLayerUploadInput();
+    }
+    function mediaPayloadFromSelect(select) {
+        const opt = select.selectedOptions[0];
+        const src = mediaUrl(select.value, opt);
+        if (!select.value || !src) return null;
+        return {src, media:imageMedia('media', select.value), name:select.value};
+    }
+    qs('#layer-upload-btn').addEventListener('click', () => qs('#layer-upload').click());
+    qs('#layer-upload').addEventListener('change', e => {
+        addUploadedImages(e.target.files);
+        e.target.value = '';
+        syncLayerUploadInput();
+    });
+    qs('#layer-media-add').addEventListener('click', () => {
+        updateImageActionLabels();
+        const payload = mediaPayloadFromSelect(qs('#layer-media'));
+        if (payload) addImageLayer(payload);
+    });
+    qs('#layer-media-fill').addEventListener('click', () => {
+        updateImageActionLabels();
+        const payload = mediaPayloadFromSelect(qs('#layer-media'));
+        if (payload && selectedShape()) applyImageToItem(selectedShape(), payload);
+    });
+    qs('#prop-image-upload').addEventListener('click', () => qs('#layer-upload').click());
+    qs('#prop-image-media-fill').addEventListener('click', () => {
+        updateImageActionLabels();
+        const payload = mediaPayloadFromSelect(qs('#prop-image-media'));
+        const item = current();
+        if (payload && isImageTarget(item)) applyImageToItem(item, payload);
+    });
+    qs('#prop-image-clear').addEventListener('click', () => {
+        const item = current();
+        if (!item || !['rect','circle'].includes(item.type)) return;
+        delete item.src;
+        delete item.media;
+        item.imageZoom = 1;
+        item.imageX = 0;
+        item.imageY = 0;
+        renderAll(); syncProps(false); pushHistory();
+    });
+    qsa('#layer-media,#prop-image-media').forEach(select => bindValueChange(select, updateImageActionLabels));
 
     async function iconToPng(url) {
         const text = await fetch(url).then(r => r.text());
@@ -948,28 +1189,73 @@ button.chip { font:inherit; cursor:pointer; }
 
     qs('#external-search-btn').addEventListener('click', async () => {
         const data = await fetch(`/admin/announcements/search-backgrounds?q=${encodeURIComponent(qs('#external-query').value)}`).then(r => r.json());
-        qs('#external-results').innerHTML = (data.results || []).map(item => `<button type="button" class="icon-card" data-url="${esc(item.url)}" data-credit="${esc(item.credit)}"><img src="${esc(item.thumb_data || '')}" alt=""></button>`).join('');
-        qsa('#external-results button').forEach(btn => btn.addEventListener('click', () => {
-            qs('#background-mode').value = 'external';
-            qs('#external-url').value = btn.dataset.url;
-            qs('#external-credit').value = btn.dataset.credit;
-            setBackground();
-            bg.style.backgroundImage = `url("${btn.querySelector('img').src}")`;
+        qs('#external-results').innerHTML = (data.results || []).map(item => `
+            <div class="external-card" data-url="${esc(item.url)}" data-credit="${esc(item.credit)}" data-title="${esc(item.title)}">
+                <img src="${esc(item.thumb_data || '')}" alt="">
+                <div class="external-actions">
+                    <button type="button" data-external-action="bg">${esc(labels.externalUseBackground)}</button>
+                    <button type="button" data-external-action="add">${esc(labels.externalAddLayer)}</button>
+                    <button type="button" data-external-action="fill">${esc(labels.externalFillShape)}</button>
+                </div>
+            </div>`).join('');
+        qsa('#external-results [data-external-action]').forEach(btn => btn.addEventListener('click', () => {
+            const card = btn.closest('.external-card');
+            const payload = {src:card.querySelector('img').src, media:imageMedia('external', card.dataset.url), name:card.dataset.title || labels.layerImage};
+            if (btn.dataset.externalAction === 'bg') {
+                qs('#background-mode').value = 'external';
+                qs('#external-url').value = card.dataset.url;
+                qs('#external-credit').value = card.dataset.credit;
+                setBackground();
+                bg.style.backgroundImage = `url("${card.querySelector('img').src}")`;
+            }
+            if (btn.dataset.externalAction === 'add') addImageLayer(payload);
+            if (btn.dataset.externalAction === 'fill' && selectedShape()) applyImageToItem(selectedShape(), payload);
         }));
     });
 
     function deleteSelected() {
         const i = els.findIndex(e => e.id === selected);
-        if (i >= 0) { els.splice(i,1); selected = els[els.length - 1]?.id || null; renderAll(); syncProps(); pushHistory(); }
+        if (i >= 0) { els.splice(i,1); selected = els[els.length - 1]?.id || null; renderAll(); syncProps(false); pushHistory(); }
     }
     function duplicateSelected() {
         const item = current(); if (!item) return;
         const {id, node, ...copy} = item; addElement({...copy, name:`${item.name || item.type} ${labels.copySuffix}`, x:item.x + 40, y:item.y + 40});
     }
-    qs('#delete').addEventListener('click', deleteSelected);
-    qs('#duplicate').addEventListener('click', duplicateSelected);
-    qs('#forward').addEventListener('click', () => { const item = current(); if (item) { item.z += 1.5; renderAll(); pushHistory(); } });
-    qs('#backward').addEventListener('click', () => { const item = current(); if (item) { item.z -= 1.5; renderAll(); pushHistory(); } });
+    function stackSelected(position) {
+        const item = current();
+        if (!item) return;
+        const zValues = els.filter(el => el.id !== item.id).map(el => Number(el.z) || 0);
+        if (position === 'front') item.z = Math.max(0, ...zValues) + 1;
+        if (position === 'back') item.z = Math.min(0, ...zValues) - 1;
+        renderAll();
+        syncProps(false);
+        pushHistory();
+    }
+    function bindPanelAction(selector, handler) {
+        const button = qs(selector);
+        if (!button) return;
+        let handledPointer = false;
+        button.addEventListener('pointerdown', e => {
+            if (e.button !== 0) return;
+            handledPointer = true;
+            e.preventDefault();
+            e.stopPropagation();
+            handler();
+        });
+        button.addEventListener('click', e => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (handledPointer) {
+                handledPointer = false;
+                return;
+            }
+            handler();
+        });
+    }
+    bindPanelAction('#delete', deleteSelected);
+    bindPanelAction('#duplicate', duplicateSelected);
+    bindPanelAction('#forward', () => stackSelected('front'));
+    bindPanelAction('#backward', () => stackSelected('back'));
 
     function updateFeedback(action='') {
         const item = current();
@@ -1018,7 +1304,16 @@ button.chip { font:inherit; cursor:pointer; }
         const mode = qs('#background-mode').value;
         qs('#layout-json').value = JSON.stringify({
             size:[1920,1080],
-            background:{mode, color:qs('#background-color').value, media:qs('#background-media').value, external_url:qs('#external-url').value},
+            background:{
+                mode,
+                color:qs('#background-color').value,
+                media:qs('#background-media').value,
+                external_url:qs('#external-url').value,
+                fit:qs('#background-fit').value,
+                zoom:Number(qs('#background-zoom').value || 1),
+                x:Number(qs('#background-x').value || 0),
+                y:Number(qs('#background-y').value || 0),
+            },
             elements:els.filter(item => !item.hidden).map(({node, ...item}) => item),
         });
     });

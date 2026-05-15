@@ -7,7 +7,7 @@ from services.announcement_svc import _safe_image_url, commons_search, create_an
 from services.config_svc import get_default_screen_name, load_config
 from services.icon_svc import scan_svg_icons
 from services.i18n import _flash, _t
-from services.media_svc import build_media_preview_map, get_logo_path
+from services.media_svc import build_media_preview_map, get_logo_path, get_media_url
 from services.users_svc import has_permission, has_screen_access, is_superadmin, load_users
 
 
@@ -32,6 +32,11 @@ def admin_announcements_page():
 
     cfg = load_config()
     media_choices = image_media_choices()
+    media_preview_map = build_media_preview_map(media_choices, context="campaign", generate_missing=True)
+    media_original_map = {
+        filename: get_media_url(filename, context="preview", allow_original=True, generate_missing=True)
+        for filename in media_choices
+    }
     screens = []
     if has_screen_access(""):
         screens.append({"value": "__default__", "label": get_default_screen_name(cfg) or _t("announcements_default_screen_label")})
@@ -44,7 +49,8 @@ def admin_announcements_page():
         current_user_is_superadmin=is_superadmin(),
         logo_path=get_logo_path(),
         media_choices=media_choices,
-        media_preview_map=build_media_preview_map(media_choices, context="campaign"),
+        media_preview_map=media_preview_map,
+        media_original_map=media_original_map,
         screens=screens,
         can_upload=_has_announcements_permission(),
     )
@@ -129,6 +135,7 @@ def create_announcement_route():
         filename = create_announcement(
             request.form,
             uploaded_file=request.files.get("background_upload"),
+            layer_uploads=request.files.getlist("layer_uploads"),
             username=session.get("user"),
         )
     except Exception as exc:

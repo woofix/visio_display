@@ -6,7 +6,7 @@ import secrets
 import shutil
 from datetime import timedelta
 
-from flask import abort, jsonify, redirect, render_template, request, session, url_for
+from flask import abort, jsonify, redirect, render_template, request, send_from_directory, session, url_for
 from sqlalchemy import inspect, text
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -538,6 +538,10 @@ def register_template_context(app):
 
 
 def register_public_routes(app):
+    @app.route(f"{C.STATIC_MEDIA_URL}/<path:filename>")
+    def static_media(filename):
+        return send_from_directory(C.STATIC_MEDIA_DIR, filename, conditional=True)
+
     @app.route("/")
     def index():
         if not screen_token_is_valid(request):

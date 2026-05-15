@@ -952,6 +952,7 @@ class AppSmokeTests(unittest.TestCase):
                 "hostname": "screen-01",
                 "client_name": "Hall",
                 "screen_name": "hall",
+                "ip_address": "10.42.0.15",
                 "server_url": "https://example.test",
                 "client_version": "2026.04",
                 "uptime_seconds": 3661,
@@ -978,9 +979,32 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(len(clients), 1)
         client = clients[0]
         self.assertEqual(client["client_version"], "2026.04")
+        self.assertEqual(client["ip_address"], "10.42.0.15")
         self.assertEqual(client["resolution"], "1920x1080")
         self.assertEqual(client["health_status"], "critical")
         self.assertEqual(client["last_error"], "Kiosk browser not running")
+
+    def test_client_heartbeat_without_reported_ip_keeps_ip_empty(self):
+        response = self.client.post(
+            "/api/client-heartbeat",
+            headers={"X-Client-Token": "heartbeat-secret"},
+            json={
+                "machine_id": "screen-legacy",
+                "hostname": "screen-legacy",
+            },
+            environ_base={"REMOTE_ADDR": "192.168.65.1"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["ip_address"], "")
+
+        with self.app.app_context():
+            from services.clients_svc import list_known_clients
+
+            clients = list_known_clients()
+
+        self.assertEqual(len(clients), 1)
+        self.assertEqual(clients[0]["ip_address"], "")
 
     def test_client_heartbeat_requires_configured_token(self):
         response = self.client.post(

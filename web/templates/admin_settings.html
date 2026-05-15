@@ -464,6 +464,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
 
     {% if current_user_is_superadmin and tab == 'installation' %}
     <!-- ── INSTALLATION ── -->
+    {% set known_clients_with_ip = known_clients|selectattr('ip_address')|list %}
     <div id="installation" class="admin-section">
         <div class="admin-section-title">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -499,7 +500,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                             </span>
                         </div>
                     </div>
-                    <div class="known-client-ip">{{ client.ip_address or 'IP inconnue' }}</div>
+                    <div class="known-client-ip">{{ client.ip_address or t('known_clients_ip_missing') }}</div>
                     <div class="known-client-badges">
                         {% if client.server_url %}<span class="known-client-badge">{{ client.server_url }}</span>{% endif %}
                         {% if client.machine_id %}<span class="known-client-badge">{{ client.machine_id }}</span>{% endif %}
@@ -574,6 +575,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                             {{ client.last_error }}
                         </div>
                         {% endif %}
+                        {% if client.ip_address %}
                         <div class="known-client-actions">
                             <button type="button" class="btn secondary sm btn-use-client"
                                     data-target-form="install-client-form"
@@ -582,6 +584,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                                     data-target-form="client-control-form"
                                     data-host="{{ client.ip_address }}">{{ t('known_clients_use_control') }}</button>
                         </div>
+                        {% endif %}
                     </div>
                 </div>
                 {% endfor %}
@@ -671,8 +674,8 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                         <div class="install-form-grid">
                             <div class="install-field full">
                                 <label>{{ t('install_host_label') }}</label>
-                                <select name="host" required {% if not known_clients %}disabled{% endif %}>
-                                    {% for client in known_clients if client.ip_address %}
+                                <select name="host" required {% if not known_clients_with_ip %}disabled{% endif %}>
+                                    {% for client in known_clients_with_ip %}
                                     <option value="{{ client.ip_address }}" {% if client_control_defaults.host == client.ip_address or (not client_control_defaults.host and loop.first) %}selected{% endif %}>
                                         {{ client.ip_address }}{% if client.display_name %} - {{ client.display_name }}{% endif %}{% if client.hostname %} ({{ client.hostname }}){% endif %}
                                     </option>
@@ -1505,6 +1508,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
         'knownClientsResolution': t('known_clients_resolution'),
         'knownClientsLastError': t('known_clients_last_error'),
         'knownClientsUnavailable': t('known_clients_unavailable'),
+        'knownClientsIpMissing': t('known_clients_ip_missing'),
         'knownClientsShowDetails': t('known_clients_show_details'),
         'knownClientsHideDetails': t('known_clients_hide_details'),
         'knownClientsDiskFreeSuffix': t('known_clients_disk_free_suffix'),

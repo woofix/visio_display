@@ -59,10 +59,6 @@ def _media_path(filename, media_type, bounds):
     ) or get_original_media_url(filename)
 
 
-def _best_remote_ip():
-    return str(request.remote_addr or '').strip()
-
-
 def _heartbeat_token_is_valid(data):
     expected = os.environ.get('CLIENT_HEARTBEAT_TOKEN', '').strip()
     if not expected:
@@ -233,7 +229,7 @@ def api_client_heartbeat():
         hostname=hostname,
         client_name=data.get('client_name', ''),
         screen_name=data.get('screen_name', ''),
-        ip_address=_best_remote_ip(),
+        ip_address=data.get('ip_address', ''),
         server_url=data.get('server_url', ''),
         client_version=data.get('client_version', ''),
         uptime_seconds=data.get('uptime_seconds'),

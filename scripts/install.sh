@@ -146,7 +146,7 @@ echo "==> Disabling cdrom repository if present"
 echo "==> Installing packages"
 apt update
 apt install -y \
-  curl xorg xinit openbox firefox-esr xterm unclutter \
+  curl xorg xinit openbox chromium xterm unclutter \
   xserver-xorg-legacy x11-xserver-utils polkitd
 
 echo "==> Creating directories"
@@ -155,6 +155,8 @@ mkdir -p \
   "$CONFIG_DIR" \
   /etc/systemd/system/getty@tty1.service.d \
   /etc/X11 \
+  /etc/chromium/policies/managed \
+  /etc/opt/chrome/policies/managed \
   /etc/polkit-1/rules.d
 
 echo "==> Preparing configuration file"
@@ -183,7 +185,7 @@ CLIENT_HEARTBEAT_TOKEN=$HEARTBEAT_TOKEN_INPUT
 WATCHDOG_CHECK_INTERVAL=30
 WATCHDOG_GRACE_PERIOD=90
 WATCHDOG_FAILURES_BEFORE_REBOOT=1
-FIREFOX_RESTART_INTERVAL_SECONDS=21600
+CHROMIUM_RESTART_INTERVAL_SECONDS=21600
 EOC
 fi
 
@@ -204,6 +206,14 @@ polkit.addRule(function(action, subject) {
 });
 EOF
 chmod 644 /etc/polkit-1/rules.d/49-visio-power.rules
+
+echo "==> Disabling Chromium translation UI"
+cat > /etc/chromium/policies/managed/visio-kiosk.json <<'EOF'
+{
+  "TranslateEnabled": false
+}
+EOF
+cp /etc/chromium/policies/managed/visio-kiosk.json /etc/opt/chrome/policies/managed/visio-kiosk.json
 
 echo "==> Creating bootstrap.sh"
 cat > "$VISIO_DIR/bootstrap.sh" <<'EOF'
@@ -250,7 +260,7 @@ CLIENT_HEARTBEAT_TOKEN=$HEARTBEAT_TOKEN
 WATCHDOG_CHECK_INTERVAL=30
 WATCHDOG_GRACE_PERIOD=90
 WATCHDOG_FAILURES_BEFORE_REBOOT=1
-FIREFOX_RESTART_INTERVAL_SECONDS=21600
+CHROMIUM_RESTART_INTERVAL_SECONDS=21600
 EOC
 EOF
 
@@ -359,65 +369,51 @@ PY
     exit 1
 }
 
-FIREFOX_RESTART_INTERVAL_SECONDS="$(read_conf FIREFOX_RESTART_INTERVAL_SECONDS)"
-case "${FIREFOX_RESTART_INTERVAL_SECONDS:-}" in
+CHROMIUM_RESTART_INTERVAL_SECONDS="$(read_conf CHROMIUM_RESTART_INTERVAL_SECONDS)"
+if [ -z "$CHROMIUM_RESTART_INTERVAL_SECONDS" ]; then
+    CHROMIUM_RESTART_INTERVAL_SECONDS="$(read_conf FIREFOX_RESTART_INTERVAL_SECONDS)"
+fi
+case "${CHROMIUM_RESTART_INTERVAL_SECONDS:-}" in
     ''|*[!0-9]*)
-        FIREFOX_RESTART_INTERVAL_SECONDS=21600
+        CHROMIUM_RESTART_INTERVAL_SECONDS=21600
         ;;
 esac
-if [ "$FIREFOX_RESTART_INTERVAL_SECONDS" -lt 1800 ]; then
-    FIREFOX_RESTART_INTERVAL_SECONDS=1800
+if [ "$CHROMIUM_RESTART_INTERVAL_SECONDS" -lt 1800 ]; then
+    CHROMIUM_RESTART_INTERVAL_SECONDS=1800
 fi
 
-setup_firefox_profile() {
-    local profile_dir="$HOME/.mozilla/firefox/visio-kiosk"
-    mkdir -p "$profile_dir"
-    cat > "$profile_dir/user.js" <<'EOP'
-user_pref("app.normandy.enabled", false);
-user_pref("app.shield.optoutstudies.enabled", false);
-user_pref("browser.aboutConfig.showWarning", false);
-user_pref("browser.bookmarks.restore_default_bookmarks", false);
-user_pref("browser.cache.disk.enable", false);
-user_pref("browser.discovery.enabled", false);
-user_pref("browser.newtabpage.activity-stream.feeds.telemetry", false);
-user_pref("browser.newtabpage.activity-stream.telemetry", false);
-user_pref("browser.newtabpage.enabled", false);
-user_pref("browser.ping-centre.telemetry", false);
-user_pref("browser.search.suggest.enabled", false);
-user_pref("browser.sessionhistory.max_total_viewers", 0);
-user_pref("browser.sessionstore.max_tabs_undo", 0);
-user_pref("browser.sessionstore.max_windows_undo", 0);
-user_pref("browser.sessionstore.resume_from_crash", false);
-user_pref("browser.shell.checkDefaultBrowser", false);
-user_pref("browser.tabs.crashReporting.sendReport", false);
-user_pref("browser.tabs.warnOnClose", false);
-user_pref("browser.urlbar.suggest.searches", false);
-user_pref("datareporting.healthreport.uploadEnabled", false);
-user_pref("dom.ipc.processCount", 1);
-user_pref("dom.push.enabled", false);
-user_pref("dom.serviceWorkers.enabled", false);
-user_pref("extensions.pocket.enabled", false);
-user_pref("media.cache_readahead_limit", 60);
-user_pref("media.cache_resume_threshold", 30);
-user_pref("media.peerconnection.enabled", false);
-user_pref("media.rdd-process.enabled", false);
-user_pref("network.dns.disablePrefetch", true);
-user_pref("network.prefetch-next", false);
-user_pref("toolkit.cosmeticAnimations.enabled", false);
-user_pref("toolkit.telemetry.archive.enabled", false);
-user_pref("toolkit.telemetry.bhrPing.enabled", false);
-user_pref("toolkit.telemetry.enabled", false);
-user_pref("toolkit.telemetry.firstShutdownPing.enabled", false);
-user_pref("toolkit.telemetry.newProfilePing.enabled", false);
-user_pref("toolkit.telemetry.reportingpolicy.firstRun", false);
-user_pref("toolkit.telemetry.server", "");
-user_pref("toolkit.telemetry.shutdownPingSender.enabled", false);
-user_pref("toolkit.telemetry.unified", false);
+find_chromium() {
+    command -v chromium 2>/dev/null || command -v chromium-browser 2>/dev/null || command -v google-chrome 2>/dev/null || true
+}
+
+setup_chromium_profile() {
+    local profile_dir="$HOME/.config/visio-chromium"
+    mkdir -p "$profile_dir/Default"
+    cat > "$profile_dir/Default/Preferences" <<'EOP'
+{
+  "translate": {
+    "enabled": false
+  },
+  "translate_blocked_languages": ["fr", "en"],
+  "browser": {
+    "check_default_browser": false
+  },
+  "profile": {
+    "default_content_setting_values": {
+      "notifications": 2
+    }
+  }
+}
 EOP
     printf '%s\n' "$profile_dir"
 }
 
-FIREFOX_PROFILE_DIR="$(setup_firefox_profile)"
+CHROMIUM_BIN="$(find_chromium)"
+[ -n "$CHROMIUM_BIN" ] || {
+    error_ui "Chromium introuvable sur le client"
+    exit 1
+}
+CHROMIUM_PROFILE_DIR="$(setup_chromium_profile)"
 
 wait_with_ui "$TARGET_HOST"
 
@@ -431,10 +427,10 @@ xset s off
 xset -dpms
 xset s noblank
 
-LOG_FILE="/tmp/visio-firefox.log"
-export DISPLAY_URL LOG_FILE FIREFOX_PROFILE_DIR FIREFOX_RESTART_INTERVAL_SECONDS
+LOG_FILE="/tmp/visio-chromium.log"
+export DISPLAY_URL LOG_FILE CHROMIUM_BIN CHROMIUM_PROFILE_DIR CHROMIUM_RESTART_INTERVAL_SECONDS
 
-# Keep the X session alive even if Firefox is killed unexpectedly.
+# Keep the X session alive even if Chromium is killed unexpectedly.
 exec systemd-inhibit \
     --what=idle:sleep:handle-lid-switch \
     --who="Visio Display" \
@@ -442,25 +438,35 @@ exec systemd-inhibit \
     bash -c '
 set +e
 while true; do
-    firefox-esr --kiosk --no-remote --profile "$FIREFOX_PROFILE_DIR" "$DISPLAY_URL" &
-    firefox_pid=$!
+    "$CHROMIUM_BIN" \
+        --kiosk \
+        --no-first-run \
+        --disable-translate \
+        --disable-features=Translate,TranslateUI \
+        --disable-infobars \
+        --disable-session-crashed-bubble \
+        --disable-component-update \
+        --autoplay-policy=no-user-gesture-required \
+        --user-data-dir="$CHROMIUM_PROFILE_DIR" \
+        "$DISPLAY_URL" &
+    chromium_pid=$!
     started_at=$(date +%s)
 
-    while kill -0 "$firefox_pid" >/dev/null 2>&1; do
+    while kill -0 "$chromium_pid" >/dev/null 2>&1; do
         sleep 30
         now=$(date +%s)
-        if [ $((now - started_at)) -ge "$FIREFOX_RESTART_INTERVAL_SECONDS" ]; then
-            printf "%s firefox-esr periodic restart after %ss\n" "$(date "+%F %T")" "$FIREFOX_RESTART_INTERVAL_SECONDS" >> "$LOG_FILE"
-            kill -TERM "$firefox_pid" >/dev/null 2>&1 || true
+        if [ $((now - started_at)) -ge "$CHROMIUM_RESTART_INTERVAL_SECONDS" ]; then
+            printf "%s chromium periodic restart after %ss\n" "$(date "+%F %T")" "$CHROMIUM_RESTART_INTERVAL_SECONDS" >> "$LOG_FILE"
+            kill -TERM "$chromium_pid" >/dev/null 2>&1 || true
             sleep 5
-            kill -0 "$firefox_pid" >/dev/null 2>&1 && kill -KILL "$firefox_pid" >/dev/null 2>&1 || true
+            kill -0 "$chromium_pid" >/dev/null 2>&1 && kill -KILL "$chromium_pid" >/dev/null 2>&1 || true
             break
         fi
     done
 
-    wait "$firefox_pid"
+    wait "$chromium_pid"
     status=$?
-    printf "%s firefox-esr exited with status %s\n" "$(date "+%F %T")" "$status" >> "$LOG_FILE"
+    printf "%s chromium exited with status %s\n" "$(date "+%F %T")" "$status" >> "$LOG_FILE"
     sleep 2
 done
 '
@@ -648,6 +654,27 @@ def read_resolution():
     return ''
 
 
+def read_ip_address():
+    try:
+        result = subprocess.run(
+            ['hostname', '-I'],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            check=False,
+            timeout=3,
+        )
+    except Exception:
+        return ''
+
+    for candidate in result.stdout.split():
+        candidate = candidate.strip()
+        if not candidate or candidate.startswith('127.') or candidate == '::1':
+            continue
+        return candidate
+    return ''
+
+
 def detect_last_error():
     status_path = '/run/visio/watchdog.last_error'
     try:
@@ -660,13 +687,13 @@ def detect_last_error():
 
     try:
         result = subprocess.run(
-            ['pgrep', '-f', 'firefox-esr.*--kiosk'],
+            ['pgrep', '-f', 'chromium.*--kiosk|chromium-browser.*--kiosk|google-chrome.*--kiosk'],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             check=False,
         )
         if result.returncode != 0:
-            return 'Kiosk browser not running'
+            return 'Chromium kiosk not running'
     except Exception:
         return ''
     return ''
@@ -680,6 +707,7 @@ print(json.dumps({
     "hostname": sys.argv[2],
     "client_name": sys.argv[3] or sys.argv[2],
     "screen_name": sys.argv[3],
+    "ip_address": read_ip_address(),
     "server_url": sys.argv[4],
     "client_version": sys.argv[5],
     "uptime_seconds": read_uptime_seconds(),
@@ -831,7 +859,7 @@ EOC
     exit 0
 fi
 
-if pgrep -f 'firefox-esr.*--kiosk' >/dev/null 2>&1; then
+if pgrep -f 'chromium.*--kiosk|chromium-browser.*--kiosk|google-chrome.*--kiosk' >/dev/null 2>&1; then
     cat > "$STATE_FILE" <<EOC
 LAST_CHECK_TS=$NOW_TS
 FAILURES=0
@@ -841,7 +869,7 @@ EOC
 fi
 
 FAILURES=$((FAILURES + 1))
-MESSAGE="Kiosk browser not running (${FAILURES}/${FAILURES_BEFORE_REBOOT})"
+MESSAGE="Chromium kiosk not running (${FAILURES}/${FAILURES_BEFORE_REBOOT})"
 
 cat > "$STATE_FILE" <<EOC
 LAST_CHECK_TS=$NOW_TS

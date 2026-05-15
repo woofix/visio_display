@@ -80,13 +80,13 @@ const adminSettingsI18n = adminSettingsConfig.i18n || {};
         resolution: adminSettingsI18n.knownClientsResolution || '',
         lastError: adminSettingsI18n.knownClientsLastError || '',
         unavailable: adminSettingsI18n.knownClientsUnavailable || '',
+        ipMissing: adminSettingsI18n.knownClientsIpMissing || '',
         showDetails: adminSettingsI18n.knownClientsShowDetails || '',
         hideDetails: adminSettingsI18n.knownClientsHideDetails || '',
         diskFreeSuffix: adminSettingsI18n.knownClientsDiskFreeSuffix || '',
         useInstall: adminSettingsI18n.knownClientsUseInstall || '',
         useControl: adminSettingsI18n.knownClientsUseControl || '',
         empty: adminSettingsI18n.knownClientsEmpty || '',
-        unknownIp: 'IP inconnue',
     };
 
     const formatCountdown = (seconds) => {
@@ -206,7 +206,7 @@ const adminSettingsI18n = adminSettingsConfig.i18n || {};
                         </span>
                     </div>
                 </div>
-                <div class="known-client-ip">${escapeHtml(client.ip_address || texts.unknownIp)}</div>
+                <div class="known-client-ip">${escapeHtml(client.ip_address || texts.ipMissing)}</div>
                 <div class="known-client-badges">
                     ${client.server_url ? `<span class="known-client-badge">${escapeHtml(client.server_url)}</span>` : ''}
                     ${client.machine_id ? `<span class="known-client-badge">${escapeHtml(client.machine_id)}</span>` : ''}
@@ -264,10 +264,10 @@ const adminSettingsI18n = adminSettingsConfig.i18n || {};
                         </div>
                     </div>
                     ${client.last_error ? `<div class="known-client-error"><strong>${escapeHtml(texts.lastError)}</strong>${escapeHtml(client.last_error)}</div>` : ''}
-                    <div class="known-client-actions">
+                    ${client.ip_address ? `<div class="known-client-actions">
                         <button type="button" class="btn secondary sm btn-use-client" data-target-form="install-client-form" data-host="${escapeHtml(client.ip_address || '')}">${escapeHtml(texts.useInstall)}</button>
                         <button type="button" class="btn sm btn-use-client" data-target-form="client-control-form" data-host="${escapeHtml(client.ip_address || '')}">${escapeHtml(texts.useControl)}</button>
-                    </div>
+                    </div>` : ''}
                 </div>
             </div>
         `;

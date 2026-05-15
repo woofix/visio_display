@@ -159,34 +159,6 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 
 ### Configuration
 
-**Version automatique au commit Git**
-
-Sur le serveur où les commits sont effectués (ex. `ramses`), activez le hook Git une seule fois :
-
-```bash
-./scripts/install_git_hooks.sh
-```
-
-Ensuite, chaque `git commit` incrémente automatiquement le fichier `VERSION` et l'ajoute au commit.
-
-Le type de version est détecté à partir des fichiers préparés :
-
-- changement courant : patch (`1.0.0` → `1.0.1`)
-- changement sensible (`web/db.py`, `Dockerfile`, `docker-compose.yml`, dépendances) ou suppression de fichier : majeur (`1.0.0` → `2.0.0`)
-
-Pour une montée ponctuelle de version mineure ou majeure :
-
-```bash
-VISIO_VERSION_BUMP=minor git commit -m "..."
-VISIO_VERSION_BUMP=major git commit -m "..."
-```
-
-Pour créer un commit sans changer la version :
-
-```bash
-VISIO_VERSION_BUMP=none git commit -m "..."
-```
-
 **Variables d'environnement (`.env`)**
 
 | Variable         | Description                                                        |
@@ -198,8 +170,8 @@ VISIO_VERSION_BUMP=none git commit -m "..."
 | `MEDIA_DIR` | Dossier hôte obligatoire contenant les médias publics et leurs rendus |
 | `PRIVATE_DIR` | Dossier hôte obligatoire contenant les données privées d’exécution |
 | `VISIO_HOST_ROOT` | Racine hôte du dépôt montée dans Docker pour les mises à jour/redémarrages depuis l'administration (défaut : `.`) |
-| `VISIO_UPDATE_BRANCH` | Branche cible utilisée par la mise à jour serveur (défaut : `main`) |
-| `VISIO_UPDATE_REMOTE` | Remote Git utilisée par la mise à jour serveur (défaut : `origin`) |
+| `VISIO_UPDATE_BRANCH` | Branche cible utilisée par la page de mise à jour serveur (défaut : `main`) |
+| `VISIO_UPDATE_REMOTE` | Remote Git utilisée par la page de mise à jour serveur (défaut : `origin`) |
 | `CLIENT_HEARTBEAT_TOKEN` | Jeton partagé exigé par `/api/client-heartbeat` |
 | `DISPLAY_API_TOKEN` | Jeton écran obligatoire exigé par `/` et les endpoints publics d'affichage |
 | `SESSION_COOKIE_SECURE` | Force le cookie de session en mode `Secure` (recommandé derrière HTTPS) |
@@ -210,7 +182,7 @@ VISIO_VERSION_BUMP=none git commit -m "..."
 
 `scripts/security_bootstrap.sh install .` crée les secrets absents, refuse les valeurs faibles pendant une installation, ajoute `MEDIA_DIR`, `PRIVATE_DIR` et `VISIO_HOST_ROOT` s’ils manquent, applique `chmod 600` sur `.env`, crée `MEDIA_DIR` et `PRIVATE_DIR/backups`, puis applique `chmod 700` sur `PRIVATE_DIR` et ses sauvegardes. En mise à jour, `scripts/security_bootstrap.sh update .` ajoute uniquement les clés manquantes et signale les valeurs faibles sans remplacer `SECRET_KEY` ni `POSTGRES_PASSWORD`. La stack Docker exige `MEDIA_DIR`, `PRIVATE_DIR` et `DISPLAY_API_TOKEN` dans `.env` et refuse de démarrer s’ils sont absents.
 
-`web/` est la seule arborescence applicative runtime. Les chemins racine `services`, `templates`, `translations.py` et `tools` sont uniquement des liens symboliques contrôlés vers `web/` pour compatibilité de développement. Dans Docker, `MEDIA_DIR` et `PRIVATE_DIR` de `.env` désignent les dossiers hôte persistants; ils sont montés dans le conteneur sur `/app/static/data` et `/app/data`, qui sont seulement des chemins internes de conteneur.
+Dans Docker, `MEDIA_DIR` et `PRIVATE_DIR` de `.env` désignent les dossiers hôte persistants; ils sont montés dans le conteneur sur `/app/static/data` et `/app/data`, qui sont seulement des chemins internes de conteneur.
 
 > Ces variables d'initialisation applicative ne sont lues qu'une seule fois, lors du premier démarrage (base de données absente).
 >
@@ -982,34 +954,6 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 
 ### Configuration
 
-**Automatic Git commit versioning**
-
-On the server where commits are created (for example `ramses`), enable the Git hook once:
-
-```bash
-./scripts/install_git_hooks.sh
-```
-
-After that, each `git commit` automatically bumps the `VERSION` file and stages it into the commit.
-
-The version bump is detected from the staged files:
-
-- regular change: patch (`1.0.0` → `1.0.1`)
-- sensitive change (`web/db.py`, `Dockerfile`, `docker-compose.yml`, dependencies) or deleted file: major (`1.0.0` → `2.0.0`)
-
-For a one-off minor or major version bump:
-
-```bash
-VISIO_VERSION_BUMP=minor git commit -m "..."
-VISIO_VERSION_BUMP=major git commit -m "..."
-```
-
-To create a commit without changing the version:
-
-```bash
-VISIO_VERSION_BUMP=none git commit -m "..."
-```
-
 **Environment variables (`.env`)**
 
 | Variable         | Description                                                       |
@@ -1021,8 +965,8 @@ VISIO_VERSION_BUMP=none git commit -m "..."
 | `MEDIA_DIR` | Required host directory containing public media and generated renditions |
 | `PRIVATE_DIR` | Required host directory containing private runtime data |
 | `VISIO_HOST_ROOT` | Host repository root mounted into Docker for admin-triggered updates/restarts (default: `.`) |
-| `VISIO_UPDATE_BRANCH` | Target branch used by the server update workflow (default: `main`) |
-| `VISIO_UPDATE_REMOTE` | Git remote used by the server update workflow (default: `origin`) |
+| `VISIO_UPDATE_BRANCH` | Target branch used by the server update page (default: `main`) |
+| `VISIO_UPDATE_REMOTE` | Git remote used by the server update page (default: `origin`) |
 | `CLIENT_HEARTBEAT_TOKEN` | Shared token required by `/api/client-heartbeat` |
 | `DISPLAY_API_TOKEN` | Required screen token for `/` and public display endpoints |
 | `SESSION_COOKIE_SECURE` | Forces the session cookie to use `Secure` (recommended behind HTTPS) |
@@ -1033,7 +977,7 @@ VISIO_VERSION_BUMP=none git commit -m "..."
 
 `scripts/security_bootstrap.sh install .` creates missing secrets, rejects weak values during installation, adds `MEDIA_DIR`, `PRIVATE_DIR`, and `VISIO_HOST_ROOT` when missing, applies `chmod 600` to `.env`, creates `MEDIA_DIR` and `PRIVATE_DIR/backups`, then applies `chmod 700` to `PRIVATE_DIR` and its backups. During updates, `scripts/security_bootstrap.sh update .` only adds missing keys and reports weak values without replacing `SECRET_KEY` or `POSTGRES_PASSWORD`. The Docker stack requires `MEDIA_DIR`, `PRIVATE_DIR`, and `DISPLAY_API_TOKEN` in `.env` and refuses to start when they are absent.
 
-`web/` is the only runtime application tree. The root paths `services`, `templates`, `translations.py`, and `tools` are controlled symlinks to `web/` for development compatibility only. In Docker, `MEDIA_DIR` and `PRIVATE_DIR` from `.env` name the persistent host directories; they are mounted inside the container at `/app/static/data` and `/app/data`, which are container mount points only.
+In Docker, `MEDIA_DIR` and `PRIVATE_DIR` from `.env` name the persistent host directories; they are mounted inside the container at `/app/static/data` and `/app/data`, which are container mount points only.
 
 > These application initialization variables are only read once, on first boot (when the database does not yet exist).
 >

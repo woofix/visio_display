@@ -21,18 +21,19 @@
     background:var(--studio-bg); box-shadow:var(--shadow-sm);
 }
 .announcement-tools {
+    position:relative; z-index:30; overflow:visible;
     background:color-mix(in srgb, var(--surface) 92%, #020617); border-right:1px solid var(--studio-line); padding:12px 8px; display:flex; flex-direction:column; gap:12px;
 }
-.announcement-toolbar { display:flex; flex-direction:column; gap:7px; }
-.tool-group { display:grid; gap:6px; padding:4px; border:1px solid color-mix(in srgb, var(--studio-line) 68%, transparent); border-radius:12px; background:color-mix(in srgb, var(--surface-alt) 42%, transparent); }
+.announcement-toolbar { display:flex; flex-direction:column; gap:7px; overflow:visible; }
+.tool-group { display:grid; gap:6px; padding:4px; border:1px solid color-mix(in srgb, var(--studio-line) 68%, transparent); border-radius:12px; background:color-mix(in srgb, var(--surface-alt) 42%, transparent); overflow:visible; }
 .tool-btn {
     position:relative; width:44px; height:44px; border:1px solid transparent; border-radius:10px; background:transparent; color:var(--text-2);
     display:grid; place-items:center; cursor:pointer; transition:transform .16s ease, background .16s ease, border-color .16s ease, color .16s ease;
 }
 .tool-btn svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 .tool-btn::after {
-    content:attr(aria-label); position:absolute; left:calc(100% + 10px); top:50%; transform:translateY(-50%) translateX(-4px);
-    z-index:20; pointer-events:none; opacity:0; white-space:nowrap; border:1px solid var(--studio-line); border-radius:7px;
+    content:attr(data-tooltip); position:absolute; left:calc(100% + 10px); top:50%; transform:translateY(-50%) translateX(-4px);
+    z-index:1000; pointer-events:none; opacity:0; white-space:nowrap; border:1px solid var(--studio-line); border-radius:7px;
     background:var(--surface); color:var(--text); padding:6px 8px; font-size:.68rem; font-weight:800; box-shadow:var(--shadow-sm);
     transition:opacity .12s ease, transform .12s ease;
 }
@@ -70,7 +71,10 @@
 }
 button.chip { font:inherit; cursor:pointer; }
 .chip.snap-on { color:var(--primary); border-color:color-mix(in srgb, var(--primary) 34%, var(--border)); background:var(--primary-bg); }
-.chip.snap-off { color:var(--text-3); background:transparent; }
+.chip.snap-off {
+    color:#dc2626; border-color:color-mix(in srgb, #dc2626 42%, var(--border));
+    background:color-mix(in srgb, #dc2626 10%, var(--surface));
+}
 .mini-btn {
     width:31px; height:31px; display:grid; place-items:center; border:1px solid var(--studio-line); border-radius:8px;
     background:var(--surface); color:var(--text-2); cursor:pointer; transition:background .16s ease, color .16s ease, border-color .16s ease;
@@ -233,14 +237,14 @@ button.chip { font:inherit; cursor:pointer; }
         <section class="announcement-tools" aria-label="{{ t('wiki_s23_tools_title') }}">
             <div class="announcement-toolbar">
                 <div class="tool-group">
-                    <button class="tool-btn" type="button" data-add="text" title="{{ t('announcements_tool_text') }}" aria-label="{{ t('announcements_tool_text') }}"><svg viewBox="0 0 24 24"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg></button>
-                    <button class="tool-btn" type="button" data-add="image" id="image-tool" title="{{ t('announcements_tool_image') }}" aria-label="{{ t('announcements_tool_image') }}" aria-expanded="false"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="m4 16 4-4 4 4 2-2 6 5"/></svg></button>
-                    <button class="tool-btn library-toggle" type="button" data-add="icon" id="icon-tool" title="{{ t('announcements_tool_icon_library') }}" aria-label="{{ t('announcements_tool_icon') }}" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1L12 16.9l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z"/></svg></button>
+                    <button class="tool-btn" type="button" data-add="text" data-tooltip="{{ t('announcements_tool_text') }}" aria-label="{{ t('announcements_tool_text') }}"><svg viewBox="0 0 24 24"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg></button>
+                    <button class="tool-btn" type="button" data-add="image" id="image-tool" data-tooltip="{{ t('announcements_tool_image') }}" aria-label="{{ t('announcements_tool_image') }}" aria-expanded="false"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="m4 16 4-4 4 4 2-2 6 5"/></svg></button>
+                    <button class="tool-btn library-toggle" type="button" data-add="icon" id="icon-tool" data-tooltip="{{ t('announcements_tool_icon_library') }}" aria-label="{{ t('announcements_tool_icon') }}" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1L12 16.9l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z"/></svg></button>
                 </div>
                 <div class="tool-group">
-                    <button class="tool-btn" type="button" data-add="rect" title="{{ t('announcements_tool_rect') }}" aria-label="{{ t('announcements_tool_rect') }}"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/></svg></button>
-                    <button class="tool-btn" type="button" data-add="circle" title="{{ t('announcements_tool_circle') }}" aria-label="{{ t('announcements_tool_circle') }}"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/></svg></button>
-                    <button class="tool-btn" type="button" data-add="line" title="{{ t('announcements_tool_line') }}" aria-label="{{ t('announcements_tool_line') }}"><svg viewBox="0 0 24 24"><path d="M5 19 19 5"/></svg></button>
+                    <button class="tool-btn" type="button" data-add="rect" data-tooltip="{{ t('announcements_tool_rect') }}" aria-label="{{ t('announcements_tool_rect') }}"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/></svg></button>
+                    <button class="tool-btn" type="button" data-add="circle" data-tooltip="{{ t('announcements_tool_circle') }}" aria-label="{{ t('announcements_tool_circle') }}"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/></svg></button>
+                    <button class="tool-btn" type="button" data-add="line" data-tooltip="{{ t('announcements_tool_line') }}" aria-label="{{ t('announcements_tool_line') }}"><svg viewBox="0 0 24 24"><path d="M5 19 19 5"/></svg></button>
                 </div>
             </div>
         </section>

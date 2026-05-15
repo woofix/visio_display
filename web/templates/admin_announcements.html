@@ -318,7 +318,7 @@ button.chip { font:inherit; cursor:pointer; }
                             <input id="place" name="place" maxlength="80" value="{{ t('announcements_sample_place') }}">
                         </div>
                     </div>
-                    <div class="announcement-field" id="background-panel">
+                    <div class="announcement-field" id="background-panel" hidden>
                         <label>{{ t('announcements_background_title') }}</label>
                         <select id="background-mode" name="background_mode">
                             <option value="color">{{ t('announcements_bg_color') }}</option>
@@ -619,6 +619,7 @@ button.chip { font:inherit; cursor:pointer; }
     function setToolPanel(panel) {
         const showImage = panel === 'image';
         const showIcons = panel === 'icons';
+        qs('#background-panel').hidden = !showImage;
         qs('#background-stack').classList.toggle('expanded', showImage);
         qs('#image-tool')?.classList.toggle('active', showImage);
         qs('#image-tool')?.setAttribute('aria-expanded', showImage ? 'true' : 'false');
@@ -699,7 +700,7 @@ button.chip { font:inherit; cursor:pointer; }
         updateInspectorContext();
     }
     function current() { return els.find(e => e.id === selected); }
-    function select(id) { selected = id; renderAll(); syncProps(); }
+    function select(id) { selected = id; setToolPanel(''); renderAll(); syncProps(); }
 
     function renderLayers() {
         const list = qs('#layer-list');

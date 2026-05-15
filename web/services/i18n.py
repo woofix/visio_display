@@ -20,6 +20,9 @@ def get_language(users_svc=None):
             entry = users.get(username, {})
             if isinstance(entry, dict) and 'language' in entry:
                 return entry['language']
+        session_lang = session.get('login_language')
+        if session_lang in TRANSLATIONS:
+            return session_lang
         cfg = load_config()
         return cfg.get('language', 'fr')
     except RuntimeError:

@@ -36,6 +36,9 @@ const ALL_SCREENS             = adminMediaConfig.screens || [];
 const JS_ACTION_COMPRESS      = adminMediaConfig.actionCompress || '';
 const SCREEN_TOKEN_PARAM      = adminMediaConfig.screenTokenParam || 'screen_token';
 const DISPLAY_API_TOKEN       = adminMediaConfig.displayApiToken || '';
+const JS_DELETE_TITLE         = adminMediaConfig.deleteTitle || 'Delete media';
+const JS_DELETE_LABEL         = adminMediaConfig.deleteLabel || 'Delete';
+const JS_REMOVE_SCREEN_TITLE  = adminMediaConfig.removeFromScreenTitle || 'Remove from screen';
 
 /* ── Screen preview modal ── */
 (function() {
@@ -393,10 +396,10 @@ document.querySelectorAll('.btn-delete').forEach(btn => {
     btn.addEventListener('click', async e => {
         e.stopPropagation();
         if (!await window.appUI.confirm({
-            titleText: 'Supprimer le média',
+            titleText: JS_DELETE_TITLE,
             messageText: JS_CONFIRM_DELETE.replace('{file}', btn.dataset.file),
             tone: 'error',
-            confirmLabel: 'Supprimer',
+            confirmLabel: JS_DELETE_LABEL,
         })) return;
         const form = document.createElement('form');
         form.method = 'POST';
@@ -559,10 +562,10 @@ document.querySelectorAll('.btn-remove-from-screen').forEach(btn => {
         btn.closest('.dropdown-menu')?.classList.remove('open');
         const file = btn.dataset.file;
         if (!await window.appUI.confirm({
-            titleText: 'Retirer de l’écran',
+            titleText: JS_REMOVE_SCREEN_TITLE,
             messageText: JS_SCREEN_REMOVE_CONFIRM.replace('{file}', file).replace('{screen}', CURRENT_SCREEN),
             tone: 'warning',
-            confirmLabel: 'Retirer',
+            confirmLabel: JS_REMOVE_SCREEN_TITLE,
         })) return;
         const data = await screenAssign(file, 'remove');
         if (data.ok) {

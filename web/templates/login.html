@@ -14,7 +14,12 @@
             <img src="{{ logo_path }}" alt="Logo">
         </div>
         <h1>{{ t('login_title') }}</h1>
-        <p class="sub">Interface d’administration unifiée pour piloter vos écrans, médias et campagnes depuis un seul espace.</p>
+        <p class="sub">{{ t('login_subtitle') }}</p>
+        <nav class="login-language" aria-label="{{ t('login_language_label') }}">
+            <span>{{ t('login_language_label') }}</span>
+            <a href="{{ url_for('auth.login', lang='fr') }}" class="{% if lang == 'fr' %}active{% endif %}" lang="fr">FR</a>
+            <a href="{{ url_for('auth.login', lang='en') }}" class="{% if lang == 'en' %}active{% endif %}" lang="en">EN</a>
+        </nav>
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
         <ul class="flash-list">

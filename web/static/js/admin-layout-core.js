@@ -142,6 +142,8 @@ setInterval(updateQueueBadge, 30000);
 
 /* ── Verrou global système ── */
 (function() {
+    const uiText = window.ADMIN_LAYOUT_CONFIG?.uiText || {};
+    const text = (key, fallback) => uiText[key] || fallback;
     const overlay = document.getElementById('admin-system-lock');
     const title = document.getElementById('admin-system-lock-title');
     const message = document.getElementById('admin-system-lock-message');
@@ -156,9 +158,9 @@ setInterval(updateQueueBadge, 30000);
     let lastTask = null;
 
     function taskTitle(type) {
-        if (type === 'reboot') return 'Redémarrage en cours';
-        if (type === 'update') return 'Mise à jour en cours';
-        return 'Opération système en cours';
+        if (type === 'reboot') return text('systemLockRebootTitle', 'Restart in progress');
+        if (type === 'update') return text('systemLockUpdateTitle', 'Update in progress');
+        return text('systemLockTitle', 'System operation in progress');
     }
 
     function renderSteps(steps) {
@@ -171,7 +173,7 @@ setInterval(updateQueueBadge, 30000);
             const item = document.createElement('li');
             item.className = 'admin-system-lock-step';
             item.dataset.state = step.state || 'pending';
-            item.textContent = step.label || step.key || 'Étape';
+            item.textContent = step.label || step.key || text('systemLockStepFallback', 'Step');
             stepsList.appendChild(item);
         });
         stepsList.classList.add('is-visible');
@@ -182,12 +184,12 @@ setInterval(updateQueueBadge, 30000);
         overlay.classList.add('is-active');
         overlay.classList.toggle('admin-system-lock-error', Boolean(error));
         overlay.setAttribute('aria-hidden', 'false');
-        title.textContent = error ? 'Mise à jour interrompue' : (connecting ? 'Connexion au serveur...' : taskTitle(type));
+        title.textContent = error ? text('systemLockInterrupted', 'Update interrupted') : (connecting ? text('systemLockConnectingTitle', 'Connecting to server...') : taskTitle(type));
         message.textContent = error
-            ? (messageText || 'La mise à jour ou le redémarrage a pris trop longtemps.')
+            ? (messageText || text('systemLockTimeoutMessage', 'The update or restart took too long.'))
             : connecting
-            ? 'Le serveur redémarre ou répond temporairement lentement. Reconnexion automatique...'
-            : (messageText || 'Veuillez patienter...');
+            ? text('systemLockReconnectingMessage', 'The server is restarting or responding slowly. Reconnecting automatically...')
+            : (messageText || text('systemLockWait', 'Please wait...'));
 
         const numericProgress = Number(progressValue);
         if (Number.isFinite(numericProgress) && numericProgress >= 0) {

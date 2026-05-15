@@ -1364,7 +1364,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                     <input type="password" name="password" placeholder="{{ t('superadmin_password_placeholder') }}" required>
                     {% if all_roles %}
                     <select name="role_id">
-                        <option value="">— Aucun rôle —</option>
+                        <option value="">{{ t('admin_role_none') }}</option>
                         {% for role in all_roles %}
                         <option value="{{ role.id }}">{{ role.display_name }}{% if role.description %} – {{ role.description }}{% endif %}</option>
                         {% endfor %}
@@ -1528,9 +1528,11 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
         'priorityAlertSaved': t('superadmin_priority_alert_saved'),
         'priorityAlertCleared': t('superadmin_priority_alert_cleared'),
         'priorityAlertError': t('superadmin_priority_alert_error'),
-        'priorityAlertPending': t('superadmin_priority_alert_pending'),
-        'superadminCheckAll': t('superadmin_check_all'),
-        'superadminUncheckAll': t('superadmin_uncheck_all')
+                        'priorityAlertPending': t('superadmin_priority_alert_pending'),
+                        'superadminCheckAll': t('superadmin_check_all'),
+        'superadminUncheckAll': t('superadmin_uncheck_all'),
+        'geocodeEmpty': t('settings_geocode_empty'),
+        'geocodeError': t('settings_geocode_error')
     }
 }|tojson }}</script>
 <script src="{{ url_for('static', filename='js/admin-settings.js', v=static_version) }}"></script>

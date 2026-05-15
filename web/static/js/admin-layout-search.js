@@ -7,6 +7,14 @@
     let debounceTimer = null;
     let lastQuery = '';
     let focusIdx = -1;
+    const uiText = window.ADMIN_LAYOUT_CONFIG?.uiText || {};
+    const text = (key, fallback, params = {}) => {
+        let value = uiText[key] || fallback;
+        Object.keys(params).forEach(name => {
+            value = value.replaceAll(`{${name}}`, params[name]).replaceAll(`__${name}__`, params[name]);
+        });
+        return value;
+    };
 
     function escHtml(s) {
         return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -44,14 +52,14 @@
         const total = (data.pages||[]).length + (data.media||[]).length + (data.campaigns||[]).length
                     + (data.config||[]).length + (data.activity||[]).length + (data.users||[]).length;
         if (!total) {
-            dropdown.innerHTML = `<div class="tsd-empty">Aucun résultat pour « ${escHtml(q)} »</div>`;
+            dropdown.innerHTML = `<div class="tsd-empty">${escHtml(text('searchNoResults', 'No results for "{query}"', { query: q }))}</div>`;
             dropdown.classList.add('open');
             return;
         }
         let html = '';
 
         if (data.pages && data.pages.length) {
-            html += `<div class="tsd-section"><div class="tsd-label">${ICONS.page}Pages du site</div>`;
+            html += `<div class="tsd-section"><div class="tsd-label">${ICONS.page}${escHtml(text('searchPages', 'Site pages'))}</div>`;
             data.pages.forEach(p => {
                 html += `<a class="tsd-item" href="${escHtml(p.url)}">
                     <div class="tsd-item-icon">${ICONS.page}</div>
@@ -65,13 +73,13 @@
         }
 
         if (data.media && data.media.length) {
-            html += `<div class="tsd-section"><div class="tsd-label">${ICONS.media}Médias</div>`;
+            html += `<div class="tsd-section"><div class="tsd-label">${ICONS.media}${escHtml(text('searchMedia', 'Media'))}</div>`;
             data.media.forEach(item => {
                 html += `<a class="tsd-item" href="/admin/media">
                     <div class="tsd-item-icon">${ICONS.media}</div>
                     <div class="tsd-item-body">
                         <div class="tsd-item-name">${escHtml(item.filename)}</div>
-                        <div class="tsd-item-meta">${escHtml((item.ext||'').toUpperCase())}${item.disabled ? ' · désactivé' : ''}</div>
+                        <div class="tsd-item-meta">${escHtml((item.ext||'').toUpperCase())}${item.disabled ? ' · ' + escHtml(text('searchDisabled', 'disabled')) : ''}</div>
                     </div>
                 </a>`;
             });
@@ -79,24 +87,27 @@
         }
 
         if (data.campaigns && data.campaigns.length) {
-            html += `<div class="tsd-section"><div class="tsd-label">${ICONS.campaign}Campagnes</div>`;
+            html += `<div class="tsd-section"><div class="tsd-label">${ICONS.campaign}${escHtml(text('searchCampaigns', 'Campaigns'))}</div>`;
             data.campaigns.forEach(c => {
                 const badge = c.archived ? 'archived' : c.enabled ? 'active' : 'disabled';
-                const label = c.archived ? 'Archivée' : c.enabled ? 'Active' : 'Inactive';
+                const label = c.archived ? text('searchCampaignArchived', 'Archived') : c.enabled ? text('searchCampaignActive', 'Active') : text('searchCampaignInactive', 'Inactive');
+                const dateMeta = c.start_date || c.end_date
+                    ? (c.start_date ? text('searchFrom', 'From {date}', { date: escHtml(c.start_date) }) : '') + (c.end_date ? text('searchTo', ' to {date}', { date: escHtml(c.end_date) }) : '')
+                    : text('searchNoDate', 'No date');
                 html += `<a class="tsd-item" href="/admin/campaigns?campaign=${escHtml(c.id)}">
                     <div class="tsd-item-icon">${ICONS.campaign}</div>
                     <div class="tsd-item-body">
                         <div class="tsd-item-name">${escHtml(c.name)}</div>
-                        <div class="tsd-item-meta">${c.start_date || c.end_date ? (c.start_date ? 'Du ' + escHtml(c.start_date) : '') + (c.end_date ? ' au ' + escHtml(c.end_date) : '') : 'Aucune date'}</div>
+                        <div class="tsd-item-meta">${dateMeta}</div>
                     </div>
-                    <span class="tsd-item-badge ${badge}">${label}</span>
+                    <span class="tsd-item-badge ${badge}">${escHtml(label)}</span>
                 </a>`;
             });
             html += '</div>';
         }
 
         if (data.config && data.config.length) {
-            html += `<div class="tsd-section"><div class="tsd-label">${ICONS.config}Configuration</div>`;
+            html += `<div class="tsd-section"><div class="tsd-label">${ICONS.config}${escHtml(text('searchConfig', 'Configuration'))}</div>`;
             data.config.forEach(item => {
                 html += `<a class="tsd-item" href="${escHtml(item.url)}">
                     <div class="tsd-item-icon">${ICONS.config}</div>
@@ -110,13 +121,13 @@
         }
 
         if (data.users && data.users.length) {
-            html += `<div class="tsd-section"><div class="tsd-label">${ICONS.user}Utilisateurs</div>`;
+            html += `<div class="tsd-section"><div class="tsd-label">${ICONS.user}${escHtml(text('searchUsers', 'Users'))}</div>`;
             data.users.forEach(u => {
                 html += `<a class="tsd-item" href="/admin/settings/comptes-permissions">
                     <div class="tsd-item-icon">${ICONS.user}</div>
                     <div class="tsd-item-body">
                         <div class="tsd-item-name">${escHtml(u.username)}</div>
-                        <div class="tsd-item-meta">${u.superadmin ? 'Super-admin' : 'Administrateur'}</div>
+                        <div class="tsd-item-meta">${escHtml(u.superadmin ? text('roleSuperadmin', 'Super-admin') : text('roleAdmin', 'Administrator'))}</div>
                     </div>
                 </a>`;
             });
@@ -124,7 +135,7 @@
         }
 
         if (data.activity && data.activity.length) {
-            html += `<div class="tsd-section"><div class="tsd-label">${ICONS.activity}Activité</div>`;
+            html += `<div class="tsd-section"><div class="tsd-label">${ICONS.activity}${escHtml(text('searchActivity', 'Activity'))}</div>`;
             data.activity.forEach(log => {
                 html += `<div class="tsd-item">
                     <div class="tsd-item-icon">${ICONS.activity}</div>
@@ -138,8 +149,8 @@
         }
 
         html += `<div class="tsd-footer">
-            <span class="tsd-footer-hint">↑↓ naviguer · Entrée valider</span>
-            <a class="tsd-footer-link" href="/admin/search?q=${encodeURIComponent(q)}">Tous les résultats →</a>
+            <span class="tsd-footer-hint">${escHtml(text('searchFooterHint', '↑↓ navigate · Enter select'))}</span>
+            <a class="tsd-footer-link" href="/admin/search?q=${encodeURIComponent(q)}">${escHtml(text('searchAllResults', 'All results →'))}</a>
         </div>`;
 
         dropdown.innerHTML = html;
@@ -151,7 +162,7 @@
         if (q.length < 2) { closeDropdown(); return; }
         if (q === lastQuery) return;
         lastQuery = q;
-        dropdown.innerHTML = '<div class="tsd-loading">Recherche…</div>';
+        dropdown.innerHTML = `<div class="tsd-loading">${escHtml(text('searchLoading', 'Searching…'))}</div>`;
         dropdown.classList.add('open');
         try {
             const r = await fetch(`/api/search?q=${encodeURIComponent(q)}`);

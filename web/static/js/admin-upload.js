@@ -28,22 +28,22 @@ const MSG_FILE_TOO_LARGE   = adminUploadConfig.tooLargeSingle || '';
 const QUEUE_FORCE_TITLE = adminUploadConfig.queueForceTitle || '';
 const QUEUE_FORCE_CONFIRM = adminUploadConfig.queueForceConfirm || '';
 
-const MSG_UNSUPPORTED_TYPE = 'Type de fichier non pris en charge.';
-const MSG_INVALID_IMAGE    = 'Le fichier image est invalide ou corrompu.';
-const MSG_UPLOAD_FAILED    = "L'envoi a échoué. Vérifiez le format du fichier et réessayez.";
-const MSG_NAME_CONFLICT_TITLE = "Fichier déjà existant";
-const MSG_NAME_CONFLICT_TEXT  = "Choisissez le nom exact à utiliser pour chaque fichier en conflit, ou écrasez les fichiers déjà présents.";
-const MSG_NAME_CONFLICT_LIST  = "Fichiers déjà présents";
-const MSG_NAME_INPUT_LABEL    = "Nouveau nom";
-const MSG_NAME_CURRENT_LABEL  = "Nom actuel";
-const MSG_NAME_OCCURRENCE     = "Occurrence";
-const MSG_NAME_INPUT_HELP     = "Gardez la même extension.";
-const MSG_NAME_REQUIRED       = "Veuillez saisir un nom pour chaque fichier.";
-const MSG_NAME_EXT_MISMATCH   = "L’extension doit rester identique au fichier d’origine.";
-const MSG_NAME_DUPLICATE      = "Chaque nouveau nom doit être unique.";
-const MSG_NAME_EXISTS         = "Le nom choisi existe déjà. Choisissez-en un autre.";
-const MSG_NAME_RETRY          = "Le nom choisi existe déjà. Modifiez-le et réessayez.";
-const MSG_NAME_MISSING        = "Nom manquant pour un fichier en conflit.";
+const MSG_UNSUPPORTED_TYPE = adminUploadConfig.unsupportedType || 'Unsupported file type.';
+const MSG_INVALID_IMAGE    = adminUploadConfig.invalidImage || 'The image file is invalid or corrupted.';
+const MSG_UPLOAD_FAILED    = adminUploadConfig.uploadFailed || 'Upload failed. Check the file format and try again.';
+const MSG_NAME_CONFLICT_TITLE = adminUploadConfig.conflictTitle || 'File already exists';
+const MSG_NAME_CONFLICT_TEXT  = adminUploadConfig.conflictText || 'Choose the exact name to use for each conflicting file, or overwrite existing files.';
+const MSG_NAME_CONFLICT_LIST  = adminUploadConfig.conflictList || 'Existing files';
+const MSG_NAME_INPUT_LABEL    = adminUploadConfig.nameInputLabel || 'New name';
+const MSG_NAME_CURRENT_LABEL  = adminUploadConfig.nameCurrentLabel || 'Current name';
+const MSG_NAME_OCCURRENCE     = adminUploadConfig.nameOccurrence || 'Occurrence';
+const MSG_NAME_INPUT_HELP     = adminUploadConfig.nameInputHelp || 'Keep the same extension.';
+const MSG_NAME_REQUIRED       = adminUploadConfig.nameRequired || 'Please enter a name for each file.';
+const MSG_NAME_EXT_MISMATCH   = adminUploadConfig.nameExtMismatch || 'The extension must remain identical to the original file.';
+const MSG_NAME_DUPLICATE      = adminUploadConfig.nameDuplicate || 'Each new name must be unique.';
+const MSG_NAME_EXISTS         = adminUploadConfig.nameExists || 'The selected name already exists. Choose another one.';
+const MSG_NAME_RETRY          = adminUploadConfig.nameRetry || 'The selected name already exists. Edit it and try again.';
+const MSG_NAME_MISSING        = adminUploadConfig.nameMissing || 'Missing name for a conflicting file.';
 const UPLOAD_ANIMATION_MIN_MS = 900;
 let uploadAnimationStartedAt = 0;
 const ACCEPTED_EXTS = new Set(adminUploadConfig.acceptedExts || ['.jpg','.jpeg','.png','.pdf']);
@@ -469,7 +469,7 @@ document.querySelectorAll('.queue-force-form').forEach(form => {
         const ok = await window.appUI.confirm({
             titleText: QUEUE_FORCE_TITLE,
             messageText: QUEUE_FORCE_CONFIRM,
-            note: "L'encodage démarre immédiatement pour les éléments en attente, même hors de la fenêtre nocturne. Cela peut saturer la machine et risque de bloquer temporairement les clients pendant l'encodage.",
+            note: adminUploadConfig.queueForceImpact || '',
             tone: 'warning',
             confirmLabel: QUEUE_FORCE_TITLE,
         });
@@ -683,7 +683,7 @@ window.cancelJob = cancelJob;
 document.getElementById('btn-clear-recent')?.addEventListener('click', async () => {
     if (!await window.appUI.confirm({
         titleText: cfg.clearRecentTitle || 'Tout effacer',
-        messageText: cfg.clearRecentConfirm || 'Supprimer tous les encodages récents de la liste ?',
+            messageText: cfg.clearRecentConfirm || 'Remove all recent encodings from the list?',
         tone: 'warning',
         confirmLabel: cfg.clearRecentBtn || 'Effacer',
         cancelLabel: cfg.cancelBtn || 'Annuler',

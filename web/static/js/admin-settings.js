@@ -605,7 +605,7 @@ async function searchMeteoCity() {
         const list = data.results || [];
 
         if (!list.length) {
-            results.innerHTML = '<div style="padding:10px 14px;font-size:.82rem;color:var(--text-3)">Aucun résultat trouvé.</div>';
+            results.innerHTML = `<div style="padding:10px 14px;font-size:.82rem;color:var(--text-3)">${escapeMeteoHtml(adminSettingsI18n.geocodeEmpty || 'No result found.')}</div>`;
             results.style.display = 'block';
             return;
         }
@@ -641,7 +641,7 @@ async function searchMeteoCity() {
 
         results.style.display = 'block';
     } catch (e) {
-        results.innerHTML = '<div style="padding:10px 14px;font-size:.82rem;color:var(--red)">Erreur de connexion à l\'API de géocodage.</div>';
+        results.innerHTML = `<div style="padding:10px 14px;font-size:.82rem;color:var(--red)">${escapeMeteoHtml(adminSettingsI18n.geocodeError || 'Error connecting to the geocoding API.')}</div>`;
         results.style.display = 'block';
     } finally {
         btn.disabled = false;

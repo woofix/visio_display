@@ -158,6 +158,56 @@ class AppSmokeTests(unittest.TestCase):
         response = self._login()
         self.assertEqual(response.status_code, 302)
 
+    def test_login_page_language_can_be_selected_before_auth(self):
+        response = self.client.get("/login?lang=en")
+
+        self.assertEqual(response.status_code, 200)
+        html = response.get_data(as_text=True)
+        self.assertIn("<title>Login</title>", html)
+        self.assertIn("Sign in", html)
+        with self.client.session_transaction() as session:
+            self.assertEqual(session.get("login_language"), "en")
+
+    def test_login_language_survives_auth_when_user_has_no_language(self):
+        self.client.get("/login?lang=en")
+        with self.client.session_transaction() as session:
+            token = session["_csrf_token"]
+
+        response = self.client.post(
+            "/login",
+            data={
+                "username": "admin",
+                "password": "supersecure123",
+                "_csrf_token": token,
+            },
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 302)
+        with self.client.session_transaction() as session:
+            self.assertEqual(session.get("login_language"), "en")
+            self.assertEqual(session.get("user"), "admin")
+
+    def test_translation_catalogs_have_matching_keys(self):
+        from translations import TRANSLATIONS
+
+        self.assertEqual(set(TRANSLATIONS["fr"]), set(TRANSLATIONS["en"]))
+
+    def test_language_change_regenerates_ephemeris(self):
+        self._login()
+        with self.client.session_transaction() as session:
+            token = session["_csrf_token"]
+
+        with patch("services.ephemeris_svc.generate_ephemeride_image") as generate:
+            response = self.client.post(
+                "/admin/settings/language",
+                data={"language": "fr", "_csrf_token": token},
+                follow_redirects=False,
+            )
+
+        self.assertEqual(response.status_code, 302)
+        generate.assert_called_once_with(force=True)
+
     def test_rate_limited_login_rejects_before_password_check(self):
         self.auth_module._login_attempts["127.0.0.1::admin"] = {
             "failures": [],
@@ -355,6 +405,31 @@ class AppSmokeTests(unittest.TestCase):
         self.assertTrue(payload["ok"])
         self.assertTrue(payload["runtime"]["ready"])
         self.assertEqual(payload["runtime"]["checks"][0]["key"], "containers")
+
+    def test_update_runtime_status_can_complete_ready_restart_lock(self):
+        self._login()
+        from services import system_lock_svc
+
+        token = system_lock_svc.acquire_lock("reboot", "Redémarrage Docker en cours...", progress=85)
+        runtime = {
+            "ready": True,
+            "checks": [
+                {"key": "containers", "label": "Conteneurs running", "ok": True, "detail": "app"},
+                {"key": "http", "label": "Réponse HTTP de l'application", "ok": True, "detail": "HTTP 200"},
+            ],
+        }
+        try:
+            with patch("blueprints.version.runtime_readiness_status", return_value=runtime):
+                response = self.client.get("/admin/version/update/runtime-status?complete=1")
+        finally:
+            system_lock_svc.release_lock(token, force=True)
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertTrue(payload["ok"])
+        self.assertTrue(payload["runtime"]["ready"])
+        self.assertFalse(payload["system"]["active"])
+        self.assertFalse(system_lock_svc.get_system_status()["active"])
 
     def test_admin_update_alert_appears_only_when_update_available(self):
         self._login()
@@ -1014,6 +1089,19 @@ class AppSmokeTests(unittest.TestCase):
 
             self.assertFalse(ephemeris_svc._ephemeride_file_is_current(image_path, target_date))
 
+    def test_ephemeris_existing_file_is_stale_when_language_metadata_differs(self):
+        with self.app.app_context():
+            from constants import UPLOAD_FOLDER
+            from services import ephemeris_svc
+
+            target_date = date(2026, 5, 13)
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            image_path = os.path.join(UPLOAD_FOLDER, "ephemeride_2026-05-13_14h.jpg")
+            with open(image_path, "wb") as handle:
+                handle.write(b"old-card")
+
+            self.assertFalse(ephemeris_svc._ephemeride_file_is_current(image_path, target_date, "fr"))
+
     def test_ephemeris_does_not_use_notre_dame_when_nameday_sources_fail(self):
         with self.app.app_context():
             from services import ephemeris_svc
@@ -1081,6 +1169,7 @@ class AppSmokeTests(unittest.TestCase):
             filename = f"ephemeride_{ephemeris_svc.get_ephemeride_slot()}.jpg"
             path = os.path.join(UPLOAD_FOLDER, filename)
             self.assertTrue(os.path.exists(path))
+            self.assertTrue(os.path.exists(ephemeris_svc._ephemeride_meta_path(path)))
             with Image.open(path) as image:
                 image.verify()
             with Image.open(path) as image:

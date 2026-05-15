@@ -76,9 +76,13 @@ def _clear_login_failures(username, ip=None):
 
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
+    requested_lang = request.values.get('lang', '').strip().lower()
+    if requested_lang in {'fr', 'en'}:
+        session['login_language'] = requested_lang
     if request.method == 'POST':
         username = normalize_username(request.form.get('username', ''))
         password = request.form.get('password', '')
+        login_language = session.get('login_language')
         ip = _client_ip()
         if _login_is_blocked(username, ip):
             LOGGER.warning("Blocked login attempt for user '%s' from %s: rate limit exceeded", username, ip)
@@ -89,6 +93,8 @@ def login():
         if username in users and verify_user_password(username, password):
             session.clear()
             session.permanent = True
+            if login_language in {'fr', 'en'}:
+                session['login_language'] = login_language
             session['user'] = username
             session['_csrf_token'] = secrets.token_urlsafe(32)
             _clear_login_failures(username, ip)

@@ -10,6 +10,7 @@ import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 
+from services.i18n import _t
 from services.system_lock_svc import update_lock
 from services.version_svc import _compare_versions
 
@@ -17,11 +18,11 @@ from services.version_svc import _compare_versions
 SERVICE_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_REPO_CWD = os.path.normpath(os.path.join(SERVICE_DIR, "..", ".."))
 UPDATE_STEPS = [
-    ("pull", "Téléchargement / pull"),
-    ("stop", "Arrêt des services"),
-    ("restart", "Redémarrage Docker"),
-    ("containers", "Vérification des conteneurs"),
-    ("app", "Vérification de l'application"),
+    ("pull", "version_step_pull"),
+    ("stop", "version_step_stop"),
+    ("restart", "version_step_restart"),
+    ("containers", "version_step_containers"),
+    ("app", "version_step_app"),
 ]
 
 
@@ -29,7 +30,7 @@ def _step_payload(active_stage, *, failed_stage=None):
     payload = []
     active_index = next((index for index, item in enumerate(UPDATE_STEPS) if item[0] == active_stage), 0)
     failed_index = next((index for index, item in enumerate(UPDATE_STEPS) if item[0] == failed_stage), None)
-    for key, label in UPDATE_STEPS:
+    for key, label_key in UPDATE_STEPS:
         index = next(index for index, item in enumerate(UPDATE_STEPS) if item[0] == key)
         if failed_index is not None and index == failed_index:
             state = "failed"
@@ -39,7 +40,7 @@ def _step_payload(active_stage, *, failed_stage=None):
             state = "active"
         else:
             state = "done" if index < active_index else "pending"
-        payload.append({"key": key, "label": label, "state": state})
+        payload.append({"key": key, "label": _t(label_key), "state": state})
     return payload
 
 
@@ -264,7 +265,7 @@ def runtime_readiness_status(*, compose_cmd=None, project_name="", app_url=None)
     by_service = {_container_service_name(item): item for item in containers if _container_service_name(item)}
 
     if compose_error:
-        checks.append({"key": "containers", "label": "Conteneurs Docker", "ok": False, "detail": compose_error})
+        checks.append({"key": "containers", "label": _t("version_runtime_containers"), "ok": False, "detail": compose_error})
     else:
         expected_services = services or ["app", "worker", "postgres", "redis"]
         missing = [service for service in expected_services if service not in by_service]
@@ -272,27 +273,27 @@ def runtime_readiness_status(*, compose_cmd=None, project_name="", app_url=None)
         if missing or stopped:
             detail_parts = []
             if missing:
-                detail_parts.append("manquants: " + ", ".join(missing))
+                detail_parts.append(_t("version_runtime_missing", services=", ".join(missing)))
             if stopped:
-                detail_parts.append("arrêtés: " + ", ".join(stopped))
-            checks.append({"key": "containers", "label": "Conteneurs running", "ok": False, "detail": "; ".join(detail_parts)})
+                detail_parts.append(_t("version_runtime_stopped", services=", ".join(stopped)))
+            checks.append({"key": "containers", "label": _t("version_runtime_containers_running"), "ok": False, "detail": "; ".join(detail_parts)})
         else:
-            checks.append({"key": "containers", "label": "Conteneurs running", "ok": True, "detail": ", ".join(expected_services)})
+            checks.append({"key": "containers", "label": _t("version_runtime_containers_running"), "ok": True, "detail": ", ".join(expected_services)})
 
         unhealthy = [
             service for service in expected_services
             if service in by_service and not _container_health_ok(by_service[service])
         ]
         if unhealthy:
-            checks.append({"key": "healthchecks", "label": "Healthchecks Docker", "ok": False, "detail": ", ".join(unhealthy)})
+            checks.append({"key": "healthchecks", "label": _t("version_runtime_healthchecks"), "ok": False, "detail": ", ".join(unhealthy)})
         else:
-            checks.append({"key": "healthchecks", "label": "Healthchecks Docker", "ok": True, "detail": "OK"})
+            checks.append({"key": "healthchecks", "label": _t("version_runtime_healthchecks"), "ok": True, "detail": "OK"})
 
     http_url = app_url or _app_health_url()
     http_ready, http_detail = _http_ok(http_url)
     checks.append({
         "key": "http",
-        "label": "Réponse HTTP de l'application",
+        "label": _t("version_runtime_http"),
         "ok": http_ready,
         "detail": http_detail,
     })
@@ -309,12 +310,12 @@ def wait_for_runtime_ready(*, lock_token=None, timeout_seconds=420, interval_sec
         _update_step(lock_token, "containers", compose_error, progress=85, failed=True)
         raise RuntimeError(compose_error)
 
-    last_detail = "En attente des conteneurs..."
+    last_detail = _t("version_runtime_wait_containers")
     while time.time() < deadline:
         status = runtime_readiness_status(compose_cmd=compose_cmd, project_name=project_name)
         failing = [item for item in status["checks"] if not item["ok"]]
         if not failing:
-            _update_step(lock_token, "app", "Application disponible.", progress=100)
+            _update_step(lock_token, "app", _t("version_app_available"), progress=100)
             return status
 
         first = failing[0]
@@ -323,8 +324,8 @@ def wait_for_runtime_ready(*, lock_token=None, timeout_seconds=420, interval_sec
         _update_step(lock_token, stage, last_detail, progress=88 if stage == "containers" else 94)
         time.sleep(max(1, int(interval_seconds)))
 
-    _update_step(lock_token, "app", f"Timeout de redémarrage: {last_detail}", progress=100, failed=True)
-    raise RuntimeError(f"Le redémarrage prend trop longtemps. Dernier état: {last_detail}")
+    _update_step(lock_token, "app", _t("version_runtime_timeout_step", detail=last_detail), progress=100, failed=True)
+    raise RuntimeError(_t("version_runtime_timeout_error", detail=last_detail))
 
 
 def _shell_join(command):
@@ -359,8 +360,9 @@ def _start_restart_helper(command, *, repo_dir, compose_cmd, project_name, progr
         )
         failure_cleanup = (
             "from services.system_lock_svc import update_lock; "
+            "from services.i18n import _t; "
             "from services.update_svc import _step_payload; "
-            f"update_lock({lock_token!r}, message='Le redemarrage Docker a echoue ou a expire.', "
+            f"update_lock({lock_token!r}, message=_t('version_restart_timeout_log'), "
             "progress=100, stage='restart', steps=_step_payload('restart', failed_stage='restart'), "
             "error=True, timeout_seconds=1800)"
         )
@@ -391,9 +393,9 @@ def _start_restart_helper(command, *, repo_dir, compose_cmd, project_name, progr
         progress_callback(f"$ {' '.join(helper_command[:8])} ...")
     result = _run(helper_command, cwd=repo_dir, timeout=20)
     if not result.ok:
-        raise RuntimeError(result.stderr or result.stdout or "Impossible de lancer le conteneur de redémarrage.")
+        raise RuntimeError(result.stderr or result.stdout or _t("version_restart_helper_failed"))
     if progress_callback:
-        progress_callback(f"Redémarrage Docker lancé via helper {helper_name}.")
+        progress_callback(_t("version_restart_helper_started", name=helper_name))
 
 
 def _current_ref():
@@ -437,7 +439,7 @@ def _latest_tag():
 def _build_incompatible(reason, checks, extra=None):
     payload = {
         "status": "incompatible",
-        "status_label": "Installation incompatible",
+        "status_label": _t("version_status_incompatible"),
         "status_tone": "danger",
         "compatible": False,
         "can_apply": False,
@@ -471,29 +473,29 @@ def get_update_status(*, fetch_remote=False):
         checks.append({"key": key, "label": label, "ok": bool(ok), "detail": detail})
 
     if not os.path.isdir(repo_dir):
-        add_check("repo_dir", "Dossier d'installation", False, repo_dir)
-        return _build_incompatible("Le dossier d'installation est introuvable.", checks)
-    add_check("repo_dir", "Dossier d'installation", True, repo_dir)
+        add_check("repo_dir", _t("version_check_repo_dir"), False, repo_dir)
+        return _build_incompatible(_t("version_reason_no_repo_dir"), checks)
+    add_check("repo_dir", _t("version_check_repo_dir"), True, repo_dir)
 
     if not os.path.isdir(os.path.join(repo_dir, ".git")):
-        add_check("git_dir", "Dépôt Git", False, ".git introuvable")
-        return _build_incompatible("Le dossier Git est introuvable. La mise à jour ne peut pas recloner le dépôt.", checks)
-    add_check("git_dir", "Dépôt Git", True)
+        add_check("git_dir", _t("version_check_git_dir"), False, ".git introuvable")
+        return _build_incompatible(_t("version_reason_no_git_dir"), checks)
+    add_check("git_dir", _t("version_check_git_dir"), True)
 
     remote_name = os.environ.get("VISIO_UPDATE_REMOTE", "origin").strip() or "origin"
     target_branch = _update_branch()
     remote_url = _git(["remote", "get-url", remote_name])
     if not remote_url.ok or not remote_url.stdout.strip():
-        add_check("remote", "Remote Git", False, remote_url.stderr or f"remote {remote_name} introuvable")
-        return _build_incompatible("Aucun remote Git utilisable n'est configuré.", checks)
-    add_check("remote", "Remote Git", True, f"{remote_name}: {remote_url.stdout.strip()}")
+        add_check("remote", _t("version_check_remote"), False, remote_url.stderr or f"remote {remote_name} introuvable")
+        return _build_incompatible(_t("version_reason_no_remote"), checks)
+    add_check("remote", _t("version_check_remote"), True, f"{remote_name}: {remote_url.stdout.strip()}")
 
     ref_type, ref_name, ref_error = _current_ref()
     if ref_error:
-        add_check("current_ref", "Branche ou tag courant", False, ref_error)
+        add_check("current_ref", _t("version_check_current_ref"), False, ref_error)
         return _build_incompatible(ref_error, checks)
-    add_check("current_ref", "Branche ou tag courant", True, f"{ref_type}: {ref_name}")
-    add_check("target_branch", "Branche cible de mise à jour", True, target_branch)
+    add_check("current_ref", _t("version_check_current_ref"), True, f"{ref_type}: {ref_name}")
+    add_check("target_branch", _t("version_check_target_branch"), True, target_branch)
     local_commit = _git(["rev-parse", "HEAD"]).stdout.strip()
     local_version = _read_local_version(repo_dir)
     status_context = {
@@ -508,40 +510,40 @@ def get_update_status(*, fetch_remote=False):
 
     status = _git(["status", "--porcelain"])
     if not status.ok:
-        add_check("git_clean", "État Git propre", False, status.stderr or "état Git illisible")
-        return _build_incompatible("L'état Git est illisible.", checks, status_context)
+        add_check("git_clean", _t("version_check_git_clean"), False, status.stderr or _t("version_reason_git_state_unreadable"))
+        return _build_incompatible(_t("version_reason_git_state_unreadable"), checks, status_context)
     git_state = "dirty" if status.stdout.strip() else "clean"
     if git_state != "clean":
-        add_check("git_clean", "État Git propre", False, status.stdout)
+        add_check("git_clean", _t("version_check_git_clean"), False, status.stdout)
         return _build_incompatible(
-            "Des changements locaux sont présents. Rien ne sera écrasé sans confirmation explicite.",
+            _t("version_reason_dirty"),
             checks,
             {**status_context, "git_state": git_state, "git_status": status.stdout},
         )
-    add_check("git_clean", "État Git propre", True, "aucun changement local")
+    add_check("git_clean", _t("version_check_git_clean"), True, _t("version_check_no_local_changes"))
 
     update_script = os.path.join(repo_dir, "scripts", "update.sh")
     if not os.path.isfile(update_script):
-        add_check("update_script", "Script de mise à jour", False, "scripts/update.sh introuvable")
-        return _build_incompatible("Le script scripts/update.sh est introuvable.", checks, status_context)
-    add_check("update_script", "Script de mise à jour", True, "scripts/update.sh")
+        add_check("update_script", _t("version_check_update_script"), False, "scripts/update.sh introuvable")
+        return _build_incompatible(_t("version_reason_no_update_script"), checks, status_context)
+    add_check("update_script", _t("version_check_update_script"), True, "scripts/update.sh")
 
     compose_cmd, compose_error = _docker_compose_command()
     if not compose_cmd:
-        add_check("docker_compose", "Docker Compose", False, compose_error)
+        add_check("docker_compose", _t("version_check_docker_compose"), False, compose_error)
         return _build_incompatible(compose_error, checks, status_context)
-    add_check("docker_compose", "Docker Compose", True, " ".join(os.path.basename(part) for part in compose_cmd))
+    add_check("docker_compose", _t("version_check_docker_compose"), True, " ".join(os.path.basename(part) for part in compose_cmd))
 
     if fetch_remote:
         fetch = _git(["fetch", remote_name, "--tags", "--prune"], timeout=60)
         if not fetch.ok:
-            add_check("git_fetch", "Récupération distante", False, fetch.stderr or fetch.stdout)
+            add_check("git_fetch", _t("version_check_git_fetch"), False, fetch.stderr or fetch.stdout)
             return _build_incompatible(
-                "Impossible de récupérer les informations distantes du dépôt.",
+                _t("version_reason_fetch_failed"),
                 checks,
                 status_context,
             )
-        add_check("git_fetch", "Récupération distante", True, fetch.stdout or "références mises à jour")
+        add_check("git_fetch", _t("version_check_git_fetch"), True, fetch.stdout or _t("version_check_refs_updated"))
 
     remote_ref = ""
     remote_commit = ""
@@ -552,7 +554,7 @@ def get_update_status(*, fetch_remote=False):
         remote_ref = _remote_ref_for_branch(remote_name, target_branch)
         if not remote_ref:
             return _build_incompatible(
-                "La branche cible de mise à jour n'a pas de branche distante lisible.",
+                _t("version_reason_no_remote_branch"),
                 checks,
                 {**status_context, "git_state": git_state},
             )
@@ -576,48 +578,48 @@ def get_update_status(*, fetch_remote=False):
     )
     if version_comparison > 0:
         status_name = "update_available"
-        status_label = "Mise à jour disponible"
+        status_label = _t("version_status_update_available")
         status_tone = "warning"
         can_apply = True
         reason = ""
     elif version_comparison < 0:
         status_name = "local_ahead"
-        status_label = "Version locale en avance"
+        status_label = _t("version_status_local_ahead")
         status_tone = "info"
         can_apply = False
-        reason = "La version distante de la branche cible est plus ancienne que la version locale."
+        reason = _t("version_reason_remote_older")
     else:
         if not remote_commit or not local_commit or remote_commit == local_commit:
             if branch_switch_required:
                 status_name = "branch_switch_required"
-                status_label = "Changement de branche requis"
+                status_label = _t("version_status_branch_switch_required")
                 status_tone = "warning"
                 can_apply = True
-                reason = f"La branche courante est {ref_name}, mais la branche cible est {target_branch}."
+                reason = _t("version_reason_branch_switch", current=ref_name, target=target_branch)
             else:
                 status_name = "up_to_date"
-                status_label = "À jour"
+                status_label = _t("version_status_up_to_date")
                 status_tone = "success"
                 can_apply = False
                 reason = ""
         elif _commit_is_ancestor(local_commit, remote_commit):
             status_name = "update_available"
-            status_label = "Mise à jour disponible"
+            status_label = _t("version_status_update_available")
             status_tone = "warning"
             can_apply = True
             reason = ""
         elif _commit_is_ancestor(remote_commit, local_commit):
             status_name = "local_ahead"
-            status_label = "Version locale en avance"
+            status_label = _t("version_status_local_ahead")
             status_tone = "info"
             can_apply = False
-            reason = "La version est identique, mais le commit local contient déjà le commit distant."
+            reason = _t("version_reason_local_contains_remote")
         else:
             status_name = "diverged"
-            status_label = "Historique Git divergent"
+            status_label = _t("version_status_diverged")
             status_tone = "info"
             can_apply = False
-            reason = "La version est identique, mais les commits local et distant ne sont pas sur le même historique."
+            reason = _t("version_reason_diverged")
 
     return {
         "status": status_name,
@@ -670,7 +672,7 @@ def _stream_command(command, *, cwd, env=None, progress_callback=None):
             progress_callback(line.rstrip())
     returncode = process.wait()
     if returncode != 0:
-        raise RuntimeError(f"La commande a échoué avec le code {returncode}.")
+        raise RuntimeError(_t("version_command_failed", code=returncode))
 
 
 def apply_update(*, progress_callback=None, lock_token=None):
@@ -678,10 +680,10 @@ def apply_update(*, progress_callback=None, lock_token=None):
     if not status.get("compatible"):
         raise RuntimeError(status.get("reason") or "Installation incompatible.")
     if not status.get("can_apply"):
-        raise RuntimeError("Aucune mise à jour n'est disponible.")
+        raise RuntimeError(_t("version_no_update_available"))
 
     repo_dir = status["repo_dir"]
-    _update_step(lock_token, "pull", "Téléchargement et application depuis le dépôt Git...", progress=20)
+    _update_step(lock_token, "pull", _t("version_pull_progress"), progress=20)
     env = os.environ.copy()
     if status.get("target_branch"):
         env["VISIO_UPDATE_BRANCH"] = status["target_branch"]
@@ -690,10 +692,10 @@ def apply_update(*, progress_callback=None, lock_token=None):
         command.append(status["target"])
     _stream_command(command, cwd=repo_dir, env=env, progress_callback=progress_callback)
     if lock_token:
-        _update_step(lock_token, "stop", "Mise à jour appliquée. Préparation du redémarrage Docker...", progress=58)
+        _update_step(lock_token, "stop", _t("version_stop_progress"), progress=58)
     refreshed = get_update_status(fetch_remote=False)
     refreshed["status"] = "restart_required"
-    refreshed["status_label"] = "Redémarrage requis"
+    refreshed["status_label"] = _t("version_status_restart_required")
     refreshed["status_tone"] = "warning"
     refreshed["can_restart"] = True
     return refreshed
@@ -708,12 +710,12 @@ def restart_stack(*, progress_callback=None, lock_token=None):
         raise RuntimeError(compose_error)
     project_name = _current_compose_project_name()
     command = [*_with_compose_project(compose_cmd, project_name), "up", "-d", "--build"]
-    _update_step(lock_token, "restart", "Redémarrage Docker en cours...", progress=72, timeout_seconds=900)
+    _update_step(lock_token, "restart", _t("version_restart_progress"), progress=72, timeout_seconds=900)
     if progress_callback:
-        progress_callback("Le redémarrage va continuer en arrière-plan.")
+        progress_callback(_t("version_restart_background"))
         progress_callback(f"$ {' '.join(command)}")
     if lock_token:
-        update_lock(lock_token, message="Redémarrage Docker en arrière-plan...", progress=60)
+        update_lock(lock_token, message=_t("version_restart_background_lock"), progress=60)
     _start_restart_helper(
         command,
         repo_dir=status["repo_dir"],
@@ -724,13 +726,13 @@ def restart_stack(*, progress_callback=None, lock_token=None):
         verify_runtime=True,
     )
     if lock_token:
-        update_lock(lock_token, message="Redémarrage Docker lancé. Connexion au serveur...", progress=85)
+        update_lock(lock_token, message=_t("version_restart_connecting"), progress=85)
     status["status"] = "restart_scheduled"
-    status["status_label"] = "Redémarrage lancé"
+    status["status_label"] = _t("version_status_restart_scheduled")
     status["status_tone"] = "success"
     status["can_apply"] = False
     status["can_restart"] = False
-    status["reason"] = "La stack Docker redémarre en arrière-plan. Rechargez la page dans quelques secondes."
+    status["reason"] = _t("version_reason_restart_scheduled")
     return status
 
 

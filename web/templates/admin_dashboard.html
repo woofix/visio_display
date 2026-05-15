@@ -215,7 +215,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         </div>
         <h3>{{ t('quick_add_title') }}</h3>
-        <p>{% if is_feature_enabled('videos') %}{{ t('quick_add_desc') }}{% else %}Importer des images ou PDF dans le diaporama.{% endif %}</p>
+        <p>{% if is_feature_enabled('videos') %}{{ t('quick_add_desc') }}{% else %}{{ t('quick_add_desc_no_videos') }}{% endif %}</p>
         <div class="quick-card-arrow">{{ t('quick_access') }} <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:12px;height:12px"><polyline points="9 18 15 12 9 6"/></svg></div>
     </a>
     {% endif %}

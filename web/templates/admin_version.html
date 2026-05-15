@@ -27,7 +27,7 @@
     <section class="version-hero">
         <div>
             <h1>{{ t('version_title') }}</h1>
-            <p>Vérifiez et appliquez les mises à jour depuis le dépôt Git installé.</p>
+            <p>{{ t('version_hero_desc') }}</p>
         </div>
     </section>
 
@@ -35,13 +35,13 @@
              data-initial-status='{{ update_status | tojson }}'>
         <div class="version-panel-header update-header">
             <div>
-                <h2>Mise à jour serveur</h2>
-                <p>Vérification et application depuis le dépôt Git installé, sans reclonage.</p>
+                <h2>{{ t('version_server_update_title') }}</h2>
+                <p>{{ t('version_server_update_desc') }}</p>
             </div>
             <div class="update-actions">
-                <button type="button" class="btn sm" id="update-check-btn">Vérifier</button>
-                <button type="button" class="btn sm success" id="update-apply-btn" hidden>Appliquer</button>
-                <button type="button" class="btn sm secondary" id="update-restart-btn" hidden>Redémarrer Docker</button>
+                <button type="button" class="btn sm" id="update-check-btn">{{ t('version_check_btn') }}</button>
+                <button type="button" class="btn sm success" id="update-apply-btn" hidden>{{ t('version_apply_btn') }}</button>
+                <button type="button" class="btn sm secondary" id="update-restart-btn" hidden>{{ t('version_restart_btn') }}</button>
             </div>
         </div>
 
@@ -50,42 +50,42 @@
             <div>
                 <div class="version-status-label" id="update-status-label">{{ update_status.status_label }}</div>
                 <div class="version-status-sub" id="update-status-reason">
-                    {% if update_status.reason %}{{ update_status.reason }}{% else %}Cliquez sur Vérifier pour interroger le dépôt distant avant toute action.{% endif %}
+                    {% if update_status.reason %}{{ update_status.reason }}{% else %}{{ t('version_default_reason') }}{% endif %}
                 </div>
             </div>
         </div>
 
         <dl class="version-details update-details">
             <div>
-                <dt>Version locale</dt>
+                <dt>{{ t('version_local_version') }}</dt>
                 <dd id="update-local-version">{{ update_status.local_version or '-' }}</dd>
             </div>
             <div>
-                <dt>Version distante</dt>
+                <dt>{{ t('version_remote_version') }}</dt>
                 <dd id="update-remote-version">{{ update_status.remote_version or '-' }}</dd>
             </div>
             <div>
-                <dt>Branche courante</dt>
+                <dt>{{ t('version_current_branch') }}</dt>
                 <dd id="update-ref">{{ update_status.branch or update_status.current_ref or '-' }}</dd>
             </div>
             <div>
-                <dt>Branche cible</dt>
+                <dt>{{ t('version_target_branch') }}</dt>
                 <dd id="update-target-branch">{{ update_status.target_branch or '-' }}</dd>
             </div>
             <div>
-                <dt>État Git</dt>
+                <dt>{{ t('version_git_state') }}</dt>
                 <dd id="update-git-state">{{ update_status.git_state or '-' }}</dd>
             </div>
             <div>
-                <dt>Commit local</dt>
+                <dt>{{ t('version_local_commit') }}</dt>
                 <dd id="update-local-commit">{{ update_status.local_commit or '-' }}</dd>
             </div>
             <div>
-                <dt>Commit distant</dt>
+                <dt>{{ t('version_remote_commit') }}</dt>
                 <dd id="update-remote-commit">{{ update_status.remote_commit or '-' }}</dd>
             </div>
             <div>
-                <dt>Remote</dt>
+                <dt>{{ t('version_remote') }}</dt>
                 <dd id="update-remote">{{ update_status.remote or '-' }}</dd>
             </div>
         </dl>
@@ -93,8 +93,8 @@
         <div class="update-checks" id="update-checks"></div>
 
         <div class="update-confirm" id="update-confirm" hidden>
-            <strong>Confirmation requise</strong>
-            <span>Une mise à jour est disponible. Elle ne sera appliquée qu'après clic sur Appliquer.</span>
+            <strong>{{ t('version_confirm_required') }}</strong>
+            <span>{{ t('version_confirm_desc') }}</span>
         </div>
 
         <pre class="update-log" id="update-log" aria-live="polite" hidden></pre>
@@ -291,5 +291,36 @@
     }
 }
 </style>
+<script id="admin-version-config" type="application/json">{{ {
+    'stepPull': t('version_step_pull'),
+    'stepStop': t('version_step_stop'),
+    'stepRestart': t('version_step_restart'),
+    'stepContainers': t('version_step_containers'),
+    'stepApp': t('version_step_app'),
+    'errorPrefix': t('version_error_prefix'),
+    'runtimeUnavailable': t('version_runtime_unavailable'),
+    'appAvailable': t('version_app_available'),
+    'restartTimeoutLog': t('version_restart_timeout_log'),
+    'restartTimeoutLabel': t('version_restart_timeout_label'),
+    'restartTimeoutReason': t('version_restart_timeout_reason'),
+    'unknownStatus': t('version_unknown_status'),
+    'updateRequiresConfirm': t('version_update_requires_confirm'),
+    'noAutoAction': t('version_no_auto_action'),
+    'checkFallback': t('version_check_fallback'),
+    'checkFailed': t('version_check_failed'),
+    'errorLabel': t('version_error_label'),
+    'actionUnavailable': t('version_action_unavailable'),
+    'actionFailed': t('version_action_failed'),
+    'updateFailedReason': t('version_update_failed_reason'),
+    'done': t('version_done'),
+    'applyConfirmTitle': t('version_apply_confirm_title'),
+    'applyConfirmMessage': t('version_apply_confirm_message'),
+    'applyLabel': t('version_apply_btn'),
+    'applyStart': t('version_apply_start'),
+    'restartConfirmTitle': t('version_restart_confirm_title'),
+    'restartConfirmMessage': t('version_restart_confirm_message'),
+    'restartLabel': t('version_restart_btn'),
+    'restartStart': t('version_restart_start')
+} | tojson }}</script>
 <script src="{{ url_for('static', filename='js/admin-version.js', v=static_version) }}"></script>
 {% endblock %}

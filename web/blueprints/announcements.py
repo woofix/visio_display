@@ -122,7 +122,7 @@ def create_announcement_route():
             username=session.get("user"),
         )
     except Exception as exc:
-        _flash("flash_announcement_failed", "error", error=str(exc) or "Erreur inconnue")
+        _flash("flash_announcement_failed", "error", error=str(exc) or _t("generic_unknown_error"))
         return redirect(url_for("announcements.admin_announcements_page"))
 
     _flash("flash_announcement_created", "success", filename=filename)

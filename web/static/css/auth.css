@@ -142,7 +142,43 @@ h1 {
     color: var(--auth-text-soft);
     font-size: .82rem;
     line-height: 1.7;
-    margin-bottom: 22px;
+    margin-bottom: 14px;
+}
+
+.login-language {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 20px;
+    padding: 5px;
+    border: 1px solid #dbe3ef;
+    border-radius: 999px;
+    background: rgba(248, 250, 252, .84);
+    color: var(--auth-text-soft);
+    font-size: .72rem;
+    font-weight: 800;
+}
+
+.login-language span {
+    padding: 0 7px 0 9px;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+}
+
+.login-language a {
+    min-width: 38px;
+    padding: 7px 10px;
+    border-radius: 999px;
+    color: #475569;
+    text-decoration: none;
+    transition: background .16s ease, color .16s ease, box-shadow .16s ease;
+}
+
+.login-language a:hover,
+.login-language a.active {
+    background: #fff;
+    color: var(--auth-primary-dark);
+    box-shadow: 0 6px 16px rgba(15, 23, 42, .08);
 }
 
 form {

@@ -1,6 +1,7 @@
 # Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 import contextlib
+import json
 import math
 import os
 import threading
@@ -101,9 +102,21 @@ def get_nameday_for_date(target_date=None):
     return nameday_svc.get_nameday_for_date(target_date)
 
 
-def _ephemeride_file_is_current(path, target_date):
+def _ephemeride_meta_path(path):
+    return f"{path}.meta.json"
+
+
+def _ephemeride_file_is_current(path, target_date, lang=None):
     if not os.path.exists(path):
         return False
+    if lang:
+        try:
+            with open(_ephemeride_meta_path(path), "r", encoding="utf-8") as handle:
+                metadata = json.load(handle)
+            if metadata.get("lang") != lang:
+                return False
+        except (OSError, json.JSONDecodeError):
+            return False
     if not _cached_nameday(target_date):
         get_nameday_for_date(target_date)
     checked_at_ts = _nameday_cache_checked_at_ts(target_date)
@@ -637,11 +650,11 @@ def generate_ephemeride_image(force=False):
 
     today = _today_for_ephemeris(cfg)
 
-    if not force and _ephemeride_file_is_current(path, today):
+    if not force and _ephemeride_file_is_current(path, today, lang):
         return
 
     with _EPHEMERIS_LOCK:
-        if not force and _ephemeride_file_is_current(path, today):
+        if not force and _ephemeride_file_is_current(path, today, lang):
             return
 
         for f in os.listdir(UPLOAD_FOLDER):
@@ -902,6 +915,8 @@ def generate_ephemeride_image(force=False):
     try:
         img.save(tmp_path, "JPEG", quality=95)
         os.replace(tmp_path, path)
+        with open(_ephemeride_meta_path(path), "w", encoding="utf-8") as handle:
+            json.dump({"lang": lang}, handle, ensure_ascii=True)
     except Exception:
         with contextlib.suppress(OSError):
             os.unlink(tmp_path)

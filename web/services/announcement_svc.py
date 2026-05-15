@@ -16,6 +16,7 @@ from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
 from constants import IMAGES_FOLDER, UPLOAD_FOLDER
 from services.activity_svc import log_activity
 from services.config_svc import load_config, save_config
+from services.i18n import _t
 from services.media_svc import clean_filename, ensure_unique_filename, generate_standard_renditions, get_all_media
 
 
@@ -284,7 +285,7 @@ def _plain_text(value):
 
 def _download_image(url):
     if not _safe_image_url(url):
-        raise ValueError("URL externe non autorisée.")
+        raise ValueError(_t("announcement_external_url_forbidden"))
     response = requests.get(
         url,
         timeout=12,
@@ -292,19 +293,19 @@ def _download_image(url):
     )
     response.raise_for_status()
     if not _safe_image_url(response.url):
-        raise ValueError("Redirection externe non autorisée.")
+        raise ValueError(_t("announcement_external_redirect_forbidden"))
     content_type = response.headers.get("Content-Type", "")
     if not content_type.startswith("image/"):
-        raise ValueError("Le fichier externe n'est pas une image.")
+        raise ValueError(_t("announcement_external_not_image"))
     if len(response.content) > 18 * 1024 * 1024:
-        raise ValueError("L'image externe est trop volumineuse.")
+        raise ValueError(_t("announcement_external_image_too_large"))
     with Image.open(io.BytesIO(response.content)) as image:
         return image.copy()
 
 
 def fetch_thumbnail_bytes(url, *, max_bytes=16 * 1024 * 1024):
     if not _safe_image_url(url):
-        raise ValueError("URL externe non autorisée.")
+        raise ValueError(_t("announcement_external_url_forbidden"))
     response = requests.get(
         url,
         timeout=(2, 5),
@@ -312,9 +313,9 @@ def fetch_thumbnail_bytes(url, *, max_bytes=16 * 1024 * 1024):
     )
     response.raise_for_status()
     if not _safe_image_url(response.url):
-        raise ValueError("Redirection externe non autorisée.")
+        raise ValueError(_t("announcement_external_redirect_forbidden"))
     if len(response.content) > max_bytes:
-        raise ValueError("La vignette externe est trop volumineuse.")
+        raise ValueError(_t("announcement_external_thumbnail_too_large"))
     with Image.open(io.BytesIO(response.content)) as image:
         thumb = ImageOps.exif_transpose(image).convert("RGB")
         thumb.thumbnail((480, 270), Image.Resampling.LANCZOS)
@@ -613,7 +614,7 @@ def _template_layout(canvas, form):
 def create_announcement(form, uploaded_file=None, username=None):
     title = str(form.get("title") or "").strip()
     if not title:
-        raise ValueError("Le titre est obligatoire.")
+        raise ValueError(_t("announcement_title_required"))
 
     if form.get("layout_json"):
         background = _render_layout_json(form, uploaded_file)

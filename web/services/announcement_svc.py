@@ -644,6 +644,8 @@ def create_announcement(form, uploaded_file=None, username=None):
             pass
 
     selected_screens = [str(screen or "").strip().lower() for screen in form.getlist("screens")]
+    if not selected_screens:
+        selected_screens = ["__default__"]
     if "__default__" in selected_screens:
         cfg.setdefault("order", [])
         if filename not in cfg["order"]:

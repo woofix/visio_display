@@ -1,0 +1,1025 @@
+{# GNU General Public License v3.0 (GPL-3.0) - Copyright (c) 2026 Woofix - See LICENSE file for details #}
+{% extends 'admin_layout.html' %}
+
+{% block title %}{{ t('announcements_title') }}{% endblock %}
+{% block topbar_icon %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16v14H4z"/><path d="M8 9h8"/><path d="M8 13h5"/></svg>{% endblock %}
+{% block topbar_breadcrumbs %}<div class="topbar-breadcrumbs">
+    <a href="/admin" class="bc-link">{{ app_name }}</a>
+    <svg class="bc-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    <a href="/admin/media" class="bc-link">{{ t('nav_label_contents') }}</a>
+    <svg class="bc-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    <span class="bc-current">{% block topbar_title %}{{ t('announcements_title') }}{% endblock %}</span>
+</div>{% endblock %}
+{% block topbar_sub %}{{ t('announcements_topbar_sub') }}{% endblock %}
+
+{% block styles %}
+.announcement-editor {
+    --studio-bg:var(--bg); --studio-ink:var(--text); --studio-muted:var(--text-3); --studio-line:var(--border);
+    --studio-soft:var(--surface-alt); --studio-blue:var(--primary); --studio-blue-soft:var(--primary-fade);
+    display:grid; grid-template-columns:68px minmax(620px,1fr) 304px; gap:0; align-items:stretch;
+    min-height:calc(100vh - 210px); overflow:hidden; border:1px solid var(--border); border-radius:12px;
+    background:var(--studio-bg); box-shadow:var(--shadow-sm);
+}
+.announcement-tools {
+    background:color-mix(in srgb, var(--surface) 92%, #020617); border-right:1px solid var(--studio-line); padding:12px 8px; display:flex; flex-direction:column; gap:12px;
+}
+.announcement-toolbar { display:flex; flex-direction:column; gap:7px; }
+.tool-group { display:grid; gap:6px; padding:4px; border:1px solid color-mix(in srgb, var(--studio-line) 68%, transparent); border-radius:12px; background:color-mix(in srgb, var(--surface-alt) 42%, transparent); }
+.tool-btn {
+    position:relative; width:44px; height:44px; border:1px solid transparent; border-radius:10px; background:transparent; color:var(--text-2);
+    display:grid; place-items:center; cursor:pointer; transition:transform .16s ease, background .16s ease, border-color .16s ease, color .16s ease;
+}
+.tool-btn svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+.tool-btn::after {
+    content:attr(aria-label); position:absolute; left:calc(100% + 10px); top:50%; transform:translateY(-50%) translateX(-4px);
+    z-index:20; pointer-events:none; opacity:0; white-space:nowrap; border:1px solid var(--studio-line); border-radius:7px;
+    background:var(--surface); color:var(--text); padding:6px 8px; font-size:.68rem; font-weight:800; box-shadow:var(--shadow-sm);
+    transition:opacity .12s ease, transform .12s ease;
+}
+.tool-btn:hover::after,.tool-btn:focus-visible::after { opacity:1; transform:translateY(-50%) translateX(0); }
+.tool-btn:hover,.tool-btn.active { transform:translateY(-1px); background:var(--primary-bg); border-color:color-mix(in srgb, var(--primary) 44%, var(--border)); color:var(--studio-blue); }
+.tool-btn.active { box-shadow:inset 3px 0 0 var(--primary), 0 0 0 2px var(--primary-fade); }
+.tool-btn:active { transform:translateY(0) scale(.98); }
+.tool-btn.library-toggle {
+    border-color:color-mix(in srgb, var(--studio-line) 80%, transparent);
+    background:color-mix(in srgb, var(--surface) 64%, transparent);
+}
+.tool-btn.library-toggle::before {
+    content:""; position:absolute; right:7px; bottom:7px; width:6px; height:6px; border-radius:999px;
+    background:currentColor; opacity:.52;
+}
+.tool-btn.library-toggle.active {
+    color:#fff; border-color:color-mix(in srgb, var(--primary) 82%, var(--border));
+    background:linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 74%, #0f172a));
+    box-shadow:0 0 0 2px var(--primary-fade);
+}
+.announcement-workspace { min-width:0; display:grid; grid-template-rows:auto minmax(0,1fr) auto; background:color-mix(in srgb, var(--bg-strong) 92%, #020617); }
+.canvas-topbar,.canvas-bottombar {
+    min-height:50px; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 14px;
+    background:color-mix(in srgb, var(--surface) 94%, #020617); border-bottom:1px solid var(--studio-line); color:var(--studio-muted); font-size:.76rem; font-weight:800;
+}
+.canvas-bottombar { border-top:1px solid var(--studio-line); border-bottom:0; min-height:42px; }
+.canvas-topbar strong { color:var(--studio-ink); }
+.topbar-cluster { display:flex; align-items:center; gap:8px; min-width:0; }
+.canvas-controls,.feedback-strip { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.canvas-controls { flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; }
+.canvas-controls::-webkit-scrollbar { display:none; }
+.chip {
+    display:inline-flex; align-items:center; gap:6px; min-height:28px; border:1px solid var(--studio-line); border-radius:8px;
+    padding:5px 8px; background:var(--surface); color:var(--text-2); font-size:.72rem; font-weight:850;
+}
+button.chip { font:inherit; cursor:pointer; }
+.chip.snap-on { color:var(--primary); border-color:color-mix(in srgb, var(--primary) 34%, var(--border)); background:var(--primary-bg); }
+.chip.snap-off { color:var(--text-3); background:transparent; }
+.mini-btn {
+    width:31px; height:31px; display:grid; place-items:center; border:1px solid var(--studio-line); border-radius:8px;
+    background:var(--surface); color:var(--text-2); cursor:pointer; transition:background .16s ease, color .16s ease, border-color .16s ease;
+}
+.mini-btn:hover { background:var(--primary-bg); border-color:color-mix(in srgb, var(--primary) 34%, var(--border)); color:var(--studio-blue); }
+.mini-btn:disabled { opacity:.42; cursor:not-allowed; }
+.mini-btn svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
+.topbar-action {
+    min-height:32px; border:1px solid var(--studio-line); border-radius:8px; background:var(--surface); color:var(--text-2);
+    padding:0 10px; font:inherit; font-size:.72rem; font-weight:900; cursor:pointer; display:inline-flex; align-items:center; gap:6px;
+}
+.topbar-action.primary { color:#fff; border-color:color-mix(in srgb, var(--primary) 74%, var(--border)); background:var(--primary); }
+.topbar-action:hover { border-color:color-mix(in srgb, var(--primary) 38%, var(--border)); color:var(--primary); background:var(--primary-bg); }
+.topbar-action.primary:hover { color:#fff; background:color-mix(in srgb, var(--primary) 88%, #000); }
+.announcement-stage-wrap { min-width:0; overflow:hidden; position:relative; padding:14px; display:block; }
+.canvas-viewport {
+    position:relative; overflow:auto; border-radius:10px; background-color:color-mix(in srgb, var(--bg-strong) 88%, #020617);
+    background-image:radial-gradient(circle at 1px 1px, rgba(148,163,184,.11) 1px, transparent 0);
+    background-size:22px 22px; display:block; height:520px; padding:30px 44px 50px; box-shadow:inset 0 0 0 1px rgba(148,163,184,.18);
+}
+.announcement-stage-outer {
+    position:absolute; top:30px; left:50%; z-index:2; transform:translateX(-50%); width:960px; height:540px; margin:0 auto; background:#1e293b; border-radius:6px; overflow:hidden; isolation:isolate;
+    box-shadow:0 24px 70px rgba(0,0,0,.34), 0 0 0 1px rgba(255,255,255,.10), 0 0 0 12px rgba(15,23,42,.18);
+}
+.announcement-stage { position:absolute; left:0; top:0; width:1920px; height:1080px; transform-origin:0 0; background:#1e293b; overflow:hidden; }
+.announcement-bg { position:absolute; inset:0; background:#1e293b center/cover no-repeat; }
+.stage-grid {
+    position:absolute; inset:0; pointer-events:none; opacity:.22;
+    background-image:linear-gradient(rgba(255,255,255,.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.08) 1px, transparent 1px);
+    background-size:80px 80px;
+}
+.safe-guide,.center-guide,.smart-guide { position:absolute; pointer-events:none; z-index:900; }
+.safe-guide.action { left:96px; top:54px; width:1728px; height:972px; border:2px dashed rgba(34,197,94,.46); }
+.safe-guide.title { left:192px; top:108px; width:1536px; height:864px; border:2px dashed rgba(14,165,233,.36); }
+.center-guide.v { left:959px; top:0; width:2px; height:1080px; background:rgba(236,72,153,.42); }
+.center-guide.h { left:0; top:539px; width:1920px; height:2px; background:rgba(236,72,153,.42); }
+.smart-guide { display:none; background:#22c55e; box-shadow:0 0 0 1px rgba(255,255,255,.75), 0 0 12px rgba(34,197,94,.35); }
+.smart-guide.v { top:0; width:2px; height:1080px; }
+.smart-guide.h { left:0; height:2px; width:1920px; }
+.ann-el {
+    position:absolute; box-sizing:border-box; outline:0 solid transparent; transform-origin:center; user-select:none; border:1px solid transparent;
+    cursor:move;
+}
+.ann-el.hidden { display:none; }
+.ann-el.locked { cursor:not-allowed; }
+.ann-el.selected {
+    border-color:color-mix(in srgb, var(--primary) 85%, transparent); box-shadow:0 0 0 1px rgba(255,255,255,.85), 0 0 0 6px var(--primary-fade), 0 8px 30px color-mix(in srgb, var(--primary) 16%, transparent);
+}
+.ann-el.text { white-space:pre-wrap; overflow:hidden; font-weight:800; line-height:1.08; }
+.ann-el.rect { border-radius:18px; }
+.ann-el.circle { border-radius:999px; }
+.ann-el.line { height:0 !important; transform-origin:left center; border-top-style:solid; cursor:move; }
+.ann-el img { width:100%; height:100%; object-fit:contain; display:block; pointer-events:none; }
+.resize-handle {
+    position:absolute; width:13px; height:13px; border-radius:4px; background:#fff; border:1.5px solid var(--studio-blue);
+    box-shadow:0 2px 8px rgba(15,23,42,.20); display:none; z-index:20;
+}
+.ann-el.selected .resize-handle { display:block; }
+.resize-handle[data-handle="nw"] { left:-7px; top:-7px; cursor:nwse-resize; }
+.resize-handle[data-handle="n"] { left:50%; top:-7px; transform:translateX(-50%); cursor:ns-resize; }
+.resize-handle[data-handle="ne"] { right:-7px; top:-7px; cursor:nesw-resize; }
+.resize-handle[data-handle="e"] { right:-7px; top:50%; transform:translateY(-50%); cursor:ew-resize; }
+.resize-handle[data-handle="se"] { right:-7px; bottom:-7px; cursor:nwse-resize; }
+.resize-handle[data-handle="s"] { left:50%; bottom:-7px; transform:translateX(-50%); cursor:ns-resize; }
+.resize-handle[data-handle="sw"] { left:-7px; bottom:-7px; cursor:nesw-resize; }
+.resize-handle[data-handle="w"] { left:-7px; top:50%; transform:translateY(-50%); cursor:ew-resize; }
+.minimap {
+    position:absolute; right:28px; bottom:26px; width:178px; aspect-ratio:16 / 9; border:1px solid rgba(148,163,184,.58); border-radius:8px;
+    background:var(--surface-soft); box-shadow:0 12px 30px rgba(15,23,42,.18); padding:6px; z-index:4;
+}
+.minimap-stage { position:relative; width:100%; height:100%; overflow:hidden; border-radius:5px; background:#1e293b; }
+.minimap-item { position:absolute; background:color-mix(in srgb, var(--primary) 56%, transparent); border:1px solid rgba(255,255,255,.76); }
+.inspector {
+    min-width:0; overflow:auto; background:color-mix(in srgb, var(--surface) 96%, #020617); border-left:1px solid var(--studio-line); padding:10px; display:grid; gap:9px;
+    align-content:start;
+}
+.inspector-tabs { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; padding:3px; border:1px solid var(--studio-line); border-radius:10px; background:var(--surface-alt); position:sticky; top:0; z-index:3; }
+.inspector-tab {
+    border:0; border-radius:7px; min-height:30px; padding:0 6px; background:transparent; color:var(--text-3);
+    font:inherit; font-size:.69rem; font-weight:900; cursor:pointer;
+}
+.inspector-tab.active { background:var(--surface); color:var(--text); box-shadow:0 1px 6px rgba(0,0,0,.12); }
+.inspector-tabs[hidden],.inspector-panel[hidden],.context-panel[hidden] { display:none !important; }
+.inspector-section { border:1px solid color-mix(in srgb, var(--studio-line) 82%, transparent); border-radius:10px; background:var(--surface); overflow:hidden; }
+.inspector-title {
+    display:flex; align-items:center; justify-content:space-between; gap:8px; padding:9px 10px; border-bottom:1px solid var(--studio-line);
+    color:var(--text); font-size:.68rem; font-weight:950; text-transform:uppercase; letter-spacing:.04em; background:color-mix(in srgb, var(--surface-alt) 74%, transparent);
+}
+.inspector-body { padding:10px; }
+.announcement-field { margin-bottom:8px; }
+.announcement-field:last-child { margin-bottom:0; }
+.announcement-field label { display:block; font-size:.68rem; font-weight:900; color:var(--text-2); margin-bottom:5px; }
+.announcement-field input,.announcement-field textarea,.announcement-field select {
+    width:100%; border:1px solid var(--border); border-radius:8px; background:var(--surface);
+    color:var(--text); font:inherit; font-size:.74rem; padding:7px 8px; outline:none; min-height:32px;
+}
+.announcement-field input:focus,.announcement-field textarea:focus,.announcement-field select:focus { border-color:var(--primary); box-shadow:0 0 0 3px var(--primary-fade); }
+.announcement-field textarea { min-height:74px; resize:vertical; line-height:1.35; }
+.announcement-actions { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; margin-top:12px; }
+.announcement-screen-list { display:flex; flex-wrap:wrap; gap:7px; }
+.announcement-screen-list label { display:inline-flex; gap:7px; align-items:center; font-size:.75rem; font-weight:800; border:1px solid color-mix(in srgb, var(--primary) 24%, var(--border)); border-radius:999px; padding:8px 11px; background:var(--surface-alt); color:var(--text-2); }
+.announcement-screen-list input { width:auto; min-height:0; accent-color:var(--primary); }
+.bg-source { display:none; }
+.bg-source.active { display:block; }
+.background-stack { display:none; }
+.background-stack.expanded {
+    display:grid;
+    gap:8px;
+}
+.background-stack.expanded .bg-source {
+    display:block;
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:8px;
+    background:var(--surface-alt);
+}
+.background-stack.expanded .bg-source.active {
+    border-color:color-mix(in srgb, var(--primary) 38%, var(--border));
+    box-shadow:inset 2px 0 0 var(--primary);
+}
+.icon-browser { display:none; margin-top:10px; border-top:1px solid var(--studio-line); padding-top:12px; }
+.icon-browser.active { display:block; }
+.icon-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; max-height:270px; overflow:auto; }
+.icon-card { border:1px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text); padding:9px 10px; font:inherit; font-size:.78rem; font-weight:800; cursor:pointer; text-align:left; display:grid; place-items:center; min-height:48px; }
+.icon-card:hover { border-color:var(--primary); background:var(--primary-bg); }
+.icon-card img { width:24px; height:24px; filter:var(--icon-filter, none); }
+.mini-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.layer-list { display:grid; gap:4px; max-height:360px; overflow:auto; }
+.layer-row {
+    display:grid; grid-template-columns:18px 1fr auto; gap:5px; align-items:center; border:1px solid transparent; border-radius:7px;
+    background:transparent; padding:4px 5px; cursor:grab; min-height:32px;
+}
+.layer-row:hover { background:var(--surface-alt); border-color:var(--border); }
+.layer-row.selected { border-color:color-mix(in srgb, var(--primary) 46%, var(--border)); background:var(--primary-bg); box-shadow:inset 2px 0 0 var(--primary); }
+.layer-row .layer-grip { color:var(--text-4); display:grid; place-items:center; opacity:.9; }
+.layer-row input { border:0; background:transparent; color:var(--text); font-size:.71rem; font-weight:800; padding:2px 3px; min-height:0; }
+.layer-actions { display:flex; gap:2px; opacity:0; transition:opacity .12s ease; }
+.layer-row:hover .layer-actions,.layer-row.selected .layer-actions,.layer-row:focus-within .layer-actions { opacity:1; }
+.layer-row button { width:24px; height:24px; border:0; border-radius:6px; background:transparent; color:var(--text-3); display:grid; place-items:center; cursor:pointer; }
+.layer-row button:hover { background:var(--primary-bg); color:var(--primary); }
+.layer-row svg { width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+.empty-note { color:var(--text-3); font-size:.76rem; line-height:1.45; margin:0; }
+@media(max-width:1250px) { .announcement-editor { grid-template-columns:68px minmax(0,1fr); } .inspector { grid-column:1 / -1; border-left:0; border-top:1px solid var(--studio-line); grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:1400px) { .topbar-cluster .chip { display:none; } .topbar-cluster strong { font-size:.72rem; } .canvas-controls { gap:5px; } .topbar-action { padding:0 8px; } }
+@media(max-width:780px) { .announcement-editor { grid-template-columns:1fr; } .announcement-tools { flex-direction:row; overflow:auto; border-right:0; border-bottom:1px solid var(--studio-line); } .inspector { grid-template-columns:1fr; } .canvas-viewport { padding:26px; } }
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ t('announcements_h1') }}</h1>
+    <p>{{ t('announcements_sub') }}</p>
+</div>
+
+<form method="post" action="/admin/announcements/create" enctype="multipart/form-data" id="announcement-form">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="layout_json" id="layout-json">
+    <input type="hidden" name="external_url" id="external-url">
+    <input type="hidden" name="external_credit" id="external-credit">
+    <div class="announcement-editor">
+        <section class="announcement-tools" aria-label="{{ t('wiki_s23_tools_title') }}">
+            <div class="announcement-toolbar">
+                <div class="tool-group">
+                    <button class="tool-btn" type="button" data-add="text" title="{{ t('announcements_tool_text') }}" aria-label="{{ t('announcements_tool_text') }}"><svg viewBox="0 0 24 24"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg></button>
+                    <button class="tool-btn" type="button" data-add="image" id="image-tool" title="{{ t('announcements_tool_image') }}" aria-label="{{ t('announcements_tool_image') }}" aria-expanded="false"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="m4 16 4-4 4 4 2-2 6 5"/></svg></button>
+                    <button class="tool-btn library-toggle" type="button" data-add="icon" id="icon-tool" title="{{ t('announcements_tool_icon_library') }}" aria-label="{{ t('announcements_tool_icon') }}" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1L12 16.9l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z"/></svg></button>
+                </div>
+                <div class="tool-group">
+                    <button class="tool-btn" type="button" data-add="rect" title="{{ t('announcements_tool_rect') }}" aria-label="{{ t('announcements_tool_rect') }}"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/></svg></button>
+                    <button class="tool-btn" type="button" data-add="circle" title="{{ t('announcements_tool_circle') }}" aria-label="{{ t('announcements_tool_circle') }}"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/></svg></button>
+                    <button class="tool-btn" type="button" data-add="line" title="{{ t('announcements_tool_line') }}" aria-label="{{ t('announcements_tool_line') }}"><svg viewBox="0 0 24 24"><path d="M5 19 19 5"/></svg></button>
+                </div>
+            </div>
+        </section>
+
+        <section class="announcement-workspace">
+            <div class="canvas-topbar">
+                <div class="topbar-cluster"><strong>{{ t('announcements_canvas_title') }}</strong> <span class="chip">1920 x 1080</span></div>
+                <div class="canvas-controls">
+                    <button type="button" class="mini-btn" id="undo-btn" title="{{ t('announcements_undo') }}"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-1"/></svg></button>
+                    <button type="button" class="mini-btn" id="redo-btn" title="{{ t('announcements_redo') }}"><svg viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h1"/></svg></button>
+                    <button type="button" class="mini-btn" id="zoom-out" title="Zoom -"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
+                    <span class="chip" id="zoom-label">100%</span>
+                    <button type="button" class="mini-btn" id="zoom-in" title="Zoom +"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+                    <button type="button" class="mini-btn" id="zoom-fit" title="{{ t('announcements_zoom_fit') }}"><svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg></button>
+                    <button type="button" class="chip snap-on" id="snap-state">{{ t('announcements_snap_on') }}</button>
+                    <button type="button" class="topbar-action" id="preview-btn">{{ t('announcements_reset_preview') }}</button>
+                    <button type="submit" class="topbar-action primary">{{ t('announcements_export') }}</button>
+                </div>
+            </div>
+            <section class="announcement-stage-wrap">
+                <div class="canvas-viewport" id="canvas-viewport">
+                    <div class="announcement-stage-outer" id="stage-outer">
+                        <div class="announcement-stage" id="stage">
+                            <div class="announcement-bg" id="stage-bg"></div>
+                            <div class="stage-grid"></div>
+                            <div class="safe-guide action"></div>
+                            <div class="safe-guide title"></div>
+                            <div class="center-guide v"></div>
+                            <div class="center-guide h"></div>
+                            <div class="smart-guide v" id="guide-v"></div>
+                            <div class="smart-guide h" id="guide-h"></div>
+                        </div>
+                    </div>
+                    <div class="minimap" aria-hidden="true"><div class="minimap-stage" id="minimap-stage"></div></div>
+                </div>
+            </section>
+            <div class="canvas-bottombar">
+                <div class="feedback-strip">
+                    <span class="chip" id="live-coords">X - Y -</span>
+                    <span class="chip" id="live-size">W - H -</span>
+                    <span class="chip" id="live-align">{{ t('announcements_align_label') }}</span>
+                    <span class="chip" id="live-distance">{{ t('announcements_distance_label') }}</span>
+                </div>
+                <div class="feedback-strip"><span class="chip">Ctrl+Z</span><span class="chip">Ctrl+D</span><span class="chip">{{ t('announcements_shortcut_resize') }}</span></div>
+            </div>
+        </section>
+
+        <aside class="inspector">
+            <div class="inspector-tabs" role="tablist" aria-label="{{ t('announcements_tabs_label') }}">
+                <button type="button" class="inspector-tab active" data-tab="style" role="tab">{{ t('announcements_tab_style') }}</button>
+                <button type="button" class="inspector-tab" data-tab="position" role="tab">{{ t('announcements_tab_position') }}</button>
+                <button type="button" class="inspector-tab" data-tab="layers" role="tab">{{ t('announcements_tab_layers') }}</button>
+            </div>
+
+            <div class="context-panel" data-context="document">
+            <section class="inspector-section">
+                <div class="inspector-title">{{ t('announcements_document_title') }}</div>
+                <div class="inspector-body">
+                    <div class="announcement-field">
+                        <label for="announcement-title">{{ t('announcements_field_title') }}</label>
+                        <input id="announcement-title" name="title" maxlength="90" required value="{{ t('announcements_sample_title') }}">
+                    </div>
+                    <div class="announcement-field">
+                        <label for="announcement-body">{{ t('announcements_field_body') }}</label>
+                        <textarea id="announcement-body" name="body" maxlength="420">{{ t('announcements_sample_body') }}</textarea>
+                    </div>
+                    <div class="mini-row">
+                        <div class="announcement-field">
+                            <label for="date-picker">{{ t('announcements_field_date') }}</label>
+                            <input id="date-picker" type="datetime-local">
+                            <input id="date-text" name="date_text" type="hidden">
+                        </div>
+                        <div class="announcement-field">
+                            <label for="place">{{ t('announcements_field_place') }}</label>
+                            <input id="place" name="place" maxlength="80" value="{{ t('announcements_sample_place') }}">
+                        </div>
+                    </div>
+                    <div class="announcement-field" id="background-panel" hidden>
+                        <label>{{ t('announcements_background_title') }}</label>
+                        <select id="background-mode" name="background_mode">
+                            <option value="color">{{ t('announcements_bg_color') }}</option>
+                            <option value="upload">{{ t('announcements_bg_upload') }}</option>
+                            <option value="media">{{ t('announcements_bg_media') }}</option>
+                            <option value="external">{{ t('announcements_bg_external') }}</option>
+                        </select>
+                    </div>
+                    <div class="background-stack" id="background-stack">
+                        <div class="bg-source active" data-bg="color">
+                            <div class="announcement-field"><label>{{ t('announcements_background_color') }}</label><input id="background-color" name="background_color" type="color" value="#1e293b"></div>
+                        </div>
+                        <div class="bg-source" data-bg="upload">
+                            <div class="announcement-field"><label>{{ t('announcements_background_upload') }}</label><input id="background-upload" name="background_upload" type="file" accept=".jpg,.jpeg,.png"></div>
+                        </div>
+                        <div class="bg-source" data-bg="media">
+                            <div class="announcement-field">
+                                <label>{{ t('announcements_background_media') }}</label>
+                                <select id="background-media" name="background_media">
+                                    <option value="">-</option>
+                                    {% for filename in media_choices %}
+                                    <option value="{{ filename }}" data-preview="{{ media_preview_map.get(filename, '') }}">{{ filename }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="bg-source" data-bg="external">
+                            <div class="announcement-field"><label>{{ t('announcements_external_search') }}</label><input id="external-query" type="search"></div>
+                            <button type="button" class="btn secondary" id="external-search-btn">{{ t('announcements_external_btn') }}</button>
+                            <div class="icon-grid" id="external-results"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="inspector-section">
+                <div class="inspector-title">{{ t('announcements_settings_title') }}</div>
+                <div class="inspector-body">
+                    <div class="announcement-field">
+                        <label for="duration">{{ t('announcements_duration') }}</label>
+                        <input id="duration" name="duration" type="number" min="1" max="3600" value="15">
+                    </div>
+                    <div class="announcement-field">
+                        <label>{{ t('announcements_screens') }}</label>
+                        <div class="announcement-screen-list">
+                            {% for screen in screens %}
+                            <label><input type="checkbox" name="screens" value="{{ screen.value }}"> {{ screen.label }}</label>
+                            {% endfor %}
+                            {% if not screens %}<span>{{ t('announcements_no_screens') }}</span>{% endif %}
+                        </div>
+                    </div>
+                </div>
+            </section>
+            </div>
+
+            <div class="context-panel" data-context="element" hidden>
+            <section class="inspector-section">
+                <div class="inspector-title">{{ t('announcements_selected_title') }}</div>
+                <div class="inspector-body">
+                    <div class="announcement-field">
+                        <label>{{ t('announcements_active_object') }}</label>
+                        <select id="element-list"></select>
+                    </div>
+                    <div class="announcement-field"><label>{{ t('announcements_layer_name') }}</label><input id="prop-name" type="text"></div>
+                    <div class="announcement-field" data-field="text"><label>{{ t('announcements_prop_text') }}</label><textarea id="prop-text"></textarea></div>
+                    <div class="announcement-actions">
+                        <button type="button" class="btn secondary" id="backward">{{ t('announcements_backward') }}</button>
+                        <button type="button" class="btn secondary" id="forward">{{ t('announcements_forward') }}</button>
+                        <button type="button" class="btn secondary" id="duplicate">{{ t('announcements_duplicate') }}</button>
+                        <button type="button" class="btn secondary" id="delete">{{ t('announcements_delete') }}</button>
+                    </div>
+                </div>
+            </section>
+
+            <div class="inspector-panel" data-panel="style">
+            <section class="inspector-section">
+                <div class="inspector-title">{{ t('announcements_tab_style') }}</div>
+                <div class="inspector-body">
+                    <div class="mini-row">
+                        <div class="announcement-field"><label>{{ t('announcements_color') }}</label><input id="prop-color" type="color"></div>
+                        <div class="announcement-field"><label>{{ t('announcements_opacity') }}</label><input id="prop-opacity" type="range" min="0" max="1" step=".05"></div>
+                        <div class="announcement-field" data-field="typography"><label>{{ t('announcements_font_size') }}</label><input id="prop-font" type="number" min="8" max="260"></div>
+                        <div class="announcement-field"><label>{{ t('announcements_rotation') }}</label><input id="prop-rotation" type="number"></div>
+                    </div>
+                    <div class="announcement-field" data-field="typography">
+                        <label>{{ t('announcements_font_family') }}</label>
+                        <select id="prop-font-family">
+                            <option value="'DejaVu Sans', Arial, sans-serif">DejaVu Sans</option>
+                            <option value="'DejaVu Serif', Georgia, serif">DejaVu Serif</option>
+                            <option value="'DejaVu Sans Mono', 'Courier New', monospace">DejaVu Sans Mono</option>
+                            <option value="'Liberation Sans', Arial, sans-serif">Liberation Sans</option>
+                            <option value="'Liberation Serif', Georgia, serif">Liberation Serif</option>
+                            <option value="'Liberation Mono', 'Courier New', monospace">Liberation Mono</option>
+                            <option value="'Noto Sans', Arial, sans-serif">Noto Sans</option>
+                            <option value="'Noto Serif', Georgia, serif">Noto Serif</option>
+                            <option value="'Noto Sans Display', 'Noto Sans', Arial, sans-serif">Noto Sans Display</option>
+                            <option value="'Noto Serif Display', 'Noto Serif', Georgia, serif">Noto Serif Display</option>
+                            <option value="'Source Sans 3', 'Source Sans Pro', Arial, sans-serif">Source Sans</option>
+                            <option value="'Source Serif 4', 'Source Serif Pro', Georgia, serif">Source Serif</option>
+                            <option value="'Source Code Pro', 'DejaVu Sans Mono', monospace">Source Code Pro</option>
+                            <option value="'Fira Sans', Arial, sans-serif">Fira Sans</option>
+                            <option value="'Fira Mono', 'DejaVu Sans Mono', monospace">Fira Mono</option>
+                            <option value="Roboto, Arial, sans-serif">Roboto</option>
+                            <option value="'Open Sans', Arial, sans-serif">Open Sans</option>
+                            <option value="Lato, Arial, sans-serif">Lato</option>
+                            <option value="Montserrat, Arial, sans-serif">Montserrat</option>
+                            <option value="Poppins, Arial, sans-serif">Poppins</option>
+                            <option value="Nunito, Arial, sans-serif">Nunito</option>
+                            <option value="Raleway, Arial, sans-serif">Raleway</option>
+                            <option value="Oswald, Arial, sans-serif">Oswald</option>
+                            <option value="Ubuntu, Arial, sans-serif">Ubuntu</option>
+                            <option value="Cantarell, Arial, sans-serif">Cantarell</option>
+                            <option value="Merriweather, Georgia, serif">Merriweather</option>
+                        </select>
+                    </div>
+                    <div class="announcement-field" data-field="typography">
+                        <label>{{ t('announcements_alignment') }}</label>
+                        <select id="prop-align"><option value="left">{{ t('announcements_align_left') }}</option><option value="center">{{ t('announcements_align_center_option') }}</option><option value="right">{{ t('announcements_align_right') }}</option></select>
+                    </div>
+                </div>
+            </section>
+            </div>
+
+            <div class="inspector-panel" data-panel="position" hidden>
+            <section class="inspector-section">
+                <div class="inspector-title">{{ t('announcements_position_size') }}</div>
+                <div class="inspector-body">
+                    <div class="mini-row">
+                        <div class="announcement-field"><label>X</label><input id="prop-x" type="number"></div>
+                        <div class="announcement-field"><label>Y</label><input id="prop-y" type="number"></div>
+                        <div class="announcement-field"><label>{{ t('announcements_width') }}</label><input id="prop-w" type="number" min="1"></div>
+                        <div class="announcement-field"><label>{{ t('announcements_height') }}</label><input id="prop-h" type="number" min="1"></div>
+                    </div>
+                </div>
+            </section>
+            </div>
+
+            <div class="inspector-panel" data-panel="layers" hidden>
+            <section class="inspector-section">
+                <div class="inspector-title">{{ t('announcements_layers_title') }}</div>
+                <div class="inspector-body">
+                    <div class="layer-list" id="layer-list"></div>
+                </div>
+            </section>
+            </div>
+            </div>
+
+            <div class="icon-browser" id="icon-browser">
+                <div class="announcement-field">
+                    <label>{{ t('announcements_icon_category') }}</label>
+                    <select id="icon-category">
+                        <option value="">{{ t('announcements_icon_all') }}</option>
+                        <option value="tabler-outline">Tabler outline</option>
+                        <option value="tabler-filled">Tabler filled</option>
+                        <option value="lucide">Lucide</option>
+                    </select>
+                </div>
+                <div class="announcement-field">
+                    <label>{{ t('announcements_icon_search') }}</label>
+                    <input id="icon-query" type="search" placeholder="calendar, alert, info">
+                </div>
+                <div class="icon-grid" id="icon-grid"></div>
+                <button type="button" class="btn secondary" id="icon-more">{{ t('announcements_icon_more') }}</button>
+            </div>
+        </aside>
+    </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+    const qs = s => document.querySelector(s);
+    const qsa = s => Array.from(document.querySelectorAll(s));
+    const stage = qs('#stage'), outer = qs('#stage-outer'), viewport = qs('#canvas-viewport'), bg = qs('#stage-bg');
+    const guideV = qs('#guide-v'), guideH = qs('#guide-h'), minimap = qs('#minimap-stage');
+    const els = []; let selected = null, seq = 1, iconOffset = 0, iconLoading = false, zoom = 1, isRestoring = false, snapEnabled = true, activeTab = 'style';
+    const undoStack = [], redoStack = [];
+    const themeColor = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    const primaryColor = () => themeColor('--primary') || '#4f46e5';
+    const accentColor = () => themeColor('--primary-light') || primaryColor();
+    const mediaPreviews = {{ media_preview_map|tojson }};
+    const labels = {
+        noLayers: {{ t('announcements_no_layers')|tojson }},
+        moveLayer: {{ t('announcements_move_layer')|tojson }},
+        renameLayer: {{ t('announcements_rename_layer')|tojson }},
+        showLayer: {{ t('announcements_show_layer')|tojson }},
+        hideLayer: {{ t('announcements_hide_layer')|tojson }},
+        lockLayer: {{ t('announcements_lock_layer')|tojson }},
+        unlockLayer: {{ t('announcements_unlock_layer')|tojson }},
+        copySuffix: {{ t('announcements_copy_suffix')|tojson }},
+        alignLabel: {{ t('announcements_align_label')|tojson }},
+        distanceLabel: {{ t('announcements_distance_label')|tojson }},
+        alignCenter: {{ t('announcements_align_center')|tojson }},
+        alignFree: {{ t('announcements_align_free')|tojson }},
+        actionLabel: {{ t('announcements_action_label', action='__ACTION__')|tojson }},
+        marginsLabel: {{ t('announcements_margins_label', left='__LEFT__', right='__RIGHT__')|tojson }},
+        snapOn: {{ t('announcements_snap_on')|tojson }},
+        snapOff: {{ t('announcements_snap_off')|tojson }},
+        layerTitle: {{ t('announcements_layer_title')|tojson }},
+        layerMessage: {{ t('announcements_layer_message')|tojson }},
+        layerBanner: {{ t('announcements_layer_banner')|tojson }},
+        layerFooter: {{ t('announcements_layer_footer')|tojson }},
+        layerNewText: {{ t('announcements_layer_new_text')|tojson }},
+        toolRect: {{ t('announcements_tool_rect')|tojson }},
+        toolCircle: {{ t('announcements_tool_circle')|tojson }},
+        toolLine: {{ t('announcements_tool_line')|tojson }},
+        sampleFooter: {{ t('announcements_sample_footer')|tojson }},
+        genericLayer: {{ t('announcements_tab_layers')|tojson }},
+    };
+    const clamp = (n,min,max) => Math.max(min, Math.min(max, Number(n) || 0));
+    const esc = v => String(v || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'":'&#39;'}[c]));
+    const icons = {
+        eye:'<svg viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="3"/></svg>',
+        eyeOff:'<svg viewBox="0 0 24 24"><path d="m3 3 18 18"/><path d="M10.6 10.6a2 2 0 0 0 2.8 2.8"/><path d="M9.9 5.2A10.8 10.8 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.1"/><path d="M6.6 6.6C3.6 8.5 2 12 2 12s3.5 7 10 7c1.3 0 2.5-.3 3.5-.7"/></svg>',
+        lock:'<svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>',
+        unlock:'<svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 7.5-2"/></svg>',
+        grip:'<svg viewBox="0 0 24 24"><path d="M9 6h.01M9 12h.01M9 18h.01M15 6h.01M15 12h.01M15 18h.01"/></svg>',
+    };
+
+    function scaleStage() {
+        const base = Math.min((viewport.clientWidth - 112) / 1920, (viewport.clientHeight - 112) / 1080);
+        const scale = clamp(base * zoom, .12, 2.5);
+        outer.style.width = `${1920 * scale}px`;
+        outer.style.height = `${1080 * scale}px`;
+        stage.style.transform = `scale(${scale})`;
+        stage.dataset.scale = scale;
+        qs('#zoom-label').textContent = `${Math.round(zoom * 100)}%`;
+    }
+    function revealArtboard() {
+        requestAnimationFrame(() => {
+            const top = Math.max(0, outer.offsetTop - 30);
+            if (Math.abs(viewport.scrollTop - top) > 8) viewport.scrollTop = top;
+        });
+    }
+    new ResizeObserver(scaleStage).observe(outer); scaleStage();
+    new ResizeObserver(scaleStage).observe(viewport);
+
+    function snapshot() {
+        return JSON.stringify({
+            selected,
+            seq,
+            els: els.map(({node, ...item}) => ({...item})),
+        });
+    }
+    function pushHistory() {
+        if (isRestoring) return;
+        const state = snapshot();
+        if (undoStack[undoStack.length - 1] !== state) undoStack.push(state);
+        if (undoStack.length > 80) undoStack.shift();
+        redoStack.length = 0;
+        updateHistoryButtons();
+    }
+    function restore(state) {
+        if (!state) return;
+        isRestoring = true;
+        const data = JSON.parse(state);
+        qsa('.ann-el').forEach(node => node.remove());
+        els.splice(0, els.length, ...data.els.map(item => ({...item})));
+        selected = data.selected;
+        seq = data.seq || (els.length + 1);
+        renderAll();
+        syncProps(false);
+        isRestoring = false;
+        updateHistoryButtons();
+    }
+    function undo() {
+        if (undoStack.length < 2) return;
+        redoStack.push(undoStack.pop());
+        restore(undoStack[undoStack.length - 1]);
+    }
+    function redo() {
+        const state = redoStack.pop();
+        if (!state) return;
+        undoStack.push(state);
+        restore(state);
+    }
+    function updateHistoryButtons() {
+        const undoBtn = qs('#undo-btn'), redoBtn = qs('#redo-btn');
+        if (undoBtn) undoBtn.disabled = undoStack.length < 2;
+        if (redoBtn) redoBtn.disabled = !redoStack.length;
+    }
+    function updateInspectorContext() {
+        const item = current();
+        qsa('.context-panel').forEach(panel => {
+            panel.hidden = panel.dataset.context === 'document' ? Boolean(item) : !item;
+        });
+        qsa('.inspector-tabs').forEach(tabs => { tabs.hidden = !item; });
+        qsa('.inspector-tab').forEach(tab => tab.classList.toggle('active', tab.dataset.tab === activeTab));
+        qsa('.inspector-panel').forEach(panel => { panel.hidden = panel.dataset.panel !== activeTab || !item; });
+        const isTextLike = item && item.type === 'text';
+        qsa('[data-field="typography"],[data-field="text"]').forEach(field => { field.hidden = !isTextLike; });
+    }
+    function setToolPanel(panel) {
+        const showImage = panel === 'image';
+        const showIcons = panel === 'icons';
+        qs('#background-panel').hidden = !showImage;
+        qs('#background-stack').classList.toggle('expanded', showImage);
+        qs('#image-tool')?.classList.toggle('active', showImage);
+        qs('#image-tool')?.setAttribute('aria-expanded', showImage ? 'true' : 'false');
+        qs('#icon-browser').classList.toggle('active', showIcons);
+        qs('#icon-tool').classList.toggle('active', showIcons);
+        qs('#icon-tool').setAttribute('aria-expanded', showIcons ? 'true' : 'false');
+    }
+    function openBackgroundPanel() {
+        selected = null;
+        setToolPanel('image');
+        renderAll();
+        qs('#background-panel')?.scrollIntoView({block:'nearest'});
+    }
+
+    function formatDate() {
+        const input = qs('#date-picker');
+        if (!input.value) return '';
+        const date = new Date(input.value);
+        if (Number.isNaN(date.getTime())) return '';
+        const locale = document.documentElement.lang || 'fr-FR';
+        return `${new Intl.DateTimeFormat(locale, {weekday:'long', day:'2-digit', month:'long'}).format(date)} · ${new Intl.DateTimeFormat(locale, {hour:'2-digit', minute:'2-digit'}).format(date)}`;
+    }
+
+    function defaultElements() {
+        addElement({name:labels.layerTitle, type:'text', text:qs('#announcement-title').value, x:120, y:230, w:1280, h:170, fontSize:92, fontFamily:"'DejaVu Sans', Arial, sans-serif", color:'#ffffff', opacity:1, align:'left'}, false);
+        addElement({name:labels.layerMessage, type:'text', text:qs('#announcement-body').value, x:124, y:430, w:1120, h:150, fontSize:46, fontFamily:"'DejaVu Sans', Arial, sans-serif", color:'#ffffff', opacity:.92, align:'left'}, false);
+        addElement({name:labels.layerBanner, type:'rect', x:112, y:890, w:720, h:70, color:primaryColor(), opacity:.88, radius:10}, false);
+        addElement({name:labels.layerFooter, type:'text', text:labels.sampleFooter, x:142, y:908, w:900, h:55, fontSize:34, fontFamily:"'DejaVu Sans', Arial, sans-serif", color:'#ffffff', opacity:1, align:'left'}, false);
+        selected = null;
+        renderAll(); syncProps(false);
+        pushHistory();
+    }
+
+    function handles() {
+        return ['nw','n','ne','e','se','s','sw','w'].map(h => `<span class="resize-handle" data-handle="${h}"></span>`).join('');
+    }
+    function renderElement(item) {
+        let node = item.node;
+        if (!node) {
+            node = document.createElement('div');
+            node.className = `ann-el ${item.type}`;
+            node.dataset.id = item.id;
+            node.innerHTML = handles();
+            stage.appendChild(node);
+            item.node = node;
+            bindElement(item);
+        }
+        node.className = `ann-el ${item.type}${selected === item.id ? ' selected' : ''}${item.hidden ? ' hidden' : ''}${item.locked ? ' locked' : ''}`;
+        Object.assign(node.style, {left:item.x+'px', top:item.y+'px', width:item.w+'px', height:item.h+'px', opacity:item.opacity ?? 1, transform:`rotate(${item.rotation || 0}deg)`, zIndex:item.z});
+        if (item.type === 'text') {
+            node.style.color = item.color || '#fff'; node.style.fontSize = (item.fontSize || 64) + 'px'; node.style.fontFamily = item.fontFamily || "'DejaVu Sans', Arial, sans-serif"; node.style.textAlign = item.align || 'left';
+            node.innerHTML = `${esc(item.text || '')}${handles()}`;
+        } else if (item.type === 'rect' || item.type === 'circle') {
+            node.style.background = item.color || primaryColor(); node.style.borderRadius = item.type === 'circle' ? '999px' : ((item.radius ?? 18) + 'px');
+            node.innerHTML = handles();
+        } else if (item.type === 'line') {
+            node.style.borderTopColor = item.color || '#fff'; node.style.borderTopWidth = (item.strokeWidth || 8) + 'px';
+            node.innerHTML = handles();
+        } else if (item.type === 'image' || item.type === 'icon') {
+            node.innerHTML = `<img src="${esc(item.src || '')}" alt="">${handles()}`;
+        }
+    }
+
+    function addElement(base, history=true) {
+        const item = {id:'el'+seq++, name:base.name || `${base.type || labels.genericLayer} ${seq - 1}`, x:180, y:180, w:360, h:160, rotation:0, opacity:1, color:'#ffffff', z:els.length + 1, hidden:false, locked:false, ...base};
+        els.push(item); selected = item.id; renderAll(); syncProps();
+        if (history) pushHistory();
+        return item;
+    }
+    function renderAll() {
+        els.sort((a,b) => a.z - b.z).forEach((item, index) => { item.z = index + 1; renderElement(item); });
+        qsa('.ann-el').forEach(node => { if (!els.some(e => e.id === node.dataset.id)) node.remove(); });
+        qs('#element-list').innerHTML = els.map(e => `<option value="${e.id}">${esc(e.name || e.id)}</option>`).join('');
+        qs('#element-list').value = selected || '';
+        renderLayers();
+        renderMinimap();
+        updateFeedback();
+        updateInspectorContext();
+    }
+    function current() { return els.find(e => e.id === selected); }
+    function select(id) { selected = id; setToolPanel(''); renderAll(); syncProps(); }
+
+    function renderLayers() {
+        const list = qs('#layer-list');
+        if (!els.length) {
+            list.innerHTML = `<p class="empty-note">${esc(labels.noLayers)}</p>`;
+            return;
+        }
+        list.innerHTML = [...els].sort((a,b) => b.z - a.z).map(item => `
+            <div class="layer-row${selected === item.id ? ' selected' : ''}" draggable="true" data-id="${item.id}">
+                <span class="layer-grip" title="${esc(labels.moveLayer)}">${icons.grip}</span>
+                <input value="${esc(item.name || item.id)}" aria-label="${esc(labels.renameLayer.replace('{name}', item.name || item.id))}">
+                <span class="layer-actions">
+                    <button type="button" data-layer-action="visibility" title="${item.hidden ? esc(labels.showLayer) : esc(labels.hideLayer)}">${item.hidden ? icons.eyeOff : icons.eye}</button>
+                    <button type="button" data-layer-action="lock" title="${item.locked ? esc(labels.unlockLayer) : esc(labels.lockLayer)}">${item.locked ? icons.lock : icons.unlock}</button>
+                </span>
+            </div>`).join('');
+        qsa('.layer-row').forEach(row => {
+            row.addEventListener('click', e => { if (!e.target.closest('button,input')) select(row.dataset.id); });
+            row.addEventListener('dragstart', e => e.dataTransfer.setData('text/plain', row.dataset.id));
+            row.addEventListener('dragover', e => e.preventDefault());
+            row.addEventListener('drop', e => {
+                e.preventDefault();
+                const dragged = e.dataTransfer.getData('text/plain');
+                reorderLayers(dragged, row.dataset.id);
+            });
+            row.querySelector('input').addEventListener('change', e => {
+                const item = els.find(el => el.id === row.dataset.id); if (!item) return;
+                item.name = e.target.value.trim() || item.id;
+                renderAll(); syncProps(false); pushHistory();
+            });
+            row.querySelectorAll('button').forEach(btn => btn.addEventListener('click', e => {
+                e.stopPropagation();
+                const item = els.find(el => el.id === row.dataset.id); if (!item) return;
+                if (btn.dataset.layerAction === 'visibility') item.hidden = !item.hidden;
+                if (btn.dataset.layerAction === 'lock') item.locked = !item.locked;
+                renderAll(); pushHistory();
+            }));
+        });
+    }
+
+    function reorderLayers(draggedId, targetId) {
+        if (!draggedId || draggedId === targetId) return;
+        const topIds = [...els].sort((a,b) => b.z - a.z).map(item => item.id);
+        const from = topIds.indexOf(draggedId), to = topIds.indexOf(targetId);
+        topIds.splice(to, 0, topIds.splice(from, 1)[0]);
+        topIds.reverse().forEach((id, index) => {
+            const item = els.find(el => el.id === id);
+            if (item) item.z = index + 1;
+        });
+        renderAll(); pushHistory();
+    }
+
+    function renderMinimap() {
+        minimap.innerHTML = els.filter(e => !e.hidden).map(item => `
+            <span class="minimap-item" style="left:${item.x / 1920 * 100}%;top:${item.y / 1080 * 100}%;width:${item.w / 1920 * 100}%;height:${Math.max(1, item.h / 1080 * 100)}%;"></span>
+        `).join('');
+    }
+
+    function bindElement(item) {
+        item.node.addEventListener('pointerdown', ev => {
+            if (item.locked) { select(item.id); return; }
+            select(item.id);
+            const handle = ev.target.closest('.resize-handle')?.dataset.handle || '';
+            const scale = Number(stage.dataset.scale || 1);
+            const start = {x:ev.clientX, y:ev.clientY, ox:item.x, oy:item.y, ow:item.w, oh:item.h, ratio:item.w / Math.max(1,item.h)};
+            item.node.setPointerCapture(ev.pointerId);
+            const move = e => {
+                const dx = (e.clientX - start.x) / scale, dy = (e.clientY - start.y) / scale;
+                if (handle) resizeItem(item, start, dx, dy, handle, e.shiftKey);
+                else { item.x = start.ox + dx; item.y = start.oy + dy; snapItem(item, 'move'); }
+                renderElement(item); syncProps(false);
+                updateFeedback(handle ? 'resize' : 'move');
+            };
+            const up = () => { hideGuides(); item.node.removeEventListener('pointermove', move); item.node.removeEventListener('pointerup', up); pushHistory(); };
+            item.node.addEventListener('pointermove', move); item.node.addEventListener('pointerup', up);
+        });
+    }
+
+    function resizeItem(item, start, dx, dy, handle, keepRatio) {
+        let x = start.ox, y = start.oy, w = start.ow, h = start.oh;
+        if (handle.includes('e')) w = start.ow + dx;
+        if (handle.includes('s')) h = start.oh + dy;
+        if (handle.includes('w')) { w = start.ow - dx; x = start.ox + dx; }
+        if (handle.includes('n')) { h = start.oh - dy; y = start.oy + dy; }
+        w = Math.max(20, w); h = Math.max(item.type === 'line' ? 0 : 20, h);
+        if (keepRatio && item.type !== 'line') {
+            if (Math.abs(dx) > Math.abs(dy)) h = w / start.ratio;
+            else w = h * start.ratio;
+            if (handle.includes('w')) x = start.ox + start.ow - w;
+            if (handle.includes('n')) y = start.oy + start.oh - h;
+        }
+        Object.assign(item, {x, y, w, h});
+        snapItem(item, 'resize');
+    }
+
+    function snapItem(item, mode) {
+        if (!snapEnabled) {
+            hideGuides();
+            item.x = clamp(item.x, -item.w + 20, 1900);
+            item.y = clamp(item.y, -item.h + 20, 1060);
+            item.w = Math.max(20, item.w);
+            item.h = Math.max(item.type === 'line' ? 0 : 20, item.h);
+            return;
+        }
+        const threshold = 9;
+        const grid = 20;
+        const pointsX = [0, 96, 192, 960, 1728, 1824, 1920];
+        const pointsY = [0, 54, 108, 540, 972, 1026, 1080];
+        els.filter(e => e.id !== item.id && !e.hidden).forEach(e => {
+            pointsX.push(e.x, e.x + e.w / 2, e.x + e.w);
+            pointsY.push(e.y, e.y + e.h / 2, e.y + e.h);
+        });
+        let bestX = null, bestY = null;
+        const itemXs = [{k:'x', v:item.x}, {k:'cx', v:item.x + item.w / 2}, {k:'r', v:item.x + item.w}];
+        const itemYs = [{k:'y', v:item.y}, {k:'cy', v:item.y + item.h / 2}, {k:'b', v:item.y + item.h}];
+        itemXs.forEach(px => pointsX.forEach(target => {
+            const diff = target - px.v;
+            if (Math.abs(diff) <= threshold && (!bestX || Math.abs(diff) < Math.abs(bestX.diff))) bestX = {diff, target, point:px.k};
+        }));
+        itemYs.forEach(py => pointsY.forEach(target => {
+            const diff = target - py.v;
+            if (Math.abs(diff) <= threshold && (!bestY || Math.abs(diff) < Math.abs(bestY.diff))) bestY = {diff, target, point:py.k};
+        }));
+        if (bestX) {
+            if (mode === 'resize' && bestX.point === 'r') item.w += bestX.diff;
+            else if (bestX.point === 'cx') item.x += bestX.diff;
+            else item.x += bestX.diff;
+            showGuide('v', bestX.target);
+        } else {
+            item.x = Math.round(item.x / grid) * grid;
+            guideV.style.display = 'none';
+        }
+        if (bestY) {
+            if (mode === 'resize' && bestY.point === 'b') item.h += bestY.diff;
+            else if (bestY.point === 'cy') item.y += bestY.diff;
+            else item.y += bestY.diff;
+            showGuide('h', bestY.target);
+        } else {
+            item.y = Math.round(item.y / grid) * grid;
+            guideH.style.display = 'none';
+        }
+        item.x = clamp(item.x, -item.w + 20, 1900);
+        item.y = clamp(item.y, -item.h + 20, 1060);
+        item.w = Math.max(20, item.w);
+        item.h = Math.max(item.type === 'line' ? 0 : 20, item.h);
+    }
+
+    function showGuide(axis, value) {
+        const guide = axis === 'v' ? guideV : guideH;
+        guide.style.display = 'block';
+        if (axis === 'v') guide.style.left = `${value}px`;
+        else guide.style.top = `${value}px`;
+    }
+    function hideGuides() {
+        guideV.style.display = 'none';
+        guideH.style.display = 'none';
+    }
+
+    function syncProps(write=true) {
+        const item = current();
+        ['x','y','w','h','rotation'].forEach(k => qs(`#prop-${k}`).value = item ? Math.round(item[k] || 0) : '');
+        qs('#prop-name').value = item?.name || '';
+        qs('#prop-opacity').value = item?.opacity ?? 1;
+        qs('#prop-color').value = item?.color || '#ffffff';
+        qs('#prop-font').value = item?.fontSize || '';
+        qs('#prop-font-family').value = item?.fontFamily || "'DejaVu Sans', Arial, sans-serif";
+        qs('#prop-text').value = item?.text || '';
+        qs('#prop-align').value = item?.align || 'left';
+        updateFeedback();
+        if (write) renderAll();
+    }
+    qsa('[id^="prop-"]').forEach(input => input.addEventListener('input', () => {
+        const item = current(); if (!item) return;
+        item.name = qs('#prop-name').value || item.name;
+        item.x = Number(qs('#prop-x').value); item.y = Number(qs('#prop-y').value); item.w = Math.max(1, Number(qs('#prop-w').value)); item.h = Math.max(1, Number(qs('#prop-h').value));
+        item.rotation = Number(qs('#prop-rotation').value); item.opacity = Number(qs('#prop-opacity').value); item.color = qs('#prop-color').value;
+        item.fontSize = Number(qs('#prop-font').value) || item.fontSize; item.fontFamily = qs('#prop-font-family').value || item.fontFamily; item.text = qs('#prop-text').value; item.align = qs('#prop-align').value;
+        renderAll();
+    }));
+    qsa('[id^="prop-"]').forEach(input => input.addEventListener('change', pushHistory));
+    qs('#element-list').addEventListener('change', e => select(e.target.value));
+    qsa('.inspector-tab').forEach(tab => tab.addEventListener('click', () => {
+        activeTab = tab.dataset.tab;
+        updateInspectorContext();
+    }));
+    viewport.addEventListener('pointerdown', e => {
+        if (!e.target.closest('.ann-el') && (e.target === viewport || e.target.closest('#stage'))) select(null);
+    });
+
+    function setBackground() {
+        const mode = qs('#background-mode').value;
+        qsa('.bg-source').forEach(el => el.classList.toggle('active', el.dataset.bg === mode));
+        bg.style.backgroundImage = '';
+        if (mode === 'color') bg.style.backgroundColor = qs('#background-color').value;
+        if (mode === 'media') {
+            const opt = qs('#background-media').selectedOptions[0];
+            bg.style.backgroundImage = opt?.dataset.preview ? `url("${opt.dataset.preview}")` : '';
+        }
+        if (mode === 'upload' && qs('#background-upload').files[0]) bg.style.backgroundImage = `url("${URL.createObjectURL(qs('#background-upload').files[0])}")`;
+    }
+    qs('#background-mode').addEventListener('input', setBackground);
+    qs('#background-color').addEventListener('input', () => { qs('#background-mode').value = 'color'; setBackground(); });
+    qs('#background-media').addEventListener('input', () => { qs('#background-mode').value = 'media'; setBackground(); });
+    qs('#background-upload').addEventListener('input', () => { qs('#background-mode').value = 'upload'; setBackground(); });
+
+    async function iconToPng(url) {
+        const text = await fetch(url).then(r => r.text());
+        const img = new Image(), svg = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(text)));
+        await new Promise(resolve => { img.onload = resolve; img.src = svg; });
+        const c = document.createElement('canvas'); c.width = c.height = 512; const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0, 512, 512);
+        return c.toDataURL('image/png');
+    }
+
+    qsa('[data-add]').forEach(btn => btn.addEventListener('click', async () => {
+        const type = btn.dataset.add;
+        if (type !== 'image' && type !== 'icon') setToolPanel('');
+        if (type === 'text') addElement({name:labels.layerNewText, type:'text', text:labels.layerNewText, w:520, h:110, fontSize:64, fontFamily:"'DejaVu Sans', Arial, sans-serif"});
+        if (type === 'rect') addElement({name:labels.toolRect, type:'rect', w:360, h:180, color:primaryColor(), opacity:.9});
+        if (type === 'circle') addElement({name:labels.toolCircle, type:'circle', w:220, h:220, color:accentColor(), opacity:.9});
+        if (type === 'line') addElement({name:labels.toolLine, type:'line', w:420, h:0, strokeWidth:10});
+        if (type === 'image') openBackgroundPanel();
+        if (type === 'icon') {
+            const willOpen = !qs('#icon-browser').classList.contains('active');
+            setToolPanel(willOpen ? 'icons' : '');
+            if (willOpen && !qs('#icon-grid').children.length) loadIcons(true);
+        }
+    }));
+
+    async function loadIcons(reset=false) {
+        if (iconLoading) return; iconLoading = true;
+        if (reset) { iconOffset = 0; qs('#icon-grid').innerHTML = ''; }
+        const params = new URLSearchParams({category:qs('#icon-category').value, q:qs('#icon-query').value, offset:iconOffset, limit:48});
+        const data = await fetch('/admin/announcements/icons?' + params).then(r => r.json());
+        (data.items || []).forEach(icon => {
+            const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'icon-card'; btn.title = `${icon.category} / ${icon.name}`;
+            btn.innerHTML = `<img src="${esc(icon.url)}" alt="">`;
+            btn.addEventListener('click', async () => addElement({name:icon.name, type:'icon', src:await iconToPng(icon.url), text:icon.name, w:140, h:140}));
+            qs('#icon-grid').appendChild(btn);
+        });
+        iconOffset += (data.items || []).length; qs('#icon-more').hidden = !data.has_more; iconLoading = false;
+    }
+    qs('#icon-more').addEventListener('click', () => loadIcons(false));
+    qs('#icon-category').addEventListener('change', () => loadIcons(true));
+    qs('#icon-query').addEventListener('input', () => loadIcons(true));
+
+    qs('#external-search-btn').addEventListener('click', async () => {
+        const data = await fetch(`/admin/announcements/search-backgrounds?q=${encodeURIComponent(qs('#external-query').value)}`).then(r => r.json());
+        qs('#external-results').innerHTML = (data.results || []).map(item => `<button type="button" class="icon-card" data-url="${esc(item.url)}" data-credit="${esc(item.credit)}"><img src="${esc(item.thumb_data || '')}" alt=""></button>`).join('');
+        qsa('#external-results button').forEach(btn => btn.addEventListener('click', () => {
+            qs('#background-mode').value = 'external';
+            qs('#external-url').value = btn.dataset.url;
+            qs('#external-credit').value = btn.dataset.credit;
+            setBackground();
+            bg.style.backgroundImage = `url("${btn.querySelector('img').src}")`;
+        }));
+    });
+
+    function deleteSelected() {
+        const i = els.findIndex(e => e.id === selected);
+        if (i >= 0) { els.splice(i,1); selected = els[els.length - 1]?.id || null; renderAll(); syncProps(); pushHistory(); }
+    }
+    function duplicateSelected() {
+        const item = current(); if (!item) return;
+        const {id, node, ...copy} = item; addElement({...copy, name:`${item.name || item.type} ${labels.copySuffix}`, x:item.x + 40, y:item.y + 40});
+    }
+    qs('#delete').addEventListener('click', deleteSelected);
+    qs('#duplicate').addEventListener('click', duplicateSelected);
+    qs('#forward').addEventListener('click', () => { const item = current(); if (item) { item.z += 1.5; renderAll(); pushHistory(); } });
+    qs('#backward').addEventListener('click', () => { const item = current(); if (item) { item.z -= 1.5; renderAll(); pushHistory(); } });
+
+    function updateFeedback(action='') {
+        const item = current();
+        qs('#live-coords').textContent = item ? `X ${Math.round(item.x)}  Y ${Math.round(item.y)}` : 'X - Y -';
+        qs('#live-size').textContent = item ? `W ${Math.round(item.w)}  H ${Math.round(item.h)}` : 'W - H -';
+        const cx = item ? Math.round(item.x + item.w / 2) : null;
+        const cy = item ? Math.round(item.y + item.h / 2) : null;
+        qs('#live-align').textContent = item ? (Math.abs(cx - 960) < 2 || Math.abs(cy - 540) < 2 ? labels.alignCenter : (action ? labels.actionLabel.replace('__ACTION__', action) : labels.alignFree)) : labels.alignLabel;
+        qs('#live-distance').textContent = item ? labels.marginsLabel.replace('__LEFT__', Math.round(item.x)).replace('__RIGHT__', Math.round(1920 - item.x - item.w)) : labels.distanceLabel;
+    }
+
+    qs('#announcement-title').addEventListener('input', () => { if (els[0]?.type === 'text') { els[0].text = qs('#announcement-title').value; renderElement(els[0]); renderMinimap(); } });
+    qs('#announcement-body').addEventListener('input', () => { if (els[1]?.type === 'text') { els[1].text = qs('#announcement-body').value; renderElement(els[1]); renderMinimap(); } });
+    qsa('#date-picker,#place').forEach(el => el.addEventListener('input', () => { const value = [formatDate(), qs('#place').value].filter(Boolean).join(' · '); qs('#date-text').value = formatDate(); if (els[3]) { els[3].text = value || els[3].text; renderElement(els[3]); } }));
+
+    qs('#zoom-in').addEventListener('click', () => { zoom = clamp(zoom + .12, .35, 2.4); scaleStage(); revealArtboard(); });
+    qs('#zoom-out').addEventListener('click', () => { zoom = clamp(zoom - .12, .35, 2.4); scaleStage(); revealArtboard(); });
+    qs('#zoom-fit').addEventListener('click', () => { zoom = 1; scaleStage(); revealArtboard(); });
+    qs('#undo-btn').addEventListener('click', undo);
+    qs('#redo-btn').addEventListener('click', redo);
+    qs('#snap-state').addEventListener('click', () => {
+        snapEnabled = !snapEnabled;
+        qs('#snap-state').textContent = snapEnabled ? labels.snapOn : labels.snapOff;
+        qs('#snap-state').classList.toggle('snap-on', snapEnabled);
+        qs('#snap-state').classList.toggle('snap-off', !snapEnabled);
+        hideGuides();
+    });
+    qs('#preview-btn').addEventListener('click', () => {
+        selected = null;
+        zoom = 1;
+        renderAll();
+        scaleStage();
+        revealArtboard();
+    });
+
+    document.addEventListener('keydown', e => {
+        const tag = document.activeElement?.tagName;
+        const editingText = ['INPUT','TEXTAREA','SELECT'].includes(tag);
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); return; }
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') { e.preventDefault(); duplicateSelected(); return; }
+        if (!editingText && (e.key === 'Delete' || e.key === 'Backspace')) { e.preventDefault(); deleteSelected(); }
+    });
+
+    qs('#announcement-form').addEventListener('submit', () => {
+        const mode = qs('#background-mode').value;
+        qs('#layout-json').value = JSON.stringify({
+            size:[1920,1080],
+            background:{mode, color:qs('#background-color').value, media:qs('#background-media').value, external_url:qs('#external-url').value},
+            elements:els.filter(item => !item.hidden).map(({node, ...item}) => item),
+        });
+    });
+
+    defaultElements(); setBackground(); revealArtboard();
+})();
+</script>
+{% endblock %}

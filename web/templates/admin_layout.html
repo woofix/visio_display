@@ -2,7 +2,7 @@
 <!DOCTYPE html>
 {% set theme_pref = theme|default('violet') %}
 {% set initial_theme = theme_pref if theme_pref in ['bleu', 'sombre'] else 'violet' %}
-<html lang="fr" data-theme="{{ initial_theme }}" data-theme-preference="{{ theme_pref }}">
+<html lang="{{ lang|default('fr') }}" data-theme="{{ initial_theme }}" data-theme-preference="{{ theme_pref }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -128,12 +128,24 @@
 <script id="admin-layout-config" type="application/json">{
   "csrfToken": {{ csrf_token() | tojson }},
   "globalQueueEnabled": {{ (is_feature_enabled('videos') and is_feature_enabled('compress')) | tojson }},
+  "uiText": {{ {
+    'dialogConfirm': t('dialog_confirm'),
+    'dialogCancel': t('dialog_cancel'),
+    'dialogClose': t('dialog_close'),
+    'dialogTitleConfirm': t('dialog_title_confirm'),
+    'dialogTitleInfo': t('flash_title_info'),
+    'dialogNoteTitle': t('dialog_note_title'),
+    'flashTitleSuccess': t('flash_title_success'),
+    'flashTitleError': t('flash_title_error'),
+    'flashTitleWarning': t('flash_title_warning'),
+    'flashTitleInfo': t('flash_title_info')
+  } | tojson }},
   "flashMessages": [
     {% with _fm = get_flashed_messages(with_categories=true) %}
-    {% set _titles = {'success': 'Succès', 'error': 'Erreur', 'warning': 'Avertissement', 'info': 'Information'} %}
+    {% set _titles = {'success': t('flash_title_success'), 'error': t('flash_title_error'), 'warning': t('flash_title_warning'), 'info': t('flash_title_info')} %}
     {% for cat, msg in _fm %}
     {% set tone = cat if cat in ['success','error','warning','info'] else 'info' %}
-    {{ {'tone': tone, 'title': _titles.get(tone, 'Information'), 'msg': msg} | tojson }}{% if not loop.last %},{% endif %}
+    {{ {'tone': tone, 'title': _titles.get(tone, t('flash_title_info')), 'msg': msg} | tojson }}{% if not loop.last %},{% endif %}
     {% endfor %}
     {% endwith %}
   ]
@@ -147,8 +159,8 @@
 <div id="admin-system-lock" class="admin-system-lock" aria-hidden="true">
     <div class="admin-system-lock-card" role="status" aria-live="polite">
         <div class="admin-system-lock-spinner" aria-hidden="true"></div>
-        <div class="admin-system-lock-title" id="admin-system-lock-title">Opération système en cours</div>
-        <div class="admin-system-lock-message" id="admin-system-lock-message">Veuillez patienter...</div>
+        <div class="admin-system-lock-title" id="admin-system-lock-title">{{ t('system_lock_title') }}</div>
+        <div class="admin-system-lock-message" id="admin-system-lock-message">{{ t('system_lock_wait') }}</div>
         <div class="admin-system-lock-progress" id="admin-system-lock-progress" aria-hidden="true">
             <span id="admin-system-lock-progress-bar"></span>
         </div>
@@ -181,6 +193,12 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
             {{ t('nav_media') }}
         </a>
+        {% if has_permission('upload') and is_feature_enabled('upload') and is_feature_enabled('announcements') %}
+        <a href="/admin/announcements" class="nav-item {% if path == '/admin/announcements' %}active{% endif %}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16v14H4z"/><path d="M8 9h8"/><path d="M8 13h5"/></svg>
+            {{ t('nav_announcements') }}
+        </a>
+        {% endif %}
         {% if is_feature_enabled('campaigns') %}
         <a href="/admin/campaigns" class="nav-item {% if path == '/admin/campaigns' %}active{% endif %}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7V3m8 4V3"/><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 11h18"/><path d="M8 15h3"/><path d="M13 15h3"/><path d="M8 18h8"/></svg>
@@ -315,6 +333,10 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
                 {{ t('wiki_s22_title') }}
             </a>
+            <a href="/admin/wiki/s23" class="nav-item nav-subitem" data-wiki-nav="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><path d="M4 5h16v14H4z"/><path d="M8 9h8"/><path d="M8 13h5"/></svg>
+                {{ t('wiki_s23_title') }}
+            </a>
         </div>
 
     </nav>
@@ -386,8 +408,8 @@
                         type="search"
                         name="q"
                         id="topbar-search-input"
-                        placeholder="Rechercher… (⌘K)"
-                        aria-label="Recherche globale"
+                        placeholder="{{ t('search_submit') }}… (⌘K)"
+                        aria-label="{{ t('search_global') }}"
                         maxlength="120"
                     >
                 </form>
@@ -470,8 +492,8 @@
         </div>
         <div class="theme-dialog-body" id="app-feedback-body"></div>
         <div class="theme-dialog-actions" id="app-feedback-actions">
-            <button type="button" class="btn secondary sm" id="app-feedback-cancel">Annuler</button>
-            <button type="button" class="btn sm" id="app-feedback-confirm">Continuer</button>
+            <button type="button" class="btn secondary sm" id="app-feedback-cancel">{{ t('dialog_cancel') }}</button>
+            <button type="button" class="btn sm" id="app-feedback-confirm">{{ t('dialog_continue') }}</button>
         </div>
     </div>
 </div>

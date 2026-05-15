@@ -129,12 +129,12 @@
 .empty-state p { font-size:.87rem; }
 
 /* Screen bar */
-.screen-bar { display:flex;align-items:center;gap:8px;margin-bottom:18px;flex-wrap:wrap;padding:10px 14px;background:var(--primary-bg);border-radius:var(--radius-sm);border:1px solid var(--border); }
+.screen-bar { display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap;padding:12px 14px;background:color-mix(in srgb, var(--primary-bg) 78%, var(--surface));border-radius:var(--radius-sm);border:1px solid color-mix(in srgb, var(--primary) 18%, var(--border)); }
 .screen-bar-label { font-size:.75rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.07em;flex-shrink:0; }
-.screen-tabs { display:flex;gap:4px;flex-wrap:wrap;flex:1; }
-.screen-tab { padding:5px 12px;border-radius:6px;font-size:.8rem;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);text-decoration:none;transition:all .15s; }
-.screen-tab:hover { border-color:var(--primary);color:var(--primary); }
-.screen-tab.active { background:var(--primary);border-color:var(--primary);color:#fff; }
+.screen-tabs { display:flex;gap:7px;flex-wrap:wrap;flex:1; }
+.screen-tab { padding:8px 13px;min-height:36px;border-radius:8px;font-size:.82rem;font-weight:800;cursor:pointer;border:1.5px solid color-mix(in srgb, var(--primary) 22%, var(--border));background:var(--surface);color:var(--text);text-decoration:none;transition:all .15s;display:inline-flex;align-items:center; }
+.screen-tab:hover { border-color:var(--primary);color:var(--primary);background:var(--surface-alt); }
+.screen-tab.active { background:linear-gradient(135deg,var(--primary),color-mix(in srgb,var(--primary) 74%,var(--primary-dark)));border-color:var(--primary);color:var(--on-primary);box-shadow:0 8px 18px var(--ring); }
 .screen-tab.delete-tab { color:var(--red);border-color:transparent;background:none;padding:5px 6px;font-size:.72rem; }
 .screen-tab.delete-tab:hover { background:rgba(239,68,68,.08); }
 .screen-add-form { display:flex;gap:6px;align-items:center; }
@@ -170,9 +170,9 @@
 .file-card.disabled .badge-group-disabled { display:none; }
 
 /* Preview button (screen-bar action) */
-.btn-preview-screen { background:var(--primary);color:#fff;border:none;border-radius:6px;padding:6px 13px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s;white-space:nowrap; }
-.btn-preview-screen:hover { background:var(--primary-hover,#6d28d9); }
-.btn-broadcast-screen { background:var(--surface);color:var(--primary);border:1.5px solid var(--primary);border-radius:6px;padding:6px 13px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap;flex-shrink:0; }
+.btn-preview-screen { background:linear-gradient(135deg,var(--primary),color-mix(in srgb,var(--primary) 74%,var(--primary-dark)));color:var(--on-primary);border:none;border-radius:8px;padding:8px 14px;min-height:36px;font-size:.8rem;font-weight:800;cursor:pointer;font-family:inherit;transition:filter .15s,transform .15s,box-shadow .15s;white-space:nowrap;box-shadow:0 8px 18px var(--ring); }
+.btn-preview-screen:hover { filter:brightness(1.03);transform:translateY(-1px);box-shadow:0 12px 24px var(--ring); }
+.btn-broadcast-screen { background:var(--surface);color:var(--primary);border:1.5px solid var(--primary);border-radius:8px;padding:8px 14px;min-height:36px;font-size:.8rem;font-weight:800;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap;flex-shrink:0; }
 .btn-broadcast-screen:hover { background:var(--primary-bg); }
 @keyframes sync-ring {
     0%   { box-shadow:0 0 0 0 rgba(138,43,226,.55); }
@@ -444,19 +444,19 @@
         {% if current_screen == s and current_user_is_superadmin %}
         <form method="post" action="/admin/screens/delete/{{ s }}" style="display:inline"
               data-confirm="{{ t('media_screen_delete_confirm') | replace('{name}', s) }}"
-              data-confirm-title="Supprimer l’écran"
+              data-confirm-title="{{ t('media_screen_delete_title') }}"
               data-confirm-tone="error"
-              data-confirm-ok="Supprimer">
+              data-confirm-ok="{{ t('action_delete') }}">
             <button type="submit" class="screen-tab delete-tab" title="✕">✕</button>
         </form>
         {% endif %}
         {% endfor %}
     </div>
     <button class="btn-preview-screen" id="btn-preview-screen"
-            title="{% if current_screen %}Prévisualiser « {{ current_screen }} »{% else %}Prévisualiser « {{ default_screen_name }} »{% endif %}"
+            title="{{ t('media_preview_title', screen=(current_screen or default_screen_name)) }}"
             style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-shrink:0">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-        Prévisualiser
+        {{ t('media_preview_btn') }}
     </button>
 </div>
 
@@ -684,7 +684,7 @@
 <!-- Screen preview modal -->
 <div class="screen-preview-overlay" id="screen-preview-overlay">
     <div class="screen-preview-box">
-        <button class="screen-preview-close" id="screen-preview-close-btn" title="Fermer">✕</button>
+        <button class="screen-preview-close" id="screen-preview-close-btn" title="{{ t('dialog_close') }}">✕</button>
         <iframe id="screen-preview-iframe" src="" allowfullscreen></iframe>
         <span class="screen-preview-label">{{ current_screen or default_screen_name }}</span>
     </div>
@@ -694,7 +694,7 @@
 <!-- Schedule modal -->
 <div class="modal-overlay theme-dialog-overlay" id="schedule-modal">
     <div class="modal-box theme-dialog">
-        <button class="modal-close theme-dialog-close" id="modal-close-btn" title="Fermer" aria-label="Fermer">
+        <button class="modal-close theme-dialog-close" id="modal-close-btn" title="{{ t('dialog_close') }}" aria-label="{{ t('dialog_close') }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>
         <div class="theme-dialog-header" style="padding-right:64px">

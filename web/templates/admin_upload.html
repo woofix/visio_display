@@ -591,15 +591,15 @@ body.site-uploading .mobile-sidebar-backdrop {
     <div class="upload-conflict-dialog theme-dialog" role="dialog" aria-modal="true" aria-labelledby="upload-conflict-title">
         <div class="upload-conflict-head theme-dialog-header">
             <div>
-                <h3 id="upload-conflict-title" class="theme-dialog-title">Fichier déjà existant</h3>
-                <p class="theme-dialog-copy">Choisissez un nouveau nom, ou écrasez le fichier existant.</p>
+                <h3 id="upload-conflict-title" class="theme-dialog-title">{{ t('upload_conflict_title') }}</h3>
+                <p class="theme-dialog-copy">{{ t('upload_conflict_desc') }}</p>
             </div>
         </div>
         <div class="upload-conflict-body theme-dialog-body" id="upload-conflict-body"></div>
         <div class="upload-conflict-actions theme-dialog-actions">
-            <button type="button" class="btn secondary sm" id="upload-conflict-cancel">Annuler</button>
-            <button type="button" class="btn warning sm" id="upload-conflict-overwrite">Écraser</button>
-            <button type="button" class="btn success sm" id="upload-conflict-rename">Renommer</button>
+            <button type="button" class="btn secondary sm" id="upload-conflict-cancel">{{ t('dialog_cancel') }}</button>
+            <button type="button" class="btn warning sm" id="upload-conflict-overwrite">{{ t('upload_conflict_overwrite') }}</button>
+            <button type="button" class="btn success sm" id="upload-conflict-rename">{{ t('upload_conflict_rename') }}</button>
         </div>
     </div>
 </div>
@@ -632,6 +632,11 @@ body.site-uploading .mobile-sidebar-backdrop {
     'emptyActive': t('js_queue_empty_active'),
     'emptyRecent': t('js_queue_empty_recent'),
     'confirmCancel': t('js_queue_confirm_cancel'),
+    'yes': t('js_queue_yes'),
+    'no': t('js_queue_no'),
+    'clearRecentTitle': t('js_queue_clear_recent_title'),
+    'clearRecentConfirm': t('js_queue_clear_recent_confirm'),
+    'clearRecentBtn': t('js_queue_clear_recent_btn'),
     'queueForceTitle': t('queue_force_btn'),
     'queueForceConfirm': t('queue_force_confirm'),
     'acceptedExts': ['.jpg','.jpeg','.png','.pdf'] + (['.mp4','.webm','.mov','.avi','.mkv'] if is_feature_enabled('videos') else []),

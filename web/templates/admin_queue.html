@@ -219,13 +219,13 @@
                     <line x1="12" y1="16" x2="12.01" y2="16"></line>
                 </svg>
                 <div>
-                    <strong>Impact pendant l’encodage</strong>
-                    <span>L’encodage démarre immédiatement pour les éléments en attente, même hors de la fenêtre nocturne. Cela peut saturer la machine et risque de bloquer temporairement les clients pendant l’encodage.</span>
+                    <strong>{{ t('queue_force_impact_title') }}</strong>
+                    <span>{{ t('queue_force_impact_desc') }}</span>
                 </div>
             </div>
         </div>
         <div class="queue-force-actions theme-dialog-actions">
-            <button type="button" class="btn secondary sm" id="queue-force-cancel">Annuler</button>
+            <button type="button" class="btn secondary sm" id="queue-force-cancel">{{ t('dialog_cancel') }}</button>
             <button type="button" class="btn sm" id="queue-force-confirm">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-14">
                     <polygon points="5 3 19 12 5 21 5 3"></polygon>

@@ -669,8 +669,8 @@ async function cancelJob(id) {
         titleText: JS_CANCEL_BTN,
         messageText: JS_CONFIRM_CANCEL,
         tone: 'warning',
-        confirmLabel: 'Oui',
-        cancelLabel: 'Non',
+        confirmLabel: cfg.yes || 'Oui',
+        cancelLabel: cfg.no || 'Non',
     })) return;
     await fetch(`/queue/cancel/${id}`, {
         method: 'POST',
@@ -682,11 +682,11 @@ window.cancelJob = cancelJob;
 
 document.getElementById('btn-clear-recent')?.addEventListener('click', async () => {
     if (!await window.appUI.confirm({
-        titleText: 'Tout effacer',
-        messageText: 'Supprimer tous les encodages récents de la liste ?',
+        titleText: cfg.clearRecentTitle || 'Tout effacer',
+        messageText: cfg.clearRecentConfirm || 'Supprimer tous les encodages récents de la liste ?',
         tone: 'warning',
-        confirmLabel: 'Effacer',
-        cancelLabel: 'Annuler',
+        confirmLabel: cfg.clearRecentBtn || 'Effacer',
+        cancelLabel: cfg.cancelBtn || 'Annuler',
     })) return;
     await fetch('/queue/clear-recent', {
         method: 'POST',

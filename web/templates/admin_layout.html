@@ -128,12 +128,24 @@
 <script id="admin-layout-config" type="application/json">{
   "csrfToken": {{ csrf_token() | tojson }},
   "globalQueueEnabled": {{ (is_feature_enabled('videos') and is_feature_enabled('compress')) | tojson }},
+  "uiText": {{ {
+    'dialogConfirm': t('dialog_confirm'),
+    'dialogCancel': t('dialog_cancel'),
+    'dialogClose': t('dialog_close'),
+    'dialogTitleConfirm': t('dialog_title_confirm'),
+    'dialogTitleInfo': t('flash_title_info'),
+    'dialogNoteTitle': t('dialog_note_title'),
+    'flashTitleSuccess': t('flash_title_success'),
+    'flashTitleError': t('flash_title_error'),
+    'flashTitleWarning': t('flash_title_warning'),
+    'flashTitleInfo': t('flash_title_info')
+  } | tojson }},
   "flashMessages": [
     {% with _fm = get_flashed_messages(with_categories=true) %}
-    {% set _titles = {'success': 'Succès', 'error': 'Erreur', 'warning': 'Avertissement', 'info': 'Information'} %}
+    {% set _titles = {'success': t('flash_title_success'), 'error': t('flash_title_error'), 'warning': t('flash_title_warning'), 'info': t('flash_title_info')} %}
     {% for cat, msg in _fm %}
     {% set tone = cat if cat in ['success','error','warning','info'] else 'info' %}
-    {{ {'tone': tone, 'title': _titles.get(tone, 'Information'), 'msg': msg} | tojson }}{% if not loop.last %},{% endif %}
+    {{ {'tone': tone, 'title': _titles.get(tone, t('flash_title_info')), 'msg': msg} | tojson }}{% if not loop.last %},{% endif %}
     {% endfor %}
     {% endwith %}
   ]
@@ -147,8 +159,8 @@
 <div id="admin-system-lock" class="admin-system-lock" aria-hidden="true">
     <div class="admin-system-lock-card" role="status" aria-live="polite">
         <div class="admin-system-lock-spinner" aria-hidden="true"></div>
-        <div class="admin-system-lock-title" id="admin-system-lock-title">Opération système en cours</div>
-        <div class="admin-system-lock-message" id="admin-system-lock-message">Veuillez patienter...</div>
+        <div class="admin-system-lock-title" id="admin-system-lock-title">{{ t('system_lock_title') }}</div>
+        <div class="admin-system-lock-message" id="admin-system-lock-message">{{ t('system_lock_wait') }}</div>
         <div class="admin-system-lock-progress" id="admin-system-lock-progress" aria-hidden="true">
             <span id="admin-system-lock-progress-bar"></span>
         </div>
@@ -396,8 +408,8 @@
                         type="search"
                         name="q"
                         id="topbar-search-input"
-                        placeholder="Rechercher… (⌘K)"
-                        aria-label="Recherche globale"
+                        placeholder="{{ t('search_submit') }}… (⌘K)"
+                        aria-label="{{ t('search_global') }}"
                         maxlength="120"
                     >
                 </form>
@@ -480,8 +492,8 @@
         </div>
         <div class="theme-dialog-body" id="app-feedback-body"></div>
         <div class="theme-dialog-actions" id="app-feedback-actions">
-            <button type="button" class="btn secondary sm" id="app-feedback-cancel">Annuler</button>
-            <button type="button" class="btn sm" id="app-feedback-confirm">Continuer</button>
+            <button type="button" class="btn secondary sm" id="app-feedback-cancel">{{ t('dialog_cancel') }}</button>
+            <button type="button" class="btn sm" id="app-feedback-confirm">{{ t('dialog_continue') }}</button>
         </div>
     </div>
 </div>

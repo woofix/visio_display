@@ -296,6 +296,8 @@ setInterval(updateQueueBadge, 30000);
 
 /* ── Messages & confirmations ── */
 (function() {
+    const uiText = window.ADMIN_LAYOUT_CONFIG?.uiText || {};
+    const text = (key, fallback) => uiText[key] || fallback;
     const contentShell = document.querySelector('.content-shell');
     const dialog = document.getElementById('app-feedback-dialog');
     const icon = document.getElementById('app-feedback-icon');
@@ -339,11 +341,11 @@ setInterval(updateQueueBadge, 30000);
         const {
             kind = 'confirm',
             tone = 'info',
-            titleText = kind === 'confirm' ? 'Confirmation' : 'Information',
+            titleText = kind === 'confirm' ? text('dialogTitleConfirm', 'Confirmation') : text('dialogTitleInfo', 'Information'),
             messageText = '',
             note = '',
-            confirmLabel = kind === 'confirm' ? 'Confirmer' : 'Fermer',
-            cancelLabel = 'Annuler',
+            confirmLabel = kind === 'confirm' ? text('dialogConfirm', 'Confirmer') : text('dialogClose', 'Fermer'),
+            cancelLabel = text('dialogCancel', 'Annuler'),
             confirmClass = tone === 'error' ? 'danger' : tone === 'warning' ? 'warning' : '',
         } = options;
 
@@ -352,7 +354,7 @@ setInterval(updateQueueBadge, 30000);
         title.textContent = titleText;
         message.textContent = messageText;
         body.innerHTML = note
-            ? `<div class="theme-dialog-note" data-tone="${tone === 'success' ? 'info' : tone}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg><div><strong>À savoir</strong><p>${escapeHtml(note)}</p></div></div>`
+            ? `<div class="theme-dialog-note" data-tone="${tone === 'success' ? 'info' : tone}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg><div><strong>${escapeHtml(text('dialogNoteTitle', 'À savoir'))}</strong><p>${escapeHtml(note)}</p></div></div>`
             : '';
         cancelBtn.style.display = kind === 'confirm' ? '' : 'none';
         cancelBtn.textContent = cancelLabel;
@@ -390,8 +392,8 @@ setInterval(updateQueueBadge, 30000);
                 showToast(messageText, type);
                 return Promise.resolve(true);
             }
-            const titles = { success: 'Succès', error: 'Erreur', warning: 'Avertissement', info: 'Information' };
-            return openDialog({ kind: 'alert', messageText, tone: type, titleText: titles[type] || 'Information', confirmLabel: 'Fermer', ...options });
+            const titles = { success: text('flashTitleSuccess', 'Succès'), error: text('flashTitleError', 'Erreur'), warning: text('flashTitleWarning', 'Avertissement'), info: text('flashTitleInfo', 'Information') };
+            return openDialog({ kind: 'alert', messageText, tone: type, titleText: titles[type] || text('flashTitleInfo', 'Information'), confirmLabel: text('dialogClose', 'Fermer'), ...options });
         },
         showFlashAfterReload(messageText, type = 'info') {
             try {
@@ -451,7 +453,7 @@ setInterval(updateQueueBadge, 30000);
         passive.forEach(f => showToast(f.msg, f.tone));
         (async () => {
             for (const f of blocking) {
-                await openDialog({ kind: 'alert', messageText: f.msg, tone: f.tone, titleText: f.title, confirmLabel: 'Fermer' });
+                await openDialog({ kind: 'alert', messageText: f.msg, tone: f.tone, titleText: f.title, confirmLabel: text('dialogClose', 'Fermer') });
             }
         })();
     }
@@ -465,12 +467,12 @@ setInterval(updateQueueBadge, 30000);
         }
         event.preventDefault();
         const ok = await window.appUI.confirm({
-            titleText: form.dataset.confirmTitle || 'Confirmation',
+            titleText: form.dataset.confirmTitle || text('dialogTitleConfirm', 'Confirmation'),
             messageText: form.dataset.confirm,
             note: form.dataset.confirmNote || '',
             tone: form.dataset.confirmTone || 'warning',
-            confirmLabel: form.dataset.confirmOk || 'Confirmer',
-            cancelLabel: form.dataset.confirmCancel || 'Annuler',
+            confirmLabel: form.dataset.confirmOk || text('dialogConfirm', 'Confirmer'),
+            cancelLabel: form.dataset.confirmCancel || text('dialogCancel', 'Annuler'),
         });
         if (ok) {
             form.dataset.confirmBypass = 'true';

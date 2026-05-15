@@ -1,19 +1,19 @@
 <!-- GNU General Public License v3.0 (GPL-3.0) - Copyright (c) 2026 Woofix -->
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="{{ lang | default('fr') }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Diaporama</title>
+    <title>{{ t('display_title') }}</title>
     <style>:root { --media-halo-rgb: {{ display_halo_rgb | default('138, 43, 226') }}; }</style>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/display-screen.css', v=static_version) }}">
 </head>
 <body>
 <div id="screen-switcher" class="screen-switcher">
-    <span class="screen-switcher-label">Écran</span>
+    <span class="screen-switcher-label">{{ t('display_screen_label') }}</span>
 </div>
 <div id="priority-alert" class="priority-alert" aria-live="polite" aria-atomic="true">
-    <div class="priority-alert-label">Alerte prioritaire</div>
+    <div class="priority-alert-label">{{ t('display_priority_alert') }}</div>
     <div id="priority-alert-message" class="priority-alert-message"></div>
 </div>
 <script id="display-config" type="application/json">{{ {'defaultScreenName': default_screen_name, 'displayApiToken': display_api_token}|tojson }}</script>

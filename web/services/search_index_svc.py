@@ -307,6 +307,13 @@ _WIKI_FR = [
         'description': "Identifier la version, la licence et la stack technique de l'instance",
         'keywords': 'à propos about version commit licence auteur stack technique flask postgres docker',
     },
+    {
+        'section': 's23',
+        'title': "Éditeur d'annonces",
+        'url': '/admin/wiki/s23',
+        'description': 'Créer des annonces 16:9 avec calques, outils graphiques et export PNG',
+        'keywords': 'annonces éditeur canvas calques texte formes lignes images icônes qr code png export snap grille lucide tabler',
+    },
 ]
 
 _PAGES_EN = [
@@ -604,6 +611,13 @@ _WIKI_EN = [
         'url': '/admin/wiki/s22',
         'description': 'Identify the instance version, license and technical stack',
         'keywords': 'about version commit license author stack technical flask postgres docker',
+    },
+    {
+        'section': 's23',
+        'title': 'Announcement editor',
+        'url': '/admin/wiki/s23',
+        'description': 'Create 16:9 announcements with layers, graphic tools and PNG export',
+        'keywords': 'announcements editor canvas layers text shapes lines images icons qr code png export snap grid lucide tabler',
     },
 ]
 

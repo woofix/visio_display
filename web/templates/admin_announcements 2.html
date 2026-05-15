@@ -1,0 +1,358 @@
+{# GNU General Public License v3.0 (GPL-3.0) - Copyright (c) 2026 Woofix - See LICENSE file for details #}
+{% extends 'admin_layout.html' %}
+
+{% block title %}{{ t('announcements_title') }}{% endblock %}
+{% block topbar_icon %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16v14H4z"/><path d="M8 9h8"/><path d="M8 13h5"/></svg>{% endblock %}
+{% block topbar_breadcrumbs %}<div class="topbar-breadcrumbs">
+    <a href="/admin" class="bc-link">{{ app_name }}</a>
+    <svg class="bc-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    <a href="/admin/media" class="bc-link">{{ t('nav_label_contents') }}</a>
+    <svg class="bc-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    <span class="bc-current">{% block topbar_title %}{{ t('announcements_title') }}{% endblock %}</span>
+</div>{% endblock %}
+{% block topbar_sub %}{{ t('announcements_topbar_sub') }}{% endblock %}
+
+{% block styles %}
+.announcement-shell { display:grid; grid-template-columns:minmax(0,1fr) 430px; gap:20px; align-items:start; }
+.announcement-panel { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow-sm); padding:20px; }
+.announcement-panel h2 { font-size:.98rem; font-weight:800; color:var(--text); margin-bottom:4px; }
+.announcement-panel p { color:var(--text-3); font-size:.78rem; line-height:1.5; }
+.announcement-form { display:grid; gap:16px; }
+.announcement-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.announcement-field label { display:block; font-size:.73rem; font-weight:800; color:var(--text-2); margin-bottom:6px; }
+.announcement-field input,
+.announcement-field textarea,
+.announcement-field select {
+    width:100%; border:1px solid var(--border); border-radius:10px; background:var(--surface-alt);
+    color:var(--text); font:inherit; font-size:.82rem; padding:10px 11px; outline:none;
+}
+.announcement-field textarea { min-height:110px; resize:vertical; line-height:1.45; }
+.announcement-field input[type="color"] { height:42px; padding:4px; }
+.announcement-segment { display:flex; flex-wrap:wrap; gap:8px; }
+.announcement-segment label {
+    display:inline-flex; align-items:center; gap:7px; border:1px solid var(--border); border-radius:999px;
+    padding:8px 11px; font-size:.76rem; font-weight:700; color:var(--text-2); background:var(--surface-alt); cursor:pointer;
+}
+.announcement-segment input { width:auto; accent-color:var(--primary); }
+.announcement-source { display:none; }
+.announcement-source.active { display:grid; gap:12px; }
+.announcement-preview {
+    aspect-ratio:16 / 9; overflow:hidden; border-radius:12px; border:1px solid var(--border);
+    position:sticky; top:88px; background:#111827; color:#fff;
+}
+.announcement-preview-bg { position:absolute; inset:0; background:linear-gradient(135deg,#1e293b,#4c1d95); background-size:cover; background-position:center; filter:brightness(.82); }
+.announcement-preview-veil { position:absolute; inset:0; background:rgba(0,0,0,.35); }
+.announcement-preview-content { position:absolute; inset:0; padding:34px; display:flex; flex-direction:column; justify-content:center; gap:15px; }
+.announcement-preview-logo { position:absolute; top:28px; left:34px; font-size:.8rem; font-weight:900; opacity:.88; }
+.announcement-preview-kicker { width:max-content; max-width:70%; padding:7px 13px; border-radius:8px; background:var(--preview-accent,#7c3aed); font-size:.68rem; font-weight:900; letter-spacing:.08em; }
+.announcement-preview-title { font-size:clamp(1.5rem, 4vw, 3.1rem); line-height:1.02; font-weight:900; text-transform:uppercase; max-width:82%; }
+.announcement-preview-body { font-size:clamp(.88rem, 1.7vw, 1.35rem); line-height:1.3; max-width:72%; opacity:.92; }
+.announcement-preview-footer { position:absolute; left:34px; bottom:28px; padding:8px 12px; border-radius:8px; background:color-mix(in srgb, var(--preview-accent,#7c3aed) 82%, transparent); font-size:.82rem; font-weight:800; }
+.announcement-preview.template-event .announcement-preview-content { left:26%; padding-left:18px; }
+.announcement-preview.template-event .announcement-preview-kicker {
+    position:absolute; left:34px; top:28%; width:23%; max-width:23%; min-height:44%;
+    display:flex; align-items:center; justify-content:center; text-align:center; padding:18px 14px;
+    font-size:clamp(.92rem, 2vw, 1.55rem); line-height:1.1; white-space:normal;
+}
+.announcement-preview.template-event .announcement-preview-title { max-width:90%; font-size:clamp(1.25rem, 3.1vw, 2.45rem); }
+.announcement-preview.template-event .announcement-preview-body { max-width:86%; }
+.announcement-preview.template-urgent .announcement-preview-kicker { font-size:.86rem; background:#dc2626; }
+.announcement-preview.template-urgent .announcement-preview-title { font-size:clamp(1.75rem, 4.8vw, 3.55rem); max-width:90%; }
+.announcement-preview.template-urgent .announcement-preview-content { justify-content:center; }
+.announcement-background-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:12px; }
+.announcement-bg-card {
+    min-height:118px; border:1px solid var(--border); border-radius:10px; overflow:hidden; background:var(--surface-alt);
+    cursor:pointer; text-align:left; color:inherit; padding:0; position:relative;
+}
+.announcement-bg-card img { width:100%; height:82px; object-fit:cover; display:block; }
+.announcement-bg-card span { display:block; padding:7px 8px; font-size:.66rem; color:var(--text-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.announcement-bg-card.selected { border-color:var(--primary); box-shadow:0 0 0 3px color-mix(in srgb, var(--primary) 16%, transparent); }
+.announcement-screen-list { display:flex; flex-wrap:wrap; gap:8px; }
+.announcement-screen-list label { display:inline-flex; align-items:center; gap:7px; font-size:.76rem; font-weight:700; border:1px solid var(--border); border-radius:999px; padding:8px 11px; background:var(--surface-alt); }
+.announcement-actions { display:flex; justify-content:flex-end; gap:10px; }
+.announcement-note { padding:10px 12px; border-radius:10px; background:var(--primary-bg); color:var(--text-2); font-size:.74rem; line-height:1.45; }
+@media(max-width:1050px) { .announcement-shell { grid-template-columns:1fr; } .announcement-preview { position:relative; top:auto; } }
+@media(max-width:720px) { .announcement-grid-2,.announcement-background-grid { grid-template-columns:1fr; } .announcement-preview-content { padding:22px; } }
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ t('announcements_h1') }}</h1>
+    <p>{{ t('announcements_sub') }}</p>
+</div>
+
+<form class="announcement-shell" method="post" action="/admin/announcements/create" enctype="multipart/form-data" id="announcement-form">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="external_url" id="external-url">
+    <input type="hidden" name="external_credit" id="external-credit">
+    <div class="announcement-panel">
+        <div class="announcement-form">
+            <div class="announcement-grid-2">
+                <div class="announcement-field">
+                    <label for="announcement-title">{{ t('announcements_field_title') }}</label>
+                    <input id="announcement-title" name="title" maxlength="90" required placeholder="Réunion d'information">
+                </div>
+                <div class="announcement-field">
+                    <label for="template-style">{{ t('announcements_template') }}</label>
+                    <select id="template-style" name="template_style">
+                        <option value="info">{{ t('announcements_template_info') }}</option>
+                        <option value="event">{{ t('announcements_template_event') }}</option>
+                        <option value="urgent">{{ t('announcements_template_urgent') }}</option>
+                    </select>
+                </div>
+            </div>
+            <div class="announcement-field">
+                <label for="announcement-body">{{ t('announcements_field_body') }}</label>
+                <textarea id="announcement-body" name="body" maxlength="420" placeholder="Jeudi à 18h en salle polyvalente"></textarea>
+            </div>
+            <div class="announcement-grid-2">
+                <div class="announcement-field">
+                    <label for="date-picker">{{ t('announcements_field_date') }}</label>
+                    <input id="date-picker" type="datetime-local">
+                    <input id="date-text" name="date_text" type="hidden">
+                </div>
+                <div class="announcement-field">
+                    <label for="place">{{ t('announcements_field_place') }}</label>
+                    <input id="place" name="place" maxlength="80" placeholder="Salle polyvalente">
+                </div>
+            </div>
+
+            <div>
+                <h2>{{ t('announcements_background_title') }}</h2>
+                <p>{{ t('announcements_background_sub') }}</p>
+            </div>
+            <div class="announcement-segment" id="background-modes">
+                <label><input type="radio" name="background_mode" value="color" checked> {{ t('announcements_bg_color') }}</label>
+                <label><input type="radio" name="background_mode" value="upload"> {{ t('announcements_bg_upload') }}</label>
+                <label><input type="radio" name="background_mode" value="media"> {{ t('announcements_bg_media') }}</label>
+                <label><input type="radio" name="background_mode" value="external"> {{ t('announcements_bg_external') }}</label>
+            </div>
+
+            <div class="announcement-source active" data-source="color">
+                <div class="announcement-field">
+                    <label for="background-color">{{ t('announcements_background_color') }}</label>
+                    <input id="background-color" name="background_color" type="color" value="#1e293b">
+                </div>
+            </div>
+            <div class="announcement-source" data-source="upload">
+                <div class="announcement-field">
+                    <label for="background-upload">{{ t('announcements_background_upload') }}</label>
+                    <input id="background-upload" name="background_upload" type="file" accept=".jpg,.jpeg,.png">
+                </div>
+            </div>
+            <div class="announcement-source" data-source="media">
+                <div class="announcement-field">
+                    <label for="background-media">{{ t('announcements_background_media') }}</label>
+                    <select id="background-media" name="background_media">
+                        <option value="">-</option>
+                        {% for filename in media_choices %}
+                        <option value="{{ filename }}" data-preview="{{ media_preview_map.get(filename, '') }}">{{ filename }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="announcement-source" data-source="external">
+                <div class="announcement-grid-2">
+                    <div class="announcement-field">
+                        <label for="external-query">{{ t('announcements_external_search') }}</label>
+                        <input id="external-query" type="search" placeholder="portes ouvertes, sport, réunion">
+                    </div>
+                    <div class="announcement-field">
+                        <label>&nbsp;</label>
+                        <button type="button" class="btn secondary" id="external-search-btn">{{ t('announcements_external_btn') }}</button>
+                    </div>
+                </div>
+                <div class="announcement-note">{{ t('announcements_external_note') }}</div>
+                <div class="announcement-background-grid" id="external-results"></div>
+            </div>
+
+            <div class="announcement-grid-2">
+                <div class="announcement-field">
+                    <label for="accent-color">{{ t('announcements_accent_color') }}</label>
+                    <input id="accent-color" name="accent_color" type="color" value="#7c3aed">
+                </div>
+                <div class="announcement-field">
+                    <label for="text-color">{{ t('announcements_text_color') }}</label>
+                    <input id="text-color" name="text_color" type="color" value="#ffffff">
+                </div>
+                <div class="announcement-field">
+                    <label for="overlay-strength">{{ t('announcements_overlay') }}</label>
+                    <input id="overlay-strength" name="overlay_strength" type="range" min="0" max="85" value="35">
+                </div>
+                <div class="announcement-field">
+                    <label for="background-blur">{{ t('announcements_blur') }}</label>
+                    <input id="background-blur" name="background_blur" type="range" min="0" max="18" value="0">
+                </div>
+            </div>
+
+            <div class="announcement-grid-2">
+                <div class="announcement-field">
+                    <label for="duration">{{ t('announcements_duration') }}</label>
+                    <input id="duration" name="duration" type="number" min="1" max="3600" value="15">
+                </div>
+                <div class="announcement-field">
+                    <label>{{ t('announcements_screens') }}</label>
+                    <div class="announcement-screen-list">
+                        {% for screen in screens %}
+                        <label><input type="checkbox" name="screens" value="{{ screen }}"> {{ screen }}</label>
+                        {% endfor %}
+                        {% if not screens %}
+                        <span class="announcement-note">{{ t('announcements_no_screens') }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="announcement-actions">
+                <a class="btn secondary" href="/admin/media">{{ t('programming_cancel') }}</a>
+                <button type="submit" class="btn">{{ t('announcements_create_btn') }}</button>
+            </div>
+        </div>
+    </div>
+
+    <aside class="announcement-panel">
+        <h2>{{ t('announcements_preview_title') }}</h2>
+        <p>{{ t('announcements_preview_sub') }}</p>
+        <div class="announcement-preview" id="announcement-preview">
+            <div class="announcement-preview-bg" id="preview-bg"></div>
+            <div class="announcement-preview-veil" id="preview-veil"></div>
+            <div class="announcement-preview-logo">{{ app_name }}</div>
+            <div class="announcement-preview-content">
+                <div class="announcement-preview-kicker" id="preview-kicker">INFO</div>
+                <div class="announcement-preview-title" id="preview-title">Réunion d'information</div>
+                <div class="announcement-preview-body" id="preview-body">Jeudi à 18h en salle polyvalente</div>
+            </div>
+            <div class="announcement-preview-footer" id="preview-footer">Jeudi 16 mai · 18h</div>
+        </div>
+    </aside>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+    const qs = (sel) => document.querySelector(sel);
+    const qsa = (sel) => Array.from(document.querySelectorAll(sel));
+    const title = qs('#announcement-title');
+    const body = qs('#announcement-body');
+    const dateText = qs('#date-text');
+    const datePicker = qs('#date-picker');
+    const place = qs('#place');
+    const template = qs('#template-style');
+    const bgColor = qs('#background-color');
+    const accent = qs('#accent-color');
+    const textColor = qs('#text-color');
+    const overlay = qs('#overlay-strength');
+    const bgUpload = qs('#background-upload');
+    const bgMedia = qs('#background-media');
+    const previewBg = qs('#preview-bg');
+    const previewVeil = qs('#preview-veil');
+    const previewTitle = qs('#preview-title');
+    const previewBody = qs('#preview-body');
+    const previewFooter = qs('#preview-footer');
+    const previewKicker = qs('#preview-kicker');
+    const externalUrl = qs('#external-url');
+    const externalCredit = qs('#external-credit');
+    const results = qs('#external-results');
+    const preview = qs('#announcement-preview');
+    const escapeAttr = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'": '&#39;'}[ch]));
+
+    function setPreviewBg(url) {
+        previewBg.style.backgroundImage = url ? `url("${url}")` : '';
+    }
+    function formatPickedDate() {
+        if (!datePicker?.value) {
+            dateText.value = '';
+            return '';
+        }
+        const picked = new Date(datePicker.value);
+        if (Number.isNaN(picked.getTime())) {
+            dateText.value = '';
+            return '';
+        }
+        const locale = document.documentElement.lang || 'fr-FR';
+        const datePart = new Intl.DateTimeFormat(locale, { weekday: 'long', day: '2-digit', month: 'long' }).format(picked);
+        const timePart = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(picked);
+        dateText.value = `${datePart} · ${timePart}`;
+        return dateText.value;
+    }
+    function updateSources() {
+        const mode = qs('input[name="background_mode"]:checked')?.value || 'color';
+        qsa('.announcement-source').forEach(el => el.classList.toggle('active', el.dataset.source === mode));
+        if (mode === 'color') {
+            previewBg.style.background = bgColor.value;
+            previewBg.style.backgroundImage = '';
+        } else if (mode === 'media') {
+            const opt = bgMedia.selectedOptions[0];
+            setPreviewBg(opt?.dataset?.preview || '');
+        } else if (mode === 'external') {
+            const selected = qs('.announcement-bg-card.selected img');
+            setPreviewBg(selected?.src || '');
+        }
+    }
+    function updatePreview() {
+        const formattedDate = formatPickedDate();
+        previewTitle.textContent = title.value || 'Réunion d’information';
+        previewBody.textContent = body.value || 'Jeudi à 18h en salle polyvalente';
+        previewFooter.textContent = [formattedDate, place.value].filter(Boolean).join(' · ') || 'Jeudi 16 mai · 18h';
+        previewFooter.hidden = !previewFooter.textContent;
+        previewKicker.textContent = template.value === 'urgent' ? 'URGENT' : template.value === 'event' ? (formattedDate || 'DATE') : 'INFO';
+        preview.classList.toggle('template-event', template.value === 'event');
+        preview.classList.toggle('template-urgent', template.value === 'urgent');
+        document.documentElement.style.setProperty('--preview-accent', accent.value);
+        previewTitle.style.color = textColor.value;
+        previewBody.style.color = textColor.value;
+        previewFooter.style.color = textColor.value;
+        previewVeil.style.background = `rgba(0,0,0,${Number(overlay.value || 0) / 100})`;
+        updateSources();
+    }
+
+    qsa('input, textarea, select').forEach(el => el.addEventListener('input', updatePreview));
+    datePicker?.addEventListener('change', updatePreview);
+    qsa('input[name="background_mode"]').forEach(el => el.addEventListener('change', updatePreview));
+    bgUpload?.addEventListener('change', () => {
+        const file = bgUpload.files?.[0];
+        if (file) setPreviewBg(URL.createObjectURL(file));
+    });
+
+    qs('#external-search-btn')?.addEventListener('click', async () => {
+        const query = qs('#external-query')?.value || '';
+        results.innerHTML = '<p>Recherche en cours...</p>';
+        const resp = await fetch(`/admin/announcements/search-backgrounds?q=${encodeURIComponent(query)}`, { cache: 'no-store' });
+        const data = await resp.json();
+        if (!data.ok || !data.results?.length) {
+            results.innerHTML = '<p>Aucun fond trouvé.</p>';
+            return;
+        }
+        results.innerHTML = data.results.map((item, index) => {
+            const thumb = `/admin/announcements/background-thumb?url=${encodeURIComponent(item.thumb_url)}&fallback=${encodeURIComponent(item.url)}`;
+            const fallback = `/admin/announcements/background-thumb?url=${encodeURIComponent(item.url)}`;
+            const previewSrc = item.thumb_data || thumb;
+            return `<button type="button" class="announcement-bg-card" data-url="${escapeAttr(item.url)}" data-credit="${escapeAttr(item.credit || '')}" data-index="${index}">
+                <img src="${escapeAttr(previewSrc)}" data-fallback-src="${fallback}" alt="">
+                <span>${escapeAttr(item.title)}</span>
+            </button>`;
+        }).join('');
+        results.querySelectorAll('.announcement-bg-card img').forEach(image => {
+            image.addEventListener('error', () => {
+                if (image.dataset.fallbackSrc && image.dataset.fallbackTried !== '1') {
+                    image.dataset.fallbackTried = '1';
+                    image.src = image.dataset.fallbackSrc;
+                }
+            });
+        });
+        results.querySelectorAll('.announcement-bg-card').forEach(card => {
+            card.addEventListener('click', () => {
+                results.querySelectorAll('.announcement-bg-card').forEach(el => el.classList.remove('selected'));
+                card.classList.add('selected');
+                externalUrl.value = card.dataset.url || '';
+                externalCredit.value = card.dataset.credit || '';
+                setPreviewBg(card.querySelector('img')?.src || '');
+            });
+        });
+    });
+
+    updatePreview();
+})();
+</script>
+{% endblock %}

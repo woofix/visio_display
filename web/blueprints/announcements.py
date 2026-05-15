@@ -5,6 +5,7 @@ from flask import Blueprint, Response, jsonify, redirect, render_template, reque
 from blueprints.guards import admin_guard, feature_guard, permission_redirect_guard
 from services.announcement_svc import _safe_image_url, commons_search, create_announcement, fetch_thumbnail_bytes, image_media_choices
 from services.config_svc import load_config
+from services.icon_svc import scan_svg_icons
 from services.i18n import _flash
 from services.media_svc import build_media_preview_map, get_logo_path
 from services.users_svc import has_permission, has_screen_access, is_superadmin, load_users
@@ -78,6 +79,25 @@ def background_thumb():
             except Exception:
                 pass
         return "", 502
+
+
+@bp.route("/admin/announcements/icons")
+def announcement_icons():
+    redir = admin_guard()
+    if redir:
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
+    redir = feature_guard("announcements")
+    if redir:
+        return jsonify({"ok": False, "error": "feature disabled"}), 403
+    return jsonify({
+        "ok": True,
+        **scan_svg_icons(
+            category=request.args.get("category"),
+            query=request.args.get("q", ""),
+            limit=request.args.get("limit", 60),
+            offset=request.args.get("offset", 0),
+        ),
+    })
 
 
 @bp.route("/admin/announcements/create", methods=["POST"])

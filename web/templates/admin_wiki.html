@@ -931,6 +931,52 @@
             <div class="wiki-callout">{{ t('wiki_s22_note') }}</div>
         </section>
 
+        <section class="wiki-section {% if wiki_section == 's23' %}active{% endif %}" id="s23">
+            <div class="wiki-section-header">
+                <h2>{{ t('wiki_s23_title') }}</h2>
+            </div>
+            <p>{{ t('wiki_s23_desc') }}</p>
+            <div class="wiki-callout">
+                <strong>{{ t('wiki_perm_required') }}</strong>
+                <span class="perm-badge">upload</span>
+            </div>
+            <h3>{{ t('wiki_s23_create_title') }}</h3>
+            <ol class="wiki-steps">
+                <li>{{ t('wiki_s23_create1') }}</li>
+                <li>{{ t('wiki_s23_create2') }}</li>
+                <li>{{ t('wiki_s23_create3') }}</li>
+                <li>{{ t('wiki_s23_create4') }}</li>
+            </ol>
+            <h3>{{ t('wiki_s23_tools_title') }}</h3>
+            <ul>
+                <li>{{ t('wiki_s23_tool_text') }}</li>
+                <li>{{ t('wiki_s23_tool_shapes') }}</li>
+                <li>{{ t('wiki_s23_tool_image') }}</li>
+                <li>{{ t('wiki_s23_tool_icons') }}</li>
+                <li>{{ t('wiki_s23_tool_qr') }}</li>
+            </ul>
+            <h3>{{ t('wiki_s23_panels_title') }}</h3>
+            <ul>
+                <li>{{ t('wiki_s23_panel_left') }}</li>
+                <li>{{ t('wiki_s23_panel_right') }}</li>
+                <li>{{ t('wiki_s23_panel_layers') }}</li>
+                <li>{{ t('wiki_s23_panel_snap') }}</li>
+            </ul>
+            <h3>{{ t('wiki_s23_export_title') }}</h3>
+            <p>{{ t('wiki_s23_export_desc') }}</p>
+            <h3>{{ t('wiki_s23_dev_title') }}</h3>
+            <ul>
+                <li>{{ t('wiki_s23_dev_canvas') }}</li>
+                <li>{{ t('wiki_s23_dev_layers') }}</li>
+                <li>{{ t('wiki_s23_dev_props') }}</li>
+                <li>{{ t('wiki_s23_dev_export') }}</li>
+                <li>{{ t('wiki_s23_dev_icons') }}</li>
+            </ul>
+            <pre><code>web/static/assets/lucide/
+web/static/assets/tabler/outline/
+web/static/assets/tabler/filled/</code></pre>
+        </section>
+
     </div><!-- .wiki-body -->
 
 {% endblock %}

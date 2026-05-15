@@ -2,6 +2,7 @@
 
 import base64
 import io
+import json
 import os
 import re
 import textwrap
@@ -46,6 +47,18 @@ def _hex_to_rgb(value, fallback):
     if len(raw) == 6 and all(ch in "0123456789abcdefABCDEF" for ch in raw):
         return tuple(int(raw[idx:idx + 2], 16) for idx in (0, 2, 4))
     return fallback
+
+
+def _num(value, fallback=0, min_value=None, max_value=None):
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        number = fallback
+    if min_value is not None:
+        number = max(min_value, number)
+    if max_value is not None:
+        number = min(max_value, number)
+    return number
 
 
 def _cover(image, size=ANNOUNCEMENT_SIZE):
@@ -144,6 +157,160 @@ def _media_background(filename):
         return None
     with Image.open(path) as image:
         return image.copy()
+
+
+def _media_image_from_src(src):
+    raw = str(src or "")
+    if raw.startswith("data:image/"):
+        try:
+            payload = raw.split(",", 1)[1]
+            with Image.open(io.BytesIO(base64.b64decode(payload))) as image:
+                return ImageOps.exif_transpose(image).convert("RGBA")
+        except Exception:
+            return None
+    filename = os.path.basename(raw.split("?", 1)[0])
+    if not filename:
+        return None
+    for folder in (UPLOAD_FOLDER, IMAGES_FOLDER):
+        path = os.path.join(folder, filename)
+        if os.path.exists(path) and filename.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
+            try:
+                with Image.open(path) as image:
+                    return ImageOps.exif_transpose(image).convert("RGBA")
+            except Exception:
+                return None
+    return None
+
+
+def _alpha(color, opacity):
+    rgb = _hex_to_rgb(color, (255, 255, 255))
+    return rgb + (int(255 * _num(opacity, 1, 0, 1)),)
+
+
+def _paste_layer(canvas, layer, x, y, w, h, rotation=0, opacity=1):
+    if w <= 0 or h <= 0:
+        return
+    layer = layer.resize((int(w), int(h)), Image.Resampling.LANCZOS).convert("RGBA")
+    if opacity < 1:
+        alpha = layer.getchannel("A").point(lambda p: int(p * opacity))
+        layer.putalpha(alpha)
+    if rotation:
+        layer = layer.rotate(-rotation, expand=True, resample=Image.Resampling.BICUBIC)
+        x += (w - layer.width) / 2
+        y += (h - layer.height) / 2
+    canvas.alpha_composite(layer, (int(x), int(y)))
+
+
+def _draw_text_element(canvas, draw, element):
+    x = _num(element.get("x"), 0)
+    y = _num(element.get("y"), 0)
+    w = _num(element.get("w"), 600, 1)
+    h = _num(element.get("h"), 160, 1)
+    size = int(_num(element.get("fontSize"), 72, 8, 260))
+    text = str(element.get("text") or "")
+    fill = _alpha(element.get("color"), _num(element.get("opacity"), 1, 0, 1))
+    font = _font(size, bold=bool(element.get("bold", False)))
+    align = str(element.get("align") or "left")
+    lines = []
+    for paragraph in text.splitlines() or [""]:
+        words = paragraph.split()
+        current = ""
+        for word in words:
+            candidate = f"{current} {word}".strip()
+            if draw.textbbox((0, 0), candidate, font=font)[2] <= w or not current:
+                current = candidate
+            else:
+                lines.append(current)
+                current = word
+        lines.append(current)
+    line_height = int(size * 1.18)
+    text_layer = Image.new("RGBA", (int(w), int(h)), (0, 0, 0, 0))
+    text_draw = ImageDraw.Draw(text_layer)
+    yy = 0
+    for line in lines:
+        if yy > h - line_height:
+            break
+        bbox = text_draw.textbbox((0, 0), line, font=font)
+        xx = 0
+        if align == "center":
+            xx = max(0, (w - (bbox[2] - bbox[0])) / 2)
+        elif align == "right":
+            xx = max(0, w - (bbox[2] - bbox[0]))
+        text_draw.text((xx, yy), line, font=font, fill=fill)
+        yy += line_height
+    _paste_layer(canvas, text_layer, x, y, w, h, _num(element.get("rotation"), 0), 1)
+
+
+def _draw_qr_like(draw, element):
+    x = int(_num(element.get("x"), 0))
+    y = int(_num(element.get("y"), 0))
+    size = int(min(_num(element.get("w"), 220, 40), _num(element.get("h"), 220, 40)))
+    fill = _hex_to_rgb(element.get("color"), (17, 24, 39))
+    bg = _hex_to_rgb(element.get("background"), (255, 255, 255))
+    draw.rectangle((x, y, x + size, y + size), fill=bg)
+    modules = 29
+    cell = max(1, size // modules)
+    seed = str(element.get("text") or "https://")
+
+    def finder(cx, cy):
+        draw.rectangle((x + cx * cell, y + cy * cell, x + (cx + 7) * cell, y + (cy + 7) * cell), fill=fill)
+        draw.rectangle((x + (cx + 1) * cell, y + (cy + 1) * cell, x + (cx + 6) * cell, y + (cy + 6) * cell), fill=bg)
+        draw.rectangle((x + (cx + 2) * cell, y + (cy + 2) * cell, x + (cx + 5) * cell, y + (cy + 5) * cell), fill=fill)
+
+    finder(1, 1)
+    finder(21, 1)
+    finder(1, 21)
+    digest = base64.b16encode(seed.encode("utf-8", "ignore")).decode("ascii") or "A5"
+    for row in range(1, 28):
+        for col in range(1, 28):
+            if (col < 9 and row < 9) or (col > 19 and row < 9) or (col < 9 and row > 19):
+                continue
+            idx = (row * 29 + col) % len(digest)
+            if (ord(digest[idx]) + row * 3 + col * 5) % 4 in (0, 1):
+                draw.rectangle((x + col * cell, y + row * cell, x + (col + 1) * cell, y + (row + 1) * cell), fill=fill)
+
+
+def _render_layout_json(form, uploaded_file=None):
+    layout = json.loads(form.get("layout_json") or "{}")
+    background_form = {
+        "background_mode": layout.get("background", {}).get("mode") or form.get("background_mode"),
+        "background_color": layout.get("background", {}).get("color") or form.get("background_color"),
+        "background_media": layout.get("background", {}).get("media") or form.get("background_media"),
+        "external_url": layout.get("background", {}).get("external_url") or form.get("external_url"),
+    }
+    background = build_background(background_form, uploaded_file).convert("RGBA")
+    draw = ImageDraw.Draw(background)
+    elements = sorted(layout.get("elements") or [], key=lambda item: int(_num(item.get("z"), 0)))
+    for element in elements:
+        kind = element.get("type")
+        x = _num(element.get("x"), 0)
+        y = _num(element.get("y"), 0)
+        w = _num(element.get("w"), 100, 1)
+        h = _num(element.get("h"), 100, 1)
+        opacity = _num(element.get("opacity"), 1, 0, 1)
+        fill = _alpha(element.get("color"), opacity)
+        if kind == "text":
+            _draw_text_element(background, draw, element)
+        elif kind == "rect":
+            layer = Image.new("RGBA", (int(w), int(h)), (0, 0, 0, 0))
+            ImageDraw.Draw(layer).rounded_rectangle((0, 0, w, h), radius=_num(element.get("radius"), 0, 0, 160), fill=fill)
+            _paste_layer(background, layer, x, y, w, h, _num(element.get("rotation"), 0), 1)
+        elif kind == "circle":
+            layer = Image.new("RGBA", (int(w), int(h)), (0, 0, 0, 0))
+            ImageDraw.Draw(layer).ellipse((0, 0, w, h), fill=fill)
+            _paste_layer(background, layer, x, y, w, h, _num(element.get("rotation"), 0), 1)
+        elif kind == "line":
+            stroke = int(_num(element.get("strokeWidth"), 8, 1, 80))
+            layer = Image.new("RGBA", (int(w), max(stroke * 2, int(h), 2)), (0, 0, 0, 0))
+            ImageDraw.Draw(layer).line((0, layer.height / 2, w, layer.height / 2), fill=fill, width=stroke)
+            _paste_layer(background, layer, x, y - layer.height / 2, w, layer.height, _num(element.get("rotation"), 0), 1)
+        elif kind in {"image", "icon"}:
+            image = _media_image_from_src(element.get("media") or element.get("src"))
+            if image:
+                _paste_layer(background, image, x, y, w, h, _num(element.get("rotation"), 0), opacity)
+        elif kind == "qr":
+            _draw_qr_like(draw, element)
+    return background
 
 
 def build_background(form, uploaded_file=None):
@@ -272,15 +439,17 @@ def create_announcement(form, uploaded_file=None, username=None):
     if not title:
         raise ValueError("Le titre est obligatoire.")
 
-    background = build_background(form, uploaded_file).convert("RGBA")
-    blur = max(0, min(18, int(form.get("background_blur") or 0)))
-    if blur:
-        background = background.filter(ImageFilter.GaussianBlur(blur))
-    brightness = max(40, min(140, int(form.get("background_brightness") or 100)))
-    if brightness != 100:
-        background = ImageEnhance.Brightness(background).enhance(brightness / 100)
-
-    _template_layout(background, form)
+    if form.get("layout_json"):
+        background = _render_layout_json(form, uploaded_file)
+    else:
+        background = build_background(form, uploaded_file).convert("RGBA")
+        blur = max(0, min(18, int(form.get("background_blur") or 0)))
+        if blur:
+            background = background.filter(ImageFilter.GaussianBlur(blur))
+        brightness = max(40, min(140, int(form.get("background_brightness") or 100)))
+        if brightness != 100:
+            background = ImageEnhance.Brightness(background).enhance(brightness / 100)
+        _template_layout(background, form)
 
     stem = clean_filename("annonce_" + title.lower()) or "annonce"
     dated = datetime.now().strftime("%Y%m%d_%H%M")

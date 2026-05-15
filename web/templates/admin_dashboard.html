@@ -74,9 +74,15 @@
 .quick-card h3  { font-size:.88rem; font-weight:700; color:var(--text); margin-bottom:4px; }
 .quick-card p   { font-size:.76rem; color:var(--text-3); line-height:1.5; }
 .quick-card-arrow { font-size:.75rem; color:var(--primary); font-weight:600; margin-top:10px; display:flex; align-items:center; gap:4px; }
-.quick-card-screens { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
-.quick-card-screen-btn { background:var(--primary-bg); color:var(--primary); border:1px solid var(--primary-light,#c4b5fd); border-radius:20px; padding:4px 12px; font-size:.72rem; font-weight:600; cursor:pointer; font-family:inherit; transition:background .15s,color .15s; text-decoration:none; display:inline-flex; align-items:center; gap:4px; }
-.quick-card-screen-btn:hover { background:var(--primary); color:#fff; }
+.quick-card-screens { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+.quick-card-screen-btn {
+    background:linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 74%, var(--primary-dark)));
+    color:var(--on-primary); border:1px solid color-mix(in srgb, var(--primary-light) 62%, var(--primary));
+    border-radius:8px; padding:8px 12px; min-height:36px; font-size:.76rem; font-weight:800; cursor:pointer;
+    font-family:inherit; transition:transform .15s, box-shadow .15s, filter .15s; text-decoration:none; display:inline-flex;
+    align-items:center; gap:5px; box-shadow:0 8px 18px var(--ring);
+}
+.quick-card-screen-btn:hover { filter:brightness(1.03); transform:translateY(-1px); box-shadow:0 12px 24px var(--ring); }
 .campaign-strip { margin-top:20px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow-sm); padding:18px 20px; }
 .campaign-strip-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
 .campaign-strip-title { font-size:.92rem; font-weight:800; color:var(--text); }

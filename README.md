@@ -59,6 +59,15 @@ Application web légère de signalétique numérique. Elle affiche un diaporama 
 - Publication automatique à chaque frappe, sans rechargement ni interruption du diaporama
 - Effacement en un clic — visible sur tous les écrans simultanément
 
+**Éditeur d'annonces intégré**
+- Création d'annonces directement dans Visio-Display depuis un éditeur graphique 16:9
+- Canvas central avec grille discrète, guides de sécurité, snap visuel et zoom
+- Barre d'outils gauche pour ajouter texte, formes, lignes, images, icônes et QR codes
+- Panneau contextuel droit avec réglages de document, style, position et calques selon la sélection
+- Système de calques compact : renommage, ordre, visibilité, verrouillage et déplacement
+- Export PNG 1920×1080 vers la médiathèque, avec durée d'affichage et écrans ciblés
+- Bibliothèques d'icônes locales Lucide et Tabler chargées dynamiquement
+
 **Interface d'administration**
 - Importation par glisser-déposer avec barre de progression animée (shimmer) et prévisualisation
 - Animation d'upload professionnelle : spinner rotatif, pourcentage en temps réel et overlay animé pendant l'envoi
@@ -290,6 +299,15 @@ Depuis **Paramètres > Version**, le super-admin peut vérifier la version dista
 
 **Interface d'administration :** ouvrir `http://<hôte>:8081/admin` et se connecter.
 
+**Créer une annonce :** ouvrir **Annonces** dans le menu d'administration. L'éditeur affiche un canvas 16:9 au centre, une barre d'outils à gauche et un panneau contextuel à droite.
+
+- Cliquez sur **Texte**, **Rectangle**, **Cercle**, **Ligne**, **Icône** ou **QR code** pour créer un nouveau calque.
+- Cliquez sur un élément du canvas pour afficher ses propriétés : style, position/taille et calques.
+- Cliquez dans le vide du canvas ou sur **Aperçu** pour revenir aux réglages du document : titre, message, fond, durée et écrans.
+- L'outil **Image** ouvre directement le panneau **Fond** avec les options couleur, upload d'image, médiathèque et banque externe.
+- Le bouton **Snap** active ou désactive l'alignement automatique sur la grille, les guides centraux et les autres objets.
+- Le bouton **Exporter** crée un PNG 1920×1080 et l'ajoute à la médiathèque avec la durée et les écrans choisis.
+
 **Réinitialiser un mot de passe super-admin (hors interface) :**
 
 Avec Docker Compose, lancez la commande depuis la racine du projet :
@@ -454,6 +472,17 @@ Pour retirer un média de l'écran courant, cliquer sur **« Retirer de l'écran
 
 Une fois l'encodage initial effectué, la vidéo est ajoutée en file de compression nocturne (20h–6h) pour réduction de taille. La progression de cette étape est visible sur la page `/admin/queue`.
 
+### Éditeur d'annonces — architecture développeur
+
+L'éditeur d'annonces est implémenté dans `web/templates/admin_announcements.html` et exporte via `web/blueprints/announcements.py` vers `web/services/announcement_svc.py`.
+
+- Le canvas client est un artboard 16:9 de référence `1920×1080`, rendu en HTML/CSS dans l'administration puis sérialisé dans le champ caché `layout_json`.
+- Chaque objet est un calque JSON avec `id`, `type`, `name`, `x`, `y`, `w`, `h`, `z`, `rotation`, `opacity`, `hidden`, `locked` et des propriétés spécifiques (`text`, `fontSize`, `align`, `color`, `src`, `media`, etc.).
+- Les propriétés contextuelles sont pilotées côté client : aucun élément sélectionné affiche le document/export/réglages, un texte affiche les options typographiques, une image ou une forme affiche surtout style et position.
+- Le snap combine grille fixe, centres du document, marges de sécurité et points des autres objets. Les guides visuels sont seulement client-side ; les valeurs finales sont celles du JSON.
+- L'export image est rendu côté serveur par Pillow dans `announcement_svc.py` : le fond est résolu, chaque calque est dessiné dans l'ordre `z`, puis le PNG est enregistré comme média.
+- Les icônes sont des SVG locaux servis depuis `web/static/assets/lucide/`, `web/static/assets/tabler/outline/` et `web/static/assets/tabler/filled/`; elles sont listées dynamiquement par `/admin/announcements/icons`, converties en image côté client pour le canvas, puis exportées comme calques image.
+
 ### Structure du projet
 
 ```
@@ -476,6 +505,7 @@ Visio-Display/
     │   ├── about.py             # Page À propos (version, stack technique)
     │   ├── activity.py          # Journal d'activité
     │   ├── admin.py             # Tableau de bord
+    │   ├── announcements.py     # Éditeur d'annonces et export PNG
     │   ├── api.py               # API JSON
     │   ├── auth.py              # Connexion / déconnexion
     │   ├── campaigns.py         # Campagnes temporaires
@@ -498,6 +528,8 @@ Visio-Display/
     │   ├── config_svc.py        # Configuration applicative (lecture/écriture)
     │   ├── deploy_svc.py        # Installation SSH des clients d'affichage
     │   ├── ephemeris_svc.py     # Génération de la carte éphéméride
+    │   ├── announcement_svc.py  # Rendu PNG des annonces et recherche d'images externes
+    │   ├── icon_svc.py          # Index des SVG locaux Lucide/Tabler pour l'éditeur
     │   ├── i18n.py              # Internationalisation (flash messages, traductions)
     │   ├── media_svc.py         # Opérations sur les fichiers médias
     │   ├── queue_svc.py         # File d'encodage + tâches RQ
@@ -509,6 +541,9 @@ Visio-Display/
     │   ├── update_svc.py        # Contrôles Git/Docker et application des mises à jour
     │   └── users_svc.py         # CRUD utilisateurs + permissions
     ├── static/
+    │   ├── assets/lucide/       # SVG Lucide locaux utilisés par l'éditeur
+    │   ├── assets/tabler/outline/ # SVG Tabler outline locaux
+    │   ├── assets/tabler/filled/  # SVG Tabler filled locaux
     │   └── images/              # Logo et ressources statiques
     └── templates/               # Templates Jinja2
         ├── index.html           # Diaporama plein écran
@@ -516,6 +551,7 @@ Visio-Display/
         ├── admin_layout.html    # Gabarit partagé (sidebar, topbar, thèmes)
         ├── admin_about.html     # Page À propos
         ├── admin_activity.html  # Journal d'activité
+        ├── admin_announcements.html # Éditeur graphique d'annonces 16:9
         ├── admin_dashboard.html # Vue d'ensemble + espace disque
         ├── admin_campaigns.html # Campagnes temporaires
         ├── admin_media.html     # Médiathèque + réorganisation + écrans
@@ -846,6 +882,15 @@ A lightweight web-based digital signage. It displays a fullscreen slideshow of i
 - Auto-published on each keystroke, no reload or slideshow interruption
 - Clear with one click — visible on all screens simultaneously
 
+**Built-in announcement editor**
+- Create announcements directly in Visio-Display from an integrated 16:9 graphic editor
+- Centered canvas with a subtle grid, safe guides, visual snapping and zoom
+- Left toolbar for adding text, shapes, lines, images, icons and QR codes
+- Contextual right panel with document, style, position and layer controls depending on selection
+- Compact layer system: rename, reorder, show/hide, lock and drag layers
+- Export the final 1920×1080 PNG to the media library, with display duration and target screens
+- Local Lucide and Tabler icon libraries loaded dynamically
+
 **Admin interface**
 - Drag-and-drop file import with animated (shimmer) progress bar and preview
 - Professional upload animation: rotating spinner, real-time percentage counter and animated overlay during transfer
@@ -1079,6 +1124,15 @@ From **Settings > Version**, the super-admin can check the remote version, apply
 
 **Admin interface:** open `http://<host>:8081/admin` and log in with your credentials.
 
+**Create an announcement:** open **Announcements** in the admin menu. The editor shows a 16:9 canvas in the center, a left toolbar, and a contextual panel on the right.
+
+- Click **Text**, **Rectangle**, **Circle**, **Line**, **Icon**, or **QR code** to create a new layer.
+- Click an element on the canvas to edit its properties: style, position/size, and layers.
+- Click the empty canvas area or **Preview** to return to document settings: title, message, background, duration, and screens.
+- The **Image** tool opens the **Background** panel directly with color, image upload, media library, and external image bank options.
+- The **Snap** button toggles automatic alignment to the grid, center guides, safe areas, and other objects.
+- The **Export** button renders a 1920×1080 PNG and adds it to the media library with the selected duration and screens.
+
 **Reset a super-admin password (outside the UI):**
 
 With Docker Compose, run the command from the project root:
@@ -1171,6 +1225,17 @@ On upload, non-conformant videos (not H.264/MP4) are **encoded in the background
 
 After initial encoding, the video is queued for overnight compression (8 PM–6 AM) to reduce file size. The progress of that step is visible on `/admin/queue`.
 
+### Announcement editor — developer architecture
+
+The announcement editor lives in `web/templates/admin_announcements.html` and exports through `web/blueprints/announcements.py` into `web/services/announcement_svc.py`.
+
+- The client canvas is a reference `1920×1080` 16:9 artboard, rendered with HTML/CSS in the admin UI and serialized into the hidden `layout_json` field.
+- Each object is a JSON layer with `id`, `type`, `name`, `x`, `y`, `w`, `h`, `z`, `rotation`, `opacity`, `hidden`, `locked`, plus type-specific properties (`text`, `fontSize`, `align`, `color`, `src`, `media`, etc.).
+- Contextual properties are handled client-side: no selection shows document/export/settings, text shows typography options, and images or shapes focus on style and position.
+- Snapping combines a fixed grid, document centers, safe margins, and points from other objects. Visual guides are client-side only; the exported values come from the JSON.
+- Image export is rendered server-side by Pillow in `announcement_svc.py`: the background is resolved, layers are drawn in `z` order, then the PNG is saved as a media item.
+- Icons are local SVG assets served from `web/static/assets/lucide/`, `web/static/assets/tabler/outline/`, and `web/static/assets/tabler/filled/`; `/admin/announcements/icons` lists them dynamically, the client converts them for the canvas, and the server exports them as image layers.
+
 ### Project structure
 
 ```
@@ -1193,6 +1258,7 @@ Visio-Display/
     │   ├── about.py             # About page (version, tech stack)
     │   ├── activity.py          # Activity log
     │   ├── admin.py             # Dashboard
+    │   ├── announcements.py     # Announcement editor and PNG export
     │   ├── api.py               # JSON API
     │   ├── auth.py              # Login / logout
     │   ├── campaigns.py         # Temporary campaigns
@@ -1215,6 +1281,8 @@ Visio-Display/
     │   ├── config_svc.py        # App config (read/write)
     │   ├── deploy_svc.py        # SSH-based display client installation
     │   ├── ephemeris_svc.py     # Ephemeris card generation
+    │   ├── announcement_svc.py  # Announcement PNG rendering and external image search
+    │   ├── icon_svc.py          # Local Lucide/Tabler SVG index for the editor
     │   ├── i18n.py              # Internationalisation (flash messages, translations)
     │   ├── media_svc.py         # Media file operations
     │   ├── queue_svc.py         # Encoding queue + RQ tasks
@@ -1226,6 +1294,9 @@ Visio-Display/
     │   ├── update_svc.py        # Git/Docker checks and update application
     │   └── users_svc.py         # User CRUD + permissions
     ├── static/
+    │   ├── assets/lucide/       # Local Lucide SVGs used by the editor
+    │   ├── assets/tabler/outline/ # Local Tabler outline SVGs
+    │   ├── assets/tabler/filled/  # Local Tabler filled SVGs
     │   └── images/              # Logo and static assets
     └── templates/               # Jinja2 templates
         ├── index.html           # Fullscreen slideshow
@@ -1233,6 +1304,7 @@ Visio-Display/
         ├── admin_layout.html    # Shared layout (sidebar, topbar, themes)
         ├── admin_about.html     # About page
         ├── admin_activity.html  # Activity log
+        ├── admin_announcements.html # 16:9 graphical announcement editor
         ├── admin_dashboard.html # Overview + disk usage
         ├── admin_campaigns.html # Temporary campaigns
         ├── admin_media.html     # Media library + reordering + screens

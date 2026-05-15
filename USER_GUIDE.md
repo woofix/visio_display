@@ -36,6 +36,7 @@ Visio-Display is a **digital signage** application that automatically rotates im
 20. [Feature Management (Super Admin)](#20-feature-management-super-admin)
 21. [Server Version (Super Admin)](#21-server-version-super-admin)
 22. [About](#22-about)
+23. [Built-in Announcement Editor](#23-built-in-announcement-editor)
 
 ---
 
@@ -871,6 +872,47 @@ This information is useful when identifying the installed version for support or
 
 ---
 
+## 23. Built-in Announcement Editor
+
+Open **Announcements** from the navigation menu, then create or edit an announcement.
+
+The integrated editor creates 16:9 graphic announcements directly in Visio-Display. The canvas sits at the center of the workspace, with a grouped creation toolbar on the left and a contextual properties panel on the right.
+
+### Creation Tools
+
+- **Text** adds editable typography layers.
+- **Shapes** and **lines** add simple graphic structure.
+- **Image** opens the **Background** panel directly, showing image upload, media library, external bank and background color without extra clicks.
+- **Icons** insert pictograms from Lucide Icons, Tabler Icons and local SVG files.
+- **QR code** generates a scannable layer that can be positioned on the canvas.
+
+### Positioning and Layers
+
+Use the visual grid and snap mode to align objects. The layer system lets you select, reorder, hide and delete objects, while the compact layer list keeps the canvas area readable.
+
+The right panel changes with the current context:
+
+- no selection: document settings, export and background controls;
+- text selected: typography options;
+- image selected: image controls;
+- any selected object: position, size and layer order.
+
+### Export and Broadcast
+
+Use **Export PNG** to render the announcement as a 16:9 image and add it to the media library. Then configure its target screens and display duration like any other media item.
+
+### Icon Sources
+
+The editor uses Lucide Icons, Tabler Icons and local SVG assets:
+
+```text
+web/static/assets/lucide/
+web/static/assets/tabler/outline/
+web/static/assets/tabler/filled/
+```
+
+---
+
 *Documentation generated for Visio-Display — Digital signage application.*
 
 ---
@@ -907,6 +949,7 @@ Visio-Display est une application d'**affichage dynamique** (digital signage) qu
 20. [Gestion des fonctionnalités (super-admin)](#20-gestion-des-fonctionnalités-super-admin)
 21. [Version (super-admin)](#21-version-super-admin)
 22. [À propos](#22-à-propos)
+23. [Éditeur d'annonces intégré](#23-éditeur-dannonces-intégré)
 
 ---
 
@@ -1735,6 +1778,47 @@ La page **À propos** affiche les informations techniques de l'instance en cours
 - **Licence** : lien vers le fichier `LICENSE` du projet
 
 Ces informations sont utiles pour identifier la version installée lors d'un signalement de problème ou d'une mise à jour.
+
+---
+
+## 23. Éditeur d'annonces intégré
+
+Accessible depuis **Annonces** dans le menu de navigation, puis via la création ou la modification d'une annonce.
+
+L'éditeur intégré permet de créer des annonces graphiques 16:9 directement dans Visio-Display. Le canvas est placé au centre du workspace, avec une barre d'outils groupée à gauche et un panneau de propriétés contextuel à droite.
+
+### Outils de création
+
+- **Texte** ajoute des calques typographiques éditables.
+- **Formes** et **lignes** ajoutent une structure graphique simple.
+- **Image** ouvre directement le panneau **Fond** avec l'upload image, la médiathèque, la banque externe et la couleur de fond, sans clic supplémentaire.
+- **Icônes** insère des pictogrammes issus de Lucide Icons, Tabler Icons et des SVG locaux.
+- **QR code** génère un calque scannable positionnable sur le canvas.
+
+### Positionnement et calques
+
+Utilisez la grille visuelle et le snap pour aligner les objets. Le système de calques permet de sélectionner, réordonner, masquer et supprimer les objets, tandis que la liste compacte garde la zone canvas lisible.
+
+Le panneau droit s'adapte au contexte :
+
+- aucune sélection : réglages du document, export et fond ;
+- texte sélectionné : options typographiques ;
+- image sélectionnée : options image ;
+- objet sélectionné : position, dimensions et ordre de calque.
+
+### Export et diffusion
+
+Utilisez **Export PNG** pour rendre l'annonce en image 16:9 et l'ajouter à la médiathèque. Configurez ensuite les écrans ciblés et la durée d'affichage comme pour un média classique.
+
+### Sources des icônes
+
+L'éditeur utilise Lucide Icons, Tabler Icons et les assets SVG locaux :
+
+```text
+web/static/assets/lucide/
+web/static/assets/tabler/outline/
+web/static/assets/tabler/filled/
+```
 
 ---
 

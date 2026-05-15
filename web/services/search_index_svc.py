@@ -312,7 +312,7 @@ _WIKI_FR = [
         'title': "Éditeur d'annonces",
         'url': '/admin/wiki/s23',
         'description': 'Créer des annonces 16:9 avec calques, outils graphiques et export PNG',
-        'keywords': 'annonces éditeur canvas calques texte formes lignes images icônes qr code png export snap grille lucide tabler',
+        'keywords': 'annonces éditeur canvas calques texte formes lignes images icônes png export snap grille lucide tabler',
     },
 ]
 
@@ -617,7 +617,7 @@ _WIKI_EN = [
         'title': 'Announcement editor',
         'url': '/admin/wiki/s23',
         'description': 'Create 16:9 announcements with layers, graphic tools and PNG export',
-        'keywords': 'announcements editor canvas layers text shapes lines images icons qr code png export snap grid lucide tabler',
+        'keywords': 'announcements editor canvas layers text shapes lines images icons png export snap grid lucide tabler',
     },
 ]
 

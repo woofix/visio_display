@@ -23,10 +23,217 @@ ANNOUNCEMENT_SIZE = (1920, 1080)
 COMMONS_API_URL = "https://commons.wikimedia.org/w/api.php"
 ALLOWED_IMAGE_HOSTS = {"upload.wikimedia.org", "commons.wikimedia.org"}
 COMMONS_RASTER_MIMES = {"image/jpeg", "image/png", "image/webp"}
+DEFAULT_FONT_FAMILY = "'DejaVu Sans', Arial, sans-serif"
+FONT_FAMILIES = {
+    "dejavu sans": (
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    ),
+    "dejavu serif": (
+        "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf",
+    ),
+    "dejavu sans mono": (
+        "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+    ),
+    "liberation sans": (
+        "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+    ),
+    "liberation serif": (
+        "/usr/share/fonts/truetype/liberation2/LiberationSerif-Regular.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSerif-Regular.ttf",
+    ),
+    "liberation mono": (
+        "/usr/share/fonts/truetype/liberation2/LiberationMono-Regular.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
+    ),
+    "noto sans": (
+        "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+        "/usr/share/fonts/opentype/noto/NotoSans-Regular.ttf",
+    ),
+    "noto serif": (
+        "/usr/share/fonts/truetype/noto/NotoSerif-Regular.ttf",
+        "/usr/share/fonts/opentype/noto/NotoSerif-Regular.ttf",
+    ),
+    "noto sans display": (
+        "/usr/share/fonts/truetype/noto/NotoSansDisplay-Regular.ttf",
+        "/usr/share/fonts/opentype/noto/NotoSansDisplay-Regular.ttf",
+    ),
+    "noto serif display": (
+        "/usr/share/fonts/truetype/noto/NotoSerifDisplay-Regular.ttf",
+        "/usr/share/fonts/opentype/noto/NotoSerifDisplay-Regular.ttf",
+    ),
+    "source sans 3": (
+        "/usr/share/fonts/truetype/source-sans-pro/SourceSansPro-Regular.ttf",
+        "/usr/share/fonts/opentype/source-sans-pro/SourceSansPro-Regular.otf",
+        "/usr/share/fonts/truetype/adobe-source-sans-pro/SourceSansPro-Regular.otf",
+    ),
+    "source serif 4": (
+        "/usr/share/fonts/truetype/source-serif-pro/SourceSerifPro-Regular.ttf",
+        "/usr/share/fonts/opentype/source-serif-pro/SourceSerifPro-Regular.otf",
+        "/usr/share/fonts/truetype/adobe-source-serif-pro/SourceSerifPro-Regular.otf",
+    ),
+    "source code pro": (
+        "/usr/share/fonts/truetype/source-code-pro/SourceCodePro-Regular.ttf",
+        "/usr/share/fonts/opentype/source-code-pro/SourceCodePro-Regular.otf",
+        "/usr/share/fonts/truetype/adobe-source-code-pro/SourceCodePro-Regular.otf",
+    ),
+    "fira sans": (
+        "/usr/share/fonts/truetype/fira/FiraSans-Regular.ttf",
+        "/usr/share/fonts/opentype/fira/FiraSans-Regular.otf",
+    ),
+    "fira mono": (
+        "/usr/share/fonts/truetype/fira/FiraMono-Regular.ttf",
+        "/usr/share/fonts/opentype/fira/FiraMono-Regular.otf",
+    ),
+    "roboto": (
+        "/usr/share/fonts/truetype/roboto/unhinted/RobotoTTF/Roboto-Regular.ttf",
+        "/usr/share/fonts/truetype/roboto/Roboto-Regular.ttf",
+    ),
+    "open sans": (
+        "/usr/share/fonts/truetype/open-sans/OpenSans-Regular.ttf",
+        "/usr/share/fonts/truetype/open-sans/OpenSans-Regular.otf",
+    ),
+    "lato": (
+        "/usr/share/fonts/truetype/lato/Lato-Regular.ttf",
+    ),
+    "montserrat": (
+        "/usr/share/fonts/truetype/montserrat/Montserrat-Regular.ttf",
+    ),
+    "poppins": (
+        "/usr/share/fonts/truetype/poppins/Poppins-Regular.ttf",
+    ),
+    "nunito": (
+        "/usr/share/fonts/truetype/nunito/Nunito-Regular.ttf",
+    ),
+    "raleway": (
+        "/usr/share/fonts/truetype/raleway/Raleway-Regular.ttf",
+    ),
+    "oswald": (
+        "/usr/share/fonts/truetype/oswald/Oswald-Regular.ttf",
+    ),
+    "ubuntu": (
+        "/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf",
+    ),
+    "cantarell": (
+        "/usr/share/fonts/truetype/cantarell/Cantarell-Regular.ttf",
+    ),
+    "merriweather": (
+        "/usr/share/fonts/truetype/merriweather/Merriweather-Regular.ttf",
+    ),
+}
+FONT_BOLD_FAMILIES = {
+    "dejavu sans": (
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    ),
+    "dejavu serif": (
+        "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf",
+    ),
+    "dejavu sans mono": (
+        "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf",
+    ),
+    "liberation sans": (
+        "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+    ),
+    "liberation serif": (
+        "/usr/share/fonts/truetype/liberation2/LiberationSerif-Bold.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSerif-Bold.ttf",
+    ),
+    "liberation mono": (
+        "/usr/share/fonts/truetype/liberation2/LiberationMono-Bold.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationMono-Bold.ttf",
+    ),
+    "noto sans": (
+        "/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf",
+        "/usr/share/fonts/opentype/noto/NotoSans-Bold.ttf",
+    ),
+    "noto serif": (
+        "/usr/share/fonts/truetype/noto/NotoSerif-Bold.ttf",
+        "/usr/share/fonts/opentype/noto/NotoSerif-Bold.ttf",
+    ),
+    "noto sans display": (
+        "/usr/share/fonts/truetype/noto/NotoSansDisplay-Bold.ttf",
+        "/usr/share/fonts/opentype/noto/NotoSansDisplay-Bold.ttf",
+    ),
+    "noto serif display": (
+        "/usr/share/fonts/truetype/noto/NotoSerifDisplay-Bold.ttf",
+        "/usr/share/fonts/opentype/noto/NotoSerifDisplay-Bold.ttf",
+    ),
+    "source sans 3": (
+        "/usr/share/fonts/truetype/source-sans-pro/SourceSansPro-Bold.ttf",
+        "/usr/share/fonts/opentype/source-sans-pro/SourceSansPro-Bold.otf",
+        "/usr/share/fonts/truetype/adobe-source-sans-pro/SourceSansPro-Bold.otf",
+    ),
+    "source serif 4": (
+        "/usr/share/fonts/truetype/source-serif-pro/SourceSerifPro-Bold.ttf",
+        "/usr/share/fonts/opentype/source-serif-pro/SourceSerifPro-Bold.otf",
+        "/usr/share/fonts/truetype/adobe-source-serif-pro/SourceSerifPro-Bold.otf",
+    ),
+    "source code pro": (
+        "/usr/share/fonts/truetype/source-code-pro/SourceCodePro-Bold.ttf",
+        "/usr/share/fonts/opentype/source-code-pro/SourceCodePro-Bold.otf",
+        "/usr/share/fonts/truetype/adobe-source-code-pro/SourceCodePro-Bold.otf",
+    ),
+    "fira sans": (
+        "/usr/share/fonts/truetype/fira/FiraSans-Bold.ttf",
+        "/usr/share/fonts/opentype/fira/FiraSans-Bold.otf",
+    ),
+    "fira mono": (
+        "/usr/share/fonts/truetype/fira/FiraMono-Bold.ttf",
+        "/usr/share/fonts/opentype/fira/FiraMono-Bold.otf",
+    ),
+    "roboto": (
+        "/usr/share/fonts/truetype/roboto/unhinted/RobotoTTF/Roboto-Bold.ttf",
+        "/usr/share/fonts/truetype/roboto/Roboto-Bold.ttf",
+    ),
+    "open sans": (
+        "/usr/share/fonts/truetype/open-sans/OpenSans-Bold.ttf",
+        "/usr/share/fonts/truetype/open-sans/OpenSans-Bold.otf",
+    ),
+    "lato": (
+        "/usr/share/fonts/truetype/lato/Lato-Bold.ttf",
+    ),
+    "montserrat": (
+        "/usr/share/fonts/truetype/montserrat/Montserrat-Bold.ttf",
+    ),
+    "poppins": (
+        "/usr/share/fonts/truetype/poppins/Poppins-Bold.ttf",
+    ),
+    "nunito": (
+        "/usr/share/fonts/truetype/nunito/Nunito-Bold.ttf",
+    ),
+    "raleway": (
+        "/usr/share/fonts/truetype/raleway/Raleway-Bold.ttf",
+    ),
+    "oswald": (
+        "/usr/share/fonts/truetype/oswald/Oswald-Bold.ttf",
+    ),
+    "ubuntu": (
+        "/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf",
+    ),
+    "cantarell": (
+        "/usr/share/fonts/truetype/cantarell/Cantarell-Bold.ttf",
+    ),
+    "merriweather": (
+        "/usr/share/fonts/truetype/merriweather/Merriweather-Bold.ttf",
+    ),
+}
 
 
-def _font(size, bold=False):
-    candidates = (
+def _font_family_key(value):
+    family = str(value or DEFAULT_FONT_FAMILY).split(",", 1)[0].strip().strip("'\"").lower()
+    aliases = {
+        "source sans pro": "source sans 3",
+        "source serif pro": "source serif 4",
+    }
+    family = aliases.get(family, family)
+    return family if family in FONT_FAMILIES else "dejavu sans"
+
+
+def _font(size, bold=False, family=None):
+    key = _font_family_key(family)
+    family_candidates = (FONT_BOLD_FAMILIES if bold else FONT_FAMILIES).get(key, ())
+    candidates = family_candidates + (
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "/Library/Fonts/Arial Unicode.ttf",
         "/System/Library/Fonts/Supplemental/Arial Bold.ttf" if bold else "/System/Library/Fonts/Supplemental/Arial.ttf",
@@ -209,7 +416,7 @@ def _draw_text_element(canvas, draw, element):
     size = int(_num(element.get("fontSize"), 72, 8, 260))
     text = str(element.get("text") or "")
     fill = _alpha(element.get("color"), _num(element.get("opacity"), 1, 0, 1))
-    font = _font(size, bold=bool(element.get("bold", False)))
+    font = _font(size, bold=bool(element.get("bold", False)), family=element.get("fontFamily"))
     align = str(element.get("align") or "left")
     lines = []
     for paragraph in text.splitlines() or [""]:
@@ -239,35 +446,6 @@ def _draw_text_element(canvas, draw, element):
         text_draw.text((xx, yy), line, font=font, fill=fill)
         yy += line_height
     _paste_layer(canvas, text_layer, x, y, w, h, _num(element.get("rotation"), 0), 1)
-
-
-def _draw_qr_like(draw, element):
-    x = int(_num(element.get("x"), 0))
-    y = int(_num(element.get("y"), 0))
-    size = int(min(_num(element.get("w"), 220, 40), _num(element.get("h"), 220, 40)))
-    fill = _hex_to_rgb(element.get("color"), (17, 24, 39))
-    bg = _hex_to_rgb(element.get("background"), (255, 255, 255))
-    draw.rectangle((x, y, x + size, y + size), fill=bg)
-    modules = 29
-    cell = max(1, size // modules)
-    seed = str(element.get("text") or "https://")
-
-    def finder(cx, cy):
-        draw.rectangle((x + cx * cell, y + cy * cell, x + (cx + 7) * cell, y + (cy + 7) * cell), fill=fill)
-        draw.rectangle((x + (cx + 1) * cell, y + (cy + 1) * cell, x + (cx + 6) * cell, y + (cy + 6) * cell), fill=bg)
-        draw.rectangle((x + (cx + 2) * cell, y + (cy + 2) * cell, x + (cx + 5) * cell, y + (cy + 5) * cell), fill=fill)
-
-    finder(1, 1)
-    finder(21, 1)
-    finder(1, 21)
-    digest = base64.b16encode(seed.encode("utf-8", "ignore")).decode("ascii") or "A5"
-    for row in range(1, 28):
-        for col in range(1, 28):
-            if (col < 9 and row < 9) or (col > 19 and row < 9) or (col < 9 and row > 19):
-                continue
-            idx = (row * 29 + col) % len(digest)
-            if (ord(digest[idx]) + row * 3 + col * 5) % 4 in (0, 1):
-                draw.rectangle((x + col * cell, y + row * cell, x + (col + 1) * cell, y + (row + 1) * cell), fill=fill)
 
 
 def _render_layout_json(form, uploaded_file=None):
@@ -308,8 +486,6 @@ def _render_layout_json(form, uploaded_file=None):
             image = _media_image_from_src(element.get("media") or element.get("src"))
             if image:
                 _paste_layer(background, image, x, y, w, h, _num(element.get("rotation"), 0), opacity)
-        elif kind == "qr":
-            _draw_qr_like(draw, element)
     return background
 
 
@@ -459,10 +635,6 @@ def create_announcement(form, uploaded_file=None, username=None):
     generate_standard_renditions(filename)
 
     cfg = load_config()
-    cfg.setdefault("order", [])
-    if filename not in cfg["order"]:
-        cfg["order"].append(filename)
-
     duration = str(form.get("duration") or "").strip()
     if duration:
         try:
@@ -470,8 +642,15 @@ def create_announcement(form, uploaded_file=None, username=None):
         except ValueError:
             pass
 
-    for screen in form.getlist("screens"):
-        screen = str(screen or "").strip().lower()
+    selected_screens = [str(screen or "").strip().lower() for screen in form.getlist("screens")]
+    if "__default__" in selected_screens:
+        cfg.setdefault("order", [])
+        if filename not in cfg["order"]:
+            cfg["order"].append(filename)
+
+    for screen in selected_screens:
+        if screen == "__default__":
+            continue
         if screen in cfg.get("screens", {}):
             order = cfg["screens"][screen].setdefault("order", [])
             if filename not in order:

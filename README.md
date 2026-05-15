@@ -62,7 +62,7 @@ Application web légère de signalétique numérique. Elle affiche un diaporama 
 **Éditeur d'annonces intégré**
 - Création d'annonces directement dans Visio-Display depuis un éditeur graphique 16:9
 - Canvas central avec grille discrète, guides de sécurité, snap visuel et zoom
-- Barre d'outils gauche pour ajouter texte, formes, lignes, images, icônes et QR codes
+- Barre d'outils gauche pour ajouter texte, formes, lignes, images et icônes
 - Panneau contextuel droit avec réglages de document, style, position et calques selon la sélection
 - Système de calques compact : renommage, ordre, visibilité, verrouillage et déplacement
 - Export PNG 1920×1080 vers la médiathèque, avec durée d'affichage et écrans ciblés
@@ -301,7 +301,7 @@ Depuis **Paramètres > Version**, le super-admin peut vérifier la version dista
 
 **Créer une annonce :** ouvrir **Annonces** dans le menu d'administration. L'éditeur affiche un canvas 16:9 au centre, une barre d'outils à gauche et un panneau contextuel à droite.
 
-- Cliquez sur **Texte**, **Rectangle**, **Cercle**, **Ligne**, **Icône** ou **QR code** pour créer un nouveau calque.
+- Cliquez sur **Texte**, **Rectangle**, **Cercle**, **Ligne** ou **Icône** pour créer un nouveau calque.
 - Cliquez sur un élément du canvas pour afficher ses propriétés : style, position/taille et calques.
 - Cliquez dans le vide du canvas ou sur **Aperçu** pour revenir aux réglages du document : titre, message, fond, durée et écrans.
 - L'outil **Image** ouvre directement le panneau **Fond** avec les options couleur, upload d'image, médiathèque et banque externe.
@@ -885,7 +885,7 @@ A lightweight web-based digital signage. It displays a fullscreen slideshow of i
 **Built-in announcement editor**
 - Create announcements directly in Visio-Display from an integrated 16:9 graphic editor
 - Centered canvas with a subtle grid, safe guides, visual snapping and zoom
-- Left toolbar for adding text, shapes, lines, images, icons and QR codes
+- Left toolbar for adding text, shapes, lines, images and icons
 - Contextual right panel with document, style, position and layer controls depending on selection
 - Compact layer system: rename, reorder, show/hide, lock and drag layers
 - Export the final 1920×1080 PNG to the media library, with display duration and target screens
@@ -1126,7 +1126,7 @@ From **Settings > Version**, the super-admin can check the remote version, apply
 
 **Create an announcement:** open **Announcements** in the admin menu. The editor shows a 16:9 canvas in the center, a left toolbar, and a contextual panel on the right.
 
-- Click **Text**, **Rectangle**, **Circle**, **Line**, **Icon**, or **QR code** to create a new layer.
+- Click **Text**, **Rectangle**, **Circle**, **Line**, or **Icon** to create a new layer.
 - Click an element on the canvas to edit its properties: style, position/size, and layers.
 - Click the empty canvas area or **Preview** to return to document settings: title, message, background, duration, and screens.
 - The **Image** tool opens the **Background** panel directly with color, image upload, media library, and external image bank options.

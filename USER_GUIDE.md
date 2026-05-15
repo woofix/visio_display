@@ -884,7 +884,6 @@ The integrated editor creates 16:9 graphic announcements directly in Visio-Displ
 - **Shapes** and **lines** add simple graphic structure.
 - **Image** opens the **Background** panel directly, showing image upload, media library, external bank and background color without extra clicks.
 - **Icons** insert pictograms from Lucide Icons, Tabler Icons and local SVG files.
-- **QR code** generates a scannable layer that can be positioned on the canvas.
 
 ### Positioning and Layers
 
@@ -1793,7 +1792,6 @@ L'éditeur intégré permet de créer des annonces graphiques 16:9 directement d
 - **Formes** et **lignes** ajoutent une structure graphique simple.
 - **Image** ouvre directement le panneau **Fond** avec l'upload image, la médiathèque, la banque externe et la couleur de fond, sans clic supplémentaire.
 - **Icônes** insère des pictogrammes issus de Lucide Icons, Tabler Icons et des SVG locaux.
-- **QR code** génère un calque scannable positionnable sur le canvas.
 
 ### Positionnement et calques
 

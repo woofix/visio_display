@@ -40,6 +40,19 @@
 .tool-btn:hover,.tool-btn.active { transform:translateY(-1px); background:var(--primary-bg); border-color:color-mix(in srgb, var(--primary) 44%, var(--border)); color:var(--studio-blue); }
 .tool-btn.active { box-shadow:inset 3px 0 0 var(--primary), 0 0 0 2px var(--primary-fade); }
 .tool-btn:active { transform:translateY(0) scale(.98); }
+.tool-btn.library-toggle {
+    border-color:color-mix(in srgb, var(--studio-line) 80%, transparent);
+    background:color-mix(in srgb, var(--surface) 64%, transparent);
+}
+.tool-btn.library-toggle::before {
+    content:""; position:absolute; right:7px; bottom:7px; width:6px; height:6px; border-radius:999px;
+    background:currentColor; opacity:.52;
+}
+.tool-btn.library-toggle.active {
+    color:#fff; border-color:color-mix(in srgb, var(--primary) 82%, var(--border));
+    background:linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 74%, #0f172a));
+    box-shadow:0 0 0 2px var(--primary-fade);
+}
 .announcement-workspace { min-width:0; display:grid; grid-template-rows:auto minmax(0,1fr) auto; background:color-mix(in srgb, var(--bg-strong) 92%, #020617); }
 .canvas-topbar,.canvas-bottombar {
     min-height:50px; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 14px;
@@ -140,7 +153,7 @@ button.chip { font:inherit; cursor:pointer; }
     font:inherit; font-size:.69rem; font-weight:900; cursor:pointer;
 }
 .inspector-tab.active { background:var(--surface); color:var(--text); box-shadow:0 1px 6px rgba(0,0,0,.12); }
-.inspector-panel[hidden],.context-panel[hidden] { display:none; }
+.inspector-tabs[hidden],.inspector-panel[hidden],.context-panel[hidden] { display:none !important; }
 .inspector-section { border:1px solid color-mix(in srgb, var(--studio-line) 82%, transparent); border-radius:10px; background:var(--surface); overflow:hidden; }
 .inspector-title {
     display:flex; align-items:center; justify-content:space-between; gap:8px; padding:9px 10px; border-bottom:1px solid var(--studio-line);
@@ -162,6 +175,7 @@ button.chip { font:inherit; cursor:pointer; }
 .announcement-screen-list input { width:auto; min-height:0; accent-color:var(--primary); }
 .bg-source { display:none; }
 .bg-source.active { display:block; }
+.background-stack { display:none; }
 .background-stack.expanded {
     display:grid;
     gap:8px;
@@ -216,37 +230,34 @@ button.chip { font:inherit; cursor:pointer; }
     <input type="hidden" name="external_url" id="external-url">
     <input type="hidden" name="external_credit" id="external-credit">
     <div class="announcement-editor">
-        <section class="announcement-tools" aria-label="Outils">
+        <section class="announcement-tools" aria-label="{{ t('wiki_s23_tools_title') }}">
             <div class="announcement-toolbar">
                 <div class="tool-group">
-                    <button class="tool-btn" type="button" data-add="text" title="Texte" aria-label="Texte"><svg viewBox="0 0 24 24"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg></button>
-                    <button class="tool-btn" type="button" data-add="image" title="Image" aria-label="Image"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="m4 16 4-4 4 4 2-2 6 5"/></svg></button>
-                    <button class="tool-btn" type="button" data-add="icon" id="icon-tool" title="Icône" aria-label="Icône"><svg viewBox="0 0 24 24"><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1L12 16.9l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z"/></svg></button>
+                    <button class="tool-btn" type="button" data-add="text" title="{{ t('announcements_tool_text') }}" aria-label="{{ t('announcements_tool_text') }}"><svg viewBox="0 0 24 24"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg></button>
+                    <button class="tool-btn" type="button" data-add="image" id="image-tool" title="{{ t('announcements_tool_image') }}" aria-label="{{ t('announcements_tool_image') }}" aria-expanded="false"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="m4 16 4-4 4 4 2-2 6 5"/></svg></button>
+                    <button class="tool-btn library-toggle" type="button" data-add="icon" id="icon-tool" title="{{ t('announcements_tool_icon_library') }}" aria-label="{{ t('announcements_tool_icon') }}" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1L12 16.9l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z"/></svg></button>
                 </div>
                 <div class="tool-group">
-                    <button class="tool-btn" type="button" data-add="rect" title="Rectangle" aria-label="Rectangle"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/></svg></button>
-                    <button class="tool-btn" type="button" data-add="circle" title="Cercle" aria-label="Cercle"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/></svg></button>
-                    <button class="tool-btn" type="button" data-add="line" title="Ligne" aria-label="Ligne"><svg viewBox="0 0 24 24"><path d="M5 19 19 5"/></svg></button>
-                </div>
-                <div class="tool-group">
-                    <button class="tool-btn" type="button" data-add="qr" title="QR code" aria-label="QR code"><svg viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z"/><path d="M14 14h2v2h-2zM18 14h2v6h-4v-2h2zM14 18h2v2h-2z"/></svg></button>
+                    <button class="tool-btn" type="button" data-add="rect" title="{{ t('announcements_tool_rect') }}" aria-label="{{ t('announcements_tool_rect') }}"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/></svg></button>
+                    <button class="tool-btn" type="button" data-add="circle" title="{{ t('announcements_tool_circle') }}" aria-label="{{ t('announcements_tool_circle') }}"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/></svg></button>
+                    <button class="tool-btn" type="button" data-add="line" title="{{ t('announcements_tool_line') }}" aria-label="{{ t('announcements_tool_line') }}"><svg viewBox="0 0 24 24"><path d="M5 19 19 5"/></svg></button>
                 </div>
             </div>
         </section>
 
         <section class="announcement-workspace">
             <div class="canvas-topbar">
-                <div class="topbar-cluster"><strong>Affiche TV 16:9</strong> <span class="chip">1920 x 1080</span></div>
+                <div class="topbar-cluster"><strong>{{ t('announcements_canvas_title') }}</strong> <span class="chip">1920 x 1080</span></div>
                 <div class="canvas-controls">
-                    <button type="button" class="mini-btn" id="undo-btn" title="Annuler"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-1"/></svg></button>
-                    <button type="button" class="mini-btn" id="redo-btn" title="Rétablir"><svg viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h1"/></svg></button>
+                    <button type="button" class="mini-btn" id="undo-btn" title="{{ t('announcements_undo') }}"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-1"/></svg></button>
+                    <button type="button" class="mini-btn" id="redo-btn" title="{{ t('announcements_redo') }}"><svg viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h1"/></svg></button>
                     <button type="button" class="mini-btn" id="zoom-out" title="Zoom -"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
                     <span class="chip" id="zoom-label">100%</span>
                     <button type="button" class="mini-btn" id="zoom-in" title="Zoom +"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
-                    <button type="button" class="mini-btn" id="zoom-fit" title="Ajuster"><svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg></button>
-                    <button type="button" class="chip snap-on" id="snap-state">Snap actif</button>
-                    <button type="button" class="topbar-action" id="preview-btn">Aperçu</button>
-                    <button type="submit" class="topbar-action primary">Exporter</button>
+                    <button type="button" class="mini-btn" id="zoom-fit" title="{{ t('announcements_zoom_fit') }}"><svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg></button>
+                    <button type="button" class="chip snap-on" id="snap-state">{{ t('announcements_snap_on') }}</button>
+                    <button type="button" class="topbar-action" id="preview-btn">{{ t('announcements_reset_preview') }}</button>
+                    <button type="submit" class="topbar-action primary">{{ t('announcements_export') }}</button>
                 </div>
             </div>
             <section class="announcement-stage-wrap">
@@ -270,31 +281,31 @@ button.chip { font:inherit; cursor:pointer; }
                 <div class="feedback-strip">
                     <span class="chip" id="live-coords">X - Y -</span>
                     <span class="chip" id="live-size">W - H -</span>
-                    <span class="chip" id="live-align">Alignement -</span>
-                    <span class="chip" id="live-distance">Distance -</span>
+                    <span class="chip" id="live-align">{{ t('announcements_align_label') }}</span>
+                    <span class="chip" id="live-distance">{{ t('announcements_distance_label') }}</span>
                 </div>
-                <div class="feedback-strip"><span class="chip">Ctrl+Z</span><span class="chip">Ctrl+D</span><span class="chip">Shift resize</span></div>
+                <div class="feedback-strip"><span class="chip">Ctrl+Z</span><span class="chip">Ctrl+D</span><span class="chip">{{ t('announcements_shortcut_resize') }}</span></div>
             </div>
         </section>
 
         <aside class="inspector">
-            <div class="inspector-tabs" role="tablist" aria-label="Panneaux">
-                <button type="button" class="inspector-tab active" data-tab="style" role="tab">Style</button>
-                <button type="button" class="inspector-tab" data-tab="position" role="tab">Position</button>
-                <button type="button" class="inspector-tab" data-tab="layers" role="tab">Calques</button>
+            <div class="inspector-tabs" role="tablist" aria-label="{{ t('announcements_tabs_label') }}">
+                <button type="button" class="inspector-tab active" data-tab="style" role="tab">{{ t('announcements_tab_style') }}</button>
+                <button type="button" class="inspector-tab" data-tab="position" role="tab">{{ t('announcements_tab_position') }}</button>
+                <button type="button" class="inspector-tab" data-tab="layers" role="tab">{{ t('announcements_tab_layers') }}</button>
             </div>
 
             <div class="context-panel" data-context="document">
             <section class="inspector-section">
-                <div class="inspector-title">Document</div>
+                <div class="inspector-title">{{ t('announcements_document_title') }}</div>
                 <div class="inspector-body">
                     <div class="announcement-field">
                         <label for="announcement-title">{{ t('announcements_field_title') }}</label>
-                        <input id="announcement-title" name="title" maxlength="90" required value="Réunion d'information">
+                        <input id="announcement-title" name="title" maxlength="90" required value="{{ t('announcements_sample_title') }}">
                     </div>
                     <div class="announcement-field">
                         <label for="announcement-body">{{ t('announcements_field_body') }}</label>
-                        <textarea id="announcement-body" name="body" maxlength="420">Jeudi à 18h en salle polyvalente</textarea>
+                        <textarea id="announcement-body" name="body" maxlength="420">{{ t('announcements_sample_body') }}</textarea>
                     </div>
                     <div class="mini-row">
                         <div class="announcement-field">
@@ -304,7 +315,7 @@ button.chip { font:inherit; cursor:pointer; }
                         </div>
                         <div class="announcement-field">
                             <label for="place">{{ t('announcements_field_place') }}</label>
-                            <input id="place" name="place" maxlength="80" value="Salle polyvalente">
+                            <input id="place" name="place" maxlength="80" value="{{ t('announcements_sample_place') }}">
                         </div>
                     </div>
                     <div class="announcement-field" id="background-panel">
@@ -344,7 +355,7 @@ button.chip { font:inherit; cursor:pointer; }
             </section>
 
             <section class="inspector-section">
-                <div class="inspector-title">Réglages</div>
+                <div class="inspector-title">{{ t('announcements_settings_title') }}</div>
                 <div class="inspector-body">
                     <div class="announcement-field">
                         <label for="duration">{{ t('announcements_duration') }}</label>
@@ -354,7 +365,7 @@ button.chip { font:inherit; cursor:pointer; }
                         <label>{{ t('announcements_screens') }}</label>
                         <div class="announcement-screen-list">
                             {% for screen in screens %}
-                            <label><input type="checkbox" name="screens" value="{{ screen }}"> {{ screen }}</label>
+                            <label><input type="checkbox" name="screens" value="{{ screen.value }}"> {{ screen.label }}</label>
                             {% endfor %}
                             {% if not screens %}<span>{{ t('announcements_no_screens') }}</span>{% endif %}
                         </div>
@@ -369,36 +380,67 @@ button.chip { font:inherit; cursor:pointer; }
 
             <div class="context-panel" data-context="element" hidden>
             <section class="inspector-section">
-                <div class="inspector-title">Élément sélectionné</div>
+                <div class="inspector-title">{{ t('announcements_selected_title') }}</div>
                 <div class="inspector-body">
                     <div class="announcement-field">
-                        <label>Objet actif</label>
+                        <label>{{ t('announcements_active_object') }}</label>
                         <select id="element-list"></select>
                     </div>
-                    <div class="announcement-field"><label>Nom du calque</label><input id="prop-name" type="text"></div>
-                    <div class="announcement-field" data-field="text"><label>Texte / URL QR</label><textarea id="prop-text"></textarea></div>
+                    <div class="announcement-field"><label>{{ t('announcements_layer_name') }}</label><input id="prop-name" type="text"></div>
+                    <div class="announcement-field" data-field="text"><label>{{ t('announcements_prop_text') }}</label><textarea id="prop-text"></textarea></div>
                     <div class="announcement-actions">
-                        <button type="button" class="btn secondary" id="backward">Arrière</button>
-                        <button type="button" class="btn secondary" id="forward">Avant</button>
-                        <button type="button" class="btn secondary" id="duplicate">Dupliquer</button>
-                        <button type="button" class="btn secondary" id="delete">Supprimer</button>
+                        <button type="button" class="btn secondary" id="backward">{{ t('announcements_backward') }}</button>
+                        <button type="button" class="btn secondary" id="forward">{{ t('announcements_forward') }}</button>
+                        <button type="button" class="btn secondary" id="duplicate">{{ t('announcements_duplicate') }}</button>
+                        <button type="button" class="btn secondary" id="delete">{{ t('announcements_delete') }}</button>
                     </div>
                 </div>
             </section>
 
             <div class="inspector-panel" data-panel="style">
             <section class="inspector-section">
-                <div class="inspector-title">Style</div>
+                <div class="inspector-title">{{ t('announcements_tab_style') }}</div>
                 <div class="inspector-body">
                     <div class="mini-row">
-                        <div class="announcement-field"><label>Couleur</label><input id="prop-color" type="color"></div>
-                        <div class="announcement-field"><label>Opacité</label><input id="prop-opacity" type="range" min="0" max="1" step=".05"></div>
-                        <div class="announcement-field" data-field="typography"><label>Taille police</label><input id="prop-font" type="number" min="8" max="260"></div>
-                        <div class="announcement-field"><label>Rotation</label><input id="prop-rotation" type="number"></div>
+                        <div class="announcement-field"><label>{{ t('announcements_color') }}</label><input id="prop-color" type="color"></div>
+                        <div class="announcement-field"><label>{{ t('announcements_opacity') }}</label><input id="prop-opacity" type="range" min="0" max="1" step=".05"></div>
+                        <div class="announcement-field" data-field="typography"><label>{{ t('announcements_font_size') }}</label><input id="prop-font" type="number" min="8" max="260"></div>
+                        <div class="announcement-field"><label>{{ t('announcements_rotation') }}</label><input id="prop-rotation" type="number"></div>
                     </div>
                     <div class="announcement-field" data-field="typography">
-                        <label>Alignement</label>
-                        <select id="prop-align"><option value="left">Gauche</option><option value="center">Centre</option><option value="right">Droite</option></select>
+                        <label>{{ t('announcements_font_family') }}</label>
+                        <select id="prop-font-family">
+                            <option value="'DejaVu Sans', Arial, sans-serif">DejaVu Sans</option>
+                            <option value="'DejaVu Serif', Georgia, serif">DejaVu Serif</option>
+                            <option value="'DejaVu Sans Mono', 'Courier New', monospace">DejaVu Sans Mono</option>
+                            <option value="'Liberation Sans', Arial, sans-serif">Liberation Sans</option>
+                            <option value="'Liberation Serif', Georgia, serif">Liberation Serif</option>
+                            <option value="'Liberation Mono', 'Courier New', monospace">Liberation Mono</option>
+                            <option value="'Noto Sans', Arial, sans-serif">Noto Sans</option>
+                            <option value="'Noto Serif', Georgia, serif">Noto Serif</option>
+                            <option value="'Noto Sans Display', 'Noto Sans', Arial, sans-serif">Noto Sans Display</option>
+                            <option value="'Noto Serif Display', 'Noto Serif', Georgia, serif">Noto Serif Display</option>
+                            <option value="'Source Sans 3', 'Source Sans Pro', Arial, sans-serif">Source Sans</option>
+                            <option value="'Source Serif 4', 'Source Serif Pro', Georgia, serif">Source Serif</option>
+                            <option value="'Source Code Pro', 'DejaVu Sans Mono', monospace">Source Code Pro</option>
+                            <option value="'Fira Sans', Arial, sans-serif">Fira Sans</option>
+                            <option value="'Fira Mono', 'DejaVu Sans Mono', monospace">Fira Mono</option>
+                            <option value="Roboto, Arial, sans-serif">Roboto</option>
+                            <option value="'Open Sans', Arial, sans-serif">Open Sans</option>
+                            <option value="Lato, Arial, sans-serif">Lato</option>
+                            <option value="Montserrat, Arial, sans-serif">Montserrat</option>
+                            <option value="Poppins, Arial, sans-serif">Poppins</option>
+                            <option value="Nunito, Arial, sans-serif">Nunito</option>
+                            <option value="Raleway, Arial, sans-serif">Raleway</option>
+                            <option value="Oswald, Arial, sans-serif">Oswald</option>
+                            <option value="Ubuntu, Arial, sans-serif">Ubuntu</option>
+                            <option value="Cantarell, Arial, sans-serif">Cantarell</option>
+                            <option value="Merriweather, Georgia, serif">Merriweather</option>
+                        </select>
+                    </div>
+                    <div class="announcement-field" data-field="typography">
+                        <label>{{ t('announcements_alignment') }}</label>
+                        <select id="prop-align"><option value="left">{{ t('announcements_align_left') }}</option><option value="center">{{ t('announcements_align_center_option') }}</option><option value="right">{{ t('announcements_align_right') }}</option></select>
                     </div>
                 </div>
             </section>
@@ -406,13 +448,13 @@ button.chip { font:inherit; cursor:pointer; }
 
             <div class="inspector-panel" data-panel="position" hidden>
             <section class="inspector-section">
-                <div class="inspector-title">Position/Taille</div>
+                <div class="inspector-title">{{ t('announcements_position_size') }}</div>
                 <div class="inspector-body">
                     <div class="mini-row">
                         <div class="announcement-field"><label>X</label><input id="prop-x" type="number"></div>
                         <div class="announcement-field"><label>Y</label><input id="prop-y" type="number"></div>
-                        <div class="announcement-field"><label>Largeur</label><input id="prop-w" type="number" min="1"></div>
-                        <div class="announcement-field"><label>Hauteur</label><input id="prop-h" type="number" min="1"></div>
+                        <div class="announcement-field"><label>{{ t('announcements_width') }}</label><input id="prop-w" type="number" min="1"></div>
+                        <div class="announcement-field"><label>{{ t('announcements_height') }}</label><input id="prop-h" type="number" min="1"></div>
                     </div>
                 </div>
             </section>
@@ -420,7 +462,7 @@ button.chip { font:inherit; cursor:pointer; }
 
             <div class="inspector-panel" data-panel="layers" hidden>
             <section class="inspector-section">
-                <div class="inspector-title">Calques</div>
+                <div class="inspector-title">{{ t('announcements_layers_title') }}</div>
                 <div class="inspector-body">
                     <div class="layer-list" id="layer-list"></div>
                 </div>
@@ -430,20 +472,20 @@ button.chip { font:inherit; cursor:pointer; }
 
             <div class="icon-browser" id="icon-browser">
                 <div class="announcement-field">
-                    <label>Catégorie</label>
+                    <label>{{ t('announcements_icon_category') }}</label>
                     <select id="icon-category">
-                        <option value="">Toutes</option>
+                        <option value="">{{ t('announcements_icon_all') }}</option>
                         <option value="tabler-outline">Tabler outline</option>
                         <option value="tabler-filled">Tabler filled</option>
                         <option value="lucide">Lucide</option>
                     </select>
                 </div>
                 <div class="announcement-field">
-                    <label>Recherche</label>
+                    <label>{{ t('announcements_icon_search') }}</label>
                     <input id="icon-query" type="search" placeholder="calendar, alert, info">
                 </div>
                 <div class="icon-grid" id="icon-grid"></div>
-                <button type="button" class="btn secondary" id="icon-more">Charger plus</button>
+                <button type="button" class="btn secondary" id="icon-more">{{ t('announcements_icon_more') }}</button>
             </div>
         </aside>
     </div>
@@ -463,6 +505,34 @@ button.chip { font:inherit; cursor:pointer; }
     const primaryColor = () => themeColor('--primary') || '#4f46e5';
     const accentColor = () => themeColor('--primary-light') || primaryColor();
     const mediaPreviews = {{ media_preview_map|tojson }};
+    const labels = {
+        noLayers: {{ t('announcements_no_layers')|tojson }},
+        moveLayer: {{ t('announcements_move_layer')|tojson }},
+        renameLayer: {{ t('announcements_rename_layer')|tojson }},
+        showLayer: {{ t('announcements_show_layer')|tojson }},
+        hideLayer: {{ t('announcements_hide_layer')|tojson }},
+        lockLayer: {{ t('announcements_lock_layer')|tojson }},
+        unlockLayer: {{ t('announcements_unlock_layer')|tojson }},
+        copySuffix: {{ t('announcements_copy_suffix')|tojson }},
+        alignLabel: {{ t('announcements_align_label')|tojson }},
+        distanceLabel: {{ t('announcements_distance_label')|tojson }},
+        alignCenter: {{ t('announcements_align_center')|tojson }},
+        alignFree: {{ t('announcements_align_free')|tojson }},
+        actionLabel: {{ t('announcements_action_label', action='__ACTION__')|tojson }},
+        marginsLabel: {{ t('announcements_margins_label', left='__LEFT__', right='__RIGHT__')|tojson }},
+        snapOn: {{ t('announcements_snap_on')|tojson }},
+        snapOff: {{ t('announcements_snap_off')|tojson }},
+        layerTitle: {{ t('announcements_layer_title')|tojson }},
+        layerMessage: {{ t('announcements_layer_message')|tojson }},
+        layerBanner: {{ t('announcements_layer_banner')|tojson }},
+        layerFooter: {{ t('announcements_layer_footer')|tojson }},
+        layerNewText: {{ t('announcements_layer_new_text')|tojson }},
+        toolRect: {{ t('announcements_tool_rect')|tojson }},
+        toolCircle: {{ t('announcements_tool_circle')|tojson }},
+        toolLine: {{ t('announcements_tool_line')|tojson }},
+        sampleFooter: {{ t('announcements_sample_footer')|tojson }},
+        genericLayer: {{ t('announcements_tab_layers')|tojson }},
+    };
     const clamp = (n,min,max) => Math.max(min, Math.min(max, Number(n) || 0));
     const esc = v => String(v || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'":'&#39;'}[c]));
     const icons = {
@@ -543,12 +613,22 @@ button.chip { font:inherit; cursor:pointer; }
         qsa('.inspector-tabs').forEach(tabs => { tabs.hidden = !item; });
         qsa('.inspector-tab').forEach(tab => tab.classList.toggle('active', tab.dataset.tab === activeTab));
         qsa('.inspector-panel').forEach(panel => { panel.hidden = panel.dataset.panel !== activeTab || !item; });
-        const isTextLike = item && (item.type === 'text' || item.type === 'qr');
+        const isTextLike = item && item.type === 'text';
         qsa('[data-field="typography"],[data-field="text"]').forEach(field => { field.hidden = !isTextLike; });
+    }
+    function setToolPanel(panel) {
+        const showImage = panel === 'image';
+        const showIcons = panel === 'icons';
+        qs('#background-stack').classList.toggle('expanded', showImage);
+        qs('#image-tool')?.classList.toggle('active', showImage);
+        qs('#image-tool')?.setAttribute('aria-expanded', showImage ? 'true' : 'false');
+        qs('#icon-browser').classList.toggle('active', showIcons);
+        qs('#icon-tool').classList.toggle('active', showIcons);
+        qs('#icon-tool').setAttribute('aria-expanded', showIcons ? 'true' : 'false');
     }
     function openBackgroundPanel() {
         selected = null;
-        qs('#background-stack').classList.add('expanded');
+        setToolPanel('image');
         renderAll();
         qs('#background-panel')?.scrollIntoView({block:'nearest'});
     }
@@ -563,10 +643,10 @@ button.chip { font:inherit; cursor:pointer; }
     }
 
     function defaultElements() {
-        addElement({name:'Titre', type:'text', text:qs('#announcement-title').value, x:120, y:230, w:1280, h:170, fontSize:92, color:'#ffffff', opacity:1, align:'left'}, false);
-        addElement({name:'Message', type:'text', text:qs('#announcement-body').value, x:124, y:430, w:1120, h:150, fontSize:46, color:'#ffffff', opacity:.92, align:'left'}, false);
-        addElement({name:'Bandeau info', type:'rect', x:112, y:890, w:720, h:70, color:primaryColor(), opacity:.88, radius:10}, false);
-        addElement({name:'Date et lieu', type:'text', text:'Jeudi 16 mai · 18h · Salle polyvalente', x:142, y:908, w:900, h:55, fontSize:34, color:'#ffffff', opacity:1, align:'left'}, false);
+        addElement({name:labels.layerTitle, type:'text', text:qs('#announcement-title').value, x:120, y:230, w:1280, h:170, fontSize:92, fontFamily:"'DejaVu Sans', Arial, sans-serif", color:'#ffffff', opacity:1, align:'left'}, false);
+        addElement({name:labels.layerMessage, type:'text', text:qs('#announcement-body').value, x:124, y:430, w:1120, h:150, fontSize:46, fontFamily:"'DejaVu Sans', Arial, sans-serif", color:'#ffffff', opacity:.92, align:'left'}, false);
+        addElement({name:labels.layerBanner, type:'rect', x:112, y:890, w:720, h:70, color:primaryColor(), opacity:.88, radius:10}, false);
+        addElement({name:labels.layerFooter, type:'text', text:labels.sampleFooter, x:142, y:908, w:900, h:55, fontSize:34, fontFamily:"'DejaVu Sans', Arial, sans-serif", color:'#ffffff', opacity:1, align:'left'}, false);
         selected = null;
         renderAll(); syncProps(false);
         pushHistory();
@@ -589,7 +669,7 @@ button.chip { font:inherit; cursor:pointer; }
         node.className = `ann-el ${item.type}${selected === item.id ? ' selected' : ''}${item.hidden ? ' hidden' : ''}${item.locked ? ' locked' : ''}`;
         Object.assign(node.style, {left:item.x+'px', top:item.y+'px', width:item.w+'px', height:item.h+'px', opacity:item.opacity ?? 1, transform:`rotate(${item.rotation || 0}deg)`, zIndex:item.z});
         if (item.type === 'text') {
-            node.style.color = item.color || '#fff'; node.style.fontSize = (item.fontSize || 64) + 'px'; node.style.textAlign = item.align || 'left';
+            node.style.color = item.color || '#fff'; node.style.fontSize = (item.fontSize || 64) + 'px'; node.style.fontFamily = item.fontFamily || "'DejaVu Sans', Arial, sans-serif"; node.style.textAlign = item.align || 'left';
             node.innerHTML = `${esc(item.text || '')}${handles()}`;
         } else if (item.type === 'rect' || item.type === 'circle') {
             node.style.background = item.color || primaryColor(); node.style.borderRadius = item.type === 'circle' ? '999px' : ((item.radius ?? 18) + 'px');
@@ -597,13 +677,13 @@ button.chip { font:inherit; cursor:pointer; }
         } else if (item.type === 'line') {
             node.style.borderTopColor = item.color || '#fff'; node.style.borderTopWidth = (item.strokeWidth || 8) + 'px';
             node.innerHTML = handles();
-        } else if (item.type === 'image' || item.type === 'icon' || item.type === 'qr') {
+        } else if (item.type === 'image' || item.type === 'icon') {
             node.innerHTML = `<img src="${esc(item.src || '')}" alt="">${handles()}`;
         }
     }
 
     function addElement(base, history=true) {
-        const item = {id:'el'+seq++, name:base.name || `${base.type || 'Calque'} ${seq - 1}`, x:180, y:180, w:360, h:160, rotation:0, opacity:1, color:'#ffffff', z:els.length + 1, hidden:false, locked:false, ...base};
+        const item = {id:'el'+seq++, name:base.name || `${base.type || labels.genericLayer} ${seq - 1}`, x:180, y:180, w:360, h:160, rotation:0, opacity:1, color:'#ffffff', z:els.length + 1, hidden:false, locked:false, ...base};
         els.push(item); selected = item.id; renderAll(); syncProps();
         if (history) pushHistory();
         return item;
@@ -624,16 +704,16 @@ button.chip { font:inherit; cursor:pointer; }
     function renderLayers() {
         const list = qs('#layer-list');
         if (!els.length) {
-            list.innerHTML = '<p class="empty-note">Aucun calque.</p>';
+            list.innerHTML = `<p class="empty-note">${esc(labels.noLayers)}</p>`;
             return;
         }
         list.innerHTML = [...els].sort((a,b) => b.z - a.z).map(item => `
             <div class="layer-row${selected === item.id ? ' selected' : ''}" draggable="true" data-id="${item.id}">
-                <span class="layer-grip" title="Déplacer">${icons.grip}</span>
-                <input value="${esc(item.name || item.id)}" aria-label="Renommer ${esc(item.name || item.id)}">
+                <span class="layer-grip" title="${esc(labels.moveLayer)}">${icons.grip}</span>
+                <input value="${esc(item.name || item.id)}" aria-label="${esc(labels.renameLayer.replace('{name}', item.name || item.id))}">
                 <span class="layer-actions">
-                    <button type="button" data-layer-action="visibility" title="${item.hidden ? 'Afficher' : 'Masquer'}">${item.hidden ? icons.eyeOff : icons.eye}</button>
-                    <button type="button" data-layer-action="lock" title="${item.locked ? 'Déverrouiller' : 'Verrouiller'}">${item.locked ? icons.lock : icons.unlock}</button>
+                    <button type="button" data-layer-action="visibility" title="${item.hidden ? esc(labels.showLayer) : esc(labels.hideLayer)}">${item.hidden ? icons.eyeOff : icons.eye}</button>
+                    <button type="button" data-layer-action="lock" title="${item.locked ? esc(labels.unlockLayer) : esc(labels.lockLayer)}">${item.locked ? icons.lock : icons.unlock}</button>
                 </span>
             </div>`).join('');
         qsa('.layer-row').forEach(row => {
@@ -785,6 +865,7 @@ button.chip { font:inherit; cursor:pointer; }
         qs('#prop-opacity').value = item?.opacity ?? 1;
         qs('#prop-color').value = item?.color || '#ffffff';
         qs('#prop-font').value = item?.fontSize || '';
+        qs('#prop-font-family').value = item?.fontFamily || "'DejaVu Sans', Arial, sans-serif";
         qs('#prop-text').value = item?.text || '';
         qs('#prop-align').value = item?.align || 'left';
         updateFeedback();
@@ -795,8 +876,7 @@ button.chip { font:inherit; cursor:pointer; }
         item.name = qs('#prop-name').value || item.name;
         item.x = Number(qs('#prop-x').value); item.y = Number(qs('#prop-y').value); item.w = Math.max(1, Number(qs('#prop-w').value)); item.h = Math.max(1, Number(qs('#prop-h').value));
         item.rotation = Number(qs('#prop-rotation').value); item.opacity = Number(qs('#prop-opacity').value); item.color = qs('#prop-color').value;
-        item.fontSize = Number(qs('#prop-font').value) || item.fontSize; item.text = qs('#prop-text').value; item.align = qs('#prop-align').value;
-        if (item.type === 'qr') item.src = makeQr(item.text || 'https://');
+        item.fontSize = Number(qs('#prop-font').value) || item.fontSize; item.fontFamily = qs('#prop-font-family').value || item.fontFamily; item.text = qs('#prop-text').value; item.align = qs('#prop-align').value;
         renderAll();
     }));
     qsa('[id^="prop-"]').forEach(input => input.addEventListener('change', pushHistory));
@@ -825,15 +905,6 @@ button.chip { font:inherit; cursor:pointer; }
     qs('#background-media').addEventListener('input', () => { qs('#background-mode').value = 'media'; setBackground(); });
     qs('#background-upload').addEventListener('input', () => { qs('#background-mode').value = 'upload'; setBackground(); });
 
-    function makeQr(text) {
-        const c = document.createElement('canvas'), ctx = c.getContext('2d'), n = 29, cell = 8; c.width = c.height = n * cell;
-        ctx.fillStyle = '#fff'; ctx.fillRect(0,0,c.width,c.height); ctx.fillStyle = '#111827';
-        const finder = (x,y) => { ctx.fillRect(x*cell,y*cell,7*cell,7*cell); ctx.fillStyle='#fff'; ctx.fillRect((x+1)*cell,(y+1)*cell,5*cell,5*cell); ctx.fillStyle='#111827'; ctx.fillRect((x+2)*cell,(y+2)*cell,3*cell,3*cell); };
-        finder(1,1); finder(21,1); finder(1,21);
-        const seed = Array.from(String(text || 'https://')).reduce((a,ch)=>a+ch.charCodeAt(0),0);
-        for (let y=1;y<28;y++) for (let x=1;x<28;x++) if (!((x<9&&y<9)||(x>19&&y<9)||(x<9&&y>19)) && ((x*7+y*11+seed)%4<2)) ctx.fillRect(x*cell,y*cell,cell,cell);
-        return c.toDataURL('image/png');
-    }
     async function iconToPng(url) {
         const text = await fetch(url).then(r => r.text());
         const img = new Image(), svg = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(text)));
@@ -844,13 +915,17 @@ button.chip { font:inherit; cursor:pointer; }
 
     qsa('[data-add]').forEach(btn => btn.addEventListener('click', async () => {
         const type = btn.dataset.add;
-        if (type === 'text') addElement({name:'Nouveau texte', type:'text', text:'Nouveau texte', w:520, h:110, fontSize:64});
-        if (type === 'rect') addElement({name:'Rectangle', type:'rect', w:360, h:180, color:primaryColor(), opacity:.9});
-        if (type === 'circle') addElement({name:'Cercle', type:'circle', w:220, h:220, color:accentColor(), opacity:.9});
-        if (type === 'line') addElement({name:'Ligne', type:'line', w:420, h:0, strokeWidth:10});
+        if (type !== 'image' && type !== 'icon') setToolPanel('');
+        if (type === 'text') addElement({name:labels.layerNewText, type:'text', text:labels.layerNewText, w:520, h:110, fontSize:64, fontFamily:"'DejaVu Sans', Arial, sans-serif"});
+        if (type === 'rect') addElement({name:labels.toolRect, type:'rect', w:360, h:180, color:primaryColor(), opacity:.9});
+        if (type === 'circle') addElement({name:labels.toolCircle, type:'circle', w:220, h:220, color:accentColor(), opacity:.9});
+        if (type === 'line') addElement({name:labels.toolLine, type:'line', w:420, h:0, strokeWidth:10});
         if (type === 'image') openBackgroundPanel();
-        if (type === 'icon') { qs('#icon-browser').classList.toggle('active'); qs('#icon-tool').classList.toggle('active'); if (!qs('#icon-grid').children.length) loadIcons(true); }
-        if (type === 'qr') addElement({name:'QR code', type:'qr', text:'https://', src:makeQr('https://'), w:230, h:230, color:'#111827'});
+        if (type === 'icon') {
+            const willOpen = !qs('#icon-browser').classList.contains('active');
+            setToolPanel(willOpen ? 'icons' : '');
+            if (willOpen && !qs('#icon-grid').children.length) loadIcons(true);
+        }
     }));
 
     async function loadIcons(reset=false) {
@@ -888,7 +963,7 @@ button.chip { font:inherit; cursor:pointer; }
     }
     function duplicateSelected() {
         const item = current(); if (!item) return;
-        const {id, node, ...copy} = item; addElement({...copy, name:`${item.name || item.type} copie`, x:item.x + 40, y:item.y + 40});
+        const {id, node, ...copy} = item; addElement({...copy, name:`${item.name || item.type} ${labels.copySuffix}`, x:item.x + 40, y:item.y + 40});
     }
     qs('#delete').addEventListener('click', deleteSelected);
     qs('#duplicate').addEventListener('click', duplicateSelected);
@@ -901,8 +976,8 @@ button.chip { font:inherit; cursor:pointer; }
         qs('#live-size').textContent = item ? `W ${Math.round(item.w)}  H ${Math.round(item.h)}` : 'W - H -';
         const cx = item ? Math.round(item.x + item.w / 2) : null;
         const cy = item ? Math.round(item.y + item.h / 2) : null;
-        qs('#live-align').textContent = item ? (Math.abs(cx - 960) < 2 || Math.abs(cy - 540) < 2 ? 'Alignement centre' : (action ? `Action ${action}` : 'Alignement libre')) : 'Alignement -';
-        qs('#live-distance').textContent = item ? `Marges ${Math.round(item.x)} / ${Math.round(1920 - item.x - item.w)}` : 'Distance -';
+        qs('#live-align').textContent = item ? (Math.abs(cx - 960) < 2 || Math.abs(cy - 540) < 2 ? labels.alignCenter : (action ? labels.actionLabel.replace('__ACTION__', action) : labels.alignFree)) : labels.alignLabel;
+        qs('#live-distance').textContent = item ? labels.marginsLabel.replace('__LEFT__', Math.round(item.x)).replace('__RIGHT__', Math.round(1920 - item.x - item.w)) : labels.distanceLabel;
     }
 
     qs('#announcement-title').addEventListener('input', () => { if (els[0]?.type === 'text') { els[0].text = qs('#announcement-title').value; renderElement(els[0]); renderMinimap(); } });
@@ -916,7 +991,7 @@ button.chip { font:inherit; cursor:pointer; }
     qs('#redo-btn').addEventListener('click', redo);
     qs('#snap-state').addEventListener('click', () => {
         snapEnabled = !snapEnabled;
-        qs('#snap-state').textContent = snapEnabled ? 'Snap actif' : 'Snap inactif';
+        qs('#snap-state').textContent = snapEnabled ? labels.snapOn : labels.snapOff;
         qs('#snap-state').classList.toggle('snap-on', snapEnabled);
         qs('#snap-state').classList.toggle('snap-off', !snapEnabled);
         hideGuides();

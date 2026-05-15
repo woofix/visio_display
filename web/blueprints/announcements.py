@@ -4,9 +4,9 @@ from flask import Blueprint, Response, jsonify, redirect, render_template, reque
 
 from blueprints.guards import admin_guard, feature_guard, permission_redirect_guard
 from services.announcement_svc import _safe_image_url, commons_search, create_announcement, fetch_thumbnail_bytes, image_media_choices
-from services.config_svc import load_config
+from services.config_svc import get_default_screen_name, load_config
 from services.icon_svc import scan_svg_icons
-from services.i18n import _flash
+from services.i18n import _flash, _t
 from services.media_svc import build_media_preview_map, get_logo_path
 from services.users_svc import has_permission, has_screen_access, is_superadmin, load_users
 
@@ -28,7 +28,10 @@ def admin_announcements_page():
 
     cfg = load_config()
     media_choices = image_media_choices()
-    screens = [screen for screen in cfg.get("screens", {}) if has_screen_access(screen)]
+    screens = []
+    if has_screen_access(""):
+        screens.append({"value": "__default__", "label": get_default_screen_name(cfg) or _t("announcements_default_screen_label")})
+    screens.extend({"value": screen, "label": screen} for screen in cfg.get("screens", {}) if has_screen_access(screen))
     users = load_users()
     return render_template(
         "admin_announcements.html",

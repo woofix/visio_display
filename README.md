@@ -1,6 +1,6 @@
 <!-- Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details. -->
 
-# Visio-Display — Diaporama numérique · Digital Signage
+# Visio-Display — Plateforme self-hosted d'affichage dynamique · Self-hosted digital signage platform
 
 [🇫🇷 Français](#français) · [🇺🇸 English](#english)
 
@@ -8,15 +8,58 @@
 
 ## Français
 
-Application web légère de signalétique numérique. Elle affiche un diaporama plein écran d'images et de vidéos avec des transitions en fondu enchaîné, et génère automatiquement une carte éphéméride quotidienne.
+Visio-Display est une plateforme moderne de **digital signage self-hosted**, pensée pour piloter plusieurs écrans depuis une administration web centralisée. Elle combine gestion de médias, campagnes temporaires, groupes, clients kiosque distants, monitoring, RBAC, sauvegardes, mise à jour serveur et éditeur graphique 16:9 dans une stack Docker-native simple à exploiter.
+
+Le projet cible les environnements homelab, devops, associations, établissements, commerces et organisations qui veulent garder le contrôle local de leurs données tout en déployant une solution complète avec Flask, PostgreSQL, Redis, RQ et Docker Compose.
+
+### Pourquoi Visio-Display ?
+
+Les solutions d'affichage dynamique cloud sont souvent pratiques au démarrage, mais elles imposent rapidement des abonnements, des dépendances externes, des limites de confidentialité ou un verrouillage fournisseur. À l'inverse, beaucoup de solutions auto-hébergées restent lourdes, anciennes, difficiles à maintenir ou trop fermées pour un usage quotidien.
+
+Visio-Display existe pour offrir une alternative claire : une plateforme self-hosted complète, déployable avec Docker Compose, administrable depuis un navigateur, capable de gérer plusieurs écrans et clients kiosque sans externaliser les données. L'objectif est de rester simple à installer, lisible pour un administrateur système, et assez moderne pour s'intégrer naturellement dans un homelab, un serveur associatif, une VM interne ou une petite infrastructure devops.
+
+### Points forts
+
+- Gestion multi-écrans avec écrans nommés, listes indépendantes et diffusion d'une liste vers d'autres écrans
+- Campagnes temporaires avec dates, priorités, groupes, médias ciblés et écrans concernés
+- Groupes de médias, pools par passage, activation/désactivation par groupe et restrictions par écran
+- Éditeur graphique intégré 16:9 avec calques, grille, snap, icônes Lucide/Tabler et export PNG 1920×1080
+- Installation distante de clients kiosque via SSH, autologin, URL d'affichage sécurisée et nom d'écran
+- Heartbeat clients, watchdog kiosque, état des clients et actions d'alimentation depuis l'administration
+- Mise à jour serveur depuis l'admin avec contrôles Git/Docker, verrou système et redémarrage assisté
+- Sauvegarde/restauration Docker et sauvegardes web avec progression et conservation automatique
+- RBAC avec rôles personnalisés, permissions granulaires et restrictions d'accès par écran
+- Recherche globale, journal d'activité, API JSON et interface d'administration responsive
+
+### Architecture rapide
+
+Visio-Display s'exécute comme une stack self-hosted Docker Compose :
+
+- **Flask / Gunicorn** sert l'administration, l'affichage public, l'API et les exports d'annonces
+- **PostgreSQL** stocke la configuration applicative, les utilisateurs, rôles, jobs, clients et journaux
+- **Redis + RQ worker** exécutent les traitements asynchrones, notamment l'encodage et la compression vidéo
+- **Volumes hôte** conservent les médias publics (`MEDIA_DIR`) et les données privées (`PRIVATE_DIR`)
+- **Clients kiosque** ouvrent l'URL d'affichage sécurisée, remontent leur heartbeat et peuvent être gérés depuis l'admin
+
+### Captures à venir
+
+> Placeholder screenshot: dashboard (`docs/screenshots/dashboard.png`)
+>
+> Placeholder screenshot/GIF: éditeur d'annonces (`docs/screenshots/announcement-editor.gif`)
+>
+> Placeholder screenshot: campagnes (`docs/screenshots/campaigns.png`)
+>
+> Placeholder screenshot: affichage public (`docs/screenshots/public-display.png`)
+>
+> Placeholder screenshot: clients kiosque (`docs/screenshots/kiosk-clients.png`)
 
 ### Fonctionnalités
 
-**Diaporama**
-- Plein écran avec transitions en fondu enchaîné
+**Affichage public**
+- Affichage plein écran sécurisé avec transitions en fondu enchaîné
 - Images (JPG, PNG), vidéos (MP4, MOV, AVI, MKV, WebM — ré-encodées automatiquement en H.264) et PDF (convertis en images)
 - Durée d'affichage configurable par média
-- Liste rafraîchie à chaque changement de diapo — les modifications s'appliquent immédiatement
+- Liste rafraîchie à chaque rotation — les modifications s'appliquent immédiatement
 
 **Carte éphéméride**
 - Générée automatiquement chaque jour (rafraîchissement toutes les 2 heures)
@@ -34,9 +77,9 @@ Application web légère de signalétique numérique. Elle affiche un diaporama 
 - Création d'écrans nommés (ex. `hall`, `refectoire`, `salle-b12`)
 - Chaque écran dispose de sa propre liste de médias, son propre ordre, ses propres désactivations, durées et programmations
 - Les médias de la médiathèque principale sont assignés à un ou plusieurs écrans
-- Le diaporama s'adapte automatiquement selon le paramètre `?screen=<nom>` dans l'URL
+- L'affichage public s'adapte automatiquement selon le paramètre `?screen=<nom>` dans l'URL
 - Sélecteur d'écran intégré à la page d'affichage public — barre flottante en bas, permet de basculer d'écran sans retaper l'URL
-- Tableau de bord : la carte **Prévisualiser** affiche un bouton par écran pour ouvrir directement le diaporama correspondant dans un nouvel onglet
+- Tableau de bord : la carte **Prévisualiser** affiche un bouton par écran pour ouvrir directement l'affichage correspondant dans un nouvel onglet
 - Médiathèque : bouton **Prévisualiser** à droite de la barre d'écrans pour ouvrir une fenêtre d'aperçu de l'écran actif
 - Diffusion d'une liste d'écran vers d'autres écrans : ordre, activations, groupes désactivés, durées et programmations sont copiés vers les cibles sélectionnées
 
@@ -56,7 +99,7 @@ Application web légère de signalétique numérique. Elle affiche un diaporama 
 
 **Alerte prioritaire**
 - Diffusion instantanée d'un message en bannière sur l'écran d'affichage (super-admin uniquement)
-- Publication automatique à chaque frappe, sans rechargement ni interruption du diaporama
+- Publication automatique à chaque frappe, sans rechargement ni interruption de l'affichage
 - Effacement en un clic — visible sur tous les écrans simultanément
 
 **Éditeur d'annonces intégré**
@@ -108,7 +151,7 @@ Application web légère de signalétique numérique. Elle affiche un diaporama 
 - Les rôles système ne peuvent pas être supprimés
 
 **Gestion des fonctionnalités**
-- Activer ou désactiver 11 modules depuis `Paramètres → Fonctionnalités` (super-admin uniquement) : importation de médias, vidéos, suppression, compression, éphéméride, campagnes, plages de diffusion, groupes, multi-écrans, alerte prioritaire, journal d'activité
+- Activer ou désactiver 12 modules depuis `Paramètres → Fonctionnalités` (super-admin uniquement) : importation de médias, annonces, vidéos, suppression, compression, éphéméride, campagnes, plages de diffusion, groupes, multi-écrans, alerte prioritaire, journal d'activité
 - Un module désactivé masque entièrement les menus, boutons et endpoints concernés pour tous les utilisateurs
 
 **À propos**
@@ -127,6 +170,17 @@ Application web légère de signalétique numérique. Elle affiche un diaporama 
 
 - Docker
 - Docker Compose
+
+### Quick Start
+
+```bash
+git clone https://github.com/woofix/visio_display.git Visio-Display
+cd Visio-Display
+./scripts/security_bootstrap.sh install .
+docker compose up -d --build
+```
+
+L'application est disponible sur `http://<hôte>:8081`. Ouvrir l'administration sur `http://<hôte>:8081/admin`, puis l'affichage public avec `?screen_token=<DISPLAY_API_TOKEN>`.
 
 ### Installation
 
@@ -224,9 +278,9 @@ La modification régénère automatiquement la carte éphéméride.
 
 ### Utilisation
 
-**Diaporama (affichage) :** ouvrir `http://<hôte>:8081?screen_token=<DISPLAY_API_TOKEN>` dans un navigateur plein écran.
+**Affichage public :** ouvrir `http://<hôte>:8081?screen_token=<DISPLAY_API_TOKEN>` dans un navigateur plein écran.
 
-**Diaporama sur un écran nommé :** `http://<hôte>:8081?screen=<nom>&screen_token=<DISPLAY_API_TOKEN>`
+**Affichage public sur un écran nommé :** `http://<hôte>:8081?screen=<nom>&screen_token=<DISPLAY_API_TOKEN>`
 
 **Mode kiosque sur Raspberry Pi :**
 
@@ -514,7 +568,7 @@ Visio-Display/
     │   ├── assets/tabler/filled/  # SVG Tabler filled locaux
     │   └── images/              # Logo et ressources statiques
     └── templates/               # Templates Jinja2
-        ├── index.html           # Diaporama plein écran
+        ├── index.html           # Affichage public plein écran
         ├── login.html           # Page de connexion
         ├── admin_layout.html    # Gabarit partagé (sidebar, topbar, thèmes)
         ├── admin_about.html     # Page À propos
@@ -799,15 +853,58 @@ Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026
 
 ## English
 
-A lightweight web-based digital signage. It displays a fullscreen slideshow of images and videos with smooth crossfade transitions, and automatically generates a daily ephemeris card.
+Visio-Display is a modern **self-hosted digital signage platform** for operating multiple displays from a centralized web administration UI. It brings together media management, temporary campaigns, media groups, remote kiosk clients, monitoring, RBAC, backups, server updates, and a built-in 16:9 graphic editor in a Docker-native stack.
+
+It is designed for homelabs, devops-oriented self-hosters, associations, schools, shops, venues, and organizations that want local control over their signage data while running a complete platform with Flask, PostgreSQL, Redis, RQ, and Docker Compose.
+
+### Why Visio-Display?
+
+Cloud signage platforms are convenient at first, but they often bring subscriptions, external dependencies, privacy constraints, and vendor lock-in. Many self-hosted alternatives go the other way: heavy deployments, dated interfaces, unclear operations, or closed workflows that make day-to-day administration harder than it should be.
+
+Visio-Display exists to provide a pragmatic middle ground: a complete self-hosted platform that can be deployed with Docker Compose, managed from a browser, and operated locally without giving up multi-screen management, kiosk clients, campaign scheduling, backups, monitoring, or role-based access control. The goal is to stay simple to install, friendly to system administrators, and modern enough for homelab, internal VM, association, and small devops environments.
+
+### Highlights
+
+- Multi-screen management with named screens, independent playlists, and screen-to-screen broadcast
+- Temporary campaigns with date ranges, priorities, groups, targeted media, and selected screens
+- Media groups, per-cycle pools, group enable/disable, and per-screen group restrictions
+- Built-in 16:9 graphic editor with layers, grid, snapping, Lucide/Tabler icons, and 1920×1080 PNG export
+- Remote kiosk client installation over SSH with autologin, secured display URL, and screen assignment
+- Client heartbeat, kiosk watchdog, client status, and power actions from the admin UI
+- Server update from the admin UI with Git/Docker checks, system lock, and assisted Docker restart
+- Docker backup/restore plus web-managed backups with progress and automatic retention
+- RBAC with custom roles, granular permissions, and per-screen access restrictions
+- Global search, activity log, JSON API, and responsive admin UI
+
+### Quick architecture
+
+Visio-Display runs as a self-hosted Docker Compose stack:
+
+- **Flask / Gunicorn** serves the admin UI, public display, API, and announcement exports
+- **PostgreSQL** stores application configuration, users, roles, jobs, clients, and logs
+- **Redis + RQ worker** handle asynchronous work such as video encoding and compression
+- **Host volumes** persist public media (`MEDIA_DIR`) and private runtime data (`PRIVATE_DIR`)
+- **Kiosk clients** open the secured display URL, report heartbeat status, and can be managed from the admin UI
+
+### Screenshot placeholders
+
+> Placeholder screenshot: dashboard (`docs/screenshots/dashboard.png`)
+>
+> Placeholder screenshot/GIF: announcement editor (`docs/screenshots/announcement-editor.gif`)
+>
+> Placeholder screenshot: campaigns (`docs/screenshots/campaigns.png`)
+>
+> Placeholder screenshot: public display (`docs/screenshots/public-display.png`)
+>
+> Placeholder screenshot: kiosk clients (`docs/screenshots/kiosk-clients.png`)
 
 ### Features
 
-**Slideshow**
-- Fullscreen display with crossfade transitions
+**Public display**
+- Secured fullscreen display with crossfade transitions
 - Images (JPG, PNG), videos (MP4, MOV, AVI, MKV, WebM — automatically re-encoded to H.264) and PDFs (converted to images)
 - Configurable display duration per media item
-- Media list refreshed on every slide transition — changes apply immediately
+- Media list refreshed on every rotation — changes apply immediately
 
 **Ephemeris card**
 - Generated automatically each day (refreshed every 2 hours)
@@ -825,9 +922,9 @@ A lightweight web-based digital signage. It displays a fullscreen slideshow of i
 - Create named screens (e.g. `hall`, `cafeteria`, `room-b12`)
 - Each screen has its own media list, order, disabled items, durations, and schedules
 - Media from the main library can be assigned to one or more screens
-- The slideshow automatically adapts based on the `?screen=<name>` URL parameter
+- The public display automatically adapts based on the `?screen=<name>` URL parameter
 - Built-in screen selector on the public display page — floating bar at the bottom, switch screens without retyping the URL
-- Dashboard: the **Preview** card shows one button per screen to open the corresponding slideshow directly in a new tab
+- Dashboard: the **Preview** card shows one button per screen to open the corresponding display directly in a new tab
 - Media library: **Preview** button on the right side of the screen bar opens a preview window for the active screen
 - Broadcast a screen list to other screens: order, enabled/disabled states, disabled groups, durations and schedules are copied to selected targets
 
@@ -847,7 +944,7 @@ A lightweight web-based digital signage. It displays a fullscreen slideshow of i
 
 **Priority alert**
 - Instantly broadcast a message as a banner on the display screen (super-admin only)
-- Auto-published on each keystroke, no reload or slideshow interruption
+- Auto-published on each keystroke, no reload or display interruption
 - Clear with one click — visible on all screens simultaneously
 
 **Built-in announcement editor**
@@ -899,7 +996,7 @@ A lightweight web-based digital signage. It displays a fullscreen slideshow of i
 - System roles cannot be deleted
 
 **Feature management**
-- Enable or disable 11 modules from `Settings → Features` (super-admin only): media import, videos, deletion, compression, ephemeris, campaigns, scheduling, groups, multi-screen, priority alert, activity log
+- Enable or disable 12 modules from `Settings → Features` (super-admin only): media import, announcements, videos, deletion, compression, ephemeris, campaigns, scheduling, groups, multi-screen, priority alert, activity log
 - A disabled module completely hides its menus, buttons and endpoints for all users
 
 **About**
@@ -918,6 +1015,17 @@ A lightweight web-based digital signage. It displays a fullscreen slideshow of i
 
 - Docker
 - Docker Compose
+
+### Quick Start
+
+```bash
+git clone https://github.com/woofix/visio_display.git Visio-Display
+cd Visio-Display
+./scripts/security_bootstrap.sh install .
+docker compose up -d --build
+```
+
+The application is available at `http://<host>:8081`. Open the admin UI at `http://<host>:8081/admin`, then open the public display with `?screen_token=<DISPLAY_API_TOKEN>`.
 
 ### Installation
 
@@ -1006,8 +1114,8 @@ In Docker, `MEDIA_DIR` and `PRIVATE_DIR` from `.env` name the persistent host di
 | School zone  | French education zone (`A`, `B`, `C`) — auto-detected if left blank | auto |
 
 Saving regenerates the ephemeris card automatically.
-If the ephemeris file is missing, it is regenerated automatically on the next slideshow refresh.
-When the ephemeris is regenerated, the slideshow reloads it automatically without a full page refresh.
+If the ephemeris file is missing, it is regenerated automatically on the next public-display refresh.
+When the ephemeris is regenerated, the display reloads it automatically without a full page refresh.
 
 **Image resolution** — edit in `web/constants.py`:
 
@@ -1017,9 +1125,9 @@ When the ephemeris is regenerated, the slideshow reloads it automatically withou
 
 ### Usage
 
-**Slideshow (display):** open `http://<host>:8081?screen_token=<DISPLAY_API_TOKEN>` in a fullscreen browser.
+**Public display:** open `http://<host>:8081?screen_token=<DISPLAY_API_TOKEN>` in a fullscreen browser.
 
-**Slideshow on a named screen:** `http://<host>:8081?screen=<name>&screen_token=<DISPLAY_API_TOKEN>`
+**Public display on a named screen:** `http://<host>:8081?screen=<name>&screen_token=<DISPLAY_API_TOKEN>`
 
 **Kiosk mode on Raspberry Pi:**
 
@@ -1235,7 +1343,7 @@ Visio-Display/
     │   ├── assets/tabler/filled/  # Local Tabler filled SVGs
     │   └── images/              # Logo and static assets
     └── templates/               # Jinja2 templates
-        ├── index.html           # Fullscreen slideshow
+        ├── index.html           # Fullscreen public display
         ├── login.html           # Login page
         ├── admin_layout.html    # Shared layout (sidebar, topbar, themes)
         ├── admin_about.html     # About page
@@ -1531,3 +1639,12 @@ Remaining application migrations are additive and non-destructive: they only add
 ### License
 
 Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
+
+## Third-party assets
+
+Visio-Display includes third-party open-source assets:
+
+- Lucide Icons — ISC License — https://lucide.dev
+- Tabler Icons — MIT License — https://tabler.io/icons
+
+All trademarks, icons and copyrights remain the property of their respective owners.

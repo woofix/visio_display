@@ -769,6 +769,20 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"announcement-form", response.data)
 
+    def test_announcements_page_renders_for_announcements_permission_user(self):
+        with self.app.app_context():
+            from services.users_svc import create_user
+
+            create_user("announcer", "operator-pass-123", permissions=["announcements"])
+
+        with self.client.session_transaction() as session:
+            session["user"] = "announcer"
+
+        response = self.client.get("/admin/announcements")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"announcement-form", response.data)
+
     def test_announcements_feature_can_be_disabled(self):
         with self.app.app_context():
             from services.config_svc import save_config

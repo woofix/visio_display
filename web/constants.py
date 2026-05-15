@@ -92,14 +92,15 @@ SCHOOL_ZONES = (
 )
 
 ALL_PERMISSIONS = [
-    ("upload",    "perm_upload"),
-    ("delete",    "perm_delete"),
-    ("reorder",   "perm_reorder"),
-    ("toggle",    "perm_toggle"),
-    ("duration",  "perm_duration"),
-    ("compress",  "perm_compress"),
-    ("logo",      "perm_logo"),
-    ("schedule",  "perm_schedule"),
+    ("upload",         "perm_upload"),
+    ("announcements", "perm_announcements"),
+    ("delete",         "perm_delete"),
+    ("reorder",        "perm_reorder"),
+    ("toggle",         "perm_toggle"),
+    ("duration",       "perm_duration"),
+    ("compress",       "perm_compress"),
+    ("logo",           "perm_logo"),
+    ("schedule",       "perm_schedule"),
 ]
 
 ALL_FEATURES = [

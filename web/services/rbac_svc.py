@@ -21,7 +21,7 @@ _DEFAULT_ROLES = [
         'display_name': 'Editor',
         'description':  'Can add, delete and edit media',
         'is_system':    False,
-        'permissions':  ['upload', 'delete', 'reorder', 'toggle', 'duration'],
+        'permissions':  ['upload', 'announcements', 'delete', 'reorder', 'toggle', 'duration'],
     },
     {
         'name':         'viewer',
@@ -127,7 +127,8 @@ def get_effective_permissions_for_user(username):
 
 def init_rbac():
     for role_def in _DEFAULT_ROLES:
-        if Role.query.filter_by(name=role_def['name']).first() is None:
+        role = Role.query.filter_by(name=role_def['name']).first()
+        if role is None:
             role = Role(
                 name=role_def['name'],
                 display_name=role_def['display_name'],
@@ -138,4 +139,9 @@ def init_rbac():
             db.session.flush()
             for perm in role_def['permissions']:
                 db.session.add(RolePermission(role_id=role.id, permission=perm))
+        elif role.name == 'admin' and role.is_system:
+            existing = {p.permission for p in RolePermission.query.filter_by(role_id=role.id).all()}
+            for perm in role_def['permissions']:
+                if perm not in existing:
+                    db.session.add(RolePermission(role_id=role.id, permission=perm))
     db.session.commit()

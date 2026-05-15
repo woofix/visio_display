@@ -813,6 +813,7 @@ TRANSLATIONS = {
 
         # ── Permissions ──
         'perm_upload': 'Importer des médias',
+        'perm_announcements': 'Créer des annonces',
         'perm_delete': 'Supprimer des médias',
         'perm_reorder': 'Réordonner les médias',
         'perm_toggle': 'Activer / désactiver des médias',
@@ -832,6 +833,7 @@ TRANSLATIONS = {
         'flash_deleted': '{filename} supprimé.',
         'flash_not_found': '{filename} introuvable.',
         'flash_no_perm_upload': 'Permission insuffisante pour importer des médias.',
+        'flash_no_perm_announcements': 'Permission insuffisante pour créer des annonces.',
         'flash_no_file': 'Aucun fichier sélectionné.',
         'flash_video_error': 'Erreur encodage {filename}.',
         'flash_upload_success': 'Fichier(s) uploadé(s) avec succès.',
@@ -2490,6 +2492,7 @@ TRANSLATIONS = {
 
         # ── Permissions ──
         'perm_upload': 'Import media',
+        'perm_announcements': 'Create announcements',
         'perm_delete': 'Delete media',
         'perm_reorder': 'Reorder media',
         'perm_toggle': 'Enable / disable media',
@@ -2509,6 +2512,7 @@ TRANSLATIONS = {
         'flash_deleted': '{filename} deleted.',
         'flash_not_found': '{filename} not found.',
         'flash_no_perm_upload': 'Insufficient permission to import media.',
+        'flash_no_perm_announcements': 'Insufficient permission to create announcements.',
         'flash_no_file': 'No file selected.',
         'flash_video_error': 'Encoding error {filename}.',
         'flash_upload_success': 'File(s) uploaded successfully.',

@@ -2,7 +2,7 @@
 
 from flask import Blueprint, Response, jsonify, redirect, render_template, request, session, url_for
 
-from blueprints.guards import admin_guard, feature_guard, permission_redirect_guard
+from blueprints.guards import admin_guard, feature_guard
 from services.announcement_svc import _safe_image_url, commons_search, create_announcement, fetch_thumbnail_bytes, image_media_choices
 from services.config_svc import get_default_screen_name, load_config
 from services.icon_svc import scan_svg_icons
@@ -14,17 +14,21 @@ from services.users_svc import has_permission, has_screen_access, is_superadmin,
 bp = Blueprint("announcements", __name__)
 
 
+def _has_announcements_permission():
+    return has_permission("announcements") or has_permission("upload")
+
+
 @bp.route("/admin/announcements")
 def admin_announcements_page():
     redir = admin_guard()
     if redir:
         return redir
-    redir = feature_guard("upload") or feature_guard("announcements")
+    redir = feature_guard("announcements")
     if redir:
         return redir
-    redir = permission_redirect_guard("upload", "admin.admin_page")
-    if redir:
-        return redir
+    if not _has_announcements_permission():
+        _flash("flash_no_perm_announcements", "error")
+        return redirect(url_for("admin.admin_page"))
 
     cfg = load_config()
     media_choices = image_media_choices()
@@ -42,7 +46,7 @@ def admin_announcements_page():
         media_choices=media_choices,
         media_preview_map=build_media_preview_map(media_choices, context="campaign"),
         screens=screens,
-        can_upload=has_permission("upload"),
+        can_upload=_has_announcements_permission(),
     )
 
 
@@ -54,6 +58,8 @@ def search_backgrounds():
     redir = feature_guard("announcements")
     if redir:
         return jsonify({"ok": False, "error": "feature disabled"}), 403
+    if not _has_announcements_permission():
+        return jsonify({"ok": False, "error": "permission denied"}), 403
     query = request.args.get("q", "").strip()
     try:
         return jsonify({"ok": True, "results": commons_search(query)})
@@ -68,6 +74,8 @@ def background_thumb():
         return "", 401
     redir = feature_guard("announcements")
     if redir:
+        return "", 403
+    if not _has_announcements_permission():
         return "", 403
     url = request.args.get("url", "")
     fallback_url = request.args.get("fallback", "")
@@ -92,6 +100,8 @@ def announcement_icons():
     redir = feature_guard("announcements")
     if redir:
         return jsonify({"ok": False, "error": "feature disabled"}), 403
+    if not _has_announcements_permission():
+        return jsonify({"ok": False, "error": "permission denied"}), 403
     return jsonify({
         "ok": True,
         **scan_svg_icons(
@@ -108,11 +118,11 @@ def create_announcement_route():
     redir = admin_guard()
     if redir:
         return redir
-    redir = feature_guard("upload") or feature_guard("announcements")
+    redir = feature_guard("announcements")
     if redir:
         return redir
-    if not has_permission("upload"):
-        _flash("flash_no_perm_upload", "error")
+    if not _has_announcements_permission():
+        _flash("flash_no_perm_announcements", "error")
         return redirect(url_for("announcements.admin_announcements_page"))
 
     try:

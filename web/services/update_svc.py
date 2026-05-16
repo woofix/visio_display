@@ -125,6 +125,12 @@ def _update_script_for_branch(repo_dir, branch):
     return os.path.join(repo_dir, "scripts", "update.sh"), "scripts/update.sh"
 
 
+def _target_branch_for_ref(ref_type, ref_name):
+    if ref_type == "branch" and ref_name in {"main", "dev"}:
+        return ref_name
+    return _update_branch()
+
+
 def _docker_compose_command():
     docker_path = shutil.which("docker")
     if docker_path:
@@ -489,7 +495,6 @@ def get_update_status(*, fetch_remote=False):
     add_check("git_dir", _t("version_check_git_dir"), True)
 
     remote_name = os.environ.get("VISIO_UPDATE_REMOTE", "origin").strip() or "origin"
-    target_branch = _update_branch()
     remote_url = _git(["remote", "get-url", remote_name])
     if not remote_url.ok or not remote_url.stdout.strip():
         add_check("remote", _t("version_check_remote"), False, remote_url.stderr or f"remote {remote_name} introuvable")
@@ -501,6 +506,7 @@ def get_update_status(*, fetch_remote=False):
         add_check("current_ref", _t("version_check_current_ref"), False, ref_error)
         return _build_incompatible(ref_error, checks)
     add_check("current_ref", _t("version_check_current_ref"), True, f"{ref_type}: {ref_name}")
+    target_branch = _target_branch_for_ref(ref_type, ref_name)
     add_check("target_branch", _t("version_check_target_branch"), True, target_branch)
     local_commit = _git(["rev-parse", "HEAD"]).stdout.strip()
     local_version = _read_local_version(repo_dir)
@@ -632,7 +638,7 @@ def get_update_status(*, fetch_remote=False):
         "status_label": status_label,
         "status_tone": status_tone,
         "compatible": True,
-        "can_apply": can_apply,
+        "can_apply": can_apply and status_name in {"update_available", "branch_switch_required"},
         "can_restart": True,
         "reason": reason,
         "checks": checks,

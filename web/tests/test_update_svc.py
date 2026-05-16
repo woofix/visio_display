@@ -189,13 +189,14 @@ class UpdateServiceTests(unittest.TestCase):
         self.assertEqual(status["remote_version"], "1.0.0")
         self.assertIn("identique", status["reason"])
 
-    def test_status_targets_main_even_when_current_branch_is_dev(self):
+    def test_status_targets_current_dev_branch_when_current_branch_is_dev(self):
         repo = self._init_repo()
         (repo / "VERSION").write_text("1.6.12\n", encoding="utf-8")
         self._git(repo, "add", "VERSION")
         self._git(repo, "commit", "-m", "main release")
         self._git(repo, "push", "origin", "main")
         self._git(repo, "checkout", "-b", "dev")
+        self._git(repo, "push", "-u", "origin", "dev")
         (repo / "VERSION").write_text("1.6.13\n", encoding="utf-8")
         self._git(repo, "add", "VERSION")
         self._git(repo, "commit", "-m", "dev release")
@@ -205,26 +206,34 @@ class UpdateServiceTests(unittest.TestCase):
         self.assertEqual(status["status"], "local_ahead")
         self.assertFalse(status["can_apply"])
         self.assertEqual(status["branch"], "dev")
-        self.assertEqual(status["target_branch"], "main")
+        self.assertEqual(status["target_branch"], "dev")
         self.assertEqual(status["update_script"], "dev.sh")
         self.assertEqual(status["local_version"], "1.6.13")
         self.assertEqual(status["remote_version"], "1.6.12")
 
-    def test_same_commit_on_wrong_branch_requires_branch_switch(self):
+    def test_status_targets_current_main_branch_even_when_env_targets_dev(self):
+        repo = self._init_repo()
+        with patch.dict(os.environ, {"VISIO_UPDATE_BRANCH": "dev"}, clear=False):
+            status = update_svc.get_update_status(fetch_remote=True)
+
+        self.assertEqual(status["branch"], "main")
+        self.assertEqual(status["target_branch"], "main")
+        self.assertEqual(status["update_script"], "main.sh")
+
+    def test_same_commit_on_dev_branch_is_up_to_date_against_dev(self):
         repo = self._init_repo()
         self._git(repo, "checkout", "-b", "dev")
-
+        self._git(repo, "push", "-u", "origin", "dev")
         status = update_svc.get_update_status(fetch_remote=True)
 
-        self.assertEqual(status["status"], "branch_switch_required")
-        self.assertTrue(status["can_apply"])
+        self.assertEqual(status["status"], "up_to_date")
+        self.assertFalse(status["can_apply"])
         self.assertEqual(status["branch"], "dev")
-        self.assertEqual(status["target_branch"], "main")
+        self.assertEqual(status["target_branch"], "dev")
         self.assertEqual(status["update_script"], "dev.sh")
         self.assertEqual(status["local_version"], "1.0.0")
         self.assertEqual(status["remote_version"], "1.0.0")
         self.assertEqual(status["local_commit"], status["remote_commit"])
-        self.assertIn("branche cible", status["reason"])
 
     def test_compose_project_is_injected_for_restart_commands(self):
         docker_compose = update_svc._with_compose_project(["docker", "compose"], "visio_display")

@@ -799,7 +799,7 @@ class AppSmokeTests(unittest.TestCase):
             categories = cleanup["categories"]
 
             self.assertEqual([item["filename"] for item in categories["expired"]], ["expired.jpg"])
-            self.assertIn("unused.jpg", [item["filename"] for item in categories["unused"]])
+            self.assertNotIn("unused.jpg", [item["filename"] for item in categories["unused"]])
             self.assertEqual(len(categories["duplicates"]), 1)
             self.assertEqual(
                 [item["filename"] for item in categories["duplicates"][0]["files"]],
@@ -851,7 +851,7 @@ class AppSmokeTests(unittest.TestCase):
             ]
 
             self.assertNotIn("campaign-screen.jpg", unused)
-            self.assertIn("unused.jpg", unused)
+            self.assertNotIn("unused.jpg", unused)
 
     def test_media_cleanup_keeps_media_used_by_screen_with_empty_order(self):
         with self.app.app_context():
@@ -946,8 +946,6 @@ class AppSmokeTests(unittest.TestCase):
             os.makedirs(UPLOAD_FOLDER, exist_ok=True)
             with open(os.path.join(UPLOAD_FOLDER, "used.jpg"), "wb") as handle:
                 handle.write(b"used")
-            with open(os.path.join(UPLOAD_FOLDER, "unused.jpg"), "wb") as handle:
-                handle.write(b"unused")
             save_config({"order": ["used.jpg"]})
 
         with self.client.session_transaction() as session:
@@ -958,7 +956,7 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         html = response.get_data(as_text=True)
         self.assertIn("Nettoyage intelligent", html)
-        self.assertIn("unused.jpg", html)
+        self.assertIn("Rien à signaler ici.", html)
 
     def test_media_cleanup_requires_cleanup_permission(self):
         with self.app.app_context():

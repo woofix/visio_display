@@ -81,9 +81,7 @@ def _collect_references(cfg, available_files=None):
     def add(filename, label):
         references.setdefault(filename, set()).add(label)
 
-    global_order = cfg.get("order", [])
-    global_files = global_order if global_order else available_files
-    for filename in global_files:
+    for filename in available_files:
         add(filename, "global")
 
     for screen, screen_cfg in cfg.get("screens", {}).items():

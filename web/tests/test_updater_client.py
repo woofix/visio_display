@@ -1,5 +1,6 @@
 import json
 import os
+import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
@@ -66,6 +67,20 @@ class UpdaterClientTests(unittest.TestCase):
         self.assertEqual(logs, ["start"])
         self.assertEqual(status["status"], "restart_scheduled")
         self.assertEqual(post.call_args.kwargs["json"], {"dry_run": True})
+
+    def test_updater_configured_reads_token_from_dotenv_inside_container(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            env_path = os.path.join(temp_dir, ".env")
+            with open(env_path, "w", encoding="utf-8") as handle:
+                handle.write("UPDATER_API_TOKEN=dotenv-token\n")
+            with (
+                patch.dict(os.environ, {"UPDATER_API_URL": "", "UPDATER_API_TOKEN": ""}, clear=False),
+                patch.object(updater_client, "_running_in_container", return_value=True),
+                patch.object(updater_client.os, "getcwd", return_value=temp_dir),
+            ):
+                self.assertTrue(updater_client.updater_configured())
+                self.assertEqual(updater_client._base_url(), updater_client.DEFAULT_DOCKER_UPDATER_URL)
+                self.assertEqual(updater_client._token(), "dotenv-token")
 
 
 if __name__ == "__main__":

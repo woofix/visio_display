@@ -8,6 +8,7 @@ import requests
 
 DEFAULT_TIMEOUT_SECONDS = 20
 STREAM_TIMEOUT_SECONDS = 3600
+DEFAULT_DOCKER_UPDATER_URL = "http://updater:8090"
 
 
 class UpdaterClientError(RuntimeError):
@@ -19,11 +20,39 @@ def updater_configured():
 
 
 def _base_url():
-    return os.environ.get("UPDATER_API_URL", "").strip().rstrip("/")
+    configured = os.environ.get("UPDATER_API_URL", "").strip().rstrip("/")
+    if configured:
+        return configured
+    if _running_in_container() and _token():
+        return DEFAULT_DOCKER_UPDATER_URL
+    return ""
 
 
 def _token():
-    return os.environ.get("UPDATER_API_TOKEN", "").strip()
+    configured = os.environ.get("UPDATER_API_TOKEN", "").strip()
+    if configured:
+        return configured
+    return _dotenv_value("UPDATER_API_TOKEN")
+
+
+def _running_in_container():
+    return os.path.exists("/.dockerenv") or os.environ.get("container", "").strip() != ""
+
+
+def _dotenv_value(key):
+    for path in ("/app/.env", os.path.join(os.getcwd(), ".env")):
+        try:
+            with open(path, "r", encoding="utf-8") as handle:
+                for raw_line in handle:
+                    line = raw_line.strip()
+                    if not line or line.startswith("#") or "=" not in line:
+                        continue
+                    name, value = line.split("=", 1)
+                    if name.strip() == key:
+                        return value.strip().strip("'\"")
+        except OSError:
+            continue
+    return ""
 
 
 def _headers(accept="application/json"):

@@ -334,7 +334,7 @@ class UpdateServiceTests(unittest.TestCase):
         self.assertFalse(result["can_restart"])
         self.assertIn("arrière-plan", result["reason"])
 
-    def test_restart_stack_refreshes_updater_after_primary_services(self):
+    def test_restart_stack_schedules_primary_services_from_updater(self):
         repo = self.root / "repo"
         repo.mkdir()
         (repo / ".env").write_text(
@@ -355,21 +355,19 @@ class UpdateServiceTests(unittest.TestCase):
             patch.object(update_svc, "_docker_compose_command", return_value=(["docker", "compose"], "")),
             patch.object(update_svc, "_current_compose_project_name", return_value="visio_display"),
             patch.object(update_svc, "_compose_services", return_value=["postgres", "redis", "updater", "app", "worker"]),
-            patch.object(update_svc, "_stream_command") as stream_command,
-            patch.object(update_svc, "wait_for_runtime_ready") as wait_ready,
+            patch.object(update_svc, "_start_restart_helper") as helper,
         ):
             result = update_svc.restart_stack(lock_token="lock-token")
 
-        stream_command.assert_called_once()
-        self.assertEqual(
-            stream_command.call_args.args[0],
+        helper.assert_called_once_with(
             ["docker", "compose", "--project-name", "visio_display", "up", "-d", "--build", "--no-deps", "app", "worker"],
+            repo_dir=str(repo),
+            compose_cmd=["docker", "compose"],
+            project_name="visio_display",
+            progress_callback=None,
+            lock_token="lock-token",
+            verify_runtime=True,
         )
-        self.assertEqual(stream_command.call_args.kwargs["cwd"], str(repo))
-        self.assertIsNone(stream_command.call_args.kwargs["progress_callback"])
-        self.assertEqual(stream_command.call_args.kwargs["env"]["MEDIA_DIR"], "/host/media")
-        self.assertEqual(stream_command.call_args.kwargs["env"]["PRIVATE_DIR"], "/host/private")
-        wait_ready.assert_called_once_with(lock_token="lock-token", project_name="visio_display")
         self.assertEqual(result["status"], "restart_scheduled")
 
     def test_restart_helper_uses_updated_repo_code_for_runtime_checks(self):

@@ -10,117 +10,6 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-foundation.css', v=static_version) }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-pages.css', v=static_version) }}">
     <style>
-    .admin-system-lock {
-        position: fixed;
-        inset: 0;
-        z-index: 9500;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        padding: 24px;
-        background: color-mix(in srgb, var(--bg) 78%, rgba(0, 0, 0, .88));
-        backdrop-filter: blur(12px) saturate(1.08);
-        -webkit-backdrop-filter: blur(12px) saturate(1.08);
-        cursor: wait;
-    }
-    .admin-system-lock.is-active {
-        display: flex;
-    }
-    .admin-system-lock-card {
-        width: min(520px, 100%);
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        background: color-mix(in srgb, var(--surface) 90%, rgba(0, 0, 0, .38));
-        box-shadow: var(--dialog-panel-shadow);
-        padding: 26px 24px;
-        text-align: center;
-        color: var(--text);
-    }
-    .admin-system-lock-spinner {
-        width: 48px;
-        height: 48px;
-        margin: 0 auto 18px;
-        border-radius: 50%;
-        border: 4px solid color-mix(in srgb, var(--primary) 18%, transparent);
-        border-top-color: var(--primary);
-        animation: admin-system-lock-spin .8s linear infinite;
-    }
-    .admin-system-lock-title {
-        font-size: 1rem;
-        font-weight: 800;
-        margin-bottom: 7px;
-    }
-    .admin-system-lock-message {
-        color: var(--text-2);
-        font-size: .9rem;
-        line-height: 1.45;
-        overflow-wrap: anywhere;
-    }
-    .admin-system-lock-progress {
-        display: none;
-        height: 7px;
-        margin-top: 18px;
-        overflow: hidden;
-        border-radius: 999px;
-        background: color-mix(in srgb, var(--primary) 14%, transparent);
-    }
-    .admin-system-lock-progress.is-visible {
-        display: block;
-    }
-    .admin-system-lock-progress span {
-        display: block;
-        width: 0;
-        height: 100%;
-        border-radius: inherit;
-        background: var(--primary);
-        transition: width .2s ease;
-    }
-    .admin-system-lock-steps {
-        display: none;
-        margin: 18px 0 0;
-        padding: 0;
-        list-style: none;
-        text-align: left;
-    }
-    .admin-system-lock-steps.is-visible {
-        display: grid;
-        gap: 9px;
-    }
-    .admin-system-lock-step {
-        display: grid;
-        grid-template-columns: 18px minmax(0, 1fr);
-        gap: 9px;
-        align-items: center;
-        color: var(--text-2);
-        font-size: .86rem;
-    }
-    .admin-system-lock-step::before {
-        content: "";
-        width: 10px;
-        height: 10px;
-        border-radius: 999px;
-        background: color-mix(in srgb, var(--text-2) 35%, transparent);
-        justify-self: center;
-    }
-    .admin-system-lock-step[data-state="done"]::before {
-        background: var(--success-color);
-    }
-    .admin-system-lock-step[data-state="active"]::before {
-        background: var(--primary);
-        box-shadow: 0 0 0 5px color-mix(in srgb, var(--primary) 16%, transparent);
-    }
-    .admin-system-lock-step[data-state="failed"]::before {
-        background: var(--danger-color);
-        box-shadow: 0 0 0 5px color-mix(in srgb, var(--danger-color) 16%, transparent);
-    }
-    .admin-system-lock-error .admin-system-lock-spinner {
-        animation: none;
-        border-color: color-mix(in srgb, var(--danger-color) 18%, transparent);
-        border-top-color: var(--danger-color);
-    }
-    @keyframes admin-system-lock-spin {
-        to { transform: rotate(360deg); }
-    }
     {% block styles %}{% endblock %}
     </style>
 </head>
@@ -139,15 +28,6 @@
     'flashTitleError': t('flash_title_error'),
     'flashTitleWarning': t('flash_title_warning'),
     'flashTitleInfo': t('flash_title_info'),
-    'systemLockTitle': t('system_lock_title'),
-    'systemLockWait': t('system_lock_wait'),
-    'systemLockRebootTitle': t('system_lock_reboot_title'),
-    'systemLockUpdateTitle': t('system_lock_update_title'),
-    'systemLockStepFallback': t('system_lock_step_fallback'),
-    'systemLockInterrupted': t('system_lock_interrupted'),
-    'systemLockConnectingTitle': t('system_lock_connecting_title'),
-    'systemLockTimeoutMessage': t('system_lock_timeout_message'),
-    'systemLockReconnectingMessage': t('system_lock_reconnecting_message'),
     'searchNoResults': t('topbar_search_no_results'),
     'searchPages': t('topbar_search_pages'),
     'searchMedia': t('topbar_search_media'),
@@ -183,18 +63,6 @@
 {% set path = request.path %}
 
 <div class="mobile-sidebar-backdrop" id="mobile-sidebar-backdrop" aria-hidden="true"></div>
-
-<div id="admin-system-lock" class="admin-system-lock" aria-hidden="true">
-    <div class="admin-system-lock-card" role="status" aria-live="polite">
-        <div class="admin-system-lock-spinner" aria-hidden="true"></div>
-        <div class="admin-system-lock-title" id="admin-system-lock-title">{{ t('system_lock_title') }}</div>
-        <div class="admin-system-lock-message" id="admin-system-lock-message">{{ t('system_lock_wait') }}</div>
-        <div class="admin-system-lock-progress" id="admin-system-lock-progress" aria-hidden="true">
-            <span id="admin-system-lock-progress-bar"></span>
-        </div>
-        <ul class="admin-system-lock-steps" id="admin-system-lock-steps"></ul>
-    </div>
-</div>
 
 <!-- ═══ SIDEBAR ═══ -->
 <aside class="sidebar" id="sidebar">

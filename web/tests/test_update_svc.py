@@ -5,7 +5,6 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from services import system_lock_svc
 from services import update_svc
 
 
@@ -358,7 +357,6 @@ class UpdateServiceTests(unittest.TestCase):
             patch.object(update_svc, "_compose_services", return_value=["postgres", "redis", "updater", "app", "worker"]),
             patch.object(update_svc, "_stream_command") as stream_command,
             patch.object(update_svc, "wait_for_runtime_ready") as wait_ready,
-            patch.object(update_svc, "release_lock") as release,
         ):
             result = update_svc.restart_stack(lock_token="lock-token")
 
@@ -372,7 +370,6 @@ class UpdateServiceTests(unittest.TestCase):
         self.assertEqual(stream_command.call_args.kwargs["env"]["MEDIA_DIR"], "/host/media")
         self.assertEqual(stream_command.call_args.kwargs["env"]["PRIVATE_DIR"], "/host/private")
         wait_ready.assert_called_once_with(lock_token="lock-token", project_name="visio_display")
-        release.assert_called_once_with("lock-token")
         self.assertEqual(result["status"], "restart_scheduled")
 
     def test_restart_helper_uses_updated_repo_code_for_runtime_checks(self):
@@ -394,10 +391,8 @@ class UpdateServiceTests(unittest.TestCase):
         self.assertIn("wait_for_runtime_ready", helper_script)
         self.assertIn("project_name=", helper_script)
         self.assertIn("visio_display", helper_script)
-        self.assertIn("release_lock", helper_script)
-        self.assertIn("_read_lock_raw", helper_script)
-        self.assertIn("already_detailed", helper_script)
-        self.assertIn("lock-token", helper_script)
+        self.assertNotIn("system" + "_lock_svc", helper_script)
+        self.assertNotIn("_read_lock_raw", helper_script)
 
     def test_restart_helper_uses_updater_service_inside_updater(self):
         repo_dir = str(self.root / "repo")
@@ -445,7 +440,7 @@ class UpdateServiceTests(unittest.TestCase):
         stream_operation.assert_called_once_with("/restart-stack", progress_callback=messages.append, payload=None)
         self.assertEqual(result["status"], "restart_scheduled")
 
-    def test_delegated_restart_sends_lock_token_to_updater(self):
+    def test_delegated_restart_does_not_send_lock_token_to_updater(self):
         delegated = {"status": "restart_scheduled", "can_restart": False}
         with (
             patch.dict(os.environ, {"UPDATER_API_URL": "http://updater:8090", "UPDATER_API_TOKEN": "token"}, clear=False),
@@ -456,7 +451,7 @@ class UpdateServiceTests(unittest.TestCase):
         stream_operation.assert_called_once_with(
             "/restart-stack",
             progress_callback=None,
-            payload={"lock_token": "lock-token"},
+            payload=None,
         )
         self.assertEqual(result["status"], "restart_scheduled")
 
@@ -472,38 +467,9 @@ class UpdateServiceTests(unittest.TestCase):
         stream_operation.assert_called_once_with(
             "/apply-update-and-restart",
             progress_callback=messages.append,
-            payload={"lock_token": "lock-token"},
+            payload=None,
         )
         self.assertEqual(result["status"], "restart_scheduled")
-
-
-    def test_system_lock_prevents_parallel_tasks(self):
-        lock_file = str(self.root / "system_task.lock")
-        with patch.object(system_lock_svc, "LOCK_FILE", lock_file):
-            token = system_lock_svc.acquire_lock("update", "Mise à jour en cours...")
-
-            with self.assertRaises(system_lock_svc.SystemTaskAlreadyRunning):
-                system_lock_svc.acquire_lock("reboot", "Redémarrage en cours...")
-
-            status = system_lock_svc.get_system_status()
-            self.assertTrue(status["active"])
-            self.assertEqual(status["type"], "update")
-
-            self.assertTrue(system_lock_svc.release_lock(token))
-            self.assertFalse(system_lock_svc.get_system_status()["active"])
-
-    def test_system_lock_cleans_expired_lock(self):
-        lock_file = str(self.root / "system_task.lock")
-        with patch.object(system_lock_svc, "LOCK_FILE", lock_file):
-            system_lock_svc.acquire_lock("update", "Ancienne tâche", timeout_seconds=30)
-            data = system_lock_svc._read_lock_raw()
-            data["expires_at_ts"] = 1
-            system_lock_svc._write_lock(data)
-
-            status = system_lock_svc.get_system_status()
-
-            self.assertFalse(status["active"])
-            self.assertFalse(os.path.exists(lock_file))
 
 
 if __name__ == "__main__":

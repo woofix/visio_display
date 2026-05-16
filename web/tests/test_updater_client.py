@@ -60,12 +60,12 @@ class UpdaterClientTests(unittest.TestCase):
             status = updater_client.stream_operation(
                 "/restart-stack",
                 progress_callback=logs.append,
-                payload={"lock_token": "abc"},
+                payload={"dry_run": True},
             )
 
         self.assertEqual(logs, ["start"])
         self.assertEqual(status["status"], "restart_scheduled")
-        self.assertEqual(post.call_args.kwargs["json"], {"lock_token": "abc"})
+        self.assertEqual(post.call_args.kwargs["json"], {"dry_run": True})
 
 
 if __name__ == "__main__":

@@ -61,7 +61,12 @@
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
-    async function pollRuntimeStatus() {
+    function reloadAfterRestart() {
+        window.adminSystemLock?.hide();
+        window.location.reload();
+    }
+
+    async function pollRuntimeStatus({ reloadWhenReady = false } = {}) {
         const deadline = Date.now() + 8 * 60 * 1000;
         while (Date.now() < deadline) {
             try {
@@ -76,13 +81,30 @@
                 const runtime = payload.runtime || {};
                 if (runtime.ready) {
                     appendLog(msg('appAvailable', 'Application available.'));
+                    if (reloadWhenReady) {
+                        reloadAfterRestart();
+                        return true;
+                    }
                     window.adminSystemLock?.hide();
                     await refreshStatus(false);
                     return true;
                 } else if (system.active) {
                     window.adminSystemLock?.refresh();
+                } else if (reloadWhenReady) {
+                    reloadAfterRestart();
+                    return true;
                 }
             } catch {
+                try {
+                    const statusResponse = await fetch('/api/system/status', {
+                        headers: { 'Accept': 'application/json' },
+                        cache: 'no-store',
+                    });
+                    if (reloadWhenReady && statusResponse.ok) {
+                        reloadAfterRestart();
+                        return true;
+                    }
+                } catch {}
                 window.adminSystemLock?.showConnecting();
             }
             await sleep(2000);
@@ -259,7 +281,7 @@
                 appendLog(msg('done', 'Done.'));
                 window.adminSystemLock?.refresh();
                 if (finalStatus.status === 'restart_scheduled') {
-                    pollRuntimeStatus();
+                    pollRuntimeStatus({ reloadWhenReady: true });
                 }
             }
         } catch (error) {
@@ -267,7 +289,7 @@
                 const connectingMessage = msg('restartConnecting', 'Docker restart started. Connecting to server...');
                 appendLog(connectingMessage);
                 window.adminSystemLock?.show(lockType, connectingMessage, 85);
-                pollRuntimeStatus();
+                pollRuntimeStatus({ reloadWhenReady: true });
                 return;
             }
             appendLog(error?.message || msg('actionFailed', 'Action failed.'), true);

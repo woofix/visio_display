@@ -43,6 +43,24 @@ class UpdaterServerTests(unittest.TestCase):
         response = self.app.post("/command", headers=self._headers(), json={"command": "docker ps"})
         self.assertEqual(response.status_code, 404)
 
+    def test_stream_route_passes_lock_token_to_operation(self):
+        with patch.object(
+            updater_server.update_svc,
+            "restart_stack",
+            return_value={"status": "restart_scheduled"},
+        ) as restart_stack:
+            response = self.app.post(
+                "/restart-stack",
+                headers=self._headers(),
+                json={"lock_token": "lock-token"},
+            )
+            body = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('"type": "done"', body)
+        restart_stack.assert_called_once()
+        self.assertEqual(restart_stack.call_args.kwargs["lock_token"], "lock-token")
+
 
 if __name__ == "__main__":
     unittest.main()

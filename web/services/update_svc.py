@@ -364,6 +364,7 @@ def _start_updater_restart_helper(helper_name, helper_script, *, repo_dir, proje
         raise RuntimeError("Image du service updater introuvable.")
 
     host_repo_dir = os.environ.get("VISIO_HOST_ROOT", "").strip() or repo_dir
+    host_private_dir = os.environ.get("VISIO_HOST_PRIVATE_DIR", "").strip()
     env_file = os.path.join(host_repo_dir, ".env")
     helper_command = [
         docker_path,
@@ -378,17 +379,29 @@ def _start_updater_restart_helper(helper_name, helper_script, *, repo_dir, proje
         "/var/run/docker.sock:/var/run/docker.sock",
         "-v",
         f"{host_repo_dir}:{repo_dir}",
+    ]
+    if host_private_dir:
+        helper_command.extend(["-v", f"{host_private_dir}:/app/data"])
+    helper_command.extend([
         "-w",
         repo_dir,
+    ])
+    if os.path.isfile(env_file):
+        helper_command.extend(["--env-file", env_file])
+    helper_command.extend([
+        "-e",
+        "PRIVATE_DIR=/app/data",
+        "-e",
+        "MEDIA_DIR=/app/static/data",
+        "-e",
+        f"DISPLAY_API_TOKEN={os.environ.get('DISPLAY_API_TOKEN', '')}",
         "-e",
         f"VISIO_GIT_ROOT={repo_dir}",
         "-e",
         "VISIO_UPDATER_ROLE=1",
         "-e",
         "VISIO_RESTART_HELPER_SERVICE=updater",
-    ]
-    if os.path.isfile(env_file):
-        helper_command.extend(["--env-file", env_file])
+    ])
     helper_command.extend([image, "sh", "-lc", helper_script])
     if progress_callback:
         progress_callback(f"$ {' '.join(helper_command[:10])} ...")
@@ -762,7 +775,11 @@ def _stream_command(command, *, cwd, env=None, progress_callback=None):
 def apply_update(*, progress_callback=None, lock_token=None):
     if _delegate_to_updater():
         _update_step(lock_token, "pull", _t("version_pull_progress"), progress=20)
-        return updater_client.stream_operation("/apply-update", progress_callback=progress_callback)
+        return updater_client.stream_operation(
+            "/apply-update",
+            progress_callback=progress_callback,
+            payload={"lock_token": lock_token} if lock_token else None,
+        )
 
     status = get_update_status(fetch_remote=True)
     if not status.get("compatible"):
@@ -792,7 +809,11 @@ def apply_update(*, progress_callback=None, lock_token=None):
 def restart_stack(*, progress_callback=None, lock_token=None):
     if _delegate_to_updater():
         _update_step(lock_token, "restart", _t("version_restart_progress"), progress=72, timeout_seconds=900)
-        result = updater_client.stream_operation("/restart-stack", progress_callback=progress_callback)
+        result = updater_client.stream_operation(
+            "/restart-stack",
+            progress_callback=progress_callback,
+            payload={"lock_token": lock_token} if lock_token else None,
+        )
         if lock_token:
             update_lock(lock_token, message=_t("version_restart_connecting"), progress=85)
         return result
@@ -834,7 +855,11 @@ def restart_stack(*, progress_callback=None, lock_token=None):
 def apply_update_and_restart(*, progress_callback=None, lock_token=None):
     if _delegate_to_updater():
         _update_step(lock_token, "pull", _t("version_pull_progress"), progress=20)
-        result = updater_client.stream_operation("/apply-update-and-restart", progress_callback=progress_callback)
+        result = updater_client.stream_operation(
+            "/apply-update-and-restart",
+            progress_callback=progress_callback,
+            payload={"lock_token": lock_token} if lock_token else None,
+        )
         if lock_token:
             update_lock(lock_token, message=_t("version_restart_connecting"), progress=85)
         return result

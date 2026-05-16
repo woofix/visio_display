@@ -52,11 +52,12 @@ def get_json(path, *, params=None, timeout=DEFAULT_TIMEOUT_SECONDS):
     return _parse_json_response(response)
 
 
-def stream_operation(path, *, progress_callback=None, timeout=STREAM_TIMEOUT_SECONDS):
+def stream_operation(path, *, progress_callback=None, payload=None, timeout=STREAM_TIMEOUT_SECONDS):
     try:
         with requests.post(
             _url(path),
             headers=_headers("application/x-ndjson"),
+            json=payload or {},
             timeout=timeout,
             stream=True,
         ) as response:

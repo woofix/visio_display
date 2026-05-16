@@ -94,6 +94,7 @@ services:
       MEDIA_DIR: /app/static/data
       PRIVATE_DIR: /app/data
       VISIO_GIT_ROOT: /opt/visio-display
+      VISIO_HOST_PRIVATE_DIR: ${PRIVATE_DIR:?PRIVATE_DIR absent. Lancez le module d'installation ou renseignez .env.}
       VISIO_UPDATER_ROLE: "1"
       VISIO_RESTART_HELPER_SERVICE: updater
       DISPLAY_API_TOKEN: ${DISPLAY_API_TOKEN:?DISPLAY_API_TOKEN absent. Lancez scripts/security_bootstrap.sh install . ou renseignez .env.}
@@ -102,6 +103,7 @@ services:
     volumes:
       - ${VISIO_HOST_ROOT:-.}:/opt/visio-display
       - ${VISIO_HOST_ROOT:-.}/.env:/app/.env:ro
+      - ${PRIVATE_DIR:?PRIVATE_DIR absent. Lancez le module d'installation ou renseignez .env.}:/app/data
       - /var/run/docker.sock:/var/run/docker.sock
     restart: always
     depends_on:

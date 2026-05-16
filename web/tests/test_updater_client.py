@@ -56,11 +56,16 @@ class UpdaterClientTests(unittest.TestCase):
         ]
         logs = []
 
-        with patch.object(updater_client.requests, "post", return_value=response):
-            status = updater_client.stream_operation("/restart-stack", progress_callback=logs.append)
+        with patch.object(updater_client.requests, "post", return_value=response) as post:
+            status = updater_client.stream_operation(
+                "/restart-stack",
+                progress_callback=logs.append,
+                payload={"lock_token": "abc"},
+            )
 
         self.assertEqual(logs, ["start"])
         self.assertEqual(status["status"], "restart_scheduled")
+        self.assertEqual(post.call_args.kwargs["json"], {"lock_token": "abc"})
 
 
 if __name__ == "__main__":

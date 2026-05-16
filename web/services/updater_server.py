@@ -69,6 +69,8 @@ def create_app():
 def _stream(operation):
     events = queue.Queue()
     done = threading.Event()
+    payload = request.get_json(silent=True) or {}
+    lock_token = str(payload.get("lock_token") or "").strip() or None
 
     def emit(event_type, **payload):
         events.put({"type": event_type, **payload})
@@ -78,7 +80,7 @@ def _stream(operation):
 
     def worker():
         try:
-            result = operation(progress_callback=progress, lock_token=None)
+            result = operation(progress_callback=progress, lock_token=lock_token)
             emit("done", status=result)
         except Exception as exc:
             emit("error", message=str(exc) or exc.__class__.__name__)

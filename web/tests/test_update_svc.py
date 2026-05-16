@@ -278,12 +278,15 @@ class UpdateServiceTests(unittest.TestCase):
         helper_script = run.call_args.args[0][-1]
         self.assertIn(f"PYTHONPATH={repo_dir}/web:/app", helper_script)
         self.assertNotIn("PYTHONPATH=/app python -c", helper_script)
+        self.assertIn("wait_for_runtime_ready", helper_script)
+        self.assertIn("release_lock", helper_script)
+        self.assertIn("lock-token", helper_script)
 
     def test_restart_helper_uses_updater_service_inside_updater(self):
         repo_dir = str(self.root / "repo")
 
         with (
-            patch.dict(os.environ, {"VISIO_UPDATER_ROLE": "1"}, clear=False),
+            patch.dict(os.environ, {"VISIO_UPDATER_ROLE": "1", "VISIO_HOST_PRIVATE_DIR": "/host/private"}, clear=False),
             patch.object(update_svc, "_current_container_image", return_value="visio_display-updater"),
             patch.object(update_svc, "_run", return_value=update_svc.CommandResult(True)) as run,
         ):
@@ -297,6 +300,7 @@ class UpdateServiceTests(unittest.TestCase):
         helper_command = run.call_args.args[0]
         self.assertIn("run", helper_command)
         self.assertTrue(any("updater" in part for part in helper_command))
+        self.assertIn("/host/private:/app/data", helper_command)
         self.assertNotIn("app", helper_command)
 
     def test_delegated_status_uses_updater_client(self):
@@ -319,7 +323,22 @@ class UpdateServiceTests(unittest.TestCase):
         ):
             result = update_svc.restart_stack(progress_callback=messages.append, lock_token=None)
 
-        stream_operation.assert_called_once_with("/restart-stack", progress_callback=messages.append)
+        stream_operation.assert_called_once_with("/restart-stack", progress_callback=messages.append, payload=None)
+        self.assertEqual(result["status"], "restart_scheduled")
+
+    def test_delegated_restart_sends_lock_token_to_updater(self):
+        delegated = {"status": "restart_scheduled", "can_restart": False}
+        with (
+            patch.dict(os.environ, {"UPDATER_API_URL": "http://updater:8090", "UPDATER_API_TOKEN": "token"}, clear=False),
+            patch.object(update_svc.updater_client, "stream_operation", return_value=delegated) as stream_operation,
+        ):
+            result = update_svc.restart_stack(lock_token="lock-token")
+
+        stream_operation.assert_called_once_with(
+            "/restart-stack",
+            progress_callback=None,
+            payload={"lock_token": "lock-token"},
+        )
         self.assertEqual(result["status"], "restart_scheduled")
 
 

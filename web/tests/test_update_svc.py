@@ -268,8 +268,20 @@ class UpdateServiceTests(unittest.TestCase):
 
         stream.assert_called_once()
         self.assertEqual(stream.call_args.args[0], ["bash", str(repo / "dev.sh")])
+        self.assertEqual(stream.call_args.kwargs["env"]["VISIO_SKIP_DOCKER_RESTART"], "1")
+        self.assertEqual(result["status"], "restart_required")
+        self.assertTrue(result["can_restart"])
+
+    def test_apply_update_and_restart_runs_internal_restart_after_script(self):
+        with (
+            patch.object(update_svc, "apply_update") as apply_update,
+            patch.object(update_svc, "restart_stack", return_value={"status": "restart_scheduled"}) as restart_stack,
+        ):
+            result = update_svc.apply_update_and_restart(lock_token="lock-token")
+
+        apply_update.assert_called_once_with(progress_callback=None, lock_token="lock-token")
+        restart_stack.assert_called_once_with(progress_callback=None, lock_token="lock-token")
         self.assertEqual(result["status"], "restart_scheduled")
-        self.assertFalse(result["can_apply"])
 
     def test_restart_stack_schedules_detached_helper(self):
         status = {

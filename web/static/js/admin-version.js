@@ -287,6 +287,5 @@
         })) return;
         streamAction('/admin/version/update/restart-stream', msg('restartStart', 'Restarting Docker stack...'));
     });
-
     renderStatus(currentStatus);
 })();

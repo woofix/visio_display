@@ -10,6 +10,7 @@ import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 
+from services import updater_client
 from services.i18n import _t
 from services.system_lock_svc import update_lock
 from services.version_svc import _compare_versions
@@ -24,6 +25,14 @@ UPDATE_STEPS = [
     ("containers", "version_step_containers"),
     ("app", "version_step_app"),
 ]
+
+
+def _running_as_updater():
+    return os.environ.get("VISIO_UPDATER_ROLE", "").strip() == "1"
+
+
+def _delegate_to_updater():
+    return updater_client.updater_configured() and not _running_as_updater()
 
 
 def _step_payload(active_stage, *, failed_stage=None):
@@ -256,6 +265,9 @@ def _http_ok(url, *, timeout=6):
 
 
 def runtime_readiness_status(*, compose_cmd=None, project_name="", app_url=None):
+    if _delegate_to_updater() and compose_cmd is None and not project_name and app_url is None:
+        return updater_client.get_json("/runtime-status").get("runtime", {})
+
     compose_cmd = compose_cmd or _docker_compose_command()[0]
     project_name = project_name if project_name is not None else _current_compose_project_name()
     checks = []
@@ -332,8 +344,66 @@ def _shell_join(command):
     return " ".join(shlex.quote(str(part)) for part in command)
 
 
+def _current_container_image():
+    docker_path = shutil.which("docker")
+    if not docker_path:
+        return ""
+    hostname = _run(["hostname"], cwd=_repo_dir(), timeout=4).stdout.strip()
+    if not hostname:
+        return ""
+    result = _run([docker_path, "inspect", "--format", "{{.Config.Image}}", hostname], cwd=_repo_dir(), timeout=8)
+    return result.stdout.strip() if result.ok else ""
+
+
+def _start_updater_restart_helper(helper_name, helper_script, *, repo_dir, project_name, progress_callback=None):
+    docker_path = shutil.which("docker")
+    if not docker_path:
+        raise RuntimeError("Docker CLI est introuvable dans le service updater.")
+    image = _current_container_image()
+    if not image:
+        raise RuntimeError("Image du service updater introuvable.")
+
+    host_repo_dir = os.environ.get("VISIO_HOST_ROOT", "").strip() or repo_dir
+    env_file = os.path.join(host_repo_dir, ".env")
+    helper_command = [
+        docker_path,
+        "run",
+        "-d",
+        "--rm",
+        "--name",
+        helper_name,
+        "--network",
+        f"{project_name or 'visio_display'}_default",
+        "-v",
+        "/var/run/docker.sock:/var/run/docker.sock",
+        "-v",
+        f"{host_repo_dir}:{repo_dir}",
+        "-w",
+        repo_dir,
+        "-e",
+        f"VISIO_GIT_ROOT={repo_dir}",
+        "-e",
+        "VISIO_UPDATER_ROLE=1",
+        "-e",
+        "VISIO_RESTART_HELPER_SERVICE=updater",
+    ]
+    if os.path.isfile(env_file):
+        helper_command.extend(["--env-file", env_file])
+    helper_command.extend([image, "sh", "-lc", helper_script])
+    if progress_callback:
+        progress_callback(f"$ {' '.join(helper_command[:10])} ...")
+    result = _run(helper_command, cwd=repo_dir, timeout=20)
+    if not result.ok:
+        raise RuntimeError(result.stderr or result.stdout or _t("version_restart_helper_failed"))
+    if progress_callback:
+        progress_callback(_t("version_restart_helper_started", name=helper_name))
+
+
 def _start_restart_helper(command, *, repo_dir, compose_cmd, project_name, progress_callback=None, lock_token=None, verify_runtime=False):
     helper_name = f"visio-display-restart-{int(time.time())}"
+    helper_service = os.environ.get("VISIO_RESTART_HELPER_SERVICE", "").strip()
+    if not helper_service:
+        helper_service = "updater" if _running_as_updater() else "app"
     restart_command = _shell_join(command)
     helper_pythonpath = f"{repo_dir}/web:/app"
     helper_lines = [
@@ -376,6 +446,15 @@ def _start_restart_helper(command, *, repo_dir, compose_cmd, project_name, progr
             "exit $status",
         ])
     helper_script = "\n".join(helper_lines)
+    if _running_as_updater():
+        return _start_updater_restart_helper(
+            helper_name,
+            helper_script,
+            repo_dir=repo_dir,
+            project_name=project_name,
+            progress_callback=progress_callback,
+        )
+
     helper_command = [
         *_with_compose_project(compose_cmd, project_name),
         "run",
@@ -384,7 +463,7 @@ def _start_restart_helper(command, *, repo_dir, compose_cmd, project_name, progr
         "--name",
         helper_name,
         "--no-deps",
-        "app",
+        helper_service,
         "sh",
         "-lc",
         helper_script,
@@ -466,6 +545,11 @@ def _build_incompatible(reason, checks, extra=None):
 
 
 def get_update_status(*, fetch_remote=False):
+    if _delegate_to_updater():
+        payload = updater_client.get_json("/status", params={"fetch": "1" if fetch_remote else "0"}, timeout=80 if fetch_remote else 20)
+        status = payload.get("status") or {}
+        return status
+
     repo_dir = _repo_dir()
     checks = []
 
@@ -676,6 +760,10 @@ def _stream_command(command, *, cwd, env=None, progress_callback=None):
 
 
 def apply_update(*, progress_callback=None, lock_token=None):
+    if _delegate_to_updater():
+        _update_step(lock_token, "pull", _t("version_pull_progress"), progress=20)
+        return updater_client.stream_operation("/apply-update", progress_callback=progress_callback)
+
     status = get_update_status(fetch_remote=True)
     if not status.get("compatible"):
         raise RuntimeError(status.get("reason") or "Installation incompatible.")
@@ -702,6 +790,13 @@ def apply_update(*, progress_callback=None, lock_token=None):
 
 
 def restart_stack(*, progress_callback=None, lock_token=None):
+    if _delegate_to_updater():
+        _update_step(lock_token, "restart", _t("version_restart_progress"), progress=72, timeout_seconds=900)
+        result = updater_client.stream_operation("/restart-stack", progress_callback=progress_callback)
+        if lock_token:
+            update_lock(lock_token, message=_t("version_restart_connecting"), progress=85)
+        return result
+
     status = get_update_status(fetch_remote=False)
     if not status.get("compatible"):
         raise RuntimeError(status.get("reason") or "Installation incompatible.")
@@ -737,5 +832,12 @@ def restart_stack(*, progress_callback=None, lock_token=None):
 
 
 def apply_update_and_restart(*, progress_callback=None, lock_token=None):
+    if _delegate_to_updater():
+        _update_step(lock_token, "pull", _t("version_pull_progress"), progress=20)
+        result = updater_client.stream_operation("/apply-update-and-restart", progress_callback=progress_callback)
+        if lock_token:
+            update_lock(lock_token, message=_t("version_restart_connecting"), progress=85)
+        return result
+
     apply_update(progress_callback=progress_callback, lock_token=lock_token)
     return restart_stack(progress_callback=progress_callback, lock_token=lock_token)

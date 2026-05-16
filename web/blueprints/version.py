@@ -18,7 +18,13 @@ from services.system_lock_svc import (
     update_lock,
 )
 from services.i18n import _t
-from services.update_svc import UPDATE_STEPS, apply_update_and_restart, get_update_status, restart_stack, runtime_readiness_status
+from services.update_svc import (
+    UPDATE_STEPS,
+    apply_update_and_restart,
+    get_update_status,
+    restart_stack,
+    runtime_readiness_status,
+)
 
 
 bp = Blueprint("version", __name__)

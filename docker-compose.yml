@@ -39,16 +39,20 @@ services:
       retries: 5
 
   app:
-    build: .
+    build:
+      context: .
+      target: app
     container_name: Visio
     env_file: .env
-    environment: *visio-container-env
+    environment:
+      <<: *visio-container-env
+      UPDATER_API_URL: http://updater:8090
+      UPDATER_API_TOKEN: ${UPDATER_API_TOKEN:?UPDATER_API_TOKEN absent. Lancez scripts/security_bootstrap.sh update . ou renseignez .env.}
     volumes:
       - ${VISIO_HOST_ROOT:-.}:/opt/visio-display
       - ${VISIO_HOST_ROOT:-.}/.env:/app/.env:ro
       - ${MEDIA_DIR:?MEDIA_DIR absent. Lancez le module d'installation ou renseignez .env.}:/app/static/data
       - ${PRIVATE_DIR:?PRIVATE_DIR absent. Lancez le module d'installation ou renseignez .env.}:/app/data
-      - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - "${PORT:-8081}:8080"
     restart: always
@@ -57,6 +61,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+      updater:
+        condition: service_started
     healthcheck:
       test: ["CMD", "python", "-c", "import os, urllib.parse, urllib.request; token=os.environ['DISPLAY_API_TOKEN']; urllib.request.urlopen('http://localhost:8080/?screen_token=' + urllib.parse.quote(token))"]
       interval: 30s
@@ -64,7 +70,9 @@ services:
       retries: 3
 
   worker:
-    build: .
+    build:
+      context: .
+      target: app
     env_file: .env
     environment: *visio-container-env
     volumes: *visio-volumes
@@ -75,6 +83,37 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+
+  updater:
+    build:
+      context: .
+      target: updater
+    env_file: .env
+    environment:
+      REDIS_URL: redis://redis:6379
+      MEDIA_DIR: /app/static/data
+      PRIVATE_DIR: /app/data
+      VISIO_GIT_ROOT: /opt/visio-display
+      VISIO_UPDATER_ROLE: "1"
+      VISIO_RESTART_HELPER_SERVICE: updater
+      DISPLAY_API_TOKEN: ${DISPLAY_API_TOKEN:?DISPLAY_API_TOKEN absent. Lancez scripts/security_bootstrap.sh install . ou renseignez .env.}
+      UPDATER_API_TOKEN: ${UPDATER_API_TOKEN:?UPDATER_API_TOKEN absent. Lancez scripts/security_bootstrap.sh update . ou renseignez .env.}
+      DATABASE_URL: postgresql://visio:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD absent. Lancez scripts/security_bootstrap.sh install . ou renseignez .env.}@postgres:5432/visio
+    volumes:
+      - ${VISIO_HOST_ROOT:-.}:/opt/visio-display
+      - ${VISIO_HOST_ROOT:-.}/.env:/app/.env:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8090/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
   redis_data:

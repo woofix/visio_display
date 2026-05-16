@@ -225,13 +225,14 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 | `VISIO_UPDATE_REMOTE` | Remote Git utilisée par la page de mise à jour serveur (défaut : `origin`) |
 | `CLIENT_HEARTBEAT_TOKEN` | Jeton partagé exigé par `/api/client-heartbeat` |
 | `DISPLAY_API_TOKEN` | Jeton écran obligatoire exigé par `/` et les endpoints publics d'affichage |
+| `UPDATER_API_TOKEN` | Jeton interne obligatoire entre `app` et le service Docker privilégié `updater` |
 | `SESSION_COOKIE_SECURE` | Force le cookie de session en mode `Secure` (recommandé derrière HTTPS) |
 | `SESSION_COOKIE_NAME` | Nom du cookie de session Flask (défaut : `visio_session`) |
 | `SESSION_LIFETIME_MINUTES` | Durée de vie maximale d’une session connectée (défaut : `480`) |
 | `TRUSTED_HOSTS` | Liste d’hôtes autorisés séparés par des virgules pour filtrer l’en-tête `Host` |
 | `TRUST_PROXY_COUNT` | Nombre de proxies inverse de confiance pour interpréter `X-Forwarded-*` |
 
-`scripts/security_bootstrap.sh install .` crée les secrets absents, refuse les valeurs faibles pendant une installation, ajoute `MEDIA_DIR`, `PRIVATE_DIR` et `VISIO_HOST_ROOT` s’ils manquent, applique `chmod 600` sur `.env`, crée `MEDIA_DIR` et `PRIVATE_DIR/backups`, puis applique `chmod 700` sur `PRIVATE_DIR` et ses sauvegardes. En mise à jour, `scripts/security_bootstrap.sh update .` ajoute uniquement les clés manquantes et signale les valeurs faibles sans remplacer `SECRET_KEY` ni `POSTGRES_PASSWORD`. La stack Docker exige `MEDIA_DIR`, `PRIVATE_DIR` et `DISPLAY_API_TOKEN` dans `.env` et refuse de démarrer s’ils sont absents.
+`scripts/security_bootstrap.sh install .` crée les secrets absents, refuse les valeurs faibles pendant une installation, ajoute `MEDIA_DIR`, `PRIVATE_DIR` et `VISIO_HOST_ROOT` s’ils manquent, applique `chmod 600` sur `.env`, crée `MEDIA_DIR` et `PRIVATE_DIR/backups`, puis applique `chmod 700` sur `PRIVATE_DIR` et ses sauvegardes. En mise à jour, `scripts/security_bootstrap.sh update .` ajoute uniquement les clés manquantes et signale les valeurs faibles sans remplacer `SECRET_KEY` ni `POSTGRES_PASSWORD`. La stack Docker exige `MEDIA_DIR`, `PRIVATE_DIR`, `DISPLAY_API_TOKEN` et `UPDATER_API_TOKEN` dans `.env` et refuse de démarrer s’ils sont absents.
 
 Dans Docker, `MEDIA_DIR` et `PRIVATE_DIR` de `.env` désignent les dossiers hôte persistants; ils sont montés dans le conteneur sur `/app/static/data` et `/app/data`, qui sont seulement des chemins internes de conteneur.
 
@@ -318,7 +319,9 @@ Le super-admin peut aussi configurer le watchdog kiosque, arrêter/redémarrer u
 
 **Mise à jour serveur depuis l'administration :**
 
-Depuis **Paramètres > Version**, le super-admin peut vérifier la version distante, appliquer une mise à jour disponible depuis le dépôt Git installé, puis redémarrer la stack Docker. La mise à jour refuse de continuer si le dépôt n'est pas propre, si le remote/branche cible est introuvable ou si Docker Compose n'est pas accessible. Pendant l'application ou le redémarrage, un verrou système persistant affiche un overlay bloquant sur l'administration et empêche les autres actions jusqu'à la fin de l'opération.
+Depuis **Paramètres > Version**, le super-admin peut vérifier la version distante, appliquer une mise à jour disponible depuis le dépôt Git installé, puis redémarrer la stack Docker. La page admin ne monte plus `/var/run/docker.sock` dans le service `app` : elle appelle le service interne `updater` via le réseau Docker avec `UPDATER_API_TOKEN`. Seul `updater` possède Docker CLI/Compose et le socket Docker; il n'expose aucun port public et n'accepte que les opérations allowlistées de statut, mise à jour, redémarrage et test.
+
+La mise à jour refuse de continuer si le dépôt n'est pas propre, si le remote/branche cible est introuvable ou si Docker Compose n'est pas accessible côté updater. Pendant l'application ou le redémarrage, un verrou système persistant affiche un overlay bloquant sur l'administration et empêche les autres actions jusqu'à la fin de l'opération. En cas d'échec, consultez les logs NDJSON visibles sur la page, puis vérifiez `docker compose logs updater app` et relancez **Vérifier**.
 
 **Interface d'administration :** ouvrir `http://<hôte>:8081/admin` et se connecter.
 
@@ -687,6 +690,7 @@ Visio-Display/
 | `/admin/priority-alert`                   | POST    | Super-admin        | Publier ou effacer l'alerte prioritaire              |
 | `/admin/version`                          | GET     | Super-admin        | Comparer la version installée avec la version distante |
 | `/admin/version/update/status`            | GET     | Super-admin        | Vérifier l'état Git/Docker et la version distante    |
+| `/admin/version/update/runtime-status`    | GET     | Super-admin        | Vérifier le retour des conteneurs et de l'application |
 | `/admin/version/update/apply-stream`      | POST    | Super-admin        | Appliquer une mise à jour en flux NDJSON             |
 | `/admin/version/update/restart-stream`    | POST    | Super-admin        | Redémarrer la stack Docker en flux NDJSON            |
 | `/admin/about`                            | GET     | Connecté           | Page À propos (version, stack, licence)              |
@@ -1072,13 +1076,14 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 | `VISIO_UPDATE_REMOTE` | Git remote used by the server update page (default: `origin`) |
 | `CLIENT_HEARTBEAT_TOKEN` | Shared token required by `/api/client-heartbeat` |
 | `DISPLAY_API_TOKEN` | Required screen token for `/` and public display endpoints |
+| `UPDATER_API_TOKEN` | Required internal token between `app` and the Docker-privileged `updater` service |
 | `SESSION_COOKIE_SECURE` | Forces the session cookie to use `Secure` (recommended behind HTTPS) |
 | `SESSION_COOKIE_NAME` | Flask session cookie name (default: `visio_session`) |
 | `SESSION_LIFETIME_MINUTES` | Maximum lifetime of an authenticated session (default: `480`) |
 | `TRUSTED_HOSTS` | Comma-separated allowlist of hostnames accepted from the `Host` header |
 | `TRUST_PROXY_COUNT` | Number of trusted reverse proxies for `X-Forwarded-*` headers |
 
-`scripts/security_bootstrap.sh install .` creates missing secrets, rejects weak values during installation, adds `MEDIA_DIR`, `PRIVATE_DIR`, and `VISIO_HOST_ROOT` when missing, applies `chmod 600` to `.env`, creates `MEDIA_DIR` and `PRIVATE_DIR/backups`, then applies `chmod 700` to `PRIVATE_DIR` and its backups. During updates, `scripts/security_bootstrap.sh update .` only adds missing keys and reports weak values without replacing `SECRET_KEY` or `POSTGRES_PASSWORD`. The Docker stack requires `MEDIA_DIR`, `PRIVATE_DIR`, and `DISPLAY_API_TOKEN` in `.env` and refuses to start when they are absent.
+`scripts/security_bootstrap.sh install .` creates missing secrets, rejects weak values during installation, adds `MEDIA_DIR`, `PRIVATE_DIR`, and `VISIO_HOST_ROOT` when missing, applies `chmod 600` to `.env`, creates `MEDIA_DIR` and `PRIVATE_DIR/backups`, then applies `chmod 700` to `PRIVATE_DIR` and its backups. During updates, `scripts/security_bootstrap.sh update .` only adds missing keys and reports weak values without replacing `SECRET_KEY` or `POSTGRES_PASSWORD`. The Docker stack requires `MEDIA_DIR`, `PRIVATE_DIR`, `DISPLAY_API_TOKEN`, and `UPDATER_API_TOKEN` in `.env` and refuses to start when they are absent.
 
 In Docker, `MEDIA_DIR` and `PRIVATE_DIR` from `.env` name the persistent host directories; they are mounted inside the container at `/app/static/data` and `/app/data`, which are container mount points only.
 
@@ -1167,7 +1172,9 @@ The super-admin can also configure the kiosk watchdog, shut down/restart a detec
 
 **Server update from the admin UI:**
 
-From **Settings > Version**, the super-admin can check the remote version, apply an available update from the installed Git repository, then restart the Docker stack. The update refuses to continue when the repository is dirty, when the target remote/branch cannot be read, or when Docker Compose is unavailable. During the update or restart, a persistent system lock shows a blocking overlay in the admin UI and prevents other actions until the operation finishes.
+From **Settings > Version**, the super-admin can check the remote version, apply an available update from the installed Git repository, then restart the Docker stack. The admin app no longer mounts `/var/run/docker.sock`: it calls the internal `updater` service over the Docker network with `UPDATER_API_TOKEN`. Only `updater` has Docker CLI/Compose and the Docker socket; it exposes no public port and accepts only allowlisted status, update, restart, and test operations.
+
+The update refuses to continue when the repository is dirty, when the target remote/branch cannot be read, or when Docker Compose is unavailable inside updater. During the update or restart, a persistent system lock shows a blocking overlay in the admin UI and prevents other actions until the operation finishes. On failure, read the NDJSON logs shown on the page, then check `docker compose logs updater app` and run **Check** again.
 
 **Admin interface:** open `http://<host>:8081/admin` and log in with your credentials.
 
@@ -1464,6 +1471,7 @@ Visio-Display/
 | `/admin/priority-alert`                   | POST    | Super-admin        | Publish or clear the priority alert banner              |
 | `/admin/version`                          | GET     | Super-admin        | Compare the installed version with the remote version   |
 | `/admin/version/update/status`            | GET     | Super-admin        | Check Git/Docker state and the remote version            |
+| `/admin/version/update/runtime-status`    | GET     | Super-admin        | Check container and application readiness after restart  |
 | `/admin/version/update/apply-stream`      | POST    | Super-admin        | Apply an update over an NDJSON stream                    |
 | `/admin/version/update/restart-stream`    | POST    | Super-admin        | Restart the Docker stack over an NDJSON stream           |
 | `/admin/about`                            | GET     | Logged in          | About page (version, stack, licence)                    |

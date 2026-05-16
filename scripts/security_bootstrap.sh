@@ -330,6 +330,7 @@ if [ -f "$ENV_FILE" ]; then
     ensure_secret_key "SECRET_KEY" "SECRET_KEY"
     ensure_secret_key "POSTGRES_PASSWORD" "POSTGRES_PASSWORD"
     ensure_secret_key "DISPLAY_API_TOKEN" "DISPLAY_API_TOKEN"
+    ensure_secret_key "UPDATER_API_TOKEN" "UPDATER_API_TOKEN"
     ensure_optional_generated_key "CLIENT_HEARTBEAT_TOKEN" "CLIENT_HEARTBEAT_TOKEN"
     ensure_host_root
     ensure_required_path "MEDIA_DIR" "MEDIA_DIR" "$DEFAULT_MEDIA_DIR"
@@ -338,6 +339,7 @@ if [ -f "$ENV_FILE" ]; then
     secret_key="$(env_value SECRET_KEY)"
     postgres_password="$(env_value POSTGRES_PASSWORD)"
     display_api_token="$(env_value DISPLAY_API_TOKEN)"
+    updater_api_token="$(env_value UPDATER_API_TOKEN)"
 
     if is_weak_secret_key "$secret_key"; then
         if [ "$MODE" = "install" ]; then
@@ -363,6 +365,12 @@ if [ -f "$ENV_FILE" ]; then
         error "DISPLAY_API_TOKEN is mandatory and cannot be empty"
     else
         ok "DISPLAY_API_TOKEN is present"
+    fi
+
+    if [ -z "$updater_api_token" ]; then
+        error "UPDATER_API_TOKEN is mandatory and cannot be empty"
+    else
+        ok "UPDATER_API_TOKEN is present"
     fi
 fi
 

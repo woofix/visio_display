@@ -17,10 +17,16 @@ class UpdateServiceTests(unittest.TestCase):
             "VISIO_GIT_ROOT": os.environ.get("VISIO_GIT_ROOT"),
             "VISIO_UPDATE_REMOTE": os.environ.get("VISIO_UPDATE_REMOTE"),
             "VISIO_UPDATE_BRANCH": os.environ.get("VISIO_UPDATE_BRANCH"),
+            "VISIO_UPDATER_ROLE": os.environ.get("VISIO_UPDATER_ROLE"),
+            "UPDATER_API_URL": os.environ.get("UPDATER_API_URL"),
+            "UPDATER_API_TOKEN": os.environ.get("UPDATER_API_TOKEN"),
         }
         os.environ["VISIO_GIT_ROOT"] = str(self.root / "repo")
         os.environ.pop("VISIO_UPDATE_REMOTE", None)
         os.environ.pop("VISIO_UPDATE_BRANCH", None)
+        os.environ.pop("VISIO_UPDATER_ROLE", None)
+        os.environ.pop("UPDATER_API_URL", None)
+        os.environ.pop("UPDATER_API_TOKEN", None)
         self.compose_patch = patch.object(update_svc, "_docker_compose_command", return_value=(["docker", "compose"], ""))
         self.compose_patch.start()
 
@@ -272,6 +278,50 @@ class UpdateServiceTests(unittest.TestCase):
         helper_script = run.call_args.args[0][-1]
         self.assertIn(f"PYTHONPATH={repo_dir}/web:/app", helper_script)
         self.assertNotIn("PYTHONPATH=/app python -c", helper_script)
+
+    def test_restart_helper_uses_updater_service_inside_updater(self):
+        repo_dir = str(self.root / "repo")
+
+        with (
+            patch.dict(os.environ, {"VISIO_UPDATER_ROLE": "1"}, clear=False),
+            patch.object(update_svc, "_current_container_image", return_value="visio_display-updater"),
+            patch.object(update_svc, "_run", return_value=update_svc.CommandResult(True)) as run,
+        ):
+            update_svc._start_restart_helper(
+                ["docker", "compose", "up", "-d", "--build"],
+                repo_dir=repo_dir,
+                compose_cmd=["docker", "compose"],
+                project_name="visio_display",
+            )
+
+        helper_command = run.call_args.args[0]
+        self.assertIn("run", helper_command)
+        self.assertTrue(any("updater" in part for part in helper_command))
+        self.assertNotIn("app", helper_command)
+
+    def test_delegated_status_uses_updater_client(self):
+        remote_status = {"status": "up_to_date"}
+        with (
+            patch.dict(os.environ, {"UPDATER_API_URL": "http://updater:8090", "UPDATER_API_TOKEN": "token"}, clear=False),
+            patch.object(update_svc.updater_client, "get_json", return_value={"ok": True, "status": remote_status}) as get_json,
+        ):
+            status = update_svc.get_update_status(fetch_remote=True)
+
+        get_json.assert_called_once()
+        self.assertEqual(status["status"], "up_to_date")
+
+    def test_delegated_restart_streams_through_updater_client(self):
+        delegated = {"status": "restart_scheduled", "can_restart": False}
+        messages = []
+        with (
+            patch.dict(os.environ, {"UPDATER_API_URL": "http://updater:8090", "UPDATER_API_TOKEN": "token"}, clear=False),
+            patch.object(update_svc.updater_client, "stream_operation", return_value=delegated) as stream_operation,
+        ):
+            result = update_svc.restart_stack(progress_callback=messages.append, lock_token=None)
+
+        stream_operation.assert_called_once_with("/restart-stack", progress_callback=messages.append)
+        self.assertEqual(result["status"], "restart_scheduled")
+
 
     def test_system_lock_prevents_parallel_tasks(self):
         lock_file = str(self.root / "system_task.lock")

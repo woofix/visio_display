@@ -18,7 +18,7 @@ from services.system_lock_svc import (
     update_lock,
 )
 from services.i18n import _t
-from services.update_svc import UPDATE_STEPS, apply_update_and_restart, get_update_status, restart_stack, runtime_readiness_status
+from services.update_svc import UPDATE_STEPS, apply_update_and_restart, get_update_status, runtime_readiness_status
 
 
 bp = Blueprint("version", __name__)
@@ -140,16 +140,5 @@ def apply_update_stream():
         activity_message="server update applied",
         task_type="update",
         start_message=_t("version_apply_start"),
-        keep_lock_after_success=True,
-    )
-
-
-@bp.route("/admin/version/update/restart-stream", methods=["POST"])
-def restart_update_stream():
-    return _stream_operation(
-        restart_stack,
-        activity_message="docker stack restarted after update",
-        task_type="reboot",
-        start_message=_t("version_restart_progress"),
         keep_lock_after_success=True,
     )

@@ -4,7 +4,6 @@
 
     const checkBtn = document.getElementById('update-check-btn');
     const applyBtn = document.getElementById('update-apply-btn');
-    const restartBtn = document.getElementById('update-restart-btn');
     const stateBox = document.getElementById('update-state');
     const label = document.getElementById('update-status-label');
     const reason = document.getElementById('update-status-reason');
@@ -47,7 +46,6 @@
     function setBusy(isBusy) {
         checkBtn.disabled = isBusy;
         applyBtn.disabled = isBusy;
-        restartBtn.disabled = isBusy;
     }
 
     function appendLog(message, isError) {
@@ -142,7 +140,6 @@
 
         const canApply = currentStatus.can_apply === true && ['update_available', 'branch_switch_required'].includes(currentStatus.status);
         applyBtn.hidden = !canApply;
-        restartBtn.hidden = currentStatus.status !== 'restart_required';
         confirmBox.hidden = !canApply;
     }
 
@@ -176,12 +173,8 @@
 
     async function streamAction(url, startMessage) {
         setBusy(true);
-        const lockType = url.includes('restart') ? 'reboot' : 'update';
-        if (lockType === 'update') {
-            window.adminSystemLock?.showDetailed(lockType, startMessage, 5, updateSteps);
-        } else {
-            window.adminSystemLock?.show(lockType, startMessage, 5);
-        }
+        const lockType = 'update';
+        window.adminSystemLock?.showDetailed(lockType, startMessage, 5, updateSteps);
         logBox.hidden = false;
         logBox.textContent = '';
         appendLog(startMessage);
@@ -206,7 +199,7 @@
             let buffer = '';
             let finalStatus = null;
             let failed = false;
-            const returnsBeforeConnectionClose = lockType === 'reboot';
+            const returnsBeforeConnectionClose = false;
 
             while (true) {
                 const { value, done } = await reader.read();
@@ -277,15 +270,6 @@
             confirmLabel: msg('applyLabel', 'Apply'),
         })) return;
         streamAction('/admin/version/update/apply-stream', msg('applyStart', 'Applying update...'));
-    });
-    restartBtn.addEventListener('click', async () => {
-        if (!await window.appUI.confirm({
-            titleText: msg('restartConfirmTitle', 'Restart Docker'),
-            messageText: msg('restartConfirmMessage', 'Restart the Docker stack now?'),
-            tone: 'warning',
-            confirmLabel: msg('restartLabel', 'Restart Docker'),
-        })) return;
-        streamAction('/admin/version/update/restart-stream', msg('restartStart', 'Restarting Docker stack...'));
     });
 
     renderStatus(currentStatus);

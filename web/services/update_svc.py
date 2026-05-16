@@ -856,24 +856,6 @@ def restart_stack(*, progress_callback=None, lock_token=None):
             if not services or service in services
         ] or [service for service in services if service != "updater"] or ["app", "worker"]
         command = [*compose_project_cmd, "up", "-d", "--build", "--no-deps", *primary_services]
-        _update_step(lock_token, "restart", _t("version_restart_progress"), progress=72, timeout_seconds=900)
-        if progress_callback:
-            progress_callback(_t("version_restart_background"))
-            progress_callback(f"$ {' '.join(command)}")
-        _stream_command(
-            command,
-            cwd=status["repo_dir"],
-            env=_compose_subprocess_env(status["repo_dir"]),
-            progress_callback=progress_callback,
-        )
-        wait_for_runtime_ready(lock_token=lock_token, project_name=project_name)
-        status["status"] = "restart_scheduled"
-        status["status_label"] = _t("version_status_restart_scheduled")
-        status["status_tone"] = "success"
-        status["can_apply"] = False
-        status["can_restart"] = False
-        status["reason"] = _t("version_reason_restart_scheduled")
-        return status
     _update_step(lock_token, "restart", _t("version_restart_progress"), progress=72, timeout_seconds=900)
     if progress_callback:
         progress_callback(_t("version_restart_background"))

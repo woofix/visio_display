@@ -214,18 +214,23 @@ def api_queue():
             seen_filenames.add(j['filename'])
     recent = list(reversed(recent_dedup))[-5:]
 
-    # Attach compress progress from Redis for processing jobs
-    r = get_redis()
-    for j in active:
-        if j['status'] == 'processing':
-            pct = r.get(f'visio-display:progress:{j["id"]}')
-            if pct is not None:
-                j['progress'] = int(pct)
+    upload_jobs = []
+    try:
+        # Attach compress progress from Redis for processing jobs.
+        r = get_redis()
+        for j in active:
+            if j['status'] == 'processing':
+                pct = r.get(f'visio-display:progress:{j["id"]}')
+                if pct is not None:
+                    j['progress'] = int(pct)
+        upload_jobs = get_upload_jobs()
+    except Exception:
+        upload_jobs = []
 
     return jsonify({
         "active":      active,
         "recent":      recent,
-        "upload_jobs": get_upload_jobs(),
+        "upload_jobs": upload_jobs,
         "window":      is_encoding_window(),
         "now_hour":    get_queue_now().hour,
     })

@@ -416,13 +416,6 @@ document.querySelectorAll('.btn-delete').forEach(btn => {
     });
 });
 
-/* ── Stacking dropdown z-index ── */
-new MutationObserver(() => {
-    document.querySelectorAll('.file-card').forEach(card => {
-        card.classList.toggle('has-dropdown-open', !!card.querySelector('.dropdown-menu.open'));
-    });
-}).observe(document.getElementById('file-grid'), { subtree:true, attributes:true, attributeFilter:['class'] });
-
 /* ── Flash ── */
 function showFlash(msg, type) {
     window.appUI.showFlash(msg, type);

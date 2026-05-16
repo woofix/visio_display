@@ -55,20 +55,35 @@
 
 /* ── Dropdowns ── */
 (function() {
-    function closeAll() { document.querySelectorAll('.dropdown-menu.open').forEach(m => m.classList.remove('open')); }
-    document.querySelectorAll('.dropdown-toggle').forEach(btn => {
-        btn.addEventListener('click', e => {
-            e.stopPropagation();
-            const menu = btn.nextElementSibling;
-            const wasOpen = menu.classList.contains('open');
-            closeAll();
-            if (!wasOpen) {
-                menu.classList.remove('drop-down');
-                menu.classList.add('open');
-                const rect = menu.getBoundingClientRect();
-                if (rect.top < 0) menu.classList.add('drop-down');
-            }
+    function syncDropdownCard(menu) {
+        const card = menu?.closest('.file-card');
+        if (card) card.classList.toggle('has-dropdown-open', menu.classList.contains('open'));
+    }
+
+    function closeAll() {
+        document.querySelectorAll('.dropdown-menu.open').forEach(menu => {
+            menu.classList.remove('open');
+            syncDropdownCard(menu);
         });
+    }
+
+    document.addEventListener('click', e => {
+        const btn = e.target.closest('.dropdown-toggle');
+        if (!btn) {
+            if (!e.target.closest('.dropdown-menu')) closeAll();
+            return;
+        }
+        const menu = btn.nextElementSibling;
+        if (!menu?.classList.contains('dropdown-menu')) return;
+        const wasOpen = menu.classList.contains('open');
+        closeAll();
+        if (!wasOpen) {
+            menu.classList.remove('drop-down');
+            menu.classList.add('open');
+            const rect = menu.getBoundingClientRect();
+            if (rect.top < 0) menu.classList.add('drop-down');
+            syncDropdownCard(menu);
+        }
     });
     const userBtn  = document.getElementById('user-menu-btn');
     const userMenu = document.getElementById('user-dropdown');
@@ -88,31 +103,26 @@
             }
         });
     }
-    document.addEventListener('click', closeAll);
-    document.querySelectorAll('.dropdown-menu').forEach(m => m.addEventListener('click', e => e.stopPropagation()));
 })();
 
 /* ── Modal ── */
-document.querySelectorAll('.thumb, .thumb-video').forEach(el => {
-    el.addEventListener('click', () => {
-        if (el.dataset.previewDisabled === 'true') {
-            return;
-        }
-        const mImg = document.getElementById('modal-img');
-        const mVid = document.getElementById('modal-video');
-        if (el.dataset.type === 'video') {
-            mVid.src = el.dataset.src;
-            mVid.classList.remove('u-hidden');
-            mImg.classList.add('u-hidden');
-            mVid.play();
-        } else {
-            mImg.src = el.dataset.src;
-            mImg.classList.remove('u-hidden');
-            mVid.classList.add('u-hidden');
-            mVid.pause();
-        }
-        document.getElementById('modal').classList.add('open');
-    });
+document.addEventListener('click', event => {
+    const el = event.target.closest('.thumb, .thumb-video');
+    if (!el || el.dataset.previewDisabled === 'true') return;
+    const mImg = document.getElementById('modal-img');
+    const mVid = document.getElementById('modal-video');
+    if (el.dataset.type === 'video') {
+        mVid.src = el.dataset.src;
+        mVid.classList.remove('u-hidden');
+        mImg.classList.add('u-hidden');
+        mVid.play();
+    } else {
+        mImg.src = el.dataset.src;
+        mImg.classList.remove('u-hidden');
+        mVid.classList.add('u-hidden');
+        mVid.pause();
+    }
+    document.getElementById('modal').classList.add('open');
 });
 document.getElementById('modal-close').addEventListener('click', () => {
     document.getElementById('modal-video').pause();
@@ -136,8 +146,10 @@ async function updateQueueBadge() {
         }
     } catch {}
 }
-updateQueueBadge();
-setInterval(updateQueueBadge, 30000);
+window.addEventListener('load', () => setTimeout(updateQueueBadge, 1200), { once: true });
+setInterval(() => {
+    if (document.visibilityState === 'visible') updateQueueBadge();
+}, 45000);
 }
 
 /* ── Verrou global système ── */
@@ -284,8 +296,11 @@ setInterval(updateQueueBadge, 30000);
         },
     };
 
-    pollSystemStatus();
-    pollTimer = setInterval(pollSystemStatus, 2000);
+    const pollIntervalMs = window.matchMedia('(pointer: coarse)').matches ? 8000 : 4000;
+    setTimeout(pollSystemStatus, 1000);
+    pollTimer = setInterval(() => {
+        if (document.visibilityState === 'visible' || active) pollSystemStatus();
+    }, pollIntervalMs);
     window.addEventListener('beforeunload', event => {
         if (!active) return;
         event.preventDefault();

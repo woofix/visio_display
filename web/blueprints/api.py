@@ -20,7 +20,7 @@ from services.media_svc import (
     get_media_url, get_original_media_url,
 )
 from services.campaign_svc import resolve_campaign_override
-from services.ephemeris_svc import generate_ephemeride_image
+from services.ephemeris_svc import ensure_ephemeride_image_async, generate_ephemeride_image
 from constants import UPLOAD_FOLDER
 
 bp = Blueprint('api', __name__)
@@ -116,10 +116,7 @@ def get_images():
     if guard:
         return guard
     if is_feature_enabled('ephemeris'):
-        try:
-            generate_ephemeride_image()
-        except Exception as exc:
-            print(f"[EPHEMERIS ERROR] {exc}")
+        ensure_ephemeride_image_async()
     screen = request.args.get('screen', '').strip().lower()
     bounds = _requested_display_bounds()
     cfg    = load_config()

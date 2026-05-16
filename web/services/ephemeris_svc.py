@@ -19,6 +19,8 @@ from services.media_svc import strip_html
 from translations import JOURS_BY_LANG, MOIS_BY_LANG, WMO_CODES_BY_LANG
 
 _EPHEMERIS_LOCK = threading.Lock()
+_EPHEMERIS_ASYNC_LOCK = threading.Lock()
+_EPHEMERIS_ASYNC_RUNNING = False
 
 
 def _configured_zoneinfo(cfg=None):
@@ -430,6 +432,52 @@ def get_ephemeride_slot(cfg=None):
     return now.strftime(f"%Y-%m-%d_{slot:02d}h")
 
 
+def _ephemeride_target(cfg=None):
+    cfg = cfg or load_config()
+    slot = get_ephemeride_slot(cfg)
+    filename = f"ephemeride_{slot}.jpg"
+    return filename, os.path.join(UPLOAD_FOLDER, filename), _today_for_ephemeris(cfg)
+
+
+def _ephemeride_slot_file_exists(path, lang):
+    if not os.path.exists(path):
+        return False
+    try:
+        with open(_ephemeride_meta_path(path), "r", encoding="utf-8") as handle:
+            metadata = json.load(handle)
+        return metadata.get("lang") == lang
+    except (OSError, json.JSONDecodeError):
+        return False
+
+
+def ensure_ephemeride_image_async(force=False):
+    """Refresh the generated ephemeris without blocking display API requests."""
+    global _EPHEMERIS_ASYNC_RUNNING
+    lang = get_language()
+    cfg = load_config()
+    _filename, path, _today = _ephemeride_target(cfg)
+    if not force and _ephemeride_slot_file_exists(path, lang):
+        return False
+
+    with _EPHEMERIS_ASYNC_LOCK:
+        if _EPHEMERIS_ASYNC_RUNNING:
+            return False
+        _EPHEMERIS_ASYNC_RUNNING = True
+
+    def worker():
+        global _EPHEMERIS_ASYNC_RUNNING
+        try:
+            generate_ephemeride_image(force=force)
+        except Exception as exc:
+            print(f"[EPHEMERIS ASYNC ERROR] {exc}")
+        finally:
+            with _EPHEMERIS_ASYNC_LOCK:
+                _EPHEMERIS_ASYNC_RUNNING = False
+
+    threading.Thread(target=worker, name="visio-ephemeris-refresh", daemon=True).start()
+    return True
+
+
 def _replace_ephemeride_references(cfg, filename):
     changed = False
 
@@ -702,11 +750,7 @@ def generate_ephemeride_image(force=False):
     MOIS  = MOIS_BY_LANG.get(lang, MOIS_BY_LANG['fr'])
     cfg   = load_config()
 
-    slot     = get_ephemeride_slot(cfg)
-    filename = f"ephemeride_{slot}.jpg"
-    path     = os.path.join(UPLOAD_FOLDER, filename)
-
-    today = _today_for_ephemeris(cfg)
+    filename, path, today = _ephemeride_target(cfg)
 
     if not force and _ephemeride_file_is_current(path, today, lang):
         return

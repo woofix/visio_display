@@ -5,6 +5,29 @@
     const DEFAULT_SCREEN_NAME = displayConfig.defaultScreenName || '';
     const DISPLAY_API_TOKEN = displayConfig.displayApiToken || '';
     const SCREEN           = new URLSearchParams(location.search).get('screen') || '';
+    const PERF_ENABLED = new URLSearchParams(location.search).get('perf') === '1';
+
+    if (PERF_ENABLED) {
+        const originalFetch = window.fetch.bind(window);
+        window.fetch = function(resource, init) {
+            const startedAt = performance.now();
+            const label = typeof resource === 'string' ? resource : resource?.url || String(resource);
+            return originalFetch(resource, init).then(response => {
+                const elapsed = Math.round(performance.now() - startedAt);
+                if (elapsed >= 500) {
+                    console.warn('[Visio display perf] slow fetch', elapsed + 'ms', label, response.status);
+                }
+                return response;
+            });
+        };
+        window.addEventListener('load', () => {
+            const nav = performance.getEntriesByType('navigation')[0];
+            console.info('[Visio display perf] page', {
+                load: nav ? Math.round(nav.loadEventEnd) : null,
+                transferSize: nav?.transferSize || 0,
+            });
+        });
+    }
 
     function displayApiUrl(path, extraParams = {}) {
         const params = new URLSearchParams();
@@ -117,7 +140,8 @@
     }
 
     function mediaUrl(item) {
-        return `${item.path}?v=${encodeURIComponent(item?.rev || Date.now())}`;
+        const sep = item.path.includes('?') ? '&' : '?';
+        return `${item.path}${sep}v=${encodeURIComponent(item?.rev || Date.now())}`;
     }
 
     function computePoolSignature(pools) {
@@ -326,10 +350,9 @@
     }
 
     async function refreshMediaState() {
-        const [freshMedia, freshDurations, freshPools, freshHalo] = await Promise.all([
-            fetchMedia(), fetchDurations(), fetchPools(), fetchHalo()
+        const [freshMedia, freshDurations, freshPools] = await Promise.all([
+            fetchMedia(), fetchDurations(), fetchPools()
         ]);
-        applyHalo(freshHalo);
         durations  = freshDurations;
         groupPools = freshPools;
         if (!freshMedia.length) return;

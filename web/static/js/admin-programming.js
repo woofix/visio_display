@@ -103,6 +103,15 @@ if (canSchedule) {
     let currentMode = 'create';
     let originalFilename = '';
     let originalScreen = '';
+    let vignettesLoaded = false;
+
+    function loadVignetteThumbnails() {
+        if (vignettesLoaded) return;
+        vignettesLoaded = true;
+        mediaGrid.querySelectorAll('img[data-src]').forEach(img => {
+            img.src = img.dataset.src;
+        });
+    }
 
     function selectVignette(filename) {
         vignetteItems.forEach(item => {
@@ -138,6 +147,7 @@ if (canSchedule) {
     syncVignetteCount();
 
     function openModal(mode, payload = {}) {
+        loadVignetteThumbnails();
         currentMode = mode;
         originalFilename = payload.originalFilename || payload.filename || '';
         originalScreen = payload.originalScreen || payload.screen || '';

@@ -4,9 +4,10 @@ import logging
 import os
 import secrets
 import shutil
+import time
 from datetime import timedelta
 
-from flask import abort, jsonify, redirect, render_template, request, send_from_directory, session, url_for
+from flask import abort, g, jsonify, redirect, render_template, request, send_from_directory, session, url_for
 from sqlalchemy import inspect, text
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -385,6 +386,11 @@ def register_blueprints(app):
 
 def register_request_hooks(app):
     @app.before_request
+    def start_request_timer():
+        g.request_started_at = time.perf_counter()
+        return None
+
+    @app.before_request
     def protect_from_csrf():
         if request.method in {"GET", "HEAD", "OPTIONS", "TRACE"}:
             return None
@@ -406,6 +412,22 @@ def register_request_hooks(app):
 
     @app.after_request
     def apply_security_headers(response):
+        elapsed_ms = None
+        started_at = getattr(g, "request_started_at", None)
+        if started_at is not None:
+            elapsed_ms = max(0.0, (time.perf_counter() - started_at) * 1000)
+            response.headers["Server-Timing"] = f"app;dur={elapsed_ms:.1f}"
+            response.headers["X-Response-Time-ms"] = f"{elapsed_ms:.1f}"
+            if elapsed_ms >= env_int("SLOW_REQUEST_LOG_MS", 1000):
+                LOGGER.warning(
+                    "Slow request %.1fms %s %s -> %s (%s bytes)",
+                    elapsed_ms,
+                    request.method,
+                    request.path,
+                    response.status_code,
+                    response.calculate_content_length() or "-",
+                )
+
         csp = (
             "default-src 'self'; "
             "base-uri 'self'; "
@@ -430,7 +452,15 @@ def register_request_hooks(app):
         response.headers.setdefault("Origin-Agent-Cluster", "?1")
         response.headers.setdefault("X-Permitted-Cross-Domain-Policies", "none")
 
-        cacheable_static = request.endpoint == "static" and request.path.startswith("/static/css/")
+        cacheable_static = (
+            request.endpoint == "static"
+            and (
+                request.path.startswith("/static/css/")
+                or request.path.startswith("/static/js/")
+                or request.path.startswith("/static/images/")
+                or request.path.startswith("/static/assets/")
+            )
+        )
         if cacheable_static:
             response.headers["Cache-Control"] = "public, max-age=2592000, immutable"
             response.headers.pop("Pragma", None)
@@ -540,7 +570,11 @@ def register_template_context(app):
 def register_public_routes(app):
     @app.route(f"{C.STATIC_MEDIA_URL}/<path:filename>")
     def static_media(filename):
-        return send_from_directory(C.STATIC_MEDIA_DIR, filename, conditional=True)
+        response = send_from_directory(C.STATIC_MEDIA_DIR, filename, conditional=True)
+        response.headers["Cache-Control"] = "public, max-age=2592000, immutable"
+        response.headers.pop("Pragma", None)
+        response.headers.pop("Expires", None)
+        return response
 
     @app.route("/")
     def index():

@@ -41,17 +41,17 @@ Visio-Display s'exécute comme une stack self-hosted Docker Compose :
 - **Volumes hôte** conservent les médias publics (`MEDIA_DIR`) et les données privées (`PRIVATE_DIR`)
 - **Clients kiosque** ouvrent l'URL d'affichage sécurisée, remontent leur heartbeat et peuvent être gérés depuis l'admin
 
-### Captures à venir
+### Captures
 
-> Placeholder screenshot: dashboard (`docs/screenshots/dashboard.png`)
->
-> Placeholder screenshot/GIF: éditeur d'annonces (`docs/screenshots/announcement-editor.gif`)
->
-> Placeholder screenshot: campagnes (`docs/screenshots/campaigns.png`)
->
-> Placeholder screenshot: affichage public (`docs/screenshots/public-display.png`)
->
-> Placeholder screenshot: clients kiosque (`docs/screenshots/kiosk-clients.png`)
+![Tableau de bord](docs/screenshots/fr/dashboard.png)
+
+![Éditeur d'annonces](docs/screenshots/fr/announcement-editor.gif)
+
+![Campagnes](docs/screenshots/fr/campaigns.png)
+
+![Affichage public](docs/screenshots/fr/public-display.png)
+
+![Clients kiosque](docs/screenshots/fr/kiosk-clients.png)
 
 ### Fonctionnalités
 
@@ -888,17 +888,17 @@ Visio-Display runs as a self-hosted Docker Compose stack:
 - **Host volumes** persist public media (`MEDIA_DIR`) and private runtime data (`PRIVATE_DIR`)
 - **Kiosk clients** open the secured display URL, report heartbeat status, and can be managed from the admin UI
 
-### Screenshot placeholders
+### Screenshots
 
-> Placeholder screenshot: dashboard (`docs/screenshots/dashboard.png`)
->
-> Placeholder screenshot/GIF: announcement editor (`docs/screenshots/announcement-editor.gif`)
->
-> Placeholder screenshot: campaigns (`docs/screenshots/campaigns.png`)
->
-> Placeholder screenshot: public display (`docs/screenshots/public-display.png`)
->
-> Placeholder screenshot: kiosk clients (`docs/screenshots/kiosk-clients.png`)
+![Dashboard](docs/screenshots/us/dashboard.png)
+
+![Announcement editor](docs/screenshots/us/announcement-editor.gif)
+
+![Campaigns](docs/screenshots/us/campaigns.png)
+
+![Public display](docs/screenshots/us/public-display.png)
+
+![Kiosk clients](docs/screenshots/us/kiosk-clients.png)
 
 ### Features
 

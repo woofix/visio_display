@@ -86,12 +86,13 @@
 .media-vignette-search { border:none; outline:none; font:inherit; font-size:.82rem; color:var(--text); background:transparent; flex:1; min-width:0; }
 .media-vignette-search::placeholder { color:var(--text-3); }
 .media-vignette-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(100px, 1fr)); gap:8px; max-height:260px; overflow-y:auto; padding-right:2px; }
-.media-vignette-item { position:relative; border:2px solid var(--border); border-radius:10px; overflow:hidden; cursor:pointer; transition:border-color .15s, box-shadow .15s; background:var(--surface); }
+.media-vignette-item { position:relative; border:2px solid var(--border); border-radius:10px; overflow:hidden; cursor:pointer; transition:border-color .15s, box-shadow .15s; background:var(--surface); content-visibility:auto; contain-intrinsic-size:116px 96px; }
 .media-vignette-item:hover { border-color:var(--primary); }
 .media-vignette-item.selected { border-color:var(--primary); box-shadow:0 0 0 3px rgba(124,58,237,.2); }
 .media-vignette-item.hidden { display:none; }
 .media-vignette-thumb-wrap { position:relative; width:100%; aspect-ratio:16/9; background:#0b1220; overflow:hidden; }
 .media-vignette-thumb { width:100%; height:100%; object-fit:cover; display:block; }
+.media-vignette-thumb:not([src]) { visibility:hidden; }
 .media-vignette-overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(124,58,237,.72); color:#fff; opacity:0; transition:opacity .15s; }
 .media-vignette-item.selected .media-vignette-overlay { opacity:1; }
 .media-vignette-badge { position:absolute; top:4px; left:4px; border-radius:999px; padding:2px 5px; background:rgba(0,0,0,.55); color:#fff; font-size:.52rem; font-weight:700; letter-spacing:.04em; backdrop-filter:blur(4px); }
@@ -435,7 +436,7 @@
                         {% for media in media_items %}
                         <div class="media-vignette-item" data-filename="{{ media.filename }}" data-name="{{ media.filename|lower }}" tabindex="0" role="option" aria-selected="false">
                             <div class="media-vignette-thumb-wrap">
-                                <img class="media-vignette-thumb" src="{{ media.preview_url }}" alt="{{ media.filename }}" loading="lazy">
+                                <img class="media-vignette-thumb" data-src="{{ media.preview_url }}" alt="{{ media.filename }}" loading="lazy" decoding="async" fetchpriority="low">
                                 <div class="media-vignette-overlay">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width:20px;height:20px"><polyline points="20 6 9 17 4 12"/></svg>
                                 </div>

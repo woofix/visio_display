@@ -16,7 +16,7 @@
 .announcement-editor {
     --studio-bg:var(--bg); --studio-ink:var(--text); --studio-muted:var(--text-3); --studio-line:var(--border);
     --studio-soft:var(--surface-alt); --studio-blue:var(--primary); --studio-blue-soft:var(--primary-fade);
-    display:grid; grid-template-columns:68px minmax(620px,1fr) 304px; gap:0; align-items:stretch;
+    display:grid; grid-template-columns:68px minmax(0,1fr) 304px; gap:0; align-items:stretch;
     min-height:calc(100vh - 210px); overflow:hidden; border:1px solid var(--border); border-radius:12px;
     background:var(--studio-bg); box-shadow:var(--shadow-sm);
 }
@@ -93,10 +93,10 @@ button.chip { font:inherit; cursor:pointer; }
 .canvas-viewport {
     position:relative; overflow:auto; border-radius:10px; background-color:color-mix(in srgb, var(--bg-strong) 88%, #020617);
     background-image:radial-gradient(circle at 1px 1px, rgba(148,163,184,.11) 1px, transparent 0);
-    background-size:22px 22px; display:block; height:520px; padding:30px 44px 50px; box-shadow:inset 0 0 0 1px rgba(148,163,184,.18);
+    background-size:22px 22px; display:block; height:clamp(300px, calc(100vh - 360px), 620px); padding:30px 44px 50px; box-shadow:inset 0 0 0 1px rgba(148,163,184,.18);
 }
 .announcement-stage-outer {
-    position:absolute; top:30px; left:50%; z-index:2; transform:translateX(-50%); width:960px; height:540px; margin:0 auto; background:#1e293b; border-radius:6px; overflow:hidden; isolation:isolate;
+    position:relative; z-index:2; width:min(960px, 100%); aspect-ratio:16 / 9; height:auto; margin:0 auto; background:#1e293b; border-radius:6px; overflow:hidden; isolation:isolate;
     box-shadow:0 24px 70px rgba(0,0,0,.34), 0 0 0 1px rgba(255,255,255,.10), 0 0 0 12px rgba(15,23,42,.18);
 }
 .announcement-stage { position:absolute; left:0; top:0; width:1920px; height:1080px; transform-origin:0 0; background:#1e293b; overflow:hidden; }
@@ -230,9 +230,46 @@ button.chip { font:inherit; cursor:pointer; }
 .layer-row button:hover { background:var(--primary-bg); color:var(--primary); }
 .layer-row svg { width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 .empty-note { color:var(--text-3); font-size:.76rem; line-height:1.45; margin:0; }
-@media(max-width:1250px) { .announcement-editor { grid-template-columns:68px minmax(0,1fr); } .inspector { grid-column:1 / -1; border-left:0; border-top:1px solid var(--studio-line); grid-template-columns:repeat(2,minmax(0,1fr)); } }
-@media(max-width:1400px) { .topbar-cluster .chip { display:none; } .topbar-cluster strong { font-size:.72rem; } .canvas-controls { gap:5px; } .topbar-action { padding:0 8px; } }
-@media(max-width:780px) { .announcement-editor { grid-template-columns:1fr; } .announcement-tools { flex-direction:row; overflow:auto; border-right:0; border-bottom:1px solid var(--studio-line); } .inspector { grid-template-columns:1fr; } .canvas-viewport { padding:26px; } }
+@media(max-width:1400px) {
+    .topbar-cluster .chip { display:none; }
+    .topbar-cluster strong { font-size:.72rem; }
+    .canvas-controls { gap:5px; }
+    .topbar-action { padding:0 8px; }
+}
+@media(max-width:1250px) {
+    .announcement-editor { grid-template-columns:68px minmax(0,1fr); overflow:visible; }
+    .inspector {
+        grid-column:1 / -1; max-height:none; overflow:visible; border-left:0; border-top:1px solid var(--studio-line);
+        grid-template-columns:repeat(2,minmax(0,1fr));
+    }
+}
+@media(max-width:900px) {
+    .canvas-topbar,.canvas-bottombar { align-items:flex-start; flex-direction:column; }
+    .canvas-controls,.feedback-strip { width:100%; }
+    .canvas-controls { flex-wrap:wrap; overflow:visible; }
+    .canvas-bottombar .feedback-strip:last-child { display:none; }
+}
+@media(max-width:780px) {
+    .announcement-editor { grid-template-columns:1fr; min-height:0; }
+    .announcement-tools { flex-direction:row; overflow-x:auto; border-right:0; border-bottom:1px solid var(--studio-line); padding:8px; }
+    .announcement-toolbar { flex-direction:row; }
+    .tool-group { grid-auto-flow:column; grid-auto-columns:max-content; }
+    .tool-btn::after { display:none; }
+    .inspector { grid-template-columns:1fr; }
+    .announcement-stage-wrap { padding:10px; }
+    .canvas-viewport { height:clamp(240px, 62vw, 420px); padding:20px; }
+    .minimap { width:112px; right:16px; bottom:16px; padding:4px; }
+    .mini-row,.announcement-actions.image-actions { grid-template-columns:1fr; }
+}
+@media(max-width:520px) {
+    .page-header p { font-size:.82rem; }
+    .canvas-topbar,.canvas-bottombar { padding:8px 10px; }
+    .canvas-controls .chip:not(#zoom-label):not(#snap-state),.feedback-strip .chip:nth-child(n+3) { display:none; }
+    .topbar-action { width:100%; justify-content:center; }
+    .canvas-viewport { height:clamp(210px, 72vw, 340px); padding:16px; }
+    .minimap { display:none; }
+    .inspector-title { font-size:.64rem; }
+}
 {% endblock %}
 
 {% block content %}
@@ -631,7 +668,12 @@ button.chip { font:inherit; cursor:pointer; }
     };
 
     function scaleStage() {
-        const base = Math.min((viewport.clientWidth - 112) / 1920, (viewport.clientHeight - 112) / 1080);
+        const styles = getComputedStyle(viewport);
+        const padX = parseFloat(styles.paddingLeft) + parseFloat(styles.paddingRight);
+        const padY = parseFloat(styles.paddingTop) + parseFloat(styles.paddingBottom);
+        const availableW = Math.max(1, viewport.clientWidth - padX);
+        const availableH = Math.max(1, viewport.clientHeight - padY);
+        const base = Math.min(availableW / 1920, availableH / 1080);
         const scale = clamp(base * zoom, .12, 2.5);
         outer.style.width = `${1920 * scale}px`;
         outer.style.height = `${1080 * scale}px`;
@@ -641,12 +683,13 @@ button.chip { font:inherit; cursor:pointer; }
     }
     function revealArtboard() {
         requestAnimationFrame(() => {
-            const top = Math.max(0, outer.offsetTop - 30);
+            const top = Math.max(0, outer.offsetTop - 16);
             if (Math.abs(viewport.scrollTop - top) > 8) viewport.scrollTop = top;
         });
     }
-    new ResizeObserver(scaleStage).observe(outer); scaleStage();
+    scaleStage();
     new ResizeObserver(scaleStage).observe(viewport);
+    window.addEventListener('resize', scaleStage);
 
     function snapshot() {
         return JSON.stringify({

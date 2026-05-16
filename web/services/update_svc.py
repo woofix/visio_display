@@ -868,20 +868,19 @@ def apply_update(*, progress_callback=None, lock_token=None):
     env = os.environ.copy()
     if status.get("target_branch"):
         env["VISIO_UPDATE_BRANCH"] = status["target_branch"]
+    env["VISIO_SKIP_DOCKER_RESTART"] = "1"
     update_script, _update_script_label = _update_script_for_branch(repo_dir, status.get("branch", ""))
     command = ["bash", update_script]
     if status.get("current_ref_type") == "tag" and status.get("target") and update_script.endswith("scripts/update.sh"):
         command.append(status["target"])
     _stream_command(command, cwd=repo_dir, env=env, progress_callback=progress_callback)
     if lock_token:
-        _update_step(lock_token, "app", _t("version_restart_connecting"), progress=85, timeout_seconds=900)
+        _update_step(lock_token, "stop", _t("version_stop_progress"), progress=58)
     refreshed = get_update_status(fetch_remote=False)
-    refreshed["status"] = "restart_scheduled"
-    refreshed["status_label"] = _t("version_status_restart_scheduled")
-    refreshed["status_tone"] = "success"
-    refreshed["can_apply"] = False
-    refreshed["can_restart"] = False
-    refreshed["reason"] = _t("version_reason_restart_scheduled")
+    refreshed["status"] = "restart_required"
+    refreshed["status_label"] = _t("version_status_restart_required")
+    refreshed["status_tone"] = "warning"
+    refreshed["can_restart"] = True
     return refreshed
 
 
@@ -962,4 +961,16 @@ def restart_stack(*, progress_callback=None, lock_token=None):
 
 
 def apply_update_and_restart(*, progress_callback=None, lock_token=None):
-    return apply_update(progress_callback=progress_callback, lock_token=lock_token)
+    if _delegate_to_updater():
+        _update_step(lock_token, "pull", _t("version_pull_progress"), progress=20)
+        result = updater_client.stream_operation(
+            "/apply-update-and-restart",
+            progress_callback=progress_callback,
+            payload={"lock_token": lock_token} if lock_token else None,
+        )
+        if lock_token:
+            update_lock(lock_token, message=_t("version_restart_connecting"), progress=85)
+        return result
+
+    apply_update(progress_callback=progress_callback, lock_token=lock_token)
+    return restart_stack(progress_callback=progress_callback, lock_token=lock_token)

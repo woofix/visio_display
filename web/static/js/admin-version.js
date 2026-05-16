@@ -190,9 +190,16 @@
 
         function noteRestartProgress(message) {
             const normalized = String(message || '').toLowerCase();
+            const dockerComposeRestartStarted = (
+                /^container\s+.+\s+recreat/.test(normalized)
+                || normalized.includes('exporting to image')
+                || normalized.includes('writing image sha256:')
+                || normalized.includes('naming to docker.io/')
+            );
             if (
                 restartSignals.some(signal => signal && String(signal).toLowerCase() && normalized.includes(String(signal).toLowerCase()))
                 || (normalized.includes('docker') && (normalized.includes('restart') || normalized.includes('redemarr') || normalized.includes('redémarr')))
+                || dockerComposeRestartStarted
             ) {
                 restartStarted = true;
             }

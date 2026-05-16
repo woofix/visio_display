@@ -453,7 +453,9 @@ def _element_image(element, layer_uploads=None):
         if source == "media":
             return _media_image_from_src(media.get("filename"))
         if source == "external":
-            return _media_image_from_src(media.get("url"))
+            return _media_image_from_src(media.get("url")) or _media_image_from_src(
+                element.get("src") or element.get("imageSrc")
+            )
     return _media_image_from_src(media or element.get("src") or element.get("imageSrc"))
 
 
@@ -523,6 +525,7 @@ def _render_layout_json(form, uploaded_file=None, layer_uploads=None):
         "background_color": layout.get("background", {}).get("color") or form.get("background_color"),
         "background_media": layout.get("background", {}).get("media") or form.get("background_media"),
         "external_url": layout.get("background", {}).get("external_url") or form.get("external_url"),
+        "external_preview": layout.get("background", {}).get("external_preview") or form.get("external_preview"),
         "background_fit": layout.get("background", {}).get("fit") or form.get("background_fit"),
         "background_zoom": layout.get("background", {}).get("zoom") or form.get("background_zoom"),
         "background_x": layout.get("background", {}).get("x") or form.get("background_x"),
@@ -615,7 +618,12 @@ def build_background(form, uploaded_file=None):
         if image:
             return fitted(image)
     if mode == "external":
-        image = _download_image(form.get("external_url"))
+        try:
+            image = _download_image(form.get("external_url"))
+        except Exception:
+            image = _media_image_from_src(form.get("external_preview"))
+            if not image:
+                raise
         return fitted(image)
     return Image.new("RGB", ANNOUNCEMENT_SIZE, color)
 

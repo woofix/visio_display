@@ -284,6 +284,7 @@ button.chip { font:inherit; cursor:pointer; }
     <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="layout_json" id="layout-json">
     <input type="hidden" name="external_url" id="external-url">
+    <input type="hidden" name="external_preview" id="external-preview">
     <input type="hidden" name="external_credit" id="external-credit">
     <input type="file" name="layer_uploads" id="layer-upload" accept=".jpg,.jpeg,.png" multiple hidden>
     <div class="announcement-editor">
@@ -1131,7 +1132,7 @@ button.chip { font:inherit; cursor:pointer; }
             bg.style.backgroundImage = url ? `url("${url}")` : '';
         }
         if (mode === 'upload' && qs('#background-upload').files[0]) bg.style.backgroundImage = `url("${URL.createObjectURL(qs('#background-upload').files[0])}")`;
-        if (mode === 'external' && qs('#external-url').value) bg.style.backgroundImage = `url("${qs('#external-url').value}")`;
+        if (mode === 'external' && qs('#external-url').value) bg.style.backgroundImage = `url("${qs('#external-preview').value || qs('#external-url').value}")`;
         const bgZoom = Number(qs('#background-zoom').value || 1);
         bg.style.transform = bgZoom === 1 ? '' : `scale(${bgZoom})`;
     }
@@ -1259,9 +1260,9 @@ button.chip { font:inherit; cursor:pointer; }
             if (btn.dataset.externalAction === 'bg') {
                 qs('#background-mode').value = 'external';
                 qs('#external-url').value = card.dataset.url;
+                qs('#external-preview').value = card.querySelector('img').src;
                 qs('#external-credit').value = card.dataset.credit;
                 setBackground();
-                bg.style.backgroundImage = `url("${card.querySelector('img').src}")`;
             }
             if (btn.dataset.externalAction === 'add') addImageLayer(payload);
             if (btn.dataset.externalAction === 'fill') {
@@ -1369,6 +1370,7 @@ button.chip { font:inherit; cursor:pointer; }
                 color:qs('#background-color').value,
                 media:qs('#background-media').value,
                 external_url:qs('#external-url').value,
+                external_preview:qs('#external-preview').value,
                 fit:qs('#background-fit').value,
                 zoom:Number(qs('#background-zoom').value || 1),
                 x:Number(qs('#background-x').value || 0),

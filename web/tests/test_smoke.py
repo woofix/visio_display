@@ -1,3 +1,4 @@
+import base64
 import os
 import shutil
 import sys
@@ -814,6 +815,26 @@ class AppSmokeTests(unittest.TestCase):
         self.assertIn("github.com/woofix/visio_display", headers["User-Agent"])
         self.assertEqual(headers["Api-User-Agent"], headers["User-Agent"])
         self.assertEqual(headers["Accept"], "application/json")
+
+    def test_external_announcement_background_falls_back_to_preview_data(self):
+        from PIL import Image
+
+        image = Image.new("RGB", (32, 18), "navy")
+        payload = BytesIO()
+        image.save(payload, format="JPEG")
+        preview = "data:image/jpeg;base64," + base64.b64encode(payload.getvalue()).decode("ascii")
+
+        with self.app.app_context():
+            from services import announcement_svc
+
+            with patch.object(announcement_svc, "_download_image", side_effect=RuntimeError("429")):
+                background = announcement_svc.build_background({
+                    "background_mode": "external",
+                    "external_url": "https://upload.wikimedia.org/wikipedia/commons/example.jpg",
+                    "external_preview": preview,
+                })
+
+        self.assertEqual(background.size, (1920, 1080))
 
     def test_pdf_upload_is_converted_to_document_pages(self):
         from PIL import Image

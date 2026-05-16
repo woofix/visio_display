@@ -24,6 +24,10 @@ ANNOUNCEMENT_SIZE = (1920, 1080)
 COMMONS_API_URL = "https://commons.wikimedia.org/w/api.php"
 ALLOWED_IMAGE_HOSTS = {"upload.wikimedia.org", "commons.wikimedia.org"}
 COMMONS_RASTER_MIMES = {"image/jpeg", "image/png", "image/webp"}
+WIKIMEDIA_USER_AGENT = (
+    "Visio-Display/1.0 "
+    "(https://github.com/woofix/visio_display; contact: https://github.com/woofix/visio_display/issues)"
+)
 DEFAULT_FONT_FAMILY = "'DejaVu Sans', Arial, sans-serif"
 FONT_FAMILIES = {
     "dejavu sans": (
@@ -305,13 +309,21 @@ def _plain_text(value):
     return " ".join(re.sub(r"<[^>]*>", " ", str(value or "")).split())
 
 
+def _wikimedia_headers(accept="*/*"):
+    return {
+        "User-Agent": WIKIMEDIA_USER_AGENT,
+        "Api-User-Agent": WIKIMEDIA_USER_AGENT,
+        "Accept": accept,
+    }
+
+
 def _download_image(url):
     if not _safe_image_url(url):
         raise ValueError(_t("announcement_external_url_forbidden"))
     response = requests.get(
         url,
         timeout=12,
-        headers={"User-Agent": "Visio-Display/announcement-builder"},
+        headers=_wikimedia_headers("image/avif,image/webp,image/apng,image/*,*/*;q=0.8"),
     )
     response.raise_for_status()
     if not _safe_image_url(response.url):
@@ -346,7 +358,7 @@ def fetch_thumbnail_bytes(url, *, max_bytes=16 * 1024 * 1024):
     response = requests.get(
         url,
         timeout=(2, 5),
-        headers={"User-Agent": "Visio-Display/announcement-builder"},
+        headers=_wikimedia_headers("image/avif,image/webp,image/apng,image/*,*/*;q=0.8"),
     )
     response.raise_for_status()
     if not _safe_image_url(response.url):
@@ -787,7 +799,7 @@ def commons_search(query, limit=12):
         "iiurlheight": 270,
         "origin": "*",
     }
-    response = requests.get(COMMONS_API_URL, params=params, timeout=10, headers={"User-Agent": "Visio-Display/announcement-builder"})
+    response = requests.get(COMMONS_API_URL, params=params, timeout=10, headers=_wikimedia_headers("application/json"))
     response.raise_for_status()
     pages = response.json().get("query", {}).get("pages", {})
     candidates = []

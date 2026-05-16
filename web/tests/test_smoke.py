@@ -804,6 +804,17 @@ class AppSmokeTests(unittest.TestCase):
             self.assertEqual(cfg.get("durations", {}).get(filename), 12)
             self.assertIsNotNone(get_existing_image_rendition_url(filename, "thumb"))
 
+    def test_wikimedia_requests_use_contact_user_agent(self):
+        with self.app.app_context():
+            from services import announcement_svc
+
+            headers = announcement_svc._wikimedia_headers("application/json")
+
+        self.assertIn("Visio-Display/", headers["User-Agent"])
+        self.assertIn("github.com/woofix/visio_display", headers["User-Agent"])
+        self.assertEqual(headers["Api-User-Agent"], headers["User-Agent"])
+        self.assertEqual(headers["Accept"], "application/json")
+
     def test_pdf_upload_is_converted_to_document_pages(self):
         from PIL import Image
 

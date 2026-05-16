@@ -12,7 +12,7 @@ import requests
 from PIL import Image, ImageDraw, ImageFont
 
 from constants import UPLOAD_FOLDER, LAT, LNG, DEFAULT_METEO_VILLE, DEFAULT_METEO_TZ
-from services.config_svc import load_config
+from services.config_svc import load_config, save_config
 from services import ephemeris_nameday_svc as nameday_svc
 from services.i18n import _t, get_language
 from services.media_svc import strip_html
@@ -430,6 +430,64 @@ def get_ephemeride_slot(cfg=None):
     return now.strftime(f"%Y-%m-%d_{slot:02d}h")
 
 
+def _replace_ephemeride_references(cfg, filename):
+    changed = False
+
+    def replace_list(values):
+        nonlocal changed
+        if not isinstance(values, list):
+            return values
+        replaced = []
+        added_new = False
+        for item in values:
+            if isinstance(item, str) and item.startswith("ephemeride_"):
+                if not added_new:
+                    replaced.append(filename)
+                    added_new = True
+                if item != filename:
+                    changed = True
+            elif item not in replaced:
+                replaced.append(item)
+        if replaced != values:
+            changed = True
+        return replaced
+
+    def replace_keyed_metadata(container):
+        nonlocal changed
+        if not isinstance(container, dict):
+            return container
+        selected_value = container.get(filename)
+        for key in list(container.keys()):
+            if isinstance(key, str) and key.startswith("ephemeride_") and key != filename:
+                if selected_value is None:
+                    selected_value = container[key]
+                del container[key]
+                changed = True
+        if selected_value is not None and container.get(filename) != selected_value:
+            container[filename] = selected_value
+            changed = True
+        return container
+
+    for key in ("order", "disabled"):
+        cfg[key] = replace_list(cfg.get(key, []))
+    for key in ("durations", "groups", "schedules"):
+        cfg[key] = replace_keyed_metadata(cfg.get(key, {}))
+
+    for scfg in cfg.get("screens", {}).values():
+        if not isinstance(scfg, dict):
+            continue
+        for key in ("order", "disabled"):
+            scfg[key] = replace_list(scfg.get(key, []))
+        for key in ("durations", "schedules"):
+            scfg[key] = replace_keyed_metadata(scfg.get(key, {}))
+
+    for campaign in cfg.get("campaigns", []):
+        if isinstance(campaign, dict):
+            campaign["media"] = replace_list(campaign.get("media", []))
+
+    return changed
+
+
 def _displayable_saint_name(raw_name):
     return nameday_svc.displayable_saint_name(raw_name)
 
@@ -656,6 +714,10 @@ def generate_ephemeride_image(force=False):
     with _EPHEMERIS_LOCK:
         if not force and _ephemeride_file_is_current(path, today, lang):
             return
+
+        cfg_changed = _replace_ephemeride_references(cfg, filename)
+        if cfg_changed:
+            save_config(cfg)
 
         for f in os.listdir(UPLOAD_FOLDER):
             if f.startswith("ephemeride_") and f != filename:

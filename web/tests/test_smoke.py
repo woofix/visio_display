@@ -1247,6 +1247,75 @@ class AppSmokeTests(unittest.TestCase):
             with Image.open(path) as image:
                 self.assertEqual(image.size, (1920, 1080))
 
+    def test_ephemeris_generation_replaces_previous_config_references(self):
+        with self.app.app_context():
+            from constants import UPLOAD_FOLDER
+            from services import ephemeris_svc
+            from services.config_svc import load_config, save_config
+
+            class FixedDateTime:
+                @classmethod
+                def now(cls, tz=None):
+                    value = datetime(2026, 5, 13, 16, 30, 0, tzinfo=timezone.utc)
+                    if tz is None:
+                        return value.replace(tzinfo=None)
+                    return value.astimezone(tz)
+
+            old_filename = "ephemeride_2026-05-13_14h.jpg"
+            new_filename = "ephemeride_2026-05-13_18h.jpg"
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            with open(os.path.join(UPLOAD_FOLDER, old_filename), "wb") as handle:
+                handle.write(b"old-card")
+
+            save_config({
+                "meteo_tz": "Europe/Paris",
+                "order": ["intro.jpg", old_filename, "outro.jpg"],
+                "durations": {old_filename: 42},
+                "groups": {old_filename: ["Accueil"]},
+                "schedules": {old_filename: {"enabled": True}},
+                "screens": {
+                    "hall": {
+                        "order": ["screen-a.jpg", old_filename],
+                        "disabled": [old_filename],
+                        "durations": {old_filename: 12},
+                        "schedules": {old_filename: {"start": "08:00"}},
+                    }
+                },
+                "campaigns": [{"media": ["promo.jpg", old_filename]}],
+            })
+
+            with (
+                patch.object(ephemeris_svc, "datetime", FixedDateTime),
+                patch.object(ephemeris_svc, "get_ephemeride_nominis", return_value=("Rolande", "")),
+                patch.object(ephemeris_svc, "get_sun_times", return_value=("06:12", "21:34")),
+                patch.object(ephemeris_svc, "get_meteo", return_value={
+                    "temp": "20°C",
+                    "ressenti": "19°C",
+                    "condition": "CIEL CLAIR",
+                    "vent": "8 km/h",
+                    "precip": "0.0 mm",
+                    "code": 0,
+                }),
+                patch.object(ephemeris_svc, "get_next_school_holiday", return_value=None),
+            ):
+                ephemeris_svc.generate_ephemeride_image(force=True)
+
+            cfg = load_config()
+            self.assertEqual(cfg["order"], ["intro.jpg", new_filename, "outro.jpg"])
+            self.assertEqual(cfg["durations"].get(new_filename), 42)
+            self.assertEqual(cfg["groups"].get(new_filename), ["Accueil"])
+            self.assertEqual(cfg["schedules"].get(new_filename), {"enabled": True})
+            self.assertNotIn(old_filename, cfg["durations"])
+            self.assertNotIn(old_filename, cfg["groups"])
+            self.assertNotIn(old_filename, cfg["schedules"])
+            self.assertEqual(cfg["screens"]["hall"]["order"], ["screen-a.jpg", new_filename])
+            self.assertEqual(cfg["screens"]["hall"]["disabled"], [new_filename])
+            self.assertEqual(cfg["screens"]["hall"]["durations"].get(new_filename), 12)
+            self.assertEqual(cfg["screens"]["hall"]["schedules"].get(new_filename), {"start": "08:00"})
+            self.assertEqual(cfg["campaigns"][0]["media"], ["promo.jpg", new_filename])
+            self.assertFalse(os.path.exists(os.path.join(UPLOAD_FOLDER, old_filename)))
+            self.assertTrue(os.path.exists(os.path.join(UPLOAD_FOLDER, new_filename)))
+
     def test_superadmin_can_force_ephemeris_regeneration_from_admin(self):
         self._login()
         with self.client.session_transaction() as session:

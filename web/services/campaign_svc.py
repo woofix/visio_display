@@ -9,6 +9,7 @@ from services.media_svc import (
     is_group_active_on_screen,
     normalize_group_name,
 )
+from services.config_svc import get_screen_keys, normalize_screen_key
 
 
 def normalize_campaign_name(value):
@@ -99,7 +100,7 @@ def normalize_campaign(raw_campaign, *, valid_screens=None, valid_media=None):
 
 
 def get_campaigns(cfg):
-    valid_screens = list((cfg or {}).get("screens", {}).keys())
+    valid_screens = get_screen_keys(cfg or {})
     valid_media = get_all_media()
     campaigns = [
         normalize_campaign(item, valid_screens=valid_screens, valid_media=valid_media)
@@ -111,7 +112,7 @@ def get_campaigns(cfg):
 
 
 def save_campaigns_to_config(cfg, campaigns):
-    valid_screens = list((cfg or {}).get("screens", {}).keys())
+    valid_screens = get_screen_keys(cfg or {})
     valid_media = get_all_media()
     cfg["campaigns"] = [
         normalize_campaign(item, valid_screens=valid_screens, valid_media=valid_media)
@@ -122,7 +123,10 @@ def save_campaigns_to_config(cfg, campaigns):
 
 def campaign_matches_screen(campaign, screen):
     screens = campaign.get("screens", [])
-    return not screens or str(screen or "").strip().lower() in screens
+    cfg = {"screens": {screen_name: {} for screen_name in screens if screen_name}}
+    normalized_screen = normalize_screen_key(screen, cfg)
+    normalized_targets = {normalize_screen_key(screen_name, cfg) for screen_name in screens}
+    return not screens or normalized_screen in normalized_targets
 
 
 def campaign_is_active(campaign, now=None):

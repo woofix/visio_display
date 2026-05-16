@@ -6,6 +6,7 @@ import constants as C
 from db import AppConfig, db
 
 DEFAULT_HALO_COLOR = "#8a2be2"
+DEFAULT_SCREEN_KEY = ""
 
 
 def normalize_default_screen_name(value):
@@ -33,6 +34,42 @@ def get_default_screen_name(cfg=None):
     cfg = cfg or load_config()
     custom_name = normalize_default_screen_name(cfg.get("default_screen_name", ""))
     return custom_name or None
+
+
+def get_default_screen_key(cfg=None):
+    return str(get_default_screen_name(cfg) or "").strip().lower()
+
+
+def is_default_screen(screen_name, cfg=None):
+    screen = str(screen_name or "").strip().lower()
+    return screen == DEFAULT_SCREEN_KEY or bool(get_default_screen_key(cfg)) and screen == get_default_screen_key(cfg)
+
+
+def normalize_screen_key(screen_name, cfg=None):
+    screen = str(screen_name or "").strip().lower()
+    if is_default_screen(screen, cfg):
+        return DEFAULT_SCREEN_KEY
+    return screen
+
+
+def screen_exists(cfg, screen_name):
+    screen = normalize_screen_key(screen_name, cfg)
+    return screen == DEFAULT_SCREEN_KEY or screen in cfg.get("screens", {})
+
+
+def get_screen_config(cfg, screen_name):
+    screen = normalize_screen_key(screen_name, cfg)
+    if screen == DEFAULT_SCREEN_KEY:
+        return cfg
+    return cfg.get("screens", {}).get(screen)
+
+
+def get_screen_keys(cfg, *, include_default=True):
+    keys = []
+    if include_default:
+        keys.append(DEFAULT_SCREEN_KEY)
+    keys.extend(cfg.get("screens", {}).keys())
+    return keys
 
 
 def _default_screen_config(halo_color=DEFAULT_HALO_COLOR):
@@ -215,7 +252,7 @@ def is_feature_enabled(feature_name):
 def get_screen_halo_color(screen_name="", cfg=None):
     cfg = cfg or load_config()
     default_halo_color = normalize_halo_color(cfg.get("default_halo_color", DEFAULT_HALO_COLOR))
-    screen = str(screen_name or "").strip().lower()
+    screen = normalize_screen_key(screen_name, cfg)
     if screen:
         scfg = cfg.get("screens", {}).get(screen, {})
         return normalize_halo_color(scfg.get("halo_color", default_halo_color), default_halo_color)

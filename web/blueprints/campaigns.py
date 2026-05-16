@@ -12,7 +12,7 @@ from services.campaign_svc import (
     save_campaigns_to_config,
     serialize_campaign_for_view,
 )
-from services.config_svc import load_config, save_config, get_default_screen_name
+from services.config_svc import get_screen_keys, load_config, save_config, get_default_screen_name, normalize_screen_key
 from services.i18n import _flash
 from services.media_svc import (
     build_media_preview_map,
@@ -29,7 +29,7 @@ bp = Blueprint("campaigns", __name__)
 
 
 def _allowed_screens(cfg):
-    return [screen for screen in cfg.get("screens", {}).keys() if has_screen_access(screen)]
+    return [screen for screen in get_screen_keys(cfg) if has_screen_access(screen)]
 
 
 def _screen_choices(cfg):
@@ -101,7 +101,7 @@ def _parse_campaign_form(cfg, raw_data):
     groups = [item for item in groups if item]
     media = [item for item in raw_data.getlist("media") if item]
     raw_screens = raw_data.getlist("screens")
-    screens = ["" if item == "__default__" else item for item in raw_screens]
+    screens = [normalize_screen_key("" if item == "__default__" else item, cfg) for item in raw_screens]
 
     if not groups and not media:
         return None, "flash_campaign_targets_required"
@@ -128,7 +128,7 @@ def _parse_campaign_form(cfg, raw_data):
             "created_at": raw_data.get("created_at"),
             "updated_at": datetime.now().isoformat(timespec="seconds"),
         },
-        valid_screens=list(cfg.get("screens", {}).keys()),
+        valid_screens=get_screen_keys(cfg),
         valid_media=get_all_media(),
     )
     return campaign, None
@@ -305,7 +305,7 @@ def duplicate_campaign(campaign_id):
             "created_by": session.get("user", ""),
             "updated_at": datetime.now().isoformat(timespec="seconds"),
         },
-        valid_screens=list(cfg.get("screens", {}).keys()),
+        valid_screens=get_screen_keys(cfg),
         valid_media=get_all_media(),
     )
     campaigns.insert(0, duplicate)

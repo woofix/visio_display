@@ -5,7 +5,7 @@ import os
 from datetime import date, datetime
 
 from constants import UPLOAD_FOLDER, VIDEO_EXTS
-from services.config_svc import load_config
+from services.config_svc import get_default_screen_name, get_screen_keys, load_config
 from services.media_svc import get_all_media, get_file_info, get_media_groups, get_media_type
 
 
@@ -40,8 +40,8 @@ def _parse_date(value):
         return None
 
 
-def _screen_label(screen):
-    return screen or "global"
+def _screen_label(screen, cfg=None):
+    return screen or get_default_screen_name(cfg) or "global"
 
 
 def _media_entry(filename, now):
@@ -119,7 +119,7 @@ def _campaign_group_media(campaign, cfg, available_files):
     if screens:
         target_screens = screens
     else:
-        target_screens = ["", *cfg.get("screens", {}).keys()]
+        target_screens = get_screen_keys(cfg)
 
     filenames = set()
     for screen in target_screens:
@@ -169,7 +169,7 @@ def analyze_media_cleanup(cfg=None, now=None):
         if end_date and end_date < today:
             expired.append({
                 **entries[filename],
-                "screen": _screen_label(screen),
+                "screen": _screen_label(screen, cfg),
                 "reason": end_date.isoformat(),
             })
 

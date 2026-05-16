@@ -280,6 +280,9 @@ def has_permission(perm):
 
 
 def has_screen_access(screen_name):
+    from services.config_svc import load_config, normalize_screen_key
+
+    screen_name = normalize_screen_key(screen_name, load_config())
     if is_superadmin():
         return True
     username = session.get('user')

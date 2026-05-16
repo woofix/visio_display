@@ -10,6 +10,8 @@ from services.config_svc import (
     save_config,
     normalize_default_screen_name,
     normalize_halo_color,
+    normalize_screen_key,
+    screen_exists,
     DEFAULT_HALO_COLOR,
 )
 from services.campaign_svc import cleanup_campaigns_for_deleted_screen, get_campaigns, save_campaigns_to_config
@@ -44,6 +46,9 @@ def add_screen():
         return _redirect_after_screen_change(url_for('media.admin_media'))
     cfg     = load_config()
     screens = cfg.setdefault('screens', {})
+    if normalize_screen_key(name, cfg) == '':
+        _flash('flash_screen_exists', 'error', name=name)
+        return _redirect_after_screen_change(url_for('media.admin_media'))
     if name in screens:
         _flash('flash_screen_exists', 'error', name=name)
         return _redirect_after_screen_change(url_for('media.admin_media'))
@@ -68,6 +73,10 @@ def delete_screen(name):
     redir = feature_guard('screens')
     if redir: return redir
     cfg     = load_config()
+    name = normalize_screen_key(name, cfg)
+    if name == '':
+        _flash('flash_screen_not_found', 'error')
+        return _redirect_after_screen_change(url_for('media.admin_media'))
     screens = cfg.get('screens', {})
     if name in screens:
         del screens[name]
@@ -109,11 +118,11 @@ def update_screen_halo():
     if redir: return redir
 
     cfg = load_config()
-    screen_name = request.form.get('screen_name', '').strip().lower()
+    screen_name = normalize_screen_key(request.form.get('screen_name', ''), cfg)
     halo_color = normalize_halo_color(request.form.get('halo_color', ''))
 
     if screen_name:
-        if screen_name not in cfg.get('screens', {}):
+        if not screen_exists(cfg, screen_name):
             _flash('flash_screen_not_found', 'error')
             return redirect(url_for('settings.admin_settings_section_page', section='application'))
         if not has_screen_access(screen_name):
@@ -138,13 +147,13 @@ def broadcast_screen():
     if redir: return redir
 
     data   = request.get_json(silent=True) or {}
-    source = data.get('source', '').strip().lower()
+    cfg     = load_config()
+    source = normalize_screen_key(data.get('source', ''), cfg)
     targets = data.get('targets', [])
 
     if not isinstance(targets, list):
         return jsonify({'ok': False, 'error': 'invalid targets'})
 
-    cfg     = load_config()
     screens = cfg.get('screens', {})
 
     if not has_screen_access(source):
@@ -152,17 +161,21 @@ def broadcast_screen():
     if source != '' and source not in screens:
         return jsonify({'ok': False, 'error': 'Source screen not found'})
 
-    valid_targets = [
-        str(t).strip().lower() for t in targets
-        if str(t).strip().lower() in screens and has_screen_access(str(t).strip().lower())
-    ]
+    valid_targets = []
+    for target in targets:
+        normalized_target = normalize_screen_key(target, cfg)
+        if normalized_target == source:
+            continue
+        if (normalized_target == '' or normalized_target in screens) and has_screen_access(normalized_target):
+            valid_targets.append(normalized_target)
     if not valid_targets:
         return jsonify({'ok': False, 'error': 'No valid target'})
 
     src = cfg if source == '' else screens[source]
     for t in valid_targets:
+        target_cfg = cfg if t == '' else screens[t]
         for key in ('order', 'disabled', 'disabled_groups', 'durations', 'schedules'):
-            screens[t][key] = copy.deepcopy(src.get(key, [] if key not in ('durations', 'schedules') else {}))
+            target_cfg[key] = copy.deepcopy(src.get(key, [] if key not in ('durations', 'schedules') else {}))
 
     cfg.setdefault('broadcast_links', {})[source] = valid_targets
     save_config(cfg)
@@ -176,12 +189,12 @@ def broadcast_stop():
     if redir: return redir
 
     data   = request.get_json(silent=True) or {}
-    source = data.get('source', '').strip().lower()
+    cfg = load_config()
+    source = normalize_screen_key(data.get('source', ''), cfg)
 
     if not has_screen_access(source):
         return jsonify({'ok': False, 'error': 'Access denied'})
 
-    cfg = load_config()
     cfg.setdefault('broadcast_links', {}).pop(source, None)
     save_config(cfg)
     log_config_change(session.get('user'), f'broadcast stopped:{source}')
@@ -195,19 +208,19 @@ def screen_assign(filename):
     if g: return g
     filename = os.path.basename(filename)
     data     = request.get_json(silent=True) or {}
-    screen   = data.get('screen', '').strip().lower()
+    cfg = load_config()
+    screen   = normalize_screen_key(data.get('screen', ''), cfg)
     action   = data.get('action', 'add')
 
     if not has_screen_access(screen):
         return jsonify({'ok': False, 'error': 'screen access denied'})
-    if not valid_screen_name(screen):
+    if screen and not valid_screen_name(screen):
         return jsonify({'ok': False, 'error': 'Invalid screen'})
 
-    cfg = load_config()
-    if screen not in cfg.get('screens', {}):
+    if not screen_exists(cfg, screen):
         return jsonify({'ok': False, 'error': 'Screen not found'})
 
-    scfg  = cfg['screens'][screen]
+    scfg  = cfg if screen == '' else cfg['screens'][screen]
     order = scfg.setdefault('order', [])
 
     if action == 'add' and filename not in order:

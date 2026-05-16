@@ -7,7 +7,13 @@ from datetime import datetime, timedelta
 from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify
 
 from constants import UPLOAD_FOLDER
-from services.config_svc import load_config, save_config, get_default_screen_name
+from services.config_svc import (
+    load_config,
+    save_config,
+    get_default_screen_name,
+    get_screen_config,
+    normalize_screen_key,
+)
 from services.users_svc import load_users, has_permission, has_screen_access, is_superadmin
 from services.media_svc import (
     get_all_media, get_file_info, get_logo_path,
@@ -39,20 +45,22 @@ from blueprints.guards import (
 bp = Blueprint('media', __name__)
 
 def _propagate_broadcast(source, cfg):
+    source = normalize_screen_key(source, cfg)
     targets = cfg.get('broadcast_links', {}).get(source, [])
     if not targets:
         return
     screens = cfg.get('screens', {})
     src = cfg if source == '' else screens.get(source, {})
     for t in targets:
-        if t in screens:
+        if t == '' or t in screens:
+            target_cfg = cfg if t == '' else screens[t]
             for key in ('order', 'disabled', 'disabled_groups', 'durations', 'schedules'):
                 default = {} if key in ('durations', 'schedules') else []
-                screens[t][key] = copy.deepcopy(src.get(key, default))
+                target_cfg[key] = copy.deepcopy(src.get(key, default))
 
 
 def _get_schedule_bucket(cfg, screen):
-    screen = str(screen or '').strip().lower()
+    screen = normalize_screen_key(screen, cfg)
     if screen:
         if screen not in cfg.get('screens', {}):
             return None
@@ -105,7 +113,7 @@ def admin_media():
     redir = admin_guard()
     if redir: return redir
     cfg       = load_config()
-    screen    = request.args.get('screen', '').strip().lower()
+    screen    = normalize_screen_key(request.args.get('screen', ''), cfg)
     all_media = get_all_media()
     infos     = {f: get_file_info(f, include_dimensions=False) for f in all_media}
     q         = load_queue()
@@ -365,15 +373,15 @@ def toggle_file(filename):
     if g: return g
     filename = os.path.basename(filename)
     data     = request.get_json(silent=True) or {}
-    screen   = data.get('screen', '').strip().lower()
+    cfg = load_config()
+    screen   = normalize_screen_key(data.get('screen', ''), cfg)
     if screen and not has_screen_access(screen):
         return jsonify({"error": "screen access denied"}), 403
-    cfg = load_config()
 
-    if screen and screen in cfg.get('screens', {}):
-        disabled = cfg['screens'][screen].setdefault('disabled', [])
-    else:
-        disabled = cfg.setdefault('disabled', [])
+    screen_cfg = get_screen_config(cfg, screen)
+    if screen_cfg is None:
+        return jsonify({"error": "screen not found"}), 404
+    disabled = screen_cfg.setdefault('disabled', [])
 
     if filename in disabled:
         disabled.remove(filename)
@@ -440,7 +448,11 @@ def set_group_screens(group_name):
         return jsonify({"error": "invalid screens"}), 400
     cfg = load_config()
     valid_screens = set(cfg.get('screens', {}).keys()) | {''}
-    screens_list = [s for s in screens_list if s in valid_screens]
+    screens_list = [
+        normalize_screen_key(s, cfg)
+        for s in screens_list
+        if normalize_screen_key(s, cfg) in valid_screens
+    ]
     group_screens = cfg.setdefault('group_screens', {})
     if screens_list:
         group_screens[normalized] = screens_list
@@ -483,18 +495,18 @@ def toggle_group(group_name):
     g = feature_guard_json('groups')
     if g: return g
     data = request.get_json(silent=True) or {}
-    screen = data.get('screen', '').strip().lower()
+    cfg = load_config()
+    screen = normalize_screen_key(data.get('screen', ''), cfg)
     normalized_group = normalize_group_name(group_name)
     if not normalized_group:
         return jsonify({"error": "invalid group"}), 400
     if screen and not has_screen_access(screen):
         return jsonify({"error": "screen access denied"}), 403
 
-    cfg = load_config()
-    if screen and screen in cfg.get('screens', {}):
-        disabled_groups = cfg['screens'][screen].setdefault('disabled_groups', [])
-    else:
-        disabled_groups = cfg.setdefault('disabled_groups', [])
+    screen_cfg = get_screen_config(cfg, screen)
+    if screen_cfg is None:
+        return jsonify({"error": "screen not found"}), 404
+    disabled_groups = screen_cfg.setdefault('disabled_groups', [])
 
     if normalized_group in disabled_groups:
         disabled_groups.remove(normalized_group)
@@ -516,7 +528,8 @@ def set_duration(filename):
     if g: return g
     filename = os.path.basename(filename)
     data     = request.json or {}
-    screen   = data.get('screen', '').strip().lower()
+    cfg      = load_config()
+    screen   = normalize_screen_key(data.get('screen', ''), cfg)
     if screen and not has_screen_access(screen):
         return jsonify({"error": "screen access denied"}), 403
     try:
@@ -525,12 +538,10 @@ def set_duration(filename):
         return jsonify({"error": "invalid duration"}), 400
     if duration < 1 or duration > 3600:
         return jsonify({"error": "invalid duration"}), 400
-    cfg      = load_config()
-
-    if screen and screen in cfg.get('screens', {}):
-        cfg['screens'][screen].setdefault('durations', {})[filename] = duration
-    else:
-        cfg.setdefault('durations', {})[filename] = duration
+    screen_cfg = get_screen_config(cfg, screen)
+    if screen_cfg is None:
+        return jsonify({"error": "screen not found"}), 404
+    screen_cfg.setdefault('durations', {})[filename] = duration
 
     _propagate_broadcast(screen, cfg)
     save_config(cfg)
@@ -544,20 +555,20 @@ def reorder():
     g = perm_guard('reorder')
     if g: return g
     data   = request.json or {}
-    screen = data.get('screen', '').strip().lower()
+    cfg   = load_config()
+    screen = normalize_screen_key(data.get('screen', ''), cfg)
     if screen and not has_screen_access(screen):
         return jsonify({"error": "screen access denied"}), 403
     order = data.get('order', [])
     if not isinstance(order, list) or not all(isinstance(item, str) for item in order):
         return jsonify({"error": "invalid order"}), 400
-    cfg   = load_config()
     valid_files = set(get_all_media())
     order = [item for item in order if item in valid_files]
 
-    if screen and screen in cfg.get('screens', {}):
-        cfg['screens'][screen]['order'] = order
-    else:
-        cfg['order'] = order
+    screen_cfg = get_screen_config(cfg, screen)
+    if screen_cfg is None:
+        return jsonify({"error": "screen not found"}), 404
+    screen_cfg['order'] = order
 
     _propagate_broadcast(screen, cfg)
     save_config(cfg)
@@ -573,10 +584,10 @@ def set_schedule(filename):
     if g: return g
     filename = os.path.basename(filename)
     data     = request.get_json(silent=True) or {}
-    screen   = str(data.get('screen', '')).strip().lower()
+    cfg = load_config()
+    screen   = normalize_screen_key(data.get('screen', ''), cfg)
     if screen and not has_screen_access(screen):
         return jsonify({"error": "screen access denied"}), 403
-    cfg = load_config()
     schedules = _get_schedule_bucket(cfg, screen)
     if schedules is None:
         return jsonify({"error": "screen not found"}), 404
@@ -608,8 +619,9 @@ def save_programming():
     data = request.get_json(silent=True) or {}
     filename = os.path.basename(str(data.get('filename', '')).strip())
     original_filename = os.path.basename(str(data.get('original_filename', filename)).strip())
-    screen = str(data.get('screen', '')).strip().lower()
-    original_screen = str(data.get('original_screen', screen)).strip().lower()
+    cfg = load_config()
+    screen = normalize_screen_key(data.get('screen', ''), cfg)
+    original_screen = normalize_screen_key(data.get('original_screen', screen), cfg)
 
     if not filename:
         return jsonify({"ok": False, "error": "missing filename"}), 400
@@ -618,7 +630,6 @@ def save_programming():
     if original_screen and not has_screen_access(original_screen):
         return jsonify({"ok": False, "error": "screen access denied"}), 403
 
-    cfg = load_config()
     target_bucket = _get_schedule_bucket(cfg, screen)
     source_bucket = _get_schedule_bucket(cfg, original_screen)
     if target_bucket is None or source_bucket is None:
@@ -654,13 +665,13 @@ def delete_programming():
 
     data = request.get_json(silent=True) or {}
     filename = os.path.basename(str(data.get('filename', '')).strip())
-    screen = str(data.get('screen', '')).strip().lower()
+    cfg = load_config()
+    screen = normalize_screen_key(data.get('screen', ''), cfg)
     if not filename:
         return jsonify({"ok": False, "error": "missing filename"}), 400
     if screen and not has_screen_access(screen):
         return jsonify({"ok": False, "error": "screen access denied"}), 403
 
-    cfg = load_config()
     bucket = _get_schedule_bucket(cfg, screen)
     if bucket is None:
         return jsonify({"ok": False, "error": "screen not found"}), 404

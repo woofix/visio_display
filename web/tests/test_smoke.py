@@ -910,6 +910,34 @@ class AppSmokeTests(unittest.TestCase):
             self.assertNotIn("global-default.jpg", unused)
             self.assertNotIn("global-video.mp4", unused)
 
+    def test_default_screen_name_is_accepted_as_screen_alias(self):
+        with self.app.app_context():
+            from constants import UPLOAD_FOLDER
+            from services.config_svc import save_config
+
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            with open(os.path.join(UPLOAD_FOLDER, "default-alias.jpg"), "wb") as handle:
+                handle.write(b"default")
+            save_config({"default_screen_name": "client1", "order": []})
+
+        with self.client.session_transaction() as session:
+            session["user"] = "admin"
+            session["_csrf_token"] = "screen-alias-token"
+
+        response = self.client.post(
+            "/screen_assign/default-alias.jpg",
+            json={"screen": "client1", "action": "add", "_csrf_token": "screen-alias-token"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json(), {"ok": True})
+        with self.app.app_context():
+            from services.config_svc import load_config
+
+            cfg = load_config()
+            self.assertIn("default-alias.jpg", cfg.get("order", []))
+            self.assertNotIn("client1", cfg.get("screens", {}))
+
     def test_media_cleanup_page_renders(self):
         with self.app.app_context():
             from constants import UPLOAD_FOLDER

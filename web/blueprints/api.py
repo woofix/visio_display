@@ -9,6 +9,8 @@ from services.config_svc import (
     halo_color_to_rgb,
     is_feature_enabled,
     load_config,
+    normalize_screen_key,
+    get_default_screen_name,
 )
 from services.clients_svc import record_client_heartbeat
 from services.display_token_svc import screen_token_is_valid
@@ -112,9 +114,9 @@ def get_images():
             ensure_ephemeride_image_async()
         except Exception as exc:
             print(f"[EPHEMERIS REFRESH ERROR] {exc}")
-    screen = request.args.get('screen', '').strip().lower()
     bounds = _requested_display_bounds()
     cfg    = load_config()
+    screen = normalize_screen_key(request.args.get('screen', ''), cfg)
     campaign_override = resolve_campaign_override(cfg, screen=screen)
 
     if screen and screen in cfg.get('screens', {}):
@@ -160,8 +162,8 @@ def api_durations():
     guard = _screen_api_guard()
     if guard:
         return guard
-    screen = request.args.get('screen', '').strip().lower()
     cfg    = load_config()
+    screen = normalize_screen_key(request.args.get('screen', ''), cfg)
     if screen and screen in cfg.get('screens', {}):
         durations = dict(cfg.get("durations", {}))
         durations.update(cfg['screens'][screen].get('durations', {}))
@@ -184,7 +186,8 @@ def api_screens():
     if guard:
         return guard
     cfg = load_config()
-    return jsonify(list(cfg.get('screens', {}).keys()))
+    default_screen = get_default_screen_name(cfg)
+    return jsonify(([default_screen] if default_screen else []) + list(cfg.get('screens', {}).keys()))
 
 
 @bp.route('/api/halo')
@@ -192,8 +195,8 @@ def api_halo():
     guard = _screen_api_guard()
     if guard:
         return guard
-    screen = request.args.get('screen', '').strip().lower()
     cfg = load_config()
+    screen = normalize_screen_key(request.args.get('screen', ''), cfg)
     color = get_screen_halo_color(screen, cfg)
     return jsonify({
         'color': color,

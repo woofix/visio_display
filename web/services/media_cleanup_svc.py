@@ -87,7 +87,9 @@ def _collect_references(cfg, available_files=None):
     for screen, screen_cfg in cfg.get("screens", {}).items():
         if not isinstance(screen_cfg, dict):
             continue
-        for filename in screen_cfg.get("order", []):
+        screen_order = screen_cfg.get("order", [])
+        screen_files = screen_order if screen_order else available_files
+        for filename in screen_files:
             add(filename, f"screen:{screen}")
 
     for campaign in cfg.get("campaigns", []):

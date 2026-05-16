@@ -815,7 +815,7 @@ class AppSmokeTests(unittest.TestCase):
             from services.media_cleanup_svc import analyze_media_cleanup
 
             os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-            for filename in ("campaign-screen.jpg", "unused.jpg"):
+            for filename in ("campaign-screen.jpg", "unused.jpg", "screen-fill.jpg"):
                 with open(os.path.join(UPLOAD_FOLDER, filename), "wb") as handle:
                     handle.write(filename.encode("utf-8"))
 
@@ -823,10 +823,11 @@ class AppSmokeTests(unittest.TestCase):
                 "groups": {
                     "campaign-screen.jpg": ["accueil"],
                     "unused.jpg": ["archive"],
+                    "screen-fill.jpg": ["archive"],
                 },
                 "screens": {
                     "hall": {
-                        "order": [],
+                        "order": ["screen-fill.jpg"],
                         "disabled": [],
                         "disabled_groups": [],
                         "durations": {},
@@ -850,6 +851,38 @@ class AppSmokeTests(unittest.TestCase):
 
             self.assertNotIn("campaign-screen.jpg", unused)
             self.assertIn("unused.jpg", unused)
+
+    def test_media_cleanup_keeps_media_used_by_screen_with_empty_order(self):
+        with self.app.app_context():
+            from constants import UPLOAD_FOLDER
+            from services.config_svc import save_config
+            from services.media_cleanup_svc import analyze_media_cleanup
+
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            for filename in ("screen-default.jpg", "screen-video.mp4"):
+                with open(os.path.join(UPLOAD_FOLDER, filename), "wb") as handle:
+                    handle.write(filename.encode("utf-8"))
+
+            save_config({
+                "screens": {
+                    "client1": {
+                        "order": [],
+                        "disabled": [],
+                        "disabled_groups": [],
+                        "durations": {},
+                        "schedules": {},
+                    },
+                },
+                "features": {"videos": True},
+            })
+
+            unused = [
+                item["filename"]
+                for item in analyze_media_cleanup()["categories"]["unused"]
+            ]
+
+            self.assertNotIn("screen-default.jpg", unused)
+            self.assertNotIn("screen-video.mp4", unused)
 
     def test_media_cleanup_page_renders(self):
         with self.app.app_context():

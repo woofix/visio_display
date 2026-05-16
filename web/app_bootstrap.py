@@ -4,6 +4,7 @@ import logging
 import os
 import secrets
 import shutil
+import subprocess
 import time
 from datetime import timedelta
 
@@ -508,6 +509,29 @@ def register_error_handlers(app, *, max_file_upload_size, max_batch_upload_size)
 
 
 def register_template_context(app):
+    def _static_cache_version():
+        from services.version_svc import _read_local_version
+
+        version = _read_local_version() or "dev"
+        commit = os.environ.get("GIT_COMMIT", "").strip()
+        if not commit:
+            repo_dir = os.environ.get("VISIO_GIT_ROOT", "").strip() or os.path.normpath(
+                os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+            )
+            try:
+                result = subprocess.run(
+                    ["git", "rev-parse", "--short", "HEAD"],
+                    cwd=repo_dir,
+                    capture_output=True,
+                    text=True,
+                    timeout=2,
+                )
+                if result.returncode == 0:
+                    commit = result.stdout.strip()
+            except Exception:
+                commit = ""
+        return f"{version}-{commit}" if commit else version
+
     @app.context_processor
     def inject_globals():
         lang = get_language()
@@ -529,9 +553,7 @@ def register_template_context(app):
         cfg = load_config()
         default_screen_name = get_default_screen_name(cfg) or t("media_screen_default")
         translated_permissions = [(key, t(label_key)) for key, label_key in ALL_PERMISSIONS]
-        from services.version_svc import _read_local_version
-
-        static_version = _read_local_version() or "dev"
+        static_version = _static_cache_version()
         admin_update_status = None
         if session.get("user") and request.path.startswith("/admin"):
             from services.version_svc import get_version_status

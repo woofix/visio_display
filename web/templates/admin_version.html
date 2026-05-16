@@ -97,6 +97,16 @@
         </div>
 
         <pre class="update-log" id="update-log" aria-live="polite" hidden></pre>
+
+        <div class="update-progress-overlay" id="update-progress-overlay" hidden aria-live="polite">
+            <div class="update-progress-card">
+                <div class="update-progress-spinner" aria-hidden="true"></div>
+                <div>
+                    <strong id="update-progress-title">{{ t('version_update_wait_title') }}</strong>
+                    <p id="update-progress-text">{{ t('version_update_wait_desc') }}</p>
+                </div>
+            </div>
+        </div>
     </section>
 </div>
 
@@ -179,6 +189,7 @@
 .update-panel {
     display: flex;
     flex-direction: column;
+    position: relative;
 }
 .update-header {
     display: flex;
@@ -276,6 +287,58 @@
     line-height: 1.45;
     white-space: pre-wrap;
 }
+.update-progress-overlay[hidden] {
+    display: none !important;
+}
+.update-panel[data-updating="true"] > :not(.update-progress-overlay) {
+    filter: blur(2px);
+    opacity: .58;
+    pointer-events: none;
+    user-select: none;
+}
+.update-progress-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: color-mix(in srgb, var(--surface) 48%, transparent);
+}
+.update-progress-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    max-width: min(520px, 100%);
+    padding: 18px 20px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    box-shadow: var(--shadow-lg, 0 18px 44px rgba(15, 23, 42, .18));
+}
+.update-progress-card strong {
+    display: block;
+    color: var(--text);
+    font-size: .96rem;
+}
+.update-progress-card p {
+    margin: 4px 0 0;
+    color: var(--text-2);
+    font-size: .86rem;
+    line-height: 1.45;
+}
+.update-progress-spinner {
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    border: 3px solid color-mix(in srgb, var(--primary) 18%, transparent);
+    border-top-color: var(--primary);
+    flex: 0 0 auto;
+    animation: update-spin .8s linear infinite;
+}
+@keyframes update-spin {
+    to { transform: rotate(360deg); }
+}
 @media (max-width: 900px) {
     .update-details {
         grid-template-columns: 1fr;
@@ -318,6 +381,12 @@
     'restartReloading': t('version_restart_reloading'),
     'restartScheduledLabel': t('version_status_restart_scheduled'),
     'restartScheduledReason': t('version_reason_restart_scheduled'),
+    'updateWaitTitle': t('version_update_wait_title'),
+    'updateWaitDesc': t('version_update_wait_desc'),
+    'updateRestartWaitTitle': t('version_update_restart_wait_title'),
+    'updateRestartWaitDesc': t('version_update_restart_wait_desc'),
+    'updateReloadWaitTitle': t('version_update_reload_wait_title'),
+    'updateReloadWaitDesc': t('version_update_reload_wait_desc'),
     'applyConfirmTitle': t('version_apply_confirm_title'),
     'applyConfirmMessage': t('version_apply_confirm_message'),
     'applyLabel': t('version_apply_btn'),

@@ -10,6 +10,9 @@
     const checksBox = document.getElementById('update-checks');
     const confirmBox = document.getElementById('update-confirm');
     const logBox = document.getElementById('update-log');
+    const progressOverlay = document.getElementById('update-progress-overlay');
+    const progressTitle = document.getElementById('update-progress-title');
+    const progressText = document.getElementById('update-progress-text');
     const configEl = document.getElementById('admin-version-config');
     const i18n = configEl ? JSON.parse(configEl.textContent || '{}') : {};
     const msg = (key, fallback) => i18n[key] || fallback;
@@ -39,6 +42,14 @@
     function setBusy(isBusy) {
         checkBtn.disabled = isBusy;
         applyBtn.disabled = isBusy;
+    }
+
+    function setUpdateProgress(isVisible, title, detail) {
+        if (!progressOverlay) return;
+        panel.dataset.updating = isVisible ? 'true' : 'false';
+        progressOverlay.hidden = !isVisible;
+        if (title && progressTitle) progressTitle.textContent = title;
+        if (detail && progressText) progressText.textContent = detail;
     }
 
     function appendLog(message, isError) {
@@ -83,6 +94,11 @@
                 if (!payload.ok) throw new Error(payload.error || msg('runtimeUnavailable', 'runtime unavailable'));
                 appendLog(msg('appAvailable', 'Application available.'));
                 appendLog(msg('restartReloading', 'Reloading page...'));
+                setUpdateProgress(
+                    true,
+                    msg('updateReloadWaitTitle', 'Administration ready'),
+                    msg('updateReloadWaitDesc', 'The page will reopen automatically.')
+                );
                 reloadPageSoon();
                 return true;
             } catch {}
@@ -97,6 +113,7 @@
             reason: msg('restartTimeoutReason', 'The containers or application did not come back within the expected time.'),
             can_apply: false,
         });
+        setUpdateProgress(false);
         return false;
     }
 
@@ -179,6 +196,11 @@
 
     async function streamAction(url, startMessage) {
         setBusy(true);
+        setUpdateProgress(
+            true,
+            msg('updateWaitTitle', 'Update in progress'),
+            msg('updateWaitDesc', 'Please keep this page open. The administration will reopen automatically when ready.')
+        );
         logBox.hidden = false;
         logBox.textContent = '';
         appendLog(startMessage);
@@ -212,6 +234,11 @@
         async function continueAfterRestartInterruption() {
             appendLog(msg('restartStreamInterrupted', 'Connection interrupted during restart. Checking application availability...'));
             renderRestartScheduled(msg('restartScheduledReason', 'The Docker stack is restarting in the background.'));
+            setUpdateProgress(
+                true,
+                msg('updateRestartWaitTitle', 'Administration restarting'),
+                msg('updateRestartWaitDesc', 'The update is applied. The administration is coming back online.')
+            );
             setBusy(false);
             await pollRuntimeStatus();
         }
@@ -277,11 +304,19 @@
                     reason: msg('updateFailedReason', 'The update did not complete. Check the logs below.'),
                     can_apply: false,
                 });
+                setUpdateProgress(false);
             } else if (finalStatus) {
                 renderStatus(finalStatus);
                 appendLog(msg('done', 'Done.'));
                 if (finalStatus.status === 'restart_scheduled') {
+                    setUpdateProgress(
+                        true,
+                        msg('updateRestartWaitTitle', 'Administration restarting'),
+                        msg('updateRestartWaitDesc', 'The update is applied. The administration is coming back online.')
+                    );
                     await pollRuntimeStatus();
+                } else {
+                    setUpdateProgress(false);
                 }
             } else if (restartStarted) {
                 await continueAfterRestartInterruption();
@@ -302,6 +337,7 @@
                 reason: error?.message || msg('actionFailed', 'Action failed.'),
                 can_apply: false,
             });
+            setUpdateProgress(false);
         } finally {
             setBusy(false);
         }

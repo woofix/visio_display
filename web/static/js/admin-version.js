@@ -52,6 +52,18 @@
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
+    function renderRestartScheduled(reason) {
+        renderStatus({
+            ...currentStatus,
+            status: 'restart_scheduled',
+            status_label: msg('restartScheduledLabel', 'Restart started'),
+            status_tone: 'success',
+            reason: reason || msg('restartScheduledReason', 'The Docker stack is restarting in the background.'),
+            can_apply: false,
+            can_restart: false,
+        });
+    }
+
     async function pollRuntimeStatus() {
         const deadline = Date.now() + 8 * 60 * 1000;
         while (Date.now() < deadline) {
@@ -166,6 +178,32 @@
         logBox.hidden = false;
         logBox.textContent = '';
         appendLog(startMessage);
+        let finalStatus = null;
+        let failed = false;
+        let restartStarted = false;
+
+        const restartSignals = [
+            msg('restartProgress', 'Docker restart in progress...'),
+            msg('restartBackground', 'The restart will continue in the background.'),
+            msg('restartScheduledLabel', 'Restart started'),
+        ].filter(Boolean);
+
+        function noteRestartProgress(message) {
+            const normalized = String(message || '').toLowerCase();
+            if (
+                restartSignals.some(signal => signal && String(signal).toLowerCase() && normalized.includes(String(signal).toLowerCase()))
+                || (normalized.includes('docker') && (normalized.includes('restart') || normalized.includes('redemarr') || normalized.includes('redémarr')))
+            ) {
+                restartStarted = true;
+            }
+        }
+
+        async function continueAfterRestartInterruption() {
+            appendLog(msg('restartStreamInterrupted', 'Connection interrupted during restart. Checking application availability...'));
+            renderRestartScheduled(msg('restartScheduledReason', 'The Docker stack is restarting in the background.'));
+            await pollRuntimeStatus();
+        }
+
         try {
             const response = await fetch(url, {
                 method: 'POST',
@@ -185,8 +223,6 @@
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let buffer = '';
-            let finalStatus = null;
-            let failed = false;
             const returnsBeforeConnectionClose = false;
 
             while (true) {
@@ -200,11 +236,15 @@
                     const payload = JSON.parse(line);
                     if (payload.type === 'log') {
                         appendLog(payload.message || '');
+                        noteRestartProgress(payload.message || '');
                     } else if (payload.type === 'error') {
                         failed = true;
                         appendLog(payload.message || msg('actionFailed', 'Action failed.'), true);
                     } else if (payload.type === 'done') {
                         finalStatus = payload.status;
+                        if (finalStatus && finalStatus.status === 'restart_scheduled') {
+                            restartStarted = true;
+                        }
                         if (returnsBeforeConnectionClose) {
                             try {
                                 await reader.cancel();
@@ -229,10 +269,18 @@
                 renderStatus(finalStatus);
                 appendLog(msg('done', 'Done.'));
                 if (finalStatus.status === 'restart_scheduled') {
-                    pollRuntimeStatus();
+                    await pollRuntimeStatus();
                 }
+            } else if (restartStarted) {
+                await continueAfterRestartInterruption();
+            } else {
+                throw new Error(msg('actionFailed', 'Action failed.'));
             }
         } catch (error) {
+            if (!failed && (restartStarted || (finalStatus && finalStatus.status === 'restart_scheduled'))) {
+                await continueAfterRestartInterruption();
+                return;
+            }
             appendLog(error?.message || msg('actionFailed', 'Action failed.'), true);
             renderStatus({
                 ...currentStatus,

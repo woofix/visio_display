@@ -177,6 +177,14 @@
     async function streamAction(url, startMessage) {
         setBusy(true);
         const lockType = url.includes('restart') ? 'reboot' : 'update';
+        const isRestartDisconnect = (error) => {
+            if (lockType !== 'reboot' || error?.actionResponse) return false;
+            const name = String(error?.name || '');
+            const message = String(error?.message || '');
+            return name === 'TypeError'
+                || name === 'AbortError'
+                || /load failed|failed to fetch|networkerror|network error|aborted|terminated/i.test(message);
+        };
         if (lockType === 'update') {
             window.adminSystemLock?.showDetailed(lockType, startMessage, 5, updateSteps);
         } else {
@@ -199,7 +207,9 @@
                     const payload = await response.json();
                     errorMessage = payload.error || errorMessage;
                 } catch {}
-                throw new Error(errorMessage);
+                const actionError = new Error(errorMessage);
+                actionError.actionResponse = true;
+                throw actionError;
             }
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
@@ -253,6 +263,13 @@
                 }
             }
         } catch (error) {
+            if (isRestartDisconnect(error)) {
+                const connectingMessage = msg('restartConnecting', 'Docker restart started. Connecting to server...');
+                appendLog(connectingMessage);
+                window.adminSystemLock?.show(lockType, connectingMessage, 85);
+                pollRuntimeStatus();
+                return;
+            }
             appendLog(error?.message || msg('actionFailed', 'Action failed.'), true);
             window.adminSystemLock?.refresh();
             renderStatus({

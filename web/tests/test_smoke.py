@@ -820,6 +820,7 @@ class AppSmokeTests(unittest.TestCase):
                     handle.write(filename.encode("utf-8"))
 
             save_config({
+                "order": ["screen-fill.jpg"],
                 "groups": {
                     "campaign-screen.jpg": ["accueil"],
                     "unused.jpg": ["archive"],
@@ -884,13 +885,42 @@ class AppSmokeTests(unittest.TestCase):
             self.assertNotIn("screen-default.jpg", unused)
             self.assertNotIn("screen-video.mp4", unused)
 
+    def test_media_cleanup_keeps_media_used_by_global_screen_with_empty_order(self):
+        with self.app.app_context():
+            from constants import UPLOAD_FOLDER
+            from services.config_svc import save_config
+            from services.media_cleanup_svc import analyze_media_cleanup
+
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            for filename in ("global-default.jpg", "global-video.mp4"):
+                with open(os.path.join(UPLOAD_FOLDER, filename), "wb") as handle:
+                    handle.write(filename.encode("utf-8"))
+
+            save_config({
+                "order": [],
+                "default_screen_name": "client1",
+                "features": {"videos": True},
+            })
+
+            unused = [
+                item["filename"]
+                for item in analyze_media_cleanup()["categories"]["unused"]
+            ]
+
+            self.assertNotIn("global-default.jpg", unused)
+            self.assertNotIn("global-video.mp4", unused)
+
     def test_media_cleanup_page_renders(self):
         with self.app.app_context():
             from constants import UPLOAD_FOLDER
+            from services.config_svc import save_config
 
             os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            with open(os.path.join(UPLOAD_FOLDER, "used.jpg"), "wb") as handle:
+                handle.write(b"used")
             with open(os.path.join(UPLOAD_FOLDER, "unused.jpg"), "wb") as handle:
                 handle.write(b"unused")
+            save_config({"order": ["used.jpg"]})
 
         with self.client.session_transaction() as session:
             session["user"] = "admin"

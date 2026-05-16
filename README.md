@@ -561,7 +561,6 @@ Visio-Display/
     │   ├── schedule_svc.py      # Logique de planification horaire/dates
     │   ├── search_index_svc.py  # Index de recherche globale
     │   ├── server_stats_svc.py  # Statistiques CPU/RAM du serveur
-    │   ├── system_lock_svc.py   # Verrou persistant des opérations update/reboot
     │   ├── update_svc.py        # Contrôles Git/Docker et application des mises à jour
     │   └── users_svc.py         # CRUD utilisateurs + permissions
     ├── static/
@@ -601,7 +600,6 @@ Visio-Display/
 | `/api/pools`                              | GET     | `DISPLAY_API_TOKEN` | Pools de groupes de médias                           |
 | `/api/config`                             | GET     | Connecté           | Configuration complète                               |
 | `/api/diskusage`                          | GET     | Connecté           | Statistiques disque                                  |
-| `/api/system/status`                      | GET     | Connecté           | Verrou système actif pendant update/reboot           |
 | `/api/screens`                            | GET     | `DISPLAY_API_TOKEN` | Liste des écrans nommés                              |
 | `/api/halo`                               | GET     | `DISPLAY_API_TOKEN` | Couleur de halo de l'écran courant (`?screen=<nom>`) |
 | `/api/client-policy`                      | GET     | Non                | Politique watchdog envoyée aux clients kiosque       |
@@ -1337,7 +1335,6 @@ Visio-Display/
     │   ├── schedule_svc.py      # Time/date scheduling logic
     │   ├── search_index_svc.py  # Global search index
     │   ├── server_stats_svc.py  # Server CPU/RAM stats
-    │   ├── system_lock_svc.py   # Persistent update/reboot operation lock
     │   ├── update_svc.py        # Git/Docker checks and update application
     │   └── users_svc.py         # User CRUD + permissions
     ├── static/
@@ -1377,7 +1374,6 @@ Visio-Display/
 | `/api/pools`                              | GET     | `DISPLAY_API_TOKEN` | Media group pools                                      |
 | `/api/config`                             | GET     | Logged in          | Full configuration                                      |
 | `/api/diskusage`                          | GET     | Logged in          | Disk usage stats                                        |
-| `/api/system/status`                      | GET     | Logged in          | Active system lock during update/reboot                 |
 | `/api/screens`                            | GET     | `DISPLAY_API_TOKEN` | List of named screens                                   |
 | `/api/halo`                               | GET     | `DISPLAY_API_TOKEN` | Halo color for the current screen (`?screen=<name>`)     |
 | `/api/client-policy`                      | GET     | No                 | Watchdog policy sent to kiosk clients                   |

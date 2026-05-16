@@ -26,13 +26,6 @@
     const refField = document.getElementById('update-ref');
 
     let currentStatus = {};
-    const updateSteps = [
-        { key: 'pull', label: msg('stepPull', 'Download / pull'), state: 'active' },
-        { key: 'stop', label: msg('stepStop', 'Stop services'), state: 'pending' },
-        { key: 'restart', label: msg('stepRestart', 'Docker restart'), state: 'pending' },
-        { key: 'containers', label: msg('stepContainers', 'Container checks'), state: 'pending' },
-        { key: 'app', label: msg('stepApp', 'Application check'), state: 'pending' },
-    ];
     try {
         currentStatus = JSON.parse(panel.dataset.initialStatus || '{}');
     } catch (error) {
@@ -70,19 +63,13 @@
                 if (!response.ok) throw new Error(msg('runtimeUnavailable', 'runtime unavailable'));
                 const payload = await response.json();
                 if (!payload.ok) throw new Error(payload.error || msg('runtimeUnavailable', 'runtime unavailable'));
-                const system = payload.system || {};
                 const runtime = payload.runtime || {};
                 if (runtime.ready) {
                     appendLog(msg('appAvailable', 'Application available.'));
-                    window.adminSystemLock?.hide();
                     await refreshStatus(false);
                     return true;
-                } else if (system.active) {
-                    window.adminSystemLock?.refresh();
                 }
-            } catch {
-                window.adminSystemLock?.showConnecting();
-            }
+            } catch {}
             await sleep(2000);
         }
         appendLog(msg('restartTimeoutLog', 'The restart is taking too long. Check Docker, then run another check.'), true);
@@ -176,8 +163,6 @@
 
     async function streamAction(url, startMessage) {
         setBusy(true);
-        const lockType = 'update';
-        window.adminSystemLock?.showDetailed(lockType, startMessage, 5, updateSteps);
         logBox.hidden = false;
         logBox.textContent = '';
         appendLog(startMessage);
@@ -243,14 +228,12 @@
             } else if (finalStatus) {
                 renderStatus(finalStatus);
                 appendLog(msg('done', 'Done.'));
-                window.adminSystemLock?.refresh();
                 if (finalStatus.status === 'restart_scheduled') {
                     pollRuntimeStatus();
                 }
             }
         } catch (error) {
             appendLog(error?.message || msg('actionFailed', 'Action failed.'), true);
-            window.adminSystemLock?.refresh();
             renderStatus({
                 ...currentStatus,
                 status: 'error',

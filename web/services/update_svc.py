@@ -11,51 +11,13 @@ import urllib.request
 from dataclasses import dataclass
 
 from services.i18n import _t
-from services.system_lock_svc import update_lock
 from services.version_svc import _compare_versions
 
 
 SERVICE_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_REPO_CWD = os.path.normpath(os.path.join(SERVICE_DIR, "..", ".."))
-UPDATE_STEPS = [
-    ("pull", "version_step_pull"),
-    ("stop", "version_step_stop"),
-    ("restart", "version_step_restart"),
-    ("containers", "version_step_containers"),
-    ("app", "version_step_app"),
-]
-
-
-def _step_payload(active_stage, *, failed_stage=None):
-    payload = []
-    active_index = next((index for index, item in enumerate(UPDATE_STEPS) if item[0] == active_stage), 0)
-    failed_index = next((index for index, item in enumerate(UPDATE_STEPS) if item[0] == failed_stage), None)
-    for key, label_key in UPDATE_STEPS:
-        index = next(index for index, item in enumerate(UPDATE_STEPS) if item[0] == key)
-        if failed_index is not None and index == failed_index:
-            state = "failed"
-        elif failed_index is not None:
-            state = "done" if index < failed_index else "pending"
-        elif index == active_index:
-            state = "active"
-        else:
-            state = "done" if index < active_index else "pending"
-        payload.append({"key": key, "label": _t(label_key), "state": state})
-    return payload
-
-
 def _update_step(lock_token, stage, message, *, progress=None, timeout_seconds=1800, failed=False):
-    if not lock_token:
-        return
-    update_lock(
-        lock_token,
-        message=message,
-        progress=progress,
-        timeout_seconds=timeout_seconds,
-        stage=stage,
-        steps=_step_payload(stage, failed_stage=stage if failed else None),
-        error=failed,
-    )
+    return
 
 
 @dataclass
@@ -365,28 +327,7 @@ def _start_restart_helper(command, *, repo_dir, compose_cmd, project_name, progr
             "  status=$?",
             "fi",
         ])
-    if lock_token:
-        success_cleanup = (
-            "from services.system_lock_svc import release_lock; "
-            f"release_lock({lock_token!r})"
-        )
-        failure_cleanup = (
-            "from services.system_lock_svc import update_lock; "
-            "from services.i18n import _t; "
-            "from services.update_svc import _step_payload; "
-            f"update_lock({lock_token!r}, message=_t('version_restart_timeout_log'), "
-            "progress=100, stage='restart', steps=_step_payload('restart', failed_stage='restart'), "
-            "error=True, timeout_seconds=1800)"
-        )
-        helper_lines.extend([
-            f"cd {shlex.quote(repo_dir)}",
-            "if [ \"$status\" -eq 0 ]; then",
-            f"  PYTHONPATH={shlex.quote(helper_pythonpath)} python -c {shlex.quote(success_cleanup)} || true",
-            "else",
-            f"  PYTHONPATH={shlex.quote(helper_pythonpath)} python -c {shlex.quote(failure_cleanup)} || true",
-            "fi",
-            "exit $status",
-        ])
+    helper_lines.append("exit $status")
     helper_script = "\n".join(helper_lines)
     helper_command = [
         *_with_compose_project(compose_cmd, project_name),
@@ -729,8 +670,6 @@ def restart_stack(*, progress_callback=None, lock_token=None):
     if progress_callback:
         progress_callback(_t("version_restart_background"))
         progress_callback(f"$ {' '.join(command)}")
-    if lock_token:
-        update_lock(lock_token, message=_t("version_restart_background_lock"), progress=60)
     _start_restart_helper(
         command,
         repo_dir=status["repo_dir"],
@@ -740,8 +679,6 @@ def restart_stack(*, progress_callback=None, lock_token=None):
         lock_token=lock_token,
         verify_runtime=True,
     )
-    if lock_token:
-        update_lock(lock_token, message=_t("version_restart_connecting"), progress=85)
     status["status"] = "restart_scheduled"
     status["status_label"] = _t("version_status_restart_scheduled")
     status["status_tone"] = "success"

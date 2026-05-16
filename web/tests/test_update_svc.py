@@ -5,7 +5,6 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from services import system_lock_svc
 from services import update_svc
 
 
@@ -331,35 +330,6 @@ class UpdateServiceTests(unittest.TestCase):
         helper_script = run.call_args.args[0][-1]
         self.assertIn(f"PYTHONPATH={repo_dir}/web:/app", helper_script)
         self.assertNotIn("PYTHONPATH=/app python -c", helper_script)
-
-    def test_system_lock_prevents_parallel_tasks(self):
-        lock_file = str(self.root / "system_task.lock")
-        with patch.object(system_lock_svc, "LOCK_FILE", lock_file):
-            token = system_lock_svc.acquire_lock("update", "Mise à jour en cours...")
-
-            with self.assertRaises(system_lock_svc.SystemTaskAlreadyRunning):
-                system_lock_svc.acquire_lock("reboot", "Redémarrage en cours...")
-
-            status = system_lock_svc.get_system_status()
-            self.assertTrue(status["active"])
-            self.assertEqual(status["type"], "update")
-
-            self.assertTrue(system_lock_svc.release_lock(token))
-            self.assertFalse(system_lock_svc.get_system_status()["active"])
-
-    def test_system_lock_cleans_expired_lock(self):
-        lock_file = str(self.root / "system_task.lock")
-        with patch.object(system_lock_svc, "LOCK_FILE", lock_file):
-            system_lock_svc.acquire_lock("update", "Ancienne tâche", timeout_seconds=30)
-            data = system_lock_svc._read_lock_raw()
-            data["expires_at_ts"] = 1
-            system_lock_svc._write_lock(data)
-
-            status = system_lock_svc.get_system_status()
-
-            self.assertFalse(status["active"])
-            self.assertFalse(os.path.exists(lock_file))
-
 
 if __name__ == "__main__":
     unittest.main()

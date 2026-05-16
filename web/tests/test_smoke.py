@@ -297,23 +297,6 @@ class AppSmokeTests(unittest.TestCase):
                 response = self.client.get(link)
                 self.assertEqual(response.status_code, 200, link)
 
-    def test_admin_system_status_reports_active_lock(self):
-        self._login()
-        from services import system_lock_svc
-
-        token = system_lock_svc.acquire_lock("update", "Mise à jour en cours...", progress=25)
-        try:
-            response = self.client.get("/api/system/status")
-        finally:
-            system_lock_svc.release_lock(token)
-
-        self.assertEqual(response.status_code, 200)
-        payload = response.get_json()
-        self.assertTrue(payload["ok"])
-        self.assertTrue(payload["system"]["active"])
-        self.assertEqual(payload["system"]["type"], "update")
-        self.assertEqual(payload["system"]["progress"], 25)
-
     def test_restart_stream_endpoint_is_removed(self):
         self._login()
 
@@ -330,9 +313,8 @@ class AppSmokeTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 404)
 
-    def test_apply_stream_keeps_lock_during_docker_restart(self):
+    def test_apply_stream_returns_done_status(self):
         self._login()
-        from services import system_lock_svc
 
         with self.client.session_transaction() as session:
             token = session["_csrf_token"]
@@ -358,14 +340,9 @@ class AppSmokeTests(unittest.TestCase):
                 },
             )
             body = response.get_data(as_text=True)
-            status = system_lock_svc.get_system_status()
-            if status["active"]:
-                system_lock_svc.release_lock(force=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertIn('"type": "done"', body)
-        self.assertTrue(status["active"])
-        self.assertEqual(status["type"], "update")
 
     def test_update_runtime_status_reports_runtime_checks(self):
         self._login()
@@ -384,31 +361,6 @@ class AppSmokeTests(unittest.TestCase):
         self.assertTrue(payload["ok"])
         self.assertTrue(payload["runtime"]["ready"])
         self.assertEqual(payload["runtime"]["checks"][0]["key"], "containers")
-
-    def test_update_runtime_status_can_complete_ready_restart_lock(self):
-        self._login()
-        from services import system_lock_svc
-
-        token = system_lock_svc.acquire_lock("reboot", "Redémarrage Docker en cours...", progress=85)
-        runtime = {
-            "ready": True,
-            "checks": [
-                {"key": "containers", "label": "Conteneurs running", "ok": True, "detail": "app"},
-                {"key": "http", "label": "Réponse HTTP de l'application", "ok": True, "detail": "HTTP 200"},
-            ],
-        }
-        try:
-            with patch("blueprints.version.runtime_readiness_status", return_value=runtime):
-                response = self.client.get("/admin/version/update/runtime-status?complete=1")
-        finally:
-            system_lock_svc.release_lock(token, force=True)
-
-        self.assertEqual(response.status_code, 200)
-        payload = response.get_json()
-        self.assertTrue(payload["ok"])
-        self.assertTrue(payload["runtime"]["ready"])
-        self.assertFalse(payload["system"]["active"])
-        self.assertFalse(system_lock_svc.get_system_status()["active"])
 
     def test_admin_update_alert_appears_only_when_update_available(self):
         self._login()

@@ -9,6 +9,7 @@ from datetime import date, datetime, timezone, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import requests
+from flask import current_app, has_app_context
 from PIL import Image, ImageDraw, ImageFont
 
 from constants import UPLOAD_FOLDER, LAT, LNG, DEFAULT_METEO_VILLE, DEFAULT_METEO_TZ
@@ -453,10 +454,11 @@ def _ephemeride_slot_file_exists(path, lang):
 def ensure_ephemeride_image_async(force=False):
     """Refresh the generated ephemeris without blocking display API requests."""
     global _EPHEMERIS_ASYNC_RUNNING
+    app = current_app._get_current_object() if has_app_context() else None
     lang = get_language()
     cfg = load_config()
-    _filename, path, _today = _ephemeride_target(cfg)
-    if not force and _ephemeride_slot_file_exists(path, lang):
+    _filename, path, today = _ephemeride_target(cfg)
+    if not force and _ephemeride_file_is_current(path, today, lang):
         return False
 
     with _EPHEMERIS_ASYNC_LOCK:
@@ -467,7 +469,11 @@ def ensure_ephemeride_image_async(force=False):
     def worker():
         global _EPHEMERIS_ASYNC_RUNNING
         try:
-            generate_ephemeride_image(force=force)
+            if app is not None:
+                with app.app_context():
+                    generate_ephemeride_image(force=force)
+            else:
+                generate_ephemeride_image(force=force)
         except Exception as exc:
             print(f"[EPHEMERIS ASYNC ERROR] {exc}")
         finally:

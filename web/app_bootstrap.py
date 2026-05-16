@@ -344,6 +344,17 @@ def initialize_database(app):
         harden_private_storage_permissions()
 
 
+def schedule_initial_ephemeris_refresh():
+    try:
+        from services.config_svc import is_feature_enabled
+        from services.ephemeris_svc import ensure_ephemeride_image_async
+
+        if is_feature_enabled("ephemeris"):
+            ensure_ephemeride_image_async()
+    except Exception:
+        LOGGER.exception("Unable to schedule initial ephemeris refresh")
+
+
 def register_blueprints(app):
     from blueprints.activity import bp as activity_bp
     from blueprints.admin import bp as admin_bp

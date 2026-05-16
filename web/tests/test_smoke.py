@@ -971,7 +971,7 @@ class AppSmokeTests(unittest.TestCase):
             with open(media_path, "wb") as handle:
                 handle.write(gif_bytes)
 
-        with patch("blueprints.api.generate_ephemeride_image", side_effect=RuntimeError("boom")):
+        with patch("blueprints.api.ensure_ephemeride_image_async", side_effect=RuntimeError("boom")):
             response = self.client.get("/api/images", headers={"X-Screen-Token": "screen-secret"})
 
         self.assertEqual(response.status_code, 200)
@@ -994,7 +994,7 @@ class AppSmokeTests(unittest.TestCase):
                 handle.write(b"stale-variant")
             save_config({"features": {"ephemeris": True}, "order": [filename]})
 
-        with patch("blueprints.api.generate_ephemeride_image", return_value=None):
+        with patch("blueprints.api.ensure_ephemeride_image_async", return_value=False):
             response = self.client.get(
                 "/api/images?w=1920&h=1080",
                 headers={"X-Screen-Token": "screen-secret"},
@@ -1177,6 +1177,23 @@ class AppSmokeTests(unittest.TestCase):
                 image.verify()
             with Image.open(path) as image:
                 self.assertEqual(image.size, (1920, 1080))
+
+    def test_app_startup_schedules_initial_ephemeris_refresh(self):
+        with (
+            patch("app.start_encoder_thread"),
+            patch("app.schedule_initial_ephemeris_refresh") as refresh,
+        ):
+            from app import create_app
+
+            app = create_app(
+                start_scheduler=True,
+                test_config={
+                    "TESTING": True,
+                },
+            )
+
+        self.assertTrue(app)
+        refresh.assert_called_once()
 
     def test_ephemeris_generation_replaces_previous_config_references(self):
         with self.app.app_context():

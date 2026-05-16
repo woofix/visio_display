@@ -14,6 +14,7 @@ from app_bootstrap import (
     register_public_routes,
     register_request_hooks,
     register_template_context,
+    schedule_initial_ephemeris_refresh,
 )
 from services.queue_svc import start_encoder_thread
 
@@ -42,6 +43,8 @@ def create_app(start_scheduler=True, test_config=None):
 
     if start_scheduler:
         start_encoder_thread(app)
+        with app.app_context():
+            schedule_initial_ephemeris_refresh()
 
     return app
 

@@ -89,7 +89,7 @@ if ! git remote get-url "$REMOTE" >/dev/null 2>&1; then
   fail "remote Git introuvable: $REMOTE"
 fi
 
-DIRTY_STATUS="$(git status --porcelain | grep -v '^\?\? reboot-dev\.sh$' || true)"
+DIRTY_STATUS="$(git status --porcelain | grep -Ev '^\?\? reboot(-dev)?\.sh$' || true)"
 if [ -n "$DIRTY_STATUS" ]; then
   printf '%s\n' "$DIRTY_STATUS"
   fail "le depot Git n'est pas propre. Commit, stash ou supprime les changements avant la mise a jour"

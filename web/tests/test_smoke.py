@@ -978,6 +978,27 @@ class AppSmokeTests(unittest.TestCase):
         payload = response.get_json()
         self.assertTrue(any(item["name"] == "fallback.jpg" for item in payload))
 
+    def test_api_images_async_ephemeris_generation_has_app_context(self):
+        import threading
+        from flask import has_app_context
+
+        completed = threading.Event()
+
+        def generate(force=False):
+            self.assertTrue(has_app_context())
+            completed.set()
+
+        with self.app.app_context():
+            from services.config_svc import save_config
+
+            save_config({"features": {"ephemeris": True}})
+
+        with patch("services.ephemeris_svc.generate_ephemeride_image", side_effect=generate):
+            response = self.client.get("/api/images", headers={"X-Screen-Token": "screen-secret"})
+            self.assertTrue(completed.wait(2))
+
+        self.assertEqual(response.status_code, 200)
+
     def test_api_images_serves_ephemeris_original_not_stale_variant(self):
         with self.app.app_context():
             from constants import IMAGE_VARIANT_FOLDER, UPLOAD_FOLDER

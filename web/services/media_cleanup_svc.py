@@ -74,8 +74,9 @@ def _iter_schedule_refs(cfg):
                 yield screen, filename, sched
 
 
-def _collect_references(cfg):
+def _collect_references(cfg, available_files=None):
     references = {}
+    available_files = set(available_files or [])
 
     def add(filename, label):
         references.setdefault(filename, set()).add(label)
@@ -95,11 +96,38 @@ def _collect_references(cfg):
         name = campaign.get("name") or campaign.get("id") or "campaign"
         for filename in campaign.get("media", []):
             add(filename, f"campaign:{name}")
+        for filename in _campaign_group_media(campaign, cfg, available_files):
+            add(filename, f"campaign:{name}")
 
     for _screen, filename, _sched in _iter_schedule_refs(cfg):
         add(filename, "schedule")
 
     return references
+
+
+def _campaign_group_media(campaign, cfg, available_files):
+    if not campaign.get("groups"):
+        return set()
+
+    from services.campaign_svc import campaign_target_media
+
+    screens = campaign.get("screens", [])
+    if screens:
+        target_screens = screens
+    else:
+        target_screens = ["", *cfg.get("screens", {}).keys()]
+
+    filenames = set()
+    for screen in target_screens:
+        filenames.update(
+            campaign_target_media(
+                campaign,
+                cfg,
+                screen=screen,
+                available_files=available_files,
+            )
+        )
+    return filenames
 
 
 def _collect_disabled(cfg):
@@ -126,7 +154,7 @@ def analyze_media_cleanup(cfg=None, now=None):
     }
     entries = {filename: entry for filename, entry in entries.items() if entry}
 
-    references = _collect_references(cfg)
+    references = _collect_references(cfg, file_set)
     disabled = _collect_disabled(cfg)
 
     expired = []

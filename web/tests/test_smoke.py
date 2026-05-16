@@ -808,6 +808,49 @@ class AppSmokeTests(unittest.TestCase):
             self.assertEqual([item["filename"] for item in categories["large_videos"]], ["large.mp4"])
             self.assertEqual([item["filename"] for item in categories["disabled_old"]], ["old-disabled.jpg"])
 
+    def test_media_cleanup_keeps_campaign_group_media_as_used(self):
+        with self.app.app_context():
+            from constants import UPLOAD_FOLDER
+            from services.config_svc import save_config
+            from services.media_cleanup_svc import analyze_media_cleanup
+
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            for filename in ("campaign-screen.jpg", "unused.jpg"):
+                with open(os.path.join(UPLOAD_FOLDER, filename), "wb") as handle:
+                    handle.write(filename.encode("utf-8"))
+
+            save_config({
+                "groups": {
+                    "campaign-screen.jpg": ["accueil"],
+                    "unused.jpg": ["archive"],
+                },
+                "screens": {
+                    "hall": {
+                        "order": [],
+                        "disabled": [],
+                        "disabled_groups": [],
+                        "durations": {},
+                        "schedules": {},
+                    },
+                },
+                "campaigns": [{
+                    "name": "Diffusion hall",
+                    "enabled": True,
+                    "archived": False,
+                    "screens": ["hall"],
+                    "groups": ["accueil"],
+                    "media": [],
+                }],
+            })
+
+            unused = [
+                item["filename"]
+                for item in analyze_media_cleanup()["categories"]["unused"]
+            ]
+
+            self.assertNotIn("campaign-screen.jpg", unused)
+            self.assertIn("unused.jpg", unused)
+
     def test_media_cleanup_page_renders(self):
         with self.app.app_context():
             from constants import UPLOAD_FOLDER

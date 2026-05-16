@@ -209,11 +209,13 @@ button.chip { font:inherit; cursor:pointer; }
 .icon-card { border:1px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text); padding:9px 10px; font:inherit; font-size:.78rem; font-weight:800; cursor:pointer; text-align:left; display:grid; place-items:center; min-height:48px; }
 .icon-card:hover { border-color:var(--primary); background:var(--primary-bg); }
 .icon-card img { width:24px; height:24px; filter:var(--icon-filter, none); }
-.external-card { border:1px solid var(--border); border-radius:8px; background:var(--surface); padding:6px; display:grid; gap:6px; }
+.icon-grid.external-results { grid-template-columns:repeat(auto-fill,minmax(128px,1fr)); }
+.external-card { border:1px solid var(--border); border-radius:8px; background:var(--surface); padding:6px; display:grid; gap:7px; }
 .external-card img { width:100%; aspect-ratio:16 / 9; object-fit:cover; border-radius:6px; background:var(--surface-alt); }
-.external-actions { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; }
-.external-actions button { min-height:26px; border:1px solid var(--border); border-radius:6px; background:var(--surface-alt); color:var(--text-2); font:inherit; font-size:.62rem; font-weight:900; cursor:pointer; }
-.external-actions button:hover { border-color:var(--primary); color:var(--primary); background:var(--primary-bg); }
+.external-actions { display:grid; grid-template-columns:1fr; gap:5px; }
+.external-actions .btn { width:100%; min-width:0; min-height:32px; padding:6px 9px; border-radius:10px; font-size:.72rem; font-weight:800; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.external-actions .btn:focus-visible { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px var(--primary-fade); }
+.external-actions .btn:disabled { opacity:.5; cursor:not-allowed; filter:none; transform:none; box-shadow:none; }
 .mini-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
 .layer-list { display:grid; gap:4px; max-height:360px; overflow:auto; }
 .layer-row {
@@ -1238,13 +1240,17 @@ button.chip { font:inherit; cursor:pointer; }
 
     async function searchExternalImages(queryInput, resultsNode, applyToSelection=false) {
         const data = await fetch(`/admin/announcements/search-backgrounds?q=${encodeURIComponent(queryInput.value)}`).then(r => r.json());
+        resultsNode.classList.add('external-results');
+        const fillLabel = applyToSelection ? labels.imageApplySelection : labels.externalFillShape;
+        const addTitle = labels.imageAddLayer || labels.externalAddLayer;
+        const fillTitle = applyToSelection ? labels.imageApplySelection : (labels.imageFillSelection || labels.externalFillShape);
         resultsNode.innerHTML = (data.results || []).map(item => `
             <div class="external-card" data-url="${esc(item.url)}" data-credit="${esc(item.credit)}" data-title="${esc(item.title)}">
                 <img src="${esc(item.thumb_data || '')}" alt="">
                 <div class="external-actions">
-                    <button type="button" data-external-action="bg">${esc(labels.externalUseBackground)}</button>
-                    <button type="button" data-external-action="add">${esc(labels.externalAddLayer)}</button>
-                    <button type="button" data-external-action="fill">${esc(applyToSelection ? labels.imageApplySelection : labels.externalFillShape)}</button>
+                    <button type="button" class="btn secondary sm" data-external-action="bg" title="${esc(labels.externalUseBackground)}" aria-label="${esc(labels.externalUseBackground)}">${esc(labels.externalUseBackground)}</button>
+                    <button type="button" class="btn secondary sm" data-external-action="add" title="${esc(addTitle)}" aria-label="${esc(addTitle)}">${esc(labels.externalAddLayer)}</button>
+                    <button type="button" class="btn secondary sm" data-external-action="fill" title="${esc(fillTitle)}" aria-label="${esc(fillTitle)}">${esc(fillLabel)}</button>
                 </div>
             </div>`).join('');
         Array.from(resultsNode.querySelectorAll('[data-external-action]')).forEach(btn => btn.addEventListener('click', () => {

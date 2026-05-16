@@ -332,7 +332,7 @@ class UpdateServiceTests(unittest.TestCase):
         self.assertEqual(result["status"], "restart_scheduled")
         self.assertEqual(result["status_label"], "Redémarrage lancé")
         self.assertFalse(result["can_restart"])
-        self.assertIn("arrière-plan", result["reason"])
+        self.assertIn("rouvrir automatiquement", result["reason"])
 
     def test_restart_stack_schedules_primary_services_from_updater(self):
         repo = self.root / "repo"

@@ -52,6 +52,12 @@
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
+    function reloadPageSoon() {
+        setTimeout(() => {
+            window.location.reload();
+        }, 800);
+    }
+
     function renderRestartScheduled(reason) {
         renderStatus({
             ...currentStatus,
@@ -78,7 +84,8 @@
                 const runtime = payload.runtime || {};
                 if (runtime.ready) {
                     appendLog(msg('appAvailable', 'Application available.'));
-                    await refreshStatus(false);
+                    appendLog(msg('restartReloading', 'Reloading page...'));
+                    reloadPageSoon();
                     return true;
                 }
             } catch {}
@@ -208,6 +215,7 @@
         async function continueAfterRestartInterruption() {
             appendLog(msg('restartStreamInterrupted', 'Connection interrupted during restart. Checking application availability...'));
             renderRestartScheduled(msg('restartScheduledReason', 'The Docker stack is restarting in the background.'));
+            setBusy(false);
             await pollRuntimeStatus();
         }
 

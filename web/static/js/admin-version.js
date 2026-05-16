@@ -81,13 +81,10 @@
                 if (!response.ok) throw new Error(msg('runtimeUnavailable', 'runtime unavailable'));
                 const payload = await response.json();
                 if (!payload.ok) throw new Error(payload.error || msg('runtimeUnavailable', 'runtime unavailable'));
-                const runtime = payload.runtime || {};
-                if (runtime.ready) {
-                    appendLog(msg('appAvailable', 'Application available.'));
-                    appendLog(msg('restartReloading', 'Reloading page...'));
-                    reloadPageSoon();
-                    return true;
-                }
+                appendLog(msg('appAvailable', 'Application available.'));
+                appendLog(msg('restartReloading', 'Reloading page...'));
+                reloadPageSoon();
+                return true;
             } catch {}
             await sleep(2000);
         }

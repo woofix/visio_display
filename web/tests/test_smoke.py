@@ -314,42 +314,21 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(payload["system"]["type"], "update")
         self.assertEqual(payload["system"]["progress"], 25)
 
-    def test_restart_stream_keeps_lock_during_docker_restart(self):
+    def test_restart_stream_endpoint_is_removed(self):
         self._login()
-        from services import system_lock_svc
 
         with self.client.session_transaction() as session:
             token = session["_csrf_token"]
 
-        def fake_restart(*, progress_callback=None, lock_token=None):
-            if progress_callback:
-                progress_callback("Redémarrage Docker lancé.")
-            return {
-                "status": "restart_scheduled",
-                "status_label": "Redémarrage lancé",
-                "status_tone": "success",
-                "can_apply": False,
-                "can_restart": False,
-                "reason": "La stack Docker redémarre en arrière-plan.",
-            }
+        response = self.client.post(
+            "/admin/version/update/restart-stream",
+            headers={
+                "Accept": "application/x-ndjson",
+                "X-CSRF-Token": token,
+            },
+        )
 
-        with patch("blueprints.version.restart_stack", side_effect=fake_restart):
-            response = self.client.post(
-                "/admin/version/update/restart-stream",
-                headers={
-                    "Accept": "application/x-ndjson",
-                    "X-CSRF-Token": token,
-                },
-            )
-            body = response.get_data(as_text=True)
-            status = system_lock_svc.get_system_status()
-            if status["active"]:
-                system_lock_svc.release_lock(force=True)
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn('"type": "done"', body)
-        self.assertTrue(status["active"])
-        self.assertEqual(status["type"], "reboot")
+        self.assertEqual(response.status_code, 404)
 
     def test_apply_stream_keeps_lock_during_docker_restart(self):
         self._login()

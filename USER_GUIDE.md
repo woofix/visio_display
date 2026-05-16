@@ -845,9 +845,9 @@ The update:
 - checks the remote, target branch, `scripts/update.sh`, and Docker Compose;
 - switches to or pulls the configured target branch, then prepares the application code.
 
-After applying the update, select **Restart Docker** to relaunch the stack with the new version.
+After applying the update, Visio relaunches the stack with the new version.
 
-During an update or restart, administration displays a **blocking overlay**. It prevents clicks, forms, and shortcuts until the operation finishes. If the server restarts and responds more slowly for a moment, the page shows automatic reconnection.
+During an update, administration displays a **blocking overlay**. It prevents clicks, forms, and shortcuts until the operation finishes. If the server responds more slowly for a moment, the page shows automatic reconnection.
 
 ### Best Practices
 
@@ -1753,9 +1753,9 @@ La mise à jour :
 - vérifie le remote, la branche cible, le script `scripts/update.sh` et Docker Compose ;
 - bascule ou tire la branche cible configurée, puis prépare le code applicatif.
 
-Après application, cliquez sur **Redémarrer Docker** pour relancer la stack avec la nouvelle version.
+Après application, Visio relance la stack avec la nouvelle version.
 
-Pendant une mise à jour ou un redémarrage, l'administration affiche un **overlay bloquant**. Il empêche les clics, formulaires et raccourcis jusqu'à la fin de l'opération. Si le serveur redémarre et répond temporairement moins vite, la page affiche une reconnexion automatique.
+Pendant une mise à jour, l'administration affiche un **overlay bloquant**. Il empêche les clics, formulaires et raccourcis jusqu'à la fin de l'opération. Si le serveur répond temporairement moins vite, la page affiche une reconnexion automatique.
 
 ### Bonnes pratiques
 

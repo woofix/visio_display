@@ -159,8 +159,8 @@ Visio-Display s'exécute comme une stack self-hosted Docker Compose :
 - Page `/admin/about` accessible à tous les utilisateurs connectés : version de l'application, commit git, stack technique et lien vers la licence
 
 **Mise à jour serveur**
-- Page `/admin/version` réservée au super-admin : vérification du dépôt Git installé, application d'une mise à jour disponible et redémarrage Docker assisté
-- Overlay bloquant pendant les opérations système : l'administration est verrouillée jusqu'à la fin de la mise à jour ou du redémarrage
+- Page `/admin/version` réservée au super-admin : vérification du dépôt Git installé et application d'une mise à jour disponible
+- Overlay bloquant pendant les opérations système : l'administration est verrouillée jusqu'à la fin de la mise à jour
 
 **Sécurité & accès**
 - Contrôle d'accès à deux niveaux : super-admin et utilisateurs limités
@@ -545,7 +545,7 @@ Visio-Display/
     │   ├── search.py            # Recherche globale
     │   ├── settings.py          # Paramètres (thème, langue, logo, météo, fonctionnalités)
     │   ├── users.py             # Gestion des utilisateurs
-    │   ├── version.py           # Vérification, mise à jour serveur et redémarrage Docker
+    │   ├── version.py           # Vérification et mise à jour serveur
     │   └── wiki.py              # Page d'aide intégrée
     ├── services/                # Logique métier
     │   ├── activity_svc.py      # Enregistrement et lecture du journal d'activité
@@ -589,7 +589,7 @@ Visio-Display/
         ├── admin_settings.html  # Logo, thème, langue, mot de passe, événements, météo, fonctionnalités
         ├── admin_settings_*.html # Sections spécialisées des paramètres
         ├── admin_upload.html    # Import de médias + suivi d'encodage
-        ├── admin_version.html   # Version, mise à jour serveur et redémarrage Docker
+        ├── admin_version.html   # Version et mise à jour serveur
         └── admin_wiki.html      # Page d'aide intégrée
 ```
 
@@ -692,7 +692,6 @@ Visio-Display/
 | `/admin/version/update/status`            | GET     | Super-admin        | Vérifier l'état Git/Docker et la version distante    |
 | `/admin/version/update/runtime-status`    | GET     | Super-admin        | Vérifier le retour des conteneurs et de l'application |
 | `/admin/version/update/apply-stream`      | POST    | Super-admin        | Appliquer une mise à jour en flux NDJSON             |
-| `/admin/version/update/restart-stream`    | POST    | Super-admin        | Redémarrer la stack Docker en flux NDJSON            |
 | `/admin/about`                            | GET     | Connecté           | Page À propos (version, stack, licence)              |
 
 #### Réponse de `/api/queue`
@@ -1010,8 +1009,8 @@ Visio-Display runs as a self-hosted Docker Compose stack:
 - Page `/admin/about` accessible to all logged-in users: application version, git commit, tech stack and licence link
 
 **Server update**
-- Super-admin-only `/admin/version` page: check the installed Git repository, apply an available update, then restart Docker from the UI
-- Blocking overlay during system operations: the admin UI stays locked until the update or restart completes
+- Super-admin-only `/admin/version` page: check the installed Git repository and apply an available update
+- Blocking overlay during system operations: the admin UI stays locked until the update completes
 
 **Security & access**
 - Two-level access control: super-admin and limited users
@@ -1473,7 +1472,6 @@ Visio-Display/
 | `/admin/version/update/status`            | GET     | Super-admin        | Check Git/Docker state and the remote version            |
 | `/admin/version/update/runtime-status`    | GET     | Super-admin        | Check container and application readiness after restart  |
 | `/admin/version/update/apply-stream`      | POST    | Super-admin        | Apply an update over an NDJSON stream                    |
-| `/admin/version/update/restart-stream`    | POST    | Super-admin        | Restart the Docker stack over an NDJSON stream           |
 | `/admin/about`                            | GET     | Logged in          | About page (version, stack, licence)                    |
 
 #### `/api/queue` response

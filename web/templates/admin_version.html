@@ -41,7 +41,6 @@
             <div class="update-actions">
                 <button type="button" class="btn sm" id="update-check-btn">{{ t('version_check_btn') }}</button>
                 <button type="button" class="btn sm success" id="update-apply-btn" hidden>{{ t('version_apply_btn') }}</button>
-                <button type="button" class="btn sm secondary" id="update-restart-btn" hidden>{{ t('version_restart_btn') }}</button>
             </div>
         </div>
 
@@ -316,12 +315,7 @@
     'applyConfirmTitle': t('version_apply_confirm_title'),
     'applyConfirmMessage': t('version_apply_confirm_message'),
     'applyLabel': t('version_apply_btn'),
-    'applyStart': t('version_apply_start'),
-    'restartConfirmTitle': t('version_restart_confirm_title'),
-    'restartConfirmMessage': t('version_restart_confirm_message'),
-    'restartLabel': t('version_restart_btn'),
-    'restartStart': t('version_restart_start'),
-    'restartConnecting': t('version_restart_connecting')
+    'applyStart': t('version_apply_start')
 } | tojson }}</script>
 <script src="{{ url_for('static', filename='js/admin-version.js', v=static_version) }}"></script>
 {% endblock %}

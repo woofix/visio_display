@@ -4,7 +4,6 @@
 
     const checkBtn = document.getElementById('update-check-btn');
     const applyBtn = document.getElementById('update-apply-btn');
-    const restartBtn = document.getElementById('update-restart-btn');
     const stateBox = document.getElementById('update-state');
     const label = document.getElementById('update-status-label');
     const reason = document.getElementById('update-status-reason');
@@ -47,7 +46,6 @@
     function setBusy(isBusy) {
         checkBtn.disabled = isBusy;
         applyBtn.disabled = isBusy;
-        restartBtn.disabled = isBusy;
     }
 
     function appendLog(message, isError) {
@@ -61,12 +59,7 @@
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
-    function reloadAfterRestart() {
-        window.adminSystemLock?.hide();
-        window.location.reload();
-    }
-
-    async function pollRuntimeStatus({ reloadWhenReady = false } = {}) {
+    async function pollRuntimeStatus() {
         const deadline = Date.now() + 8 * 60 * 1000;
         while (Date.now() < deadline) {
             try {
@@ -81,30 +74,13 @@
                 const runtime = payload.runtime || {};
                 if (runtime.ready) {
                     appendLog(msg('appAvailable', 'Application available.'));
-                    if (reloadWhenReady) {
-                        reloadAfterRestart();
-                        return true;
-                    }
                     window.adminSystemLock?.hide();
                     await refreshStatus(false);
                     return true;
                 } else if (system.active) {
                     window.adminSystemLock?.refresh();
-                } else if (reloadWhenReady) {
-                    reloadAfterRestart();
-                    return true;
                 }
             } catch {
-                try {
-                    const statusResponse = await fetch('/api/system/status', {
-                        headers: { 'Accept': 'application/json' },
-                        cache: 'no-store',
-                    });
-                    if (reloadWhenReady && statusResponse.ok) {
-                        reloadAfterRestart();
-                        return true;
-                    }
-                } catch {}
                 window.adminSystemLock?.showConnecting();
             }
             await sleep(2000);
@@ -164,7 +140,6 @@
 
         const canApply = currentStatus.can_apply === true && ['update_available', 'branch_switch_required'].includes(currentStatus.status);
         applyBtn.hidden = !canApply;
-        restartBtn.hidden = currentStatus.status !== 'restart_required';
         confirmBox.hidden = !canApply;
     }
 
@@ -198,20 +173,8 @@
 
     async function streamAction(url, startMessage) {
         setBusy(true);
-        const lockType = url.includes('restart') ? 'reboot' : 'update';
-        const isRestartDisconnect = (error) => {
-            if (lockType !== 'reboot' || error?.actionResponse) return false;
-            const name = String(error?.name || '');
-            const message = String(error?.message || '');
-            return name === 'TypeError'
-                || name === 'AbortError'
-                || /load failed|failed to fetch|networkerror|network error|aborted|terminated/i.test(message);
-        };
-        if (lockType === 'update') {
-            window.adminSystemLock?.showDetailed(lockType, startMessage, 5, updateSteps);
-        } else {
-            window.adminSystemLock?.show(lockType, startMessage, 5);
-        }
+        const lockType = 'update';
+        window.adminSystemLock?.showDetailed(lockType, startMessage, 5, updateSteps);
         logBox.hidden = false;
         logBox.textContent = '';
         appendLog(startMessage);
@@ -229,16 +192,14 @@
                     const payload = await response.json();
                     errorMessage = payload.error || errorMessage;
                 } catch {}
-                const actionError = new Error(errorMessage);
-                actionError.actionResponse = true;
-                throw actionError;
+                throw new Error(errorMessage);
             }
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let buffer = '';
             let finalStatus = null;
             let failed = false;
-            const returnsBeforeConnectionClose = lockType === 'reboot';
+            const returnsBeforeConnectionClose = false;
 
             while (true) {
                 const { value, done } = await reader.read();
@@ -281,17 +242,10 @@
                 appendLog(msg('done', 'Done.'));
                 window.adminSystemLock?.refresh();
                 if (finalStatus.status === 'restart_scheduled') {
-                    pollRuntimeStatus({ reloadWhenReady: true });
+                    pollRuntimeStatus();
                 }
             }
         } catch (error) {
-            if (isRestartDisconnect(error)) {
-                const connectingMessage = msg('restartConnecting', 'Docker restart started. Connecting to server...');
-                appendLog(connectingMessage);
-                window.adminSystemLock?.show(lockType, connectingMessage, 85);
-                pollRuntimeStatus({ reloadWhenReady: true });
-                return;
-            }
             appendLog(error?.message || msg('actionFailed', 'Action failed.'), true);
             window.adminSystemLock?.refresh();
             renderStatus({
@@ -317,14 +271,6 @@
         })) return;
         streamAction('/admin/version/update/apply-stream', msg('applyStart', 'Applying update...'));
     });
-    restartBtn.addEventListener('click', async () => {
-        if (!await window.appUI.confirm({
-            titleText: msg('restartConfirmTitle', 'Restart Docker'),
-            messageText: msg('restartConfirmMessage', 'Restart the Docker stack now?'),
-            tone: 'warning',
-            confirmLabel: msg('restartLabel', 'Restart Docker'),
-        })) return;
-        streamAction('/admin/version/update/restart-stream', msg('restartStart', 'Restarting Docker stack...'));
-    });
+
     renderStatus(currentStatus);
 })();

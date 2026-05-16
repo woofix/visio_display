@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 from services import updater_client
 from services.i18n import _t
-from services.system_lock_svc import update_lock
+from services.system_lock_svc import release_lock, update_lock
 from services.version_svc import _compare_versions
 
 
@@ -77,6 +77,39 @@ class CommandResult:
 
 def _repo_dir():
     return os.path.normpath(os.environ.get("VISIO_GIT_ROOT", "").strip() or DEFAULT_REPO_CWD)
+
+
+def _dotenv_values(repo_dir):
+    values = {}
+    try:
+        with open(os.path.join(repo_dir, ".env"), "r", encoding="utf-8") as handle:
+            for raw_line in handle:
+                line = raw_line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                values[key.strip()] = value.strip().strip("'\"")
+    except OSError:
+        return {}
+    return values
+
+
+def _compose_subprocess_env(repo_dir):
+    env = os.environ.copy()
+    dotenv = _dotenv_values(repo_dir)
+    for key in ("VISIO_HOST_ROOT", "MEDIA_DIR", "PRIVATE_DIR", "COMPOSE_PROJECT_NAME"):
+        if dotenv.get(key):
+            env[key] = dotenv[key]
+    return env
+
+
+def _compose_env_exports(repo_dir):
+    dotenv = _dotenv_values(repo_dir)
+    lines = []
+    for key in ("VISIO_HOST_ROOT", "MEDIA_DIR", "PRIVATE_DIR", "COMPOSE_PROJECT_NAME"):
+        if dotenv.get(key):
+            lines.append(f"export {key}={shlex.quote(dotenv[key])}")
+    return lines
 
 
 def _update_branch():
@@ -294,7 +327,7 @@ def runtime_readiness_status(*, compose_cmd=None, project_name="", app_url=None)
 
         unhealthy = [
             service for service in expected_services
-            if service in by_service and not _container_health_ok(by_service[service])
+            if service in by_service and service != "app" and not _container_health_ok(by_service[service])
         ]
         if unhealthy:
             checks.append({"key": "healthchecks", "label": _t("version_runtime_healthchecks"), "ok": False, "detail": ", ".join(unhealthy)})
@@ -314,10 +347,14 @@ def runtime_readiness_status(*, compose_cmd=None, project_name="", app_url=None)
     return {"ready": ready, "checks": checks, "checked_at": time.time()}
 
 
-def wait_for_runtime_ready(*, lock_token=None, timeout_seconds=420, interval_seconds=3):
+def wait_for_runtime_ready(*, lock_token=None, timeout_seconds=420, interval_seconds=3, project_name=None):
     deadline = time.time() + max(30, int(timeout_seconds))
     compose_cmd, compose_error = _docker_compose_command()
-    project_name = _current_compose_project_name()
+    project_name = (
+        project_name
+        if project_name is not None
+        else os.environ.get("VISIO_COMPOSE_PROJECT_NAME", "").strip() or _current_compose_project_name()
+    )
     if not compose_cmd:
         _update_step(lock_token, "containers", compose_error, progress=85, failed=True)
         raise RuntimeError(compose_error)
@@ -402,6 +439,13 @@ def _start_updater_restart_helper(helper_name, helper_script, *, repo_dir, proje
         "-e",
         "VISIO_RESTART_HELPER_SERVICE=updater",
     ])
+    if project_name:
+        helper_command.extend([
+            "-e",
+            f"COMPOSE_PROJECT_NAME={project_name}",
+            "-e",
+            f"VISIO_COMPOSE_PROJECT_NAME={project_name}",
+        ])
     helper_command.extend([image, "sh", "-lc", helper_script])
     if progress_callback:
         progress_callback(f"$ {' '.join(helper_command[:10])} ...")
@@ -412,7 +456,17 @@ def _start_updater_restart_helper(helper_name, helper_script, *, repo_dir, proje
         progress_callback(_t("version_restart_helper_started", name=helper_name))
 
 
-def _start_restart_helper(command, *, repo_dir, compose_cmd, project_name, progress_callback=None, lock_token=None, verify_runtime=False):
+def _start_restart_helper(
+    command,
+    *,
+    repo_dir,
+    compose_cmd,
+    project_name,
+    progress_callback=None,
+    lock_token=None,
+    verify_runtime=False,
+    post_success_command=None,
+):
     helper_name = f"visio-display-restart-{int(time.time())}"
     helper_service = os.environ.get("VISIO_RESTART_HELPER_SERVICE", "").strip()
     if not helper_service:
@@ -422,13 +476,14 @@ def _start_restart_helper(command, *, repo_dir, compose_cmd, project_name, progr
     helper_lines = [
         "sleep 2",
         f"cd {shlex.quote(repo_dir)}",
+        *_compose_env_exports(repo_dir),
         f"{restart_command}",
         "status=$?",
     ]
     if verify_runtime:
         wait_code = (
             "from services.update_svc import wait_for_runtime_ready; "
-            f"wait_for_runtime_ready(lock_token={lock_token!r})"
+            f"wait_for_runtime_ready(lock_token={lock_token!r}, project_name={project_name!r})"
         )
         helper_lines.extend([
             "if [ \"$status\" -eq 0 ]; then",
@@ -442,10 +497,12 @@ def _start_restart_helper(command, *, repo_dir, compose_cmd, project_name, progr
             f"release_lock({lock_token!r})"
         )
         failure_cleanup = (
-            "from services.system_lock_svc import update_lock; "
+            "from services.system_lock_svc import _read_lock_raw, update_lock; "
             "from services.i18n import _t; "
             "from services.update_svc import _step_payload; "
-            f"update_lock({lock_token!r}, message=_t('version_restart_timeout_log'), "
+            "lock = _read_lock_raw(); "
+            "already_detailed = bool(lock and lock.get('error')); "
+            f"None if already_detailed else update_lock({lock_token!r}, message=_t('version_restart_timeout_log'), "
             "progress=100, stage='restart', steps=_step_payload('restart', failed_stage='restart'), "
             "error=True, timeout_seconds=1800)"
         )
@@ -453,6 +510,7 @@ def _start_restart_helper(command, *, repo_dir, compose_cmd, project_name, progr
             f"cd {shlex.quote(repo_dir)}",
             "if [ \"$status\" -eq 0 ]; then",
             f"  PYTHONPATH={shlex.quote(helper_pythonpath)} python -c {shlex.quote(success_cleanup)} || true",
+            *([f"  {_shell_join(post_success_command)} || true"] if post_success_command else []),
             "else",
             f"  PYTHONPATH={shlex.quote(helper_pythonpath)} python -c {shlex.quote(failure_cleanup)} || true",
             "fi",
@@ -557,7 +615,7 @@ def _build_incompatible(reason, checks, extra=None):
     return payload
 
 
-def get_update_status(*, fetch_remote=False):
+def get_update_status(*, fetch_remote=False, allow_dirty=False):
     if _delegate_to_updater():
         payload = updater_client.get_json("/status", params={"fetch": "1" if fetch_remote else "0"}, timeout=80 if fetch_remote else 20)
         status = payload.get("status") or {}
@@ -610,14 +668,19 @@ def get_update_status(*, fetch_remote=False):
         add_check("git_clean", _t("version_check_git_clean"), False, status.stderr or _t("version_reason_git_state_unreadable"))
         return _build_incompatible(_t("version_reason_git_state_unreadable"), checks, status_context)
     git_state = "dirty" if status.stdout.strip() else "clean"
-    if git_state != "clean":
+    if git_state != "clean" and not allow_dirty:
         add_check("git_clean", _t("version_check_git_clean"), False, status.stdout)
         return _build_incompatible(
             _t("version_reason_dirty"),
             checks,
             {**status_context, "git_state": git_state, "git_status": status.stdout},
         )
-    add_check("git_clean", _t("version_check_git_clean"), True, _t("version_check_no_local_changes"))
+    add_check(
+        "git_clean",
+        _t("version_check_git_clean"),
+        git_state == "clean",
+        _t("version_check_no_local_changes") if git_state == "clean" else status.stdout,
+    )
 
     update_script = os.path.join(repo_dir, "scripts", "update.sh")
     if not os.path.isfile(update_script):
@@ -818,14 +881,44 @@ def restart_stack(*, progress_callback=None, lock_token=None):
             update_lock(lock_token, message=_t("version_restart_connecting"), progress=85)
         return result
 
-    status = get_update_status(fetch_remote=False)
+    status = get_update_status(fetch_remote=False, allow_dirty=True)
     if not status.get("compatible"):
         raise RuntimeError(status.get("reason") or "Installation incompatible.")
     compose_cmd, compose_error = _docker_compose_command()
     if not compose_cmd:
         raise RuntimeError(compose_error)
     project_name = _current_compose_project_name()
-    command = [*_with_compose_project(compose_cmd, project_name), "up", "-d", "--build"]
+    compose_project_cmd = _with_compose_project(compose_cmd, project_name)
+    command = [*compose_project_cmd, "up", "-d", "--build"]
+    if _running_as_updater():
+        services = _compose_services(compose_cmd, project_name)
+        primary_services = [
+            service for service in ("app", "worker")
+            if not services or service in services
+        ] or [service for service in services if service != "updater"] or ["app", "worker"]
+        command = [*compose_project_cmd, "up", "-d", "--build", "--no-deps", *primary_services]
+        _update_step(lock_token, "restart", _t("version_restart_progress"), progress=72, timeout_seconds=900)
+        if progress_callback:
+            progress_callback(_t("version_restart_background"))
+            progress_callback(f"$ {' '.join(command)}")
+        if lock_token:
+            update_lock(lock_token, message=_t("version_restart_background_lock"), progress=60)
+        _stream_command(
+            command,
+            cwd=status["repo_dir"],
+            env=_compose_subprocess_env(status["repo_dir"]),
+            progress_callback=progress_callback,
+        )
+        wait_for_runtime_ready(lock_token=lock_token, project_name=project_name)
+        if lock_token:
+            release_lock(lock_token)
+        status["status"] = "restart_scheduled"
+        status["status_label"] = _t("version_status_restart_scheduled")
+        status["status_tone"] = "success"
+        status["can_apply"] = False
+        status["can_restart"] = False
+        status["reason"] = _t("version_reason_restart_scheduled")
+        return status
     _update_step(lock_token, "restart", _t("version_restart_progress"), progress=72, timeout_seconds=900)
     if progress_callback:
         progress_callback(_t("version_restart_background"))

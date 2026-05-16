@@ -124,6 +124,20 @@ class UpdateServiceTests(unittest.TestCase):
         self.assertEqual(status["git_state"], "dirty")
         self.assertIn("changements locaux", status["reason"])
 
+    def test_restart_stack_allows_dirty_repository(self):
+        repo = self._init_repo()
+        (repo / "local.txt").write_text("local change\n", encoding="utf-8")
+
+        with (
+            patch.object(update_svc, "_current_compose_project_name", return_value="visio_display"),
+            patch.object(update_svc, "_start_restart_helper") as helper,
+        ):
+            result = update_svc.restart_stack()
+
+        helper.assert_called_once()
+        self.assertEqual(result["status"], "restart_scheduled")
+        self.assertEqual(result["git_state"], "dirty")
+
     def test_missing_update_script_is_incompatible(self):
         self._init_repo(with_update_script=False)
 
@@ -262,6 +276,46 @@ class UpdateServiceTests(unittest.TestCase):
         self.assertFalse(result["can_restart"])
         self.assertIn("arrière-plan", result["reason"])
 
+    def test_restart_stack_refreshes_updater_after_primary_services(self):
+        repo = self.root / "repo"
+        repo.mkdir()
+        (repo / ".env").write_text(
+            "VISIO_HOST_ROOT=/host/repo\nMEDIA_DIR=/host/media\nPRIVATE_DIR=/host/private\nCOMPOSE_PROJECT_NAME=visio_display\n",
+            encoding="utf-8",
+        )
+        status = {
+            "compatible": True,
+            "repo_dir": str(repo),
+            "can_apply": False,
+            "can_restart": True,
+            "reason": "",
+        }
+
+        with (
+            patch.dict(os.environ, {"VISIO_UPDATER_ROLE": "1"}, clear=False),
+            patch.object(update_svc, "get_update_status", return_value=status.copy()),
+            patch.object(update_svc, "_docker_compose_command", return_value=(["docker", "compose"], "")),
+            patch.object(update_svc, "_current_compose_project_name", return_value="visio_display"),
+            patch.object(update_svc, "_compose_services", return_value=["postgres", "redis", "updater", "app", "worker"]),
+            patch.object(update_svc, "_stream_command") as stream_command,
+            patch.object(update_svc, "wait_for_runtime_ready") as wait_ready,
+            patch.object(update_svc, "release_lock") as release,
+        ):
+            result = update_svc.restart_stack(lock_token="lock-token")
+
+        stream_command.assert_called_once()
+        self.assertEqual(
+            stream_command.call_args.args[0],
+            ["docker", "compose", "--project-name", "visio_display", "up", "-d", "--build", "--no-deps", "app", "worker"],
+        )
+        self.assertEqual(stream_command.call_args.kwargs["cwd"], str(repo))
+        self.assertIsNone(stream_command.call_args.kwargs["progress_callback"])
+        self.assertEqual(stream_command.call_args.kwargs["env"]["MEDIA_DIR"], "/host/media")
+        self.assertEqual(stream_command.call_args.kwargs["env"]["PRIVATE_DIR"], "/host/private")
+        wait_ready.assert_called_once_with(lock_token="lock-token", project_name="visio_display")
+        release.assert_called_once_with("lock-token")
+        self.assertEqual(result["status"], "restart_scheduled")
+
     def test_restart_helper_uses_updated_repo_code_for_runtime_checks(self):
         repo_dir = str(self.root / "repo")
 
@@ -279,7 +333,11 @@ class UpdateServiceTests(unittest.TestCase):
         self.assertIn(f"PYTHONPATH={repo_dir}/web:/app", helper_script)
         self.assertNotIn("PYTHONPATH=/app python -c", helper_script)
         self.assertIn("wait_for_runtime_ready", helper_script)
+        self.assertIn("project_name=", helper_script)
+        self.assertIn("visio_display", helper_script)
         self.assertIn("release_lock", helper_script)
+        self.assertIn("_read_lock_raw", helper_script)
+        self.assertIn("already_detailed", helper_script)
         self.assertIn("lock-token", helper_script)
 
     def test_restart_helper_uses_updater_service_inside_updater(self):
@@ -301,6 +359,8 @@ class UpdateServiceTests(unittest.TestCase):
         self.assertIn("run", helper_command)
         self.assertTrue(any("updater" in part for part in helper_command))
         self.assertIn("/host/private:/app/data", helper_command)
+        self.assertIn("COMPOSE_PROJECT_NAME=visio_display", helper_command)
+        self.assertIn("VISIO_COMPOSE_PROJECT_NAME=visio_display", helper_command)
         self.assertNotIn("app", helper_command)
 
     def test_delegated_status_uses_updater_client(self):

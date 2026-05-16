@@ -858,6 +858,12 @@ body.sidebar-open {
     display: block;
 }
 
+.dropdown-menu.is-floating {
+    position: fixed;
+    right: auto;
+    bottom: auto;
+}
+
 .dropdown-menu.drop-down {
     bottom: auto;
     top: calc(100% + 6px);

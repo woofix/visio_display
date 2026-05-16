@@ -536,6 +536,12 @@ button.chip { font:inherit; cursor:pointer; }
                                 {% endfor %}
                             </select>
                         </div>
+                        <div class="announcement-field">
+                            <label>{{ t('announcements_external_search') }}</label>
+                            <input id="prop-external-query" type="search">
+                        </div>
+                        <button type="button" class="btn secondary" id="prop-external-search-btn">{{ t('announcements_external_btn') }}</button>
+                        <div class="icon-grid" id="prop-external-results"></div>
 	                        <div class="announcement-actions image-actions">
 	                            <button type="button" class="btn secondary" id="prop-image-media-fill">{{ t('announcements_image_apply_selection') }}</button>
 	                            <button type="button" class="btn secondary" id="prop-image-clear">{{ t('announcements_image_clear') }}</button>
@@ -1230,18 +1236,18 @@ button.chip { font:inherit; cursor:pointer; }
     qs('#icon-category').addEventListener('change', () => loadIcons(true));
     qs('#icon-query').addEventListener('input', () => loadIcons(true));
 
-    qs('#external-search-btn').addEventListener('click', async () => {
-        const data = await fetch(`/admin/announcements/search-backgrounds?q=${encodeURIComponent(qs('#external-query').value)}`).then(r => r.json());
-        qs('#external-results').innerHTML = (data.results || []).map(item => `
+    async function searchExternalImages(queryInput, resultsNode, applyToSelection=false) {
+        const data = await fetch(`/admin/announcements/search-backgrounds?q=${encodeURIComponent(queryInput.value)}`).then(r => r.json());
+        resultsNode.innerHTML = (data.results || []).map(item => `
             <div class="external-card" data-url="${esc(item.url)}" data-credit="${esc(item.credit)}" data-title="${esc(item.title)}">
                 <img src="${esc(item.thumb_data || '')}" alt="">
                 <div class="external-actions">
                     <button type="button" data-external-action="bg">${esc(labels.externalUseBackground)}</button>
                     <button type="button" data-external-action="add">${esc(labels.externalAddLayer)}</button>
-                    <button type="button" data-external-action="fill">${esc(labels.externalFillShape)}</button>
+                    <button type="button" data-external-action="fill">${esc(applyToSelection ? labels.imageApplySelection : labels.externalFillShape)}</button>
                 </div>
             </div>`).join('');
-        qsa('#external-results [data-external-action]').forEach(btn => btn.addEventListener('click', () => {
+        Array.from(resultsNode.querySelectorAll('[data-external-action]')).forEach(btn => btn.addEventListener('click', () => {
             const card = btn.closest('.external-card');
             const payload = {src:card.querySelector('img').src, media:imageMedia('external', card.dataset.url), name:card.dataset.title || labels.layerImage};
             if (btn.dataset.externalAction === 'bg') {
@@ -1252,9 +1258,14 @@ button.chip { font:inherit; cursor:pointer; }
                 bg.style.backgroundImage = `url("${card.querySelector('img').src}")`;
             }
             if (btn.dataset.externalAction === 'add') addImageLayer(payload);
-            if (btn.dataset.externalAction === 'fill' && selectedShape()) applyImageToItem(selectedShape(), payload);
+            if (btn.dataset.externalAction === 'fill') {
+                const target = applyToSelection && isImageTarget(current()) ? current() : selectedShape();
+                if (target) applyImageToItem(target, payload);
+            }
         }));
-    });
+    }
+    qs('#external-search-btn').addEventListener('click', () => searchExternalImages(qs('#external-query'), qs('#external-results')));
+    qs('#prop-external-search-btn').addEventListener('click', () => searchExternalImages(qs('#prop-external-query'), qs('#prop-external-results'), true));
 
     function deleteSelected() {
         const i = els.findIndex(e => e.id === selected);

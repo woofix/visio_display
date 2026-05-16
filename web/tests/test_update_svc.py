@@ -51,6 +51,12 @@ class UpdateServiceTests(unittest.TestCase):
         self._git(repo, "config", "user.name", "Tests")
         (repo / "VERSION").write_text("1.0.0\n", encoding="utf-8")
         if with_update_script:
+            main_script = repo / "main.sh"
+            main_script.write_text("#!/usr/bin/env bash\necho main update\n", encoding="utf-8")
+            main_script.chmod(0o755)
+            dev_script = repo / "dev.sh"
+            dev_script.write_text("#!/usr/bin/env bash\necho dev update\n", encoding="utf-8")
+            dev_script.chmod(0o755)
             scripts = repo / "scripts"
             scripts.mkdir()
             update_script = scripts / "update.sh"
@@ -144,7 +150,7 @@ class UpdateServiceTests(unittest.TestCase):
         status = update_svc.get_update_status()
 
         self.assertEqual(status["status"], "incompatible")
-        self.assertIn("scripts/update.sh", status["reason"])
+        self.assertIn("script", status["reason"].lower())
 
     def test_fetch_detects_update_available_from_remote_branch(self):
         self._init_repo()
@@ -157,6 +163,7 @@ class UpdateServiceTests(unittest.TestCase):
         self.assertTrue(status["can_apply"])
         self.assertEqual(status["branch"], "main")
         self.assertEqual(status["target_branch"], "main")
+        self.assertEqual(status["update_script"], "main.sh")
         self.assertEqual(status["local_version"], "1.0.0")
         self.assertEqual(status["remote_version"], "1.1.0")
         self.assertNotEqual(status["local_commit"], status["remote_commit"])
@@ -219,6 +226,7 @@ class UpdateServiceTests(unittest.TestCase):
         self.assertFalse(status["can_apply"])
         self.assertEqual(status["branch"], "dev")
         self.assertEqual(status["target_branch"], "main")
+        self.assertEqual(status["update_script"], "dev.sh")
         self.assertEqual(status["local_version"], "1.6.13")
         self.assertEqual(status["remote_version"], "1.6.12")
 
@@ -232,6 +240,7 @@ class UpdateServiceTests(unittest.TestCase):
         self.assertTrue(status["can_apply"])
         self.assertEqual(status["branch"], "dev")
         self.assertEqual(status["target_branch"], "main")
+        self.assertEqual(status["update_script"], "dev.sh")
         self.assertEqual(status["local_version"], "1.0.0")
         self.assertEqual(status["remote_version"], "1.0.0")
         self.assertEqual(status["local_commit"], status["remote_commit"])
@@ -243,6 +252,35 @@ class UpdateServiceTests(unittest.TestCase):
 
         self.assertEqual(docker_compose, ["docker", "compose", "--project-name", "visio_display"])
         self.assertEqual(legacy_compose, ["docker-compose", "--project-name", "visio_display"])
+
+    def test_apply_update_uses_current_branch_script(self):
+        repo = self._init_repo()
+        status = {
+            "compatible": True,
+            "can_apply": True,
+            "repo_dir": str(repo),
+            "branch": "dev",
+            "target_branch": "main",
+            "current_ref_type": "branch",
+        }
+        refreshed = {
+            "compatible": True,
+            "can_apply": False,
+            "repo_dir": str(repo),
+            "branch": "dev",
+            "target_branch": "main",
+        }
+
+        with (
+            patch.object(update_svc, "get_update_status", side_effect=[status, refreshed]),
+            patch.object(update_svc, "_stream_command") as stream,
+        ):
+            result = update_svc.apply_update()
+
+        stream.assert_called_once()
+        self.assertEqual(stream.call_args.args[0], ["bash", str(repo / "dev.sh")])
+        self.assertEqual(result["status"], "restart_scheduled")
+        self.assertFalse(result["can_apply"])
 
     def test_restart_stack_schedules_detached_helper(self):
         status = {

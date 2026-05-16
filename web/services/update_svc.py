@@ -161,6 +161,12 @@ def _read_local_version(repo_dir):
         return ""
 
 
+def _update_script_for_branch(repo_dir, branch):
+    if branch in {"main", "dev"}:
+        return os.path.join(repo_dir, f"{branch}.sh"), f"{branch}.sh"
+    return os.path.join(repo_dir, "scripts", "update.sh"), "scripts/update.sh"
+
+
 def _docker_compose_command():
     docker_path = shutil.which("docker")
     if docker_path:
@@ -682,11 +688,11 @@ def get_update_status(*, fetch_remote=False, allow_dirty=False):
         _t("version_check_no_local_changes") if git_state == "clean" else status.stdout,
     )
 
-    update_script = os.path.join(repo_dir, "scripts", "update.sh")
+    update_script, update_script_label = _update_script_for_branch(repo_dir, ref_name if ref_type == "branch" else "")
     if not os.path.isfile(update_script):
-        add_check("update_script", _t("version_check_update_script"), False, "scripts/update.sh introuvable")
+        add_check("update_script", _t("version_check_update_script"), False, f"{update_script_label} introuvable")
         return _build_incompatible(_t("version_reason_no_update_script"), checks, status_context)
-    add_check("update_script", _t("version_check_update_script"), True, "scripts/update.sh")
+    add_check("update_script", _t("version_check_update_script"), True, update_script_label)
 
     compose_cmd, compose_error = _docker_compose_command()
     if not compose_cmd:
@@ -805,6 +811,7 @@ def get_update_status(*, fetch_remote=False, allow_dirty=False):
         "remote_ref": remote_ref,
         "target": target,
         "compose_command": " ".join(compose_cmd),
+        "update_script": update_script_label,
     }
 
 
@@ -855,17 +862,20 @@ def apply_update(*, progress_callback=None, lock_token=None):
     env = os.environ.copy()
     if status.get("target_branch"):
         env["VISIO_UPDATE_BRANCH"] = status["target_branch"]
-    command = ["bash", os.path.join(repo_dir, "scripts", "update.sh")]
-    if status.get("current_ref_type") == "tag" and status.get("target"):
+    update_script, _update_script_label = _update_script_for_branch(repo_dir, status.get("branch", ""))
+    command = ["bash", update_script]
+    if status.get("current_ref_type") == "tag" and status.get("target") and update_script.endswith("scripts/update.sh"):
         command.append(status["target"])
     _stream_command(command, cwd=repo_dir, env=env, progress_callback=progress_callback)
     if lock_token:
-        _update_step(lock_token, "stop", _t("version_stop_progress"), progress=58)
+        _update_step(lock_token, "app", _t("version_restart_connecting"), progress=85, timeout_seconds=900)
     refreshed = get_update_status(fetch_remote=False)
-    refreshed["status"] = "restart_required"
-    refreshed["status_label"] = _t("version_status_restart_required")
-    refreshed["status_tone"] = "warning"
-    refreshed["can_restart"] = True
+    refreshed["status"] = "restart_scheduled"
+    refreshed["status_label"] = _t("version_status_restart_scheduled")
+    refreshed["status_tone"] = "success"
+    refreshed["can_apply"] = False
+    refreshed["can_restart"] = False
+    refreshed["reason"] = _t("version_reason_restart_scheduled")
     return refreshed
 
 
@@ -946,16 +956,4 @@ def restart_stack(*, progress_callback=None, lock_token=None):
 
 
 def apply_update_and_restart(*, progress_callback=None, lock_token=None):
-    if _delegate_to_updater():
-        _update_step(lock_token, "pull", _t("version_pull_progress"), progress=20)
-        result = updater_client.stream_operation(
-            "/apply-update-and-restart",
-            progress_callback=progress_callback,
-            payload={"lock_token": lock_token} if lock_token else None,
-        )
-        if lock_token:
-            update_lock(lock_token, message=_t("version_restart_connecting"), progress=85)
-        return result
-
-    apply_update(progress_callback=progress_callback, lock_token=lock_token)
-    return restart_stack(progress_callback=progress_callback, lock_token=lock_token)
+    return apply_update(progress_callback=progress_callback, lock_token=lock_token)

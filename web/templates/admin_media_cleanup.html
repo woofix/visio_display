@@ -1,0 +1,170 @@
+{% extends "admin_layout.html" %}
+{% block title %}{{ t('cleanup_title') }}{% endblock %}
+{% block topbar_title %}{{ t('cleanup_title') }}{% endblock %}
+{% block topbar_sub %}{{ t('cleanup_topbar_sub') }}{% endblock %}
+
+{% block styles %}
+.cleanup-page { display:flex;flex-direction:column;gap:18px; }
+.cleanup-hero { display:flex;justify-content:space-between;align-items:flex-start;gap:18px; }
+.cleanup-hero h1 { margin:0;font-family:var(--font-family-display);font-size:1.45rem;font-weight:700;color:var(--text);letter-spacing:-.03em; }
+.cleanup-hero p { margin:6px 0 0;color:var(--text-3);font-size:.84rem;line-height:1.55;max-width:760px; }
+.cleanup-summary { display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px; }
+.cleanup-stat { border:1px solid var(--border);background:linear-gradient(180deg,color-mix(in srgb,var(--surface) 92%,transparent),color-mix(in srgb,var(--surface-alt) 88%,transparent));border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow-sm); }
+.cleanup-stat strong { display:block;font-family:var(--font-family-display);font-size:1.35rem;font-weight:700;color:var(--text);line-height:1;letter-spacing:-.03em; }
+.cleanup-stat span { display:block;margin-top:8px;font-size:.68rem;color:var(--text-3);font-weight:700;text-transform:uppercase;letter-spacing:.08em; }
+.cleanup-section { border-top:1px solid var(--border);padding-top:18px; }
+.cleanup-section-head { display:flex;justify-content:space-between;align-items:flex-end;gap:14px;margin-bottom:12px; }
+.cleanup-section-head h2 { margin:0;font-family:var(--font-family-display);font-size:.96rem;font-weight:700;color:var(--text); }
+.cleanup-section-head p { margin:4px 0 0;font-size:.77rem;color:var(--text-3);line-height:1.55; }
+.cleanup-count { font-size:.72rem;font-weight:700;color:var(--text-2);background:var(--surface-alt);border:1px solid var(--border);border-radius:999px;padding:6px 10px;white-space:nowrap; }
+.cleanup-table { width:100%;border-collapse:collapse;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:var(--surface); }
+.cleanup-table th { text-align:left;font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);background:color-mix(in srgb,var(--surface-alt) 84%,white 16%);padding:13px 14px;border-bottom:1px solid var(--border); }
+.cleanup-table td { padding:13px 14px;border-bottom:1px solid var(--border);vertical-align:middle;font-size:.81rem;color:var(--text-2); }
+.cleanup-table tr:last-child td { border-bottom:0; }
+.cleanup-media { display:flex;align-items:center;gap:10px;min-width:0; }
+.cleanup-thumb { width:52px;height:36px;object-fit:cover;border-radius:6px;background:var(--surface-alt);border:1px solid var(--border);flex:0 0 auto; }
+.cleanup-name { min-width:0; }
+.cleanup-name strong { display:block;color:var(--text);font-size:.81rem;font-weight:700;overflow-wrap:anywhere; }
+.cleanup-name span { display:block;margin-top:3px;color:var(--text-3);font-size:.72rem;line-height:1.4; }
+.cleanup-actions { display:flex;justify-content:flex-end;gap:8px; }
+.cleanup-empty { border:1px dashed var(--border);border-radius:var(--radius);background:var(--surface);padding:20px;color:var(--text-3);font-size:.85rem;line-height:1.6;text-align:center; }
+.cleanup-duplicate-group { border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);overflow:hidden;margin-bottom:10px; }
+.cleanup-duplicate-title { display:flex;justify-content:space-between;gap:12px;align-items:center;background:color-mix(in srgb,var(--surface-alt) 84%,white 16%);padding:13px 14px;border-bottom:1px solid var(--border);font-size:.78rem;color:var(--text-3);font-weight:700; }
+.cleanup-note { font-size:.78rem;color:var(--text-3);line-height:1.5; }
+@media(max-width: 720px) {
+    .cleanup-hero { flex-direction:column; }
+    .cleanup-table thead { display:none; }
+    .cleanup-table, .cleanup-table tbody, .cleanup-table tr, .cleanup-table td { display:block;width:100%; }
+    .cleanup-table tr { border-bottom:1px solid var(--border); }
+    .cleanup-table tr:last-child { border-bottom:0; }
+    .cleanup-table td { border-bottom:0;padding:8px 12px; }
+    .cleanup-actions { justify-content:flex-start; }
+}
+{% endblock %}
+
+{% macro delete_form(filename) %}
+{% if can_delete and is_feature_enabled('delete') %}
+<form method="post" action="/delete/{{ filename }}"
+      data-confirm="{{ t('cleanup_delete_confirm', file=filename) }}"
+      data-confirm-title="{{ t('media_delete_title') }}"
+      data-confirm-tone="error"
+      data-confirm-ok="{{ t('action_delete') }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn sm danger">{{ t('action_delete') }}</button>
+</form>
+{% endif %}
+{% endmacro %}
+
+{% macro media_row(item, detail) %}
+<tr>
+    <td>
+        <div class="cleanup-media">
+            <img class="cleanup-thumb" src="{{ preview_urls.get(item.filename, '/static/images/logo.svg') }}" alt="">
+            <div class="cleanup-name">
+                <strong>{{ item.filename }}</strong>
+                <span>{{ item.type }} · {{ item.size_label }} · {{ t('cleanup_age_days', n=item.age_days) }}</span>
+            </div>
+        </div>
+    </td>
+    <td>{{ detail }}</td>
+    <td class="cleanup-actions">{{ delete_form(item.filename) }}</td>
+</tr>
+{% endmacro %}
+
+{% macro simple_section(key, items, title_key, desc_key, count_key, detail_key) %}
+<section class="cleanup-section" id="{{ key }}">
+    <div class="cleanup-section-head">
+        <div>
+            <h2>{{ t(title_key) }}</h2>
+            <p>{{ t(desc_key) }}</p>
+        </div>
+        <span class="cleanup-count">{{ items|length }}</span>
+    </div>
+    {% if items %}
+    <table class="cleanup-table">
+        <thead>
+            <tr>
+                <th>{{ t('cleanup_col_media') }}</th>
+                <th>{{ t('cleanup_col_reason') }}</th>
+                <th>{{ t('cleanup_col_action') }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+                {% if detail_key == 'expired' %}
+                    {{ media_row(item, t('cleanup_reason_expired', date=item.reason, screen=item.screen)) }}
+                {% elif detail_key == 'unused' %}
+                    {{ media_row(item, t('cleanup_reason_unused')) }}
+                {% elif detail_key == 'large_video' %}
+                    {{ media_row(item, t('cleanup_reason_large_video', size=item.reason)) }}
+                {% else %}
+                    {{ media_row(item, t('cleanup_reason_disabled_old', days=item.reason, scopes=item.scopes|join(', '))) }}
+                {% endif %}
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="cleanup-empty">{{ t('cleanup_empty_category') }}</div>
+    {% endif %}
+</section>
+{% endmacro %}
+
+{% block content %}
+{% set categories = cleanup.categories %}
+{% set summary = cleanup.summary %}
+<div class="cleanup-page">
+    <div class="cleanup-hero">
+        <div>
+            <h1>{{ t('cleanup_h1') }}</h1>
+            <p>{{ t('cleanup_sub') }}</p>
+        </div>
+        <a href="/admin/settings" class="btn secondary sm">{{ t('cleanup_back_settings') }}</a>
+    </div>
+
+    <div class="cleanup-summary">
+        <div class="cleanup-stat"><strong>{{ summary.expired_count }}</strong><span>{{ t('cleanup_stat_expired') }}</span></div>
+        <div class="cleanup-stat"><strong>{{ summary.unused_count }}</strong><span>{{ t('cleanup_stat_unused') }}</span></div>
+        <div class="cleanup-stat"><strong>{{ summary.duplicate_group_count }}</strong><span>{{ t('cleanup_stat_duplicates') }}</span></div>
+        <div class="cleanup-stat"><strong>{{ summary.large_video_count }}</strong><span>{{ t('cleanup_stat_large') }}</span></div>
+        <div class="cleanup-stat"><strong>{{ summary.disabled_old_count }}</strong><span>{{ t('cleanup_stat_disabled') }}</span></div>
+        <div class="cleanup-stat"><strong>{{ summary.recoverable_label }}</strong><span>{{ t('cleanup_stat_recoverable') }}</span></div>
+    </div>
+
+    <p class="cleanup-note">{{ t('cleanup_note_manual') }}</p>
+
+    {{ simple_section('expired', categories.expired, 'cleanup_expired_title', 'cleanup_expired_desc', 'cleanup_stat_expired', 'expired') }}
+    {{ simple_section('unused', categories.unused, 'cleanup_unused_title', 'cleanup_unused_desc', 'cleanup_stat_unused', 'unused') }}
+
+    <section class="cleanup-section" id="duplicates">
+        <div class="cleanup-section-head">
+            <div>
+                <h2>{{ t('cleanup_duplicates_title') }}</h2>
+                <p>{{ t('cleanup_duplicates_desc') }}</p>
+            </div>
+            <span class="cleanup-count">{{ categories.duplicates|length }}</span>
+        </div>
+        {% if categories.duplicates %}
+            {% for group in categories.duplicates %}
+            <div class="cleanup-duplicate-group">
+                <div class="cleanup-duplicate-title">
+                    <span>{{ t('cleanup_duplicate_group', hash=group.hash, size=group.size_label) }}</span>
+                    <span>{{ group.files|length }}</span>
+                </div>
+                <table class="cleanup-table">
+                    <tbody>
+                        {% for item in group.files %}
+                            {{ media_row(item, t('cleanup_reason_duplicate')) }}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endfor %}
+        {% else %}
+        <div class="cleanup-empty">{{ t('cleanup_empty_category') }}</div>
+        {% endif %}
+    </section>
+
+    {{ simple_section('large-videos', categories.large_videos, 'cleanup_large_title', 'cleanup_large_desc', 'cleanup_stat_large', 'large_video') }}
+    {{ simple_section('disabled-old', categories.disabled_old, 'cleanup_disabled_title', 'cleanup_disabled_desc', 'cleanup_stat_disabled', 'disabled_old') }}
+</div>
+{% endblock %}

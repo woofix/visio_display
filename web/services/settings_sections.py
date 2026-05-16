@@ -19,6 +19,10 @@ SETTINGS_SECTION_ALIASES = {
     "backups": "sauvegardes",
     "fonctionnalites": "features",
     "features": "features",
+    "nettoyage": "cleanup",
+    "nettoyage-medias": "cleanup",
+    "media-cleanup": "cleanup",
+    "cleanup": "cleanup",
 }
 
 SETTINGS_SECTION_SLUGS = {
@@ -37,6 +41,7 @@ SETTINGS_SECTION_SLUGS = {
     "installation": "installation",
     "sauvegardes": "sauvegardes",
     "features": "fonctionnalites",
+    "cleanup": "nettoyage-medias",
 }
 
 SETTINGS_SECTION_TEMPLATES = {
@@ -55,6 +60,7 @@ SETTINGS_SECTION_TEMPLATES = {
     "installation": "admin_settings_installation.html",
     "sauvegardes": "admin_settings_backups.html",
     "features": "admin_settings_features.html",
+    "cleanup": "admin_media_cleanup.html",
 }
 
 SUPERADMIN_SETTING_TABS = {
@@ -86,6 +92,7 @@ _ICONS = {
     "installation": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
     "backups": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="3" x2="12" y2="15"/><path d="M5 7h14"/></svg>',
     "version": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>',
+    "cleanup": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-13"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>',
 }
 
 SETTINGS_NAV_GROUPS = (
@@ -203,13 +210,21 @@ SETTINGS_NAV_GROUPS = (
     },
     {
         "label_key": "nav_label_system",
-        "superadmin_only": True,
         "items": (
+            {
+                "key": "cleanup",
+                "href": "/admin/settings/nettoyage-medias",
+                "label_key": "nav_media_cleanup",
+                "icon": _ICONS["cleanup"],
+                "required_permission": "cleanup",
+                "settings_active_paths": ("/admin/settings/nettoyage-medias",),
+            },
             {
                 "key": "installation",
                 "href": "/admin/settings/installation",
                 "label_key": "nav_installation",
                 "icon": _ICONS["installation"],
+                "superadmin_only": True,
                 "settings_active_paths": ("/admin/settings/installation",),
             },
             {
@@ -217,6 +232,7 @@ SETTINGS_NAV_GROUPS = (
                 "href": "/admin/settings/sauvegardes",
                 "label_key": "nav_backups",
                 "icon": _ICONS["backups"],
+                "superadmin_only": True,
                 "settings_active_paths": ("/admin/settings/sauvegardes",),
             },
             {
@@ -224,6 +240,7 @@ SETTINGS_NAV_GROUPS = (
                 "href": "/admin/version",
                 "label_key": "nav_version",
                 "icon": _ICONS["version"],
+                "superadmin_only": True,
                 "active_paths": ("/admin/version",),
             },
         ),
@@ -253,9 +270,10 @@ def is_superadmin_settings_tab(tab):
 def superadmin_nav_prefixes():
     prefixes = []
     for group in SETTINGS_NAV_GROUPS:
-        if not group.get("superadmin_only"):
+        if group.get("superadmin_only"):
+            prefixes.extend(item["href"] for item in group["items"])
             continue
-        prefixes.extend(item["href"] for item in group["items"])
+        prefixes.extend(item["href"] for item in group["items"] if item.get("superadmin_only"))
     prefixes.append("/admin/settings/administration")
     return tuple(prefixes)
 
@@ -272,15 +290,21 @@ def _item_is_active(item, path, settings_path):
     return any(path.startswith(prefix) for prefix in item.get("active_prefixes", ()))
 
 
-def settings_nav_groups(path, *, superadmin=False):
+def settings_nav_groups(path, *, superadmin=False, permissions=None):
     path = path or ""
     settings_path = _normalize_path(path)
+    permissions = set(permissions or ())
     groups = []
     for group in SETTINGS_NAV_GROUPS:
         if group.get("superadmin_only") and not superadmin:
             continue
         items = []
         for item in group["items"]:
+            if item.get("superadmin_only") and not superadmin:
+                continue
+            required_permission = item.get("required_permission")
+            if required_permission and not (superadmin or required_permission in permissions):
+                continue
             items.append({**item, "active": _item_is_active(item, path, settings_path)})
         if items:
             groups.append({

@@ -101,6 +101,7 @@ ALL_PERMISSIONS = [
     ("compress",       "perm_compress"),
     ("logo",           "perm_logo"),
     ("schedule",       "perm_schedule"),
+    ("cleanup",        "perm_cleanup"),
 ]
 
 ALL_FEATURES = [

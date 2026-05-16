@@ -577,6 +577,7 @@ def register_template_context(app):
             current_user_must_change_password = bool(_u and _u.must_change_password)
 
         current_user_is_superadmin = is_superadmin()
+        current_user_permissions = [key for key, _label_key in ALL_PERMISSIONS if has_permission(key)]
 
         return dict(
             admin_update_status=admin_update_status,
@@ -584,7 +585,11 @@ def register_template_context(app):
             current_user_must_change_password=current_user_must_change_password,
             has_permission=has_permission,
             is_feature_enabled=is_feature_enabled,
-            settings_nav_groups=settings_nav_groups(request.path, superadmin=current_user_is_superadmin),
+            settings_nav_groups=settings_nav_groups(
+                request.path,
+                superadmin=current_user_is_superadmin,
+                permissions=current_user_permissions,
+            ),
             settings_nav_open=is_settings_nav_path(request.path),
             theme=user_theme,
             app_name=cfg.get("app_name", "Helios"),

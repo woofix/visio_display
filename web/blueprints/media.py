@@ -18,6 +18,7 @@ from services.media_svc import (
     get_media_url, get_original_media_url,
     build_media_preview_map,
 )
+from services.media_cleanup_svc import analyze_media_cleanup
 from services.queue_svc import load_queue, save_queue
 from services.upload_svc import handle_media_upload
 from services.i18n import _flash, _t
@@ -171,6 +172,45 @@ def admin_media():
         current_user_is_superadmin=is_superadmin(),
         active_broadcast_targets=active_broadcast_targets,
         broadcast_source=broadcast_source)
+
+
+@bp.route('/admin/media/cleanup')
+def admin_media_cleanup_legacy():
+    redir = admin_guard()
+    if redir:
+        return redir
+    return redirect(url_for('media.admin_media_cleanup_page'))
+
+
+@bp.route('/admin/settings/nettoyage-medias')
+def admin_media_cleanup_page():
+    redir = admin_guard()
+    if redir:
+        return redir
+    if not has_permission('cleanup'):
+        _flash('flash_no_perm', 'error')
+        return redirect(url_for('admin.admin_page'))
+    cfg = load_config()
+    users = load_users()
+    cleanup = analyze_media_cleanup(cfg)
+    cleanup_files = set()
+    for key, items in cleanup.get("categories", {}).items():
+        if key == "duplicates":
+            for group in items:
+                cleanup_files.update(file_item["filename"] for file_item in group.get("files", []))
+            continue
+        cleanup_files.update(item["filename"] for item in items)
+    preview_urls = build_media_preview_map(sorted(cleanup_files, key=str.casefold), context='admin')
+    return render_template(
+        'admin_media_cleanup.html',
+        cleanup=cleanup,
+        preview_urls=preview_urls,
+        users=list(users.keys()),
+        current_user=session.get('user'),
+        logo_path=get_logo_path(),
+        can_delete=has_permission('delete'),
+        current_user_is_superadmin=is_superadmin(),
+    )
 
 
 @bp.route('/admin/programming')

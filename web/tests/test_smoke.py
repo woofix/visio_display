@@ -766,6 +766,96 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertTrue(response.headers["Location"].endswith("/admin"))
 
+    def test_media_cleanup_detects_review_candidates(self):
+        with self.app.app_context():
+            from constants import UPLOAD_FOLDER
+            from services.config_svc import save_config
+            from services.media_cleanup_svc import analyze_media_cleanup
+
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            for filename, payload in {
+                "expired.jpg": b"expired",
+                "unused.jpg": b"unused",
+                "copy-a.jpg": b"same",
+                "copy-b.jpg": b"same",
+                "old-disabled.jpg": b"old",
+            }.items():
+                with open(os.path.join(UPLOAD_FOLDER, filename), "wb") as handle:
+                    handle.write(payload)
+            with open(os.path.join(UPLOAD_FOLDER, "large.mp4"), "wb") as handle:
+                handle.seek((251 * 1024 * 1024) - 1)
+                handle.write(b"0")
+
+            old_time = (datetime.now() - timedelta(days=120)).timestamp()
+            os.utime(os.path.join(UPLOAD_FOLDER, "old-disabled.jpg"), (old_time, old_time))
+            save_config({
+                "order": ["expired.jpg", "old-disabled.jpg", "large.mp4"],
+                "disabled": ["old-disabled.jpg"],
+                "schedules": {"expired.jpg": {"date_end": "2020-01-01"}},
+                "features": {"videos": True},
+            })
+
+            cleanup = analyze_media_cleanup()
+            categories = cleanup["categories"]
+
+            self.assertEqual([item["filename"] for item in categories["expired"]], ["expired.jpg"])
+            self.assertIn("unused.jpg", [item["filename"] for item in categories["unused"]])
+            self.assertEqual(len(categories["duplicates"]), 1)
+            self.assertEqual(
+                [item["filename"] for item in categories["duplicates"][0]["files"]],
+                ["copy-a.jpg", "copy-b.jpg"],
+            )
+            self.assertEqual([item["filename"] for item in categories["large_videos"]], ["large.mp4"])
+            self.assertEqual([item["filename"] for item in categories["disabled_old"]], ["old-disabled.jpg"])
+
+    def test_media_cleanup_page_renders(self):
+        with self.app.app_context():
+            from constants import UPLOAD_FOLDER
+
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            with open(os.path.join(UPLOAD_FOLDER, "unused.jpg"), "wb") as handle:
+                handle.write(b"unused")
+
+        with self.client.session_transaction() as session:
+            session["user"] = "admin"
+
+        response = self.client.get("/admin/settings/nettoyage-medias")
+
+        self.assertEqual(response.status_code, 200)
+        html = response.get_data(as_text=True)
+        self.assertIn("Nettoyage intelligent", html)
+        self.assertIn("unused.jpg", html)
+
+    def test_media_cleanup_requires_cleanup_permission(self):
+        with self.app.app_context():
+            from services.users_svc import create_user
+
+            create_user("viewer", "operator-pass-123", permissions=[])
+
+        with self.client.session_transaction() as session:
+            session["user"] = "viewer"
+
+        response = self.client.get("/admin/settings/nettoyage-medias")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.headers["Location"].endswith("/admin"))
+
+    def test_media_cleanup_is_in_settings_for_cleanup_permission_user(self):
+        with self.app.app_context():
+            from services.users_svc import create_user
+
+            create_user("maintainer", "operator-pass-123", permissions=["cleanup"])
+
+        with self.client.session_transaction() as session:
+            session["user"] = "maintainer"
+
+        response = self.client.get("/admin")
+
+        self.assertEqual(response.status_code, 200)
+        html = response.get_data(as_text=True)
+        self.assertIn('href="/admin/settings/nettoyage-medias"', html)
+        self.assertNotIn('href="/admin/media/cleanup"', html)
+
     def test_color_announcement_creates_png_media(self):
         with self.client.session_transaction() as session:
             session["user"] = "admin"

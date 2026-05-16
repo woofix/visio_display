@@ -25,6 +25,12 @@ _PAGES_FR = [
         'keywords': 'médiathèque médias images photos vidéos fichiers bibliothèque galerie désactiver planifier gestion',
     },
     {
+        'title': 'Nettoyage intelligent',
+        'url': '/admin/settings/nettoyage-medias',
+        'description': 'Repérer les médias périmés, inutilisés, doublons, lourds ou désactivés',
+        'keywords': 'nettoyage médias périmés inutilisés doublons vidéos lourdes désactivés suppression maintenance',
+    },
+    {
         'title': 'Annonces',
         'url': '/admin/announcements',
         'description': 'Créer des annonces graphiques 16:9 et les exporter en PNG',
@@ -334,6 +340,12 @@ _PAGES_EN = [
         'url': '/admin/media',
         'description': 'Manage media, scheduling, enable, disable',
         'keywords': 'media library images photos videos files gallery disable schedule manage',
+    },
+    {
+        'title': 'Smart Cleanup',
+        'url': '/admin/settings/nettoyage-medias',
+        'description': 'Find expired, unused, duplicate, oversized or disabled media',
+        'keywords': 'cleanup media expired unused duplicates large videos disabled delete maintenance',
     },
     {
         'title': 'Announcements',

@@ -640,6 +640,10 @@ body.sidebar-open {
     display: none;
 }
 
+[hidden] {
+    display: none !important;
+}
+
 .btn {
     background: linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 72%, var(--primary-dark)));
     color: var(--on-primary);

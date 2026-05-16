@@ -140,6 +140,9 @@
 
         const canApply = currentStatus.can_apply === true && ['update_available', 'branch_switch_required'].includes(currentStatus.status);
         applyBtn.hidden = !canApply;
+        applyBtn.disabled = !canApply;
+        applyBtn.style.display = canApply ? '' : 'none';
+        applyBtn.setAttribute('aria-hidden', canApply ? 'false' : 'true');
         confirmBox.hidden = !canApply;
     }
 

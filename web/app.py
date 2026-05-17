@@ -17,6 +17,7 @@ from app_bootstrap import (
     schedule_initial_ephemeris_refresh,
 )
 from services.queue_svc import start_encoder_thread
+from services.backup_scheduler_svc import start_backup_scheduler_thread
 
 MAX_FILE_UPLOAD_SIZE = getattr(C, 'MAX_FILE_UPLOAD_SIZE', 150 * 1024 * 1024)
 MAX_BATCH_UPLOAD_SIZE = getattr(C, 'MAX_BATCH_UPLOAD_SIZE', 256 * 1024 * 1024)
@@ -43,6 +44,7 @@ def create_app(start_scheduler=True, test_config=None):
 
     if start_scheduler:
         start_encoder_thread(app)
+        start_backup_scheduler_thread(app)
         with app.app_context():
             schedule_initial_ephemeris_refresh()
 

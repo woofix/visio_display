@@ -347,6 +347,9 @@ document.querySelectorAll('.theme-card input[type=radio]').forEach(radio => {
 
 (function() {
     const remoteCopyEnabled = !!adminSettingsConfig.remoteCopyEnabled;
+    const backupRetentionMaxVersions = Math.max(1, Number(adminSettingsConfig.backupRetentionMaxVersions || 5));
+    const remoteForm = document.getElementById('backup-remote-form');
+    const testButton = document.getElementById('backup-smb-test-btn');
     const form = document.getElementById('backup-create-form');
     const button = document.getElementById('backup-create-btn');
     const label = document.getElementById('backup-create-label');
@@ -375,12 +378,46 @@ document.querySelectorAll('.theme-card input[type=radio]').forEach(radio => {
         logBox.scrollTop = logBox.scrollHeight;
     };
 
+    const streamBackupResponse = async (response, handlers) => {
+        if (!response.ok || !response.body) {
+            let message = handlers.defaultError || '';
+            try {
+                const payload = await response.json();
+                if (payload && payload.error) message = payload.error;
+            } catch (_) {}
+            throw new Error(message);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+            for (const line of lines) {
+                if (!line.trim()) continue;
+                const payload = JSON.parse(line);
+                if (payload.type === 'log') {
+                    appendLog(payload.message || '');
+                } else if (payload.type === 'error') {
+                    handlers.onError?.(payload);
+                } else if (payload.type === 'done') {
+                    handlers.onDone?.(payload);
+                }
+            }
+        }
+    };
+
     const renderBackupItem = (backup) => {
         const createdAt = String(backup.created_at_iso || '').replace('T', ' ').slice(0, 19);
         const sizeBytes = Number(backup.size_bytes || backup.size || 0);
         const sizeMo = (sizeBytes / 1048576).toFixed(1);
         return `
-            <div class="backup-item">
+            <div class="backup-item" data-backup-filename="${escapeHtml(backup.filename)}">
                 <div class="backup-item-main">
                     <div class="backup-item-name">${escapeHtml(backup.filename)}</div>
                     <div class="backup-item-meta">${escapeHtml(createdAt)} UTC · ${escapeHtml(sizeMo)} Mo</div>
@@ -388,7 +425,7 @@ document.querySelectorAll('.theme-card input[type=radio]').forEach(radio => {
                 <div class="backup-item-actions">
                     <a class="btn sm secondary" href="/admin/settings/backups/download/${encodeURIComponent(backup.filename)}">${adminSettingsI18n.backupDownloadBtn || ''}</a>
                     ${remoteCopyEnabled ? `
-                    <form method="post" action="/admin/settings/backups/copy/${encodeURIComponent(backup.filename)}">
+                    <form method="post" action="/admin/settings/backups/copy/${encodeURIComponent(backup.filename)}" class="backup-copy-form" data-backup-filename="${escapeHtml(backup.filename)}">
                         <input type="hidden" name="_csrf_token" value="${escapeHtml(window.CSRF_TOKEN || '')}">
                         <button type="submit" class="btn sm secondary">${adminSettingsI18n.backupCopyBtn || ''}</button>
                     </form>
@@ -401,6 +438,74 @@ document.querySelectorAll('.theme-card input[type=radio]').forEach(radio => {
             </div>
         `;
     };
+
+    const trimRenderedBackups = () => {
+        if (!list) return;
+        const items = Array.from(list.querySelectorAll('.backup-item'));
+        items.slice(backupRetentionMaxVersions).forEach(item => item.remove());
+    };
+
+    const replaceRenderedBackups = (backups) => {
+        if (!list || !Array.isArray(backups)) return false;
+        if (emptyState) emptyState.remove();
+        list.innerHTML = backups.map(renderBackupItem).join('');
+        return true;
+    };
+
+    const refreshRenderedBackupsFromServer = async () => {
+        const response = await fetch('/admin/settings/backups/list', {
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-Token': window.CSRF_TOKEN,
+            },
+        });
+        if (!response.ok) return false;
+        const payload = await response.json();
+        if (!payload || !Array.isArray(payload.backups)) return false;
+        return replaceRenderedBackups(payload.backups);
+    };
+
+    if (remoteForm && testButton) {
+        testButton.addEventListener('click', async () => {
+            testButton.disabled = true;
+            loadingBox.style.display = 'block';
+            logBox.style.display = 'block';
+            logBox.innerHTML = '';
+            appendLog(adminSettingsI18n.backupTestStreamStart || '');
+
+            try {
+                let succeeded = false;
+                let sawError = false;
+                const response = await fetch('/admin/settings/backups/remote/test-stream', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-Token': window.CSRF_TOKEN,
+                        'Accept': 'application/x-ndjson',
+                    },
+                    body: new FormData(remoteForm),
+                });
+                await streamBackupResponse(response, {
+                    defaultError: adminSettingsI18n.backupTestStreamError || '',
+                    onError: (payload) => {
+                        sawError = true;
+                        appendLog(payload.message || adminSettingsI18n.backupTestStreamError || '', true);
+                    },
+                    onDone: () => {
+                        succeeded = true;
+                        appendLog(adminSettingsI18n.backupTestStreamSuccess || '');
+                    },
+                });
+                if (!succeeded && !sawError) {
+                    appendLog(adminSettingsI18n.backupTestStreamError || '', true);
+                }
+            } catch (error) {
+                appendLog(error?.message || adminSettingsI18n.backupTestStreamError || '', true);
+            } finally {
+                testButton.disabled = false;
+                loadingBox.style.display = 'none';
+            }
+        });
+    }
 
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -428,6 +533,7 @@ document.querySelectorAll('.theme-card input[type=radio]').forEach(radio => {
             const decoder = new TextDecoder();
             let buffer = '';
             let createdBackup = null;
+            let refreshedBackups = false;
 
             while (true) {
                 const { value, done } = await reader.read();
@@ -444,15 +550,23 @@ document.querySelectorAll('.theme-card input[type=radio]').forEach(radio => {
                         appendLog(payload.message || adminSettingsI18n.backupStreamError || '', true);
                     } else if (payload.type === 'done' && payload.backup) {
                         createdBackup = payload.backup;
+                        if (Array.isArray(payload.backups)) {
+                            refreshedBackups = replaceRenderedBackups(payload.backups);
+                        }
                         appendLog(adminSettingsI18n.backupStreamSuccess || '');
                     }
                 }
             }
 
-            if (createdBackup) {
+            if (createdBackup && !refreshedBackups) {
+                refreshedBackups = await refreshRenderedBackupsFromServer();
+            }
+
+            if (createdBackup && !refreshedBackups) {
                 if (emptyState) emptyState.remove();
                 if (list) {
                     list.insertAdjacentHTML('afterbegin', renderBackupItem(createdBackup));
+                    trimRenderedBackups();
                 } else {
                     window.location.reload();
                     return;
@@ -464,6 +578,74 @@ document.querySelectorAll('.theme-card input[type=radio]').forEach(radio => {
             button.disabled = false;
             button.classList.remove('loading');
             label.textContent = adminSettingsI18n.backupCreateBtn || '';
+            loadingBox.style.display = 'none';
+        }
+    });
+
+    document.addEventListener('submit', async (event) => {
+        const copyForm = event.target;
+        if (!(copyForm instanceof HTMLFormElement) || !copyForm.classList.contains('backup-copy-form')) return;
+        event.preventDefault();
+
+        const submitButton = copyForm.querySelector('button[type="submit"]');
+        if (submitButton) submitButton.disabled = true;
+        loadingBox.style.display = 'block';
+        logBox.style.display = 'block';
+        logBox.innerHTML = '';
+        appendLog(adminSettingsI18n.backupCopyStreamStart || '');
+
+        try {
+            const filename = copyForm.dataset.backupFilename || '';
+            const response = await fetch(`/admin/settings/backups/copy-stream/${encodeURIComponent(filename)}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-Token': window.CSRF_TOKEN,
+                    'Accept': 'application/x-ndjson',
+                },
+            });
+            if (!response.ok || !response.body) {
+                let message = adminSettingsI18n.backupCopyStreamError || '';
+                try {
+                    const payload = await response.json();
+                    if (payload && payload.error) message = payload.error;
+                } catch (_) {}
+                throw new Error(message);
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            let copied = false;
+            let sawError = false;
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+                for (const line of lines) {
+                    if (!line.trim()) continue;
+                    const payload = JSON.parse(line);
+                    if (payload.type === 'log') {
+                        appendLog(payload.message || '');
+                    } else if (payload.type === 'error') {
+                        sawError = true;
+                        appendLog(payload.message || adminSettingsI18n.backupCopyStreamError || '', true);
+                    } else if (payload.type === 'done') {
+                        copied = true;
+                        appendLog(adminSettingsI18n.backupCopyStreamSuccess || '');
+                    }
+                }
+            }
+
+            if (!copied && !sawError) {
+                appendLog(adminSettingsI18n.backupCopyStreamError || '', true);
+            }
+        } catch (error) {
+            appendLog(error?.message || adminSettingsI18n.backupCopyStreamError || '', true);
+        } finally {
+            if (submitButton) submitButton.disabled = false;
             loadingBox.style.display = 'none';
         }
     });

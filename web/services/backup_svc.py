@@ -10,12 +10,15 @@ from datetime import datetime, timezone
 
 import constants as C
 from db import db
+from services.config_svc import load_config
 from sqlalchemy import text
 
 
 BACKUP_DIR = os.path.join(C.PRIVATE_DATA_DIR, "backups")
 BACKUP_BASENAME_RE = re.compile(r"^visio-backup-\d{8}-\d{6}\.tar\.gz$")
 MAX_BACKUPS = 5
+MIN_BACKUP_VERSIONS = 1
+MAX_BACKUP_VERSIONS = 365
 BACKUP_FORMAT_VERSION = 3
 BACKUP_MANIFEST = "manifest.json"
 BACKUP_DB_DUMP = "postgres.dump"
@@ -88,9 +91,18 @@ def list_backups():
     return items
 
 
+def backup_retention_limit(cfg=None):
+    cfg = cfg or load_config()
+    settings = cfg.get("backup_retention", {}) if isinstance(cfg, dict) else {}
+    try:
+        return min(MAX_BACKUP_VERSIONS, max(MIN_BACKUP_VERSIONS, int(settings.get("max_versions", MAX_BACKUPS))))
+    except (TypeError, ValueError):
+        return MAX_BACKUPS
+
+
 def _prune_old_backups():
     backups = list_backups()
-    for item in backups[MAX_BACKUPS:]:
+    for item in backups[backup_retention_limit():]:
         target = os.path.join(BACKUP_DIR, item["filename"])
         try:
             os.remove(target)
@@ -98,9 +110,30 @@ def _prune_old_backups():
             continue
 
 
-def _run_command(command, *, env=None, missing_binary_message=None, failure_message=None):
+def prune_old_backups():
+    _prune_old_backups()
+
+
+def _command_failure_detail(exc):
+    output = "\n".join(
+        part.strip()
+        for part in (getattr(exc, "stdout", None), getattr(exc, "stderr", None))
+        if part and part.strip()
+    )
+    if not output:
+        return ""
+    return output[-2000:]
+
+
+def _run_command(command, *, env=None, missing_binary_message=None, failure_message=None, capture_output=False):
     try:
-        subprocess.run(command, check=True, env=env)
+        subprocess.run(
+            command,
+            check=True,
+            env=env,
+            capture_output=capture_output,
+            text=capture_output,
+        )
     except FileNotFoundError as exc:
         binary = command[0] if command else "unknown command"
         raise RuntimeError(
@@ -112,8 +145,12 @@ def _run_command(command, *, env=None, missing_binary_message=None, failure_mess
         ) from exc
     except subprocess.CalledProcessError as exc:
         binary = command[0] if command else "unknown command"
+        message = failure_message or f"Command {binary} failed with exit code {exc.returncode}."
+        detail = _command_failure_detail(exc)
+        if detail:
+            message = f"{message}\n{detail}"
         raise RuntimeError(
-            failure_message or f"Command {binary} failed with exit code {exc.returncode}."
+            message
         ) from exc
 
 
@@ -410,34 +447,41 @@ def _split_smb_username(raw_username):
     return "", value
 
 
+def _build_smbclient_command(smb, username, password, tmp_dir):
+    command = ["smbclient", f"//{smb['server']}/{smb['share']}"]
+    if smb["port"]:
+        command.extend(["-p", str(smb["port"])])
+
+    if username or password:
+        domain, smb_username = _split_smb_username(username)
+        auth_path = os.path.join(tmp_dir, "smb-credentials")
+        with open(auth_path, "w", encoding="utf-8") as handle:
+            handle.write(f"username = {smb_username}\n")
+            handle.write(f"password = {password}\n")
+            if domain:
+                handle.write(f"domain = {domain}\n")
+        os.chmod(auth_path, 0o600)
+        command.extend(["-A", auth_path])
+    else:
+        command.append("-N")
+
+    if smb["remote_dir"]:
+        command.extend(["-D", smb["remote_dir"]])
+    return command
+
+
 def copy_backup_to_smb(source_path, backup_filename, remote_settings, progress_callback=None):
     smb = _parse_smb_url((remote_settings or {}).get("url", ""))
     username = str((remote_settings or {}).get("username", "") or smb["url_username"]).strip()
     password = str((remote_settings or {}).get("password", "") or smb["url_password"]).strip()
 
     _emit_progress(progress_callback, f"Copie SMB vers //{smb['server']}/{smb['share']}...")
+    if smb["remote_dir"]:
+        _emit_progress(progress_callback, f"Dossier distant: {smb['remote_dir']}")
+    _emit_progress(progress_callback, f"Fichier source: {backup_filename}")
 
     with tempfile.TemporaryDirectory(prefix="visio-backup-smb-") as tmp_dir:
-        command = ["smbclient", f"//{smb['server']}/{smb['share']}"]
-        if smb["port"]:
-            command.extend(["-p", str(smb["port"])])
-
-        if username or password:
-            domain, smb_username = _split_smb_username(username)
-            auth_path = os.path.join(tmp_dir, "smb-credentials")
-            with open(auth_path, "w", encoding="utf-8") as handle:
-                handle.write(f"username = {smb_username}\n")
-                handle.write(f"password = {password}\n")
-                if domain:
-                    handle.write(f"domain = {domain}\n")
-            os.chmod(auth_path, 0o600)
-            command.extend(["-A", auth_path])
-        else:
-            command.append("-N")
-
-        if smb["remote_dir"]:
-            command.extend(["-D", smb["remote_dir"]])
-
+        command = _build_smbclient_command(smb, username, password, tmp_dir)
         command.extend(["-c", f'put "{source_path}" "{backup_filename}"'])
         _run_command(
             command,
@@ -449,9 +493,43 @@ def copy_backup_to_smb(source_path, backup_filename, remote_settings, progress_c
                 "SMB backup copy failed. "
                 "Check the smb:// link, credentials, and that the remote folder exists."
             ),
+            capture_output=True,
         )
 
     _emit_progress(progress_callback, f"SMB copy complete: {backup_filename}")
+
+
+def test_smb_destination(remote_settings, progress_callback=None):
+    smb = _parse_smb_url((remote_settings or {}).get("url", ""))
+    username = str((remote_settings or {}).get("username", "") or smb["url_username"]).strip()
+    password = str((remote_settings or {}).get("password", "") or smb["url_password"]).strip()
+
+    _emit_progress(progress_callback, f"Test SMB vers //{smb['server']}/{smb['share']}...")
+    if smb["remote_dir"]:
+        _emit_progress(progress_callback, f"Dossier distant: {smb['remote_dir']}")
+
+    with tempfile.TemporaryDirectory(prefix="visio-smb-test-") as tmp_dir:
+        test_path = os.path.join(tmp_dir, "visio-smb-test.txt")
+        remote_name = f".visio-smb-test-{os.getpid()}.txt"
+        with open(test_path, "w", encoding="utf-8") as handle:
+            handle.write("visio smb write test\n")
+
+        command = _build_smbclient_command(smb, username, password, tmp_dir)
+        command.extend(["-c", f'put "{test_path}" "{remote_name}"; del "{remote_name}"'])
+        _run_command(
+            command,
+            missing_binary_message=(
+                "System tool not found: smbclient. "
+                "Install the SMB/CIFS client in the container then retry the SMB test."
+            ),
+            failure_message=(
+                "SMB destination test failed. "
+                "Check the smb:// link, credentials, and write permissions."
+            ),
+            capture_output=True,
+        )
+
+    _emit_progress(progress_callback, "Test SMB réussi: connexion et écriture validées.")
 
 
 def delete_backup_archive(filename):

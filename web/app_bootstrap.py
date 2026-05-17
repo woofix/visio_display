@@ -560,7 +560,17 @@ def register_template_context(app):
                     commit = result.stdout.strip()
             except Exception:
                 commit = ""
-        return f"{version}-{commit}" if commit else version
+        static_js_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "js", "admin-settings.js")
+        try:
+            static_stamp = str(int(os.path.getmtime(static_js_path)))
+        except OSError:
+            static_stamp = ""
+        parts = [version]
+        if commit:
+            parts.append(commit)
+        if static_stamp:
+            parts.append(static_stamp)
+        return "-".join(parts)
 
     @app.context_processor
     def inject_globals():

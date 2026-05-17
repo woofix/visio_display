@@ -874,7 +874,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
             <div class="backup-card">
                 <h3>{{ t('backup_create_title') }}</h3>
                 <p class="backup-help">{{ t('backup_create_desc') }}</p>
-                <form action="/admin/settings/backups/remote" method="post" class="backup-remote-form">
+                <form action="/admin/settings/backups/remote" method="post" class="backup-remote-form" id="backup-remote-form">
                     <label class="backup-remote-check">
                         <input type="checkbox" name="enabled" {% if backup_remote.enabled %}checked{% endif %}>
                         <span>{{ t('backup_remote_enable') }}</span>
@@ -894,14 +894,54 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                         </div>
                     </div>
                     <p class="backup-remote-note">{{ t('backup_remote_help') }}</p>
-                    <div>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap">
                         <button type="submit" class="btn secondary sm">{{ t('backup_remote_save_btn') }}</button>
+                        <button type="button" class="btn secondary sm" id="backup-smb-test-btn">{{ t('backup_remote_test_btn') }}</button>
                     </div>
                 </form>
                 <form action="/admin/settings/backups/create" method="post" id="backup-create-form">
                     <button type="submit" class="btn sm" id="backup-create-btn">
                         <span id="backup-create-label">{{ t('backup_create_btn') }}</span>
                     </button>
+                </form>
+                <div class="divider"></div>
+                <h3>{{ t('backup_schedule_title') }}</h3>
+                <form action="/admin/settings/backups/schedule" method="post" class="backup-remote-form">
+                    <label class="backup-remote-check">
+                        <input type="checkbox" name="enabled" {% if backup_schedule.enabled %}checked{% endif %}>
+                        <span>{{ t('backup_schedule_enable') }}</span>
+                    </label>
+                    <div class="backup-remote-grid">
+                        <div>
+                            <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:6px">{{ t('backup_schedule_time_label') }}</label>
+                            <input type="time" name="time" value="{{ backup_schedule.time or '02:00' }}" required style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;background:var(--surface);color:var(--text)">
+                        </div>
+                        <label class="backup-remote-check" style="align-self:end;margin-bottom:8px">
+                            <input type="checkbox" name="copy_to_smb" {% if backup_schedule.copy_to_smb %}checked{% endif %}>
+                            <span>{{ t('backup_schedule_copy_smb') }}</span>
+                        </label>
+                    </div>
+                    <p class="backup-remote-note">
+                        {{ t('backup_schedule_status', status=(backup_schedule.last_status or t('backup_schedule_never'))) }}
+                        {% if backup_schedule.last_backup %}· {{ backup_schedule.last_backup }}{% endif %}
+                        {% if backup_schedule.last_message %}<br>{{ backup_schedule.last_message }}{% endif %}
+                    </p>
+                    <div>
+                        <button type="submit" class="btn secondary sm">{{ t('backup_schedule_save_btn') }}</button>
+                    </div>
+                </form>
+                <div class="divider"></div>
+                <h3>{{ t('backup_retention_title') }}</h3>
+                <form action="/admin/settings/backups/retention" method="post" class="backup-remote-form">
+                    <div class="backup-remote-grid">
+                        <div>
+                            <label style="font-size:.72rem;color:var(--text-3);font-weight:600;display:block;margin-bottom:6px">{{ t('backup_retention_label') }}</label>
+                            <input type="number" name="max_versions" value="{{ backup_retention.max_versions or 5 }}" min="1" max="365" step="1" required style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;background:var(--surface);color:var(--text)">
+                        </div>
+                    </div>
+                    <div>
+                        <button type="submit" class="btn secondary sm">{{ t('backup_retention_save_btn') }}</button>
+                    </div>
                 </form>
                 <div class="backup-progress" id="backup-create-loading-box" aria-live="polite">
                     <div class="backup-progress-head">
@@ -950,7 +990,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                                 {{ t('backup_download_btn') }}
                             </a>
                             {% if backup_remote.enabled and backup_remote.url %}
-                            <form method="post" action="/admin/settings/backups/copy/{{ backup.filename }}">
+                            <form method="post" action="/admin/settings/backups/copy/{{ backup.filename }}" class="backup-copy-form" data-backup-filename="{{ backup.filename }}">
                                 <button type="submit" class="btn sm secondary">
                                     {{ t('backup_copy_btn') }}
                                 </button>
@@ -1490,6 +1530,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
     'displayApiToken': display_api_token,
     'screenTokenParam': screen_token_query_param,
     'remoteCopyEnabled': true if backup_remote.get('enabled') and backup_remote.get('url') else false,
+    'backupRetentionMaxVersions': backup_retention.max_versions or 5,
     'i18n': {
         'knownClientsHostname': t('known_clients_hostname'),
         'knownClientsScreen': t('known_clients_screen'),
@@ -1523,6 +1564,12 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
         'backupStreamStart': t('backup_stream_start'),
         'backupStreamError': t('backup_stream_error'),
         'backupStreamSuccess': t('backup_stream_success'),
+        'backupCopyStreamStart': t('backup_copy_stream_start'),
+        'backupCopyStreamError': t('backup_copy_stream_error'),
+        'backupCopyStreamSuccess': t('backup_copy_stream_success'),
+        'backupTestStreamStart': t('backup_test_stream_start'),
+        'backupTestStreamError': t('backup_test_stream_error'),
+        'backupTestStreamSuccess': t('backup_test_stream_success'),
         'backupCreateBtn': t('backup_create_btn'),
         'installLoadingButton': t('install_loading_button'),
         'clientControlShutdownLoading': t('client_control_shutdown_loading'),

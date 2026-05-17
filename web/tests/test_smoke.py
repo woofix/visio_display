@@ -24,7 +24,9 @@ class FakeRedis:
     def get(self, key):
         return self.store.get(key)
 
-    def set(self, key, value, ex=None):
+    def set(self, key, value, ex=None, nx=False):
+        if nx and key in self.store:
+            return False
         if isinstance(value, str):
             value = value.encode("utf-8")
         self.store[key] = value
@@ -2377,12 +2379,17 @@ class AppSmokeTests(unittest.TestCase):
                 with open(os.path.join(os.environ["PRIVATE_DIR"], "note.txt"), "r", encoding="utf-8") as handle:
                     self.assertEqual(handle.read(), "private-before")
 
-    def test_backup_service_keeps_only_five_most_recent_archives(self):
+    def test_backup_service_keeps_configured_number_of_recent_archives(self):
         backup_dir = os.path.join(self.temp_dir.name, "private", "backups-test")
         os.makedirs(backup_dir, exist_ok=True)
 
         with self.app.app_context():
             from services import backup_svc
+            from services.config_svc import load_config, save_config
+
+            cfg = load_config()
+            cfg["backup_retention"] = {"max_versions": 3}
+            save_config(cfg)
 
             with patch.object(backup_svc, "BACKUP_DIR", backup_dir):
                 now = datetime.now(timezone.utc)
@@ -2399,7 +2406,7 @@ class AppSmokeTests(unittest.TestCase):
                 backup_svc._prune_old_backups()
 
                 remaining = [item["filename"] for item in backup_svc.list_backups()]
-                self.assertEqual(remaining, list(reversed(filenames[-5:])))
+                self.assertEqual(remaining, list(reversed(filenames[-3:])))
 
     def test_superadmin_settings_backups_tab_renders_existing_backups(self):
         backup_dir = os.path.join(self.temp_dir.name, "private", "backups-test")
@@ -2554,6 +2561,217 @@ class AppSmokeTests(unittest.TestCase):
                 args = copy_mock.call_args[0]
                 self.assertEqual(args[0], backup_path)
                 self.assertEqual(args[1], "visio-backup-20260101-010203.tar.gz")
+
+    def test_superadmin_can_stream_backup_smb_copy_logs(self):
+        backup_dir = os.path.join(self.temp_dir.name, "private", "backups-test")
+        os.makedirs(backup_dir, exist_ok=True)
+
+        with self.app.app_context():
+            from services import backup_svc
+            from services.config_svc import load_config, save_config
+
+            def fake_copy(_path, _filename, _settings, progress_callback=None):
+                if progress_callback:
+                    progress_callback("SMB diagnostic line")
+
+            with patch.object(backup_svc, "BACKUP_DIR", backup_dir), \
+                 patch("blueprints.settings.copy_backup_to_smb", side_effect=fake_copy) as copy_mock:
+                backup_path = os.path.join(backup_dir, "visio-backup-20260101-010203.tar.gz")
+                with open(backup_path, "wb") as handle:
+                    handle.write(b"backup")
+
+                cfg = load_config()
+                cfg["backup_remote"] = {
+                    "enabled": True,
+                    "url": "smb://nas/backup/visio",
+                    "username": "backupuser",
+                    "password": "secret123",
+                }
+                save_config(cfg)
+
+                self._login()
+                with self.client.session_transaction() as session:
+                    token = session["_csrf_token"]
+
+                response = self.client.post(
+                    "/admin/settings/backups/copy-stream/visio-backup-20260101-010203.tar.gz",
+                    headers={"X-CSRF-Token": token},
+                )
+
+                self.assertEqual(response.status_code, 200)
+                body = response.data.decode("utf-8")
+                self.assertIn("SMB diagnostic line", body)
+                self.assertIn('"type": "done"', body)
+                copy_mock.assert_called_once()
+
+    def test_superadmin_can_stream_backup_smb_destination_test_logs(self):
+        with self.app.app_context():
+            from services.config_svc import load_config, save_config
+
+            def fake_test(_settings, progress_callback=None):
+                if progress_callback:
+                    progress_callback("SMB test diagnostic line")
+
+            with patch("blueprints.settings.backups.test_smb_destination", side_effect=fake_test) as test_mock:
+                cfg = load_config()
+                cfg["backup_remote"] = {
+                    "enabled": True,
+                    "url": "smb://nas/backup/visio",
+                    "username": "backupuser",
+                    "password": "secret123",
+                }
+                save_config(cfg)
+
+                self._login()
+                with self.client.session_transaction() as session:
+                    token = session["_csrf_token"]
+
+                response = self.client.post(
+                    "/admin/settings/backups/remote/test-stream",
+                    data={
+                        "_csrf_token": token,
+                        "enabled": "on",
+                        "url": "smb://nas/backup/visio",
+                        "username": "backupuser",
+                        "password": "",
+                    },
+                    headers={"X-CSRF-Token": token},
+                )
+
+                self.assertEqual(response.status_code, 200)
+                body = response.data.decode("utf-8")
+                self.assertIn("SMB test diagnostic line", body)
+                self.assertIn('"type": "done"', body)
+                test_mock.assert_called_once()
+                self.assertEqual(test_mock.call_args[0][0]["password"], "secret123")
+
+    def test_superadmin_can_save_backup_automation_settings(self):
+        with self.app.app_context():
+            from services.config_svc import load_config
+
+            self._login()
+            with self.client.session_transaction() as session:
+                token = session["_csrf_token"]
+
+            response = self.client.post(
+                "/admin/settings/backups/schedule",
+                data={
+                    "_csrf_token": token,
+                    "enabled": "on",
+                    "time": "03:15",
+                    "copy_to_smb": "on",
+                },
+                follow_redirects=False,
+            )
+
+            self.assertEqual(response.status_code, 302)
+            cfg = load_config()
+            self.assertTrue(cfg["backup_schedule"]["enabled"])
+            self.assertEqual(cfg["backup_schedule"]["time"], "03:15")
+            self.assertTrue(cfg["backup_schedule"]["copy_to_smb"])
+
+    def test_superadmin_can_save_backup_retention_settings(self):
+        backup_dir = os.path.join(self.temp_dir.name, "private", "backups-test")
+        os.makedirs(backup_dir, exist_ok=True)
+
+        with self.app.app_context():
+            from services import backup_svc
+            from services.config_svc import load_config
+
+            with patch.object(backup_svc, "BACKUP_DIR", backup_dir):
+                now = datetime.now(timezone.utc)
+                filenames = []
+                for index in range(4):
+                    filename = f"visio-backup-20260101-00000{index}.tar.gz"
+                    path = os.path.join(backup_dir, filename)
+                    with open(path, "wb") as handle:
+                        handle.write(f"backup-{index}".encode("utf-8"))
+                    ts = (now + timedelta(seconds=index)).timestamp()
+                    os.utime(path, (ts, ts))
+                    filenames.append(filename)
+
+                self._login()
+                with self.client.session_transaction() as session:
+                    token = session["_csrf_token"]
+
+                response = self.client.post(
+                    "/admin/settings/backups/retention",
+                    data={
+                        "_csrf_token": token,
+                        "max_versions": "2",
+                    },
+                    follow_redirects=False,
+                )
+
+                self.assertEqual(response.status_code, 302)
+                cfg = load_config()
+                self.assertEqual(cfg["backup_retention"]["max_versions"], 2)
+                remaining = [item["filename"] for item in backup_svc.list_backups()]
+                self.assertEqual(remaining, list(reversed(filenames[-2:])))
+
+    def test_backup_scheduler_creates_backup_and_copies_to_smb_once_per_day(self):
+        with self.app.app_context():
+            from services import backup_scheduler_svc
+            from services.config_svc import load_config, save_config
+
+            cfg = load_config()
+            cfg["backup_schedule"] = {
+                "enabled": True,
+                "time": "12:34",
+                "copy_to_smb": True,
+                "last_run_date": "",
+            }
+            cfg["backup_remote"] = {
+                "enabled": True,
+                "url": "smb://nas/backup/visio",
+                "username": "backupuser",
+                "password": "secret123",
+            }
+            save_config(cfg)
+
+            class FixedDateTime(datetime):
+                @classmethod
+                def now(cls, tz=None):
+                    value = datetime(2026, 5, 17, 12, 34, tzinfo=timezone.utc)
+                    return value.astimezone(tz) if tz else value.replace(tzinfo=None)
+
+            with patch.object(backup_scheduler_svc, "datetime", FixedDateTime), \
+                 patch.object(backup_scheduler_svc, "_backup_timezone", return_value=timezone.utc), \
+                 patch.object(backup_scheduler_svc, "get_redis", return_value=self.fake_redis), \
+                 patch.object(backup_scheduler_svc, "create_backup_archive", return_value={
+                     "filename": "visio-backup-20260517-123400.tar.gz",
+                     "path": "/tmp/visio-backup-20260517-123400.tar.gz",
+                 }) as create_mock, \
+                 patch.object(backup_scheduler_svc, "copy_backup_to_smb") as copy_mock:
+                backup_scheduler_svc._flask_app = self.app
+                backup_scheduler_svc._scheduler_tick()
+                backup_scheduler_svc._scheduler_tick()
+
+            create_mock.assert_called_once()
+            copy_mock.assert_called_once()
+            cfg = load_config()
+            self.assertEqual(cfg["backup_schedule"]["last_run_date"], "2026-05-17")
+            self.assertEqual(cfg["backup_schedule"]["last_status"], "success")
+            self.assertEqual(cfg["backup_schedule"]["last_backup"], "visio-backup-20260517-123400.tar.gz")
+
+    def test_smb_command_failures_include_client_output(self):
+        import subprocess
+        from services import backup_svc
+
+        failure = subprocess.CalledProcessError(
+            1,
+            ["smbclient"],
+            output="",
+            stderr="NT_STATUS_LOGON_FAILURE",
+        )
+
+        with patch("services.backup_svc.subprocess.run", side_effect=failure):
+            with self.assertRaisesRegex(RuntimeError, "NT_STATUS_LOGON_FAILURE"):
+                backup_svc._run_command(
+                    ["smbclient"],
+                    failure_message="SMB backup copy failed.",
+                    capture_output=True,
+                )
 
     def test_safe_extract_tar_rejects_dangerous_entries(self):
         from services.backup_svc import _safe_extract_tar

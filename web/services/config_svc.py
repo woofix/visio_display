@@ -125,6 +125,26 @@ def _default_backup_remote():
     }
 
 
+def _default_backup_schedule():
+    return {
+        "enabled": False,
+        "time": "02:00",
+        "copy_to_smb": True,
+        "last_run_date": "",
+        "last_started_at": "",
+        "last_finished_at": "",
+        "last_status": "",
+        "last_message": "",
+        "last_backup": "",
+    }
+
+
+def _default_backup_retention():
+    return {
+        "max_versions": 5,
+    }
+
+
 def _default_config():
     return {
         "order": [],
@@ -144,6 +164,8 @@ def _default_config():
         "client_watchdog": _default_client_watchdog(),
         "activity_log": _default_activity_log(),
         "backup_remote": _default_backup_remote(),
+        "backup_schedule": _default_backup_schedule(),
+        "backup_retention": _default_backup_retention(),
         "priority_alert": {
             "message": "",
             "updated_at": None,
@@ -195,6 +217,27 @@ def normalize_config(cfg):
     merged["backup_remote"]["enabled"] = bool(merged["backup_remote"].get("enabled", False))
     for key in ("url", "username", "password"):
         merged["backup_remote"][key] = str(merged["backup_remote"].get(key, "") or "").strip()
+    stored_backup_schedule = cfg.get("backup_schedule", {})
+    merged["backup_schedule"] = {
+        **_default_backup_schedule(),
+        **(stored_backup_schedule if isinstance(stored_backup_schedule, dict) else {}),
+    }
+    merged["backup_schedule"]["enabled"] = bool(merged["backup_schedule"].get("enabled", False))
+    merged["backup_schedule"]["copy_to_smb"] = bool(merged["backup_schedule"].get("copy_to_smb", True))
+    for key in ("time", "last_run_date", "last_started_at", "last_finished_at", "last_status", "last_message", "last_backup"):
+        merged["backup_schedule"][key] = str(merged["backup_schedule"].get(key, "") or "").strip()
+    stored_backup_retention = cfg.get("backup_retention", {})
+    merged["backup_retention"] = {
+        **_default_backup_retention(),
+        **(stored_backup_retention if isinstance(stored_backup_retention, dict) else {}),
+    }
+    try:
+        merged["backup_retention"]["max_versions"] = min(
+            365,
+            max(1, int(merged["backup_retention"].get("max_versions"))),
+        )
+    except (TypeError, ValueError):
+        merged["backup_retention"]["max_versions"] = _default_backup_retention()["max_versions"]
     for key, minimum in (
         ("check_interval_seconds", 15),
         ("grace_period_seconds", 30),

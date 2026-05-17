@@ -472,7 +472,7 @@ def _attach_thumbnail_data(candidates):
     if not candidates:
         return []
     max_workers = min(8, len(candidates))
-    results_by_index = {}
+    results_by_index = {index: dict(candidate) for index, candidate in enumerate(candidates)}
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {
             executor.submit(_thumbnail_data_uri, candidate["thumb_url"]): index
@@ -482,9 +482,7 @@ def _attach_thumbnail_data(candidates):
             index = futures[future]
             thumb_data = future.result()
             if thumb_data:
-                candidate = dict(candidates[index])
-                candidate["thumb_data"] = thumb_data
-                results_by_index[index] = candidate
+                results_by_index[index]["thumb_data"] = thumb_data
     return [results_by_index[index] for index in sorted(results_by_index)]
 
 

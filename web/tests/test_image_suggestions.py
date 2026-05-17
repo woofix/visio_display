@@ -290,6 +290,36 @@ class ImageSuggestionServiceTests(unittest.TestCase):
 
         self.assertEqual(data["suggestions"][0]["source"], "pexels")
 
+    def test_pexels_search_keeps_results_when_thumbnail_embedding_fails(self):
+        from services import announcement_svc
+
+        response = Mock()
+        response.json.return_value = {
+            "photos": [
+                {
+                    "alt": "Pizza",
+                    "photographer": "Pexels",
+                    "url": "https://www.pexels.com/photo/pizza-1/",
+                    "src": {
+                        "large": "https://images.pexels.com/photos/pizza.jpeg",
+                        "medium": "https://images.pexels.com/photos/pizza-small.jpeg",
+                    },
+                }
+            ]
+        }
+        response.raise_for_status.return_value = None
+
+        with (
+            patch.object(announcement_svc, "pexels_api_key", return_value="api-key"),
+            patch.object(announcement_svc.requests, "get", return_value=response),
+            patch.object(announcement_svc, "fetch_thumbnail_bytes", side_effect=RuntimeError("thumbnail blocked")),
+        ):
+            results = announcement_svc.pexels_search("pizza", limit=1)
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["thumb_url"], "https://images.pexels.com/photos/pizza-small.jpeg")
+        self.assertNotIn("thumb_data", results[0])
+
     def test_menu_image_choices_are_parsed_and_cached(self):
         from services import menu_svc
 

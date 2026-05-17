@@ -34,63 +34,6 @@ generate_secret() {
     fi
 }
 
-encrypt_env_secret() {
-    if [ -z "${SECRET_KEY:-}" ] || [ -z "${PEXELS_API_KEY:-}" ]; then
-        return 0
-    fi
-    if command -v python3 >/dev/null 2>&1; then
-        VISIO_SECRET_KEY="$SECRET_KEY" VISIO_SECRET_VALUE="$PEXELS_API_KEY" python3 -c '
-import base64
-import hashlib
-import hmac
-import os
-import secrets
-
-prefix = "visioenc:v1:"
-secret_key = os.environ["VISIO_SECRET_KEY"].encode("utf-8")
-value = os.environ["VISIO_SECRET_VALUE"].encode("utf-8")
-salt = secrets.token_bytes(16)
-key = hmac.new(secret_key, b"visio-display-env-secret:" + salt, hashlib.sha256).digest()
-stream = bytearray()
-counter = 0
-while len(stream) < len(value):
-    stream.extend(hmac.new(key, counter.to_bytes(8, "big"), hashlib.sha256).digest())
-    counter += 1
-ciphertext = bytes(left ^ right for left, right in zip(value, stream[:len(value)]))
-tag = hmac.new(key, b"v1:" + salt + ciphertext, hashlib.sha256).digest()[:16]
-def enc(data):
-    return base64.urlsafe_b64encode(data).decode("ascii").rstrip("=")
-print(prefix + enc(salt) + "." + enc(ciphertext) + "." + enc(tag))
-'
-    elif command -v python >/dev/null 2>&1; then
-        VISIO_SECRET_KEY="$SECRET_KEY" VISIO_SECRET_VALUE="$PEXELS_API_KEY" python -c '
-import base64
-import hashlib
-import hmac
-import os
-import secrets
-
-prefix = "visioenc:v1:"
-secret_key = os.environ["VISIO_SECRET_KEY"].encode("utf-8")
-value = os.environ["VISIO_SECRET_VALUE"].encode("utf-8")
-salt = secrets.token_bytes(16)
-key = hmac.new(secret_key, b"visio-display-env-secret:" + salt, hashlib.sha256).digest()
-stream = bytearray()
-counter = 0
-while len(stream) < len(value):
-    stream.extend(hmac.new(key, counter.to_bytes(8, "big"), hashlib.sha256).digest())
-    counter += 1
-ciphertext = bytes(left ^ right for left, right in zip(value, stream[:len(value)]))
-tag = hmac.new(key, b"v1:" + salt + ciphertext, hashlib.sha256).digest()[:16]
-def enc(data):
-    return base64.urlsafe_b64encode(data).decode("ascii").rstrip("=")
-print(prefix + enc(salt) + "." + enc(ciphertext) + "." + enc(tag))
-'
-    else
-        die "Cannot encrypt Pexels API key: install python3 or leave it empty."
-    fi
-}
-
 # ── Prerequisites ─────────────────────────────────────────────────────────────
 header "Checking prerequisites"
 
@@ -179,7 +122,7 @@ DISPLAY_API_TOKEN="$(generate_secret)"
 header "Pexels API"
 read -srp "Pexels API key (optional, press Enter to skip): " PEXELS_API_KEY; echo
 if [ -n "$PEXELS_API_KEY" ]; then
-    PEXELS_API_KEY_VALUE="$(encrypt_env_secret)"
+    PEXELS_API_KEY_VALUE="$PEXELS_API_KEY"
     ok "Pexels API key configured."
 else
     PEXELS_API_KEY_VALUE=""

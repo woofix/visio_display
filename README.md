@@ -225,6 +225,7 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 | `VISIO_UPDATE_REMOTE` | Remote Git utilisée par la page de mise à jour serveur (défaut : `origin`) |
 | `CLIENT_HEARTBEAT_TOKEN` | Jeton partagé exigé par `/api/client-heartbeat` |
 | `DISPLAY_API_TOKEN` | Jeton écran obligatoire exigé par `/` et les endpoints publics d'affichage |
+| `PEXELS_API_KEY` | Clé API optionnelle pour activer la recherche d'images Pexels dans les annonces. L'installateur l'enregistre sous forme chiffrée `visioenc:v1:...` liée au `SECRET_KEY` de l'installation. |
 | `UPDATER_API_TOKEN` | Jeton interne obligatoire entre `app` et le service Docker privilégié `updater` |
 | `SESSION_COOKIE_SECURE` | Force le cookie de session en mode `Secure` (recommandé derrière HTTPS) |
 | `SESSION_COOKIE_NAME` | Nom du cookie de session Flask (défaut : `visio_session`) |

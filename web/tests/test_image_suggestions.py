@@ -255,6 +255,24 @@ class ImageSuggestionServiceTests(unittest.TestCase):
         ):
             self.assertEqual(announcement_svc.pexels_search("pizza food", limit=3), [])
 
+    def test_pexels_api_key_supports_encrypted_env_value(self):
+        from services import announcement_svc
+
+        with patch.dict(os.environ, {"SECRET_KEY": "server-secret", "PEXELS_API_KEY": "plain-key"}, clear=False):
+            encrypted = announcement_svc.encrypt_env_secret("plain-key")
+            self.assertNotIn("plain-key", encrypted)
+            os.environ["PEXELS_API_KEY"] = encrypted
+            self.assertEqual(announcement_svc.pexels_api_key(), "plain-key")
+
+    def test_encrypted_pexels_api_key_requires_matching_secret_key(self):
+        from services import announcement_svc
+
+        with patch.dict(os.environ, {"SECRET_KEY": "server-secret"}, clear=False):
+            encrypted = announcement_svc.encrypt_env_secret("plain-key")
+
+        with patch.dict(os.environ, {"SECRET_KEY": "other-secret", "PEXELS_API_KEY": encrypted}, clear=False):
+            self.assertEqual(announcement_svc.pexels_api_key(), "")
+
     def test_pexels_results_are_used_for_external_suggestions(self):
         from services import image_suggestions_svc
 

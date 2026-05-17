@@ -1,10 +1,13 @@
 # Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 import base64
+import hashlib
+import hmac
 import io
 import json
 import os
 import re
+import secrets
 import textwrap
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
@@ -28,6 +31,7 @@ EXTERNAL_IMAGE_USER_AGENT = (
     "Visio-Display/1.0 "
     "(https://github.com/woofix/visio_display; contact: https://github.com/woofix/visio_display/issues)"
 )
+ENCRYPTED_ENV_PREFIX = "visioenc:v1:"
 DEFAULT_FONT_FAMILY = "'DejaVu Sans', Arial, sans-serif"
 FONT_FAMILIES = {
     "dejavu sans": (
@@ -306,7 +310,82 @@ def _safe_image_url(url):
 
 
 def pexels_api_key():
-    return os.environ.get("PEXELS_API_KEY", "").strip()
+    return decrypt_env_secret(os.environ.get("PEXELS_API_KEY", "")).strip()
+
+
+def _env_secret_key():
+    return os.environ.get("SECRET_KEY", "").encode("utf-8")
+
+
+def _b64url_encode(value):
+    return base64.urlsafe_b64encode(value).decode("ascii").rstrip("=")
+
+
+def _b64url_decode(value):
+    padding = "=" * (-len(value) % 4)
+    return base64.urlsafe_b64decode((value + padding).encode("ascii"))
+
+
+def _derive_env_key(salt):
+    secret_key = _env_secret_key()
+    if not secret_key:
+        return b""
+    return hmac.new(secret_key, b"visio-display-env-secret:" + salt, hashlib.sha256).digest()
+
+
+def _xor_stream(key, length):
+    output = bytearray()
+    counter = 0
+    while len(output) < length:
+        output.extend(hmac.new(key, counter.to_bytes(8, "big"), hashlib.sha256).digest())
+        counter += 1
+    return bytes(output[:length])
+
+
+def encrypt_env_secret(value):
+    value = str(value or "")
+    if not value:
+        return ""
+    salt = secrets.token_bytes(16)
+    key = _derive_env_key(salt)
+    if not key:
+        return value
+    payload = value.encode("utf-8")
+    stream = _xor_stream(key, len(payload))
+    ciphertext = bytes(left ^ right for left, right in zip(payload, stream))
+    tag = hmac.new(key, b"v1:" + salt + ciphertext, hashlib.sha256).digest()[:16]
+    return ".".join(
+        [
+            ENCRYPTED_ENV_PREFIX + _b64url_encode(salt),
+            _b64url_encode(ciphertext),
+            _b64url_encode(tag),
+        ]
+    )
+
+
+def decrypt_env_secret(value):
+    value = str(value or "").strip()
+    if not value.startswith(ENCRYPTED_ENV_PREFIX):
+        return value
+    try:
+        salt_value, ciphertext_value, tag_value = value[len(ENCRYPTED_ENV_PREFIX):].split(".", 2)
+        salt = _b64url_decode(salt_value)
+        ciphertext = _b64url_decode(ciphertext_value)
+        tag = _b64url_decode(tag_value)
+    except (ValueError, TypeError):
+        return ""
+    key = _derive_env_key(salt)
+    if not key:
+        return ""
+    expected_tag = hmac.new(key, b"v1:" + salt + ciphertext, hashlib.sha256).digest()[:16]
+    if not hmac.compare_digest(tag, expected_tag):
+        return ""
+    stream = _xor_stream(key, len(ciphertext))
+    payload = bytes(left ^ right for left, right in zip(ciphertext, stream))
+    try:
+        return payload.decode("utf-8")
+    except UnicodeDecodeError:
+        return ""
 
 
 def _plain_text(value):

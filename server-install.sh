@@ -174,7 +174,7 @@ elif [ -d "$INSTALL_DIR" ] && [ -n "$(ls -A "$INSTALL_DIR" 2>/dev/null)" ]; then
     die "$(msg dir_not_empty) $INSTALL_DIR"
 else
     header "$(msg cloning_repository)"
-    git clone --branch main "$REPO_URL" "$INSTALL_DIR"
+    git clone --quiet --branch main "$REPO_URL" "$INSTALL_DIR"
     ok "$(msg repository_cloned) $INSTALL_DIR."
 fi
 

@@ -65,16 +65,6 @@
                     <th>{{ t('about_idea_label') }}</th>
                     <td>Jean-Michel TOMAS</td>
                 </tr>
-                <tr>
-                    <th>{{ t('about_license_label') }}</th>
-                    <td>
-                        {% if license_exists %}
-                        <a href="/static/LICENSE" target="_blank" rel="noopener noreferrer">GNU GPL v3.0</a>
-                        {% else %}
-                        GNU GPL v3.0
-                        {% endif %}
-                    </td>
-                </tr>
             </tbody>
         </table>
     </section>
@@ -97,6 +87,39 @@
                 <tr>
                     <th>{{ t('about_deployment_label') }}</th>
                     <td>Docker</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section class="wiki-section">
+        <div class="wiki-section-header">
+            <h2>{{ t('about_section_licenses') }}</h2>
+        </div>
+
+        <table class="about-table">
+            <tbody>
+                <tr>
+                    <th>Visio-Display</th>
+                    <td>
+                        {% if license_exists %}
+                        <a href="/static/LICENSE" target="_blank" rel="noopener noreferrer">GNU GPL v3.0</a>
+                        {% else %}
+                        GNU GPL v3.0
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <th>Lucide Icons</th>
+                    <td>ISC License - <a href="https://lucide.dev" target="_blank" rel="noopener noreferrer">lucide.dev</a></td>
+                </tr>
+                <tr>
+                    <th>Tabler Icons</th>
+                    <td>MIT License - <a href="https://tabler.io/icons" target="_blank" rel="noopener noreferrer">tabler.io/icons</a></td>
+                </tr>
+                <tr>
+                    <th>Pexels</th>
+                    <td>Pexels License - <a href="https://www.pexels.com/license/" target="_blank" rel="noopener noreferrer">pexels.com/license</a></td>
                 </tr>
             </tbody>
         </table>

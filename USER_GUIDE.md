@@ -866,7 +866,8 @@ The **About** page displays technical information for the running instance:
 - application **version**, read from the `VERSION` file or `APP_VERSION` environment variable;
 - deployment **Git commit**, when available;
 - **technical stack**: backend, database, deployment;
-- **license** link to the project's `LICENSE` file.
+- **license** link to the project's `LICENSE` file;
+- third-party licenses used by local icon libraries and external image suggestions: Lucide Icons (ISC), Tabler Icons (MIT), and Pexels (Pexels License).
 
 This information is useful when identifying the installed version for support or updates.
 
@@ -1775,6 +1776,7 @@ La page **À propos** affiche les informations techniques de l'instance en cours
 - **Commit git** associé au déploiement (si disponible)
 - **Stack technique** : backend, base de données, déploiement
 - **Licence** : lien vers le fichier `LICENSE` du projet
+- **Licences tierces** utilisées par les bibliothèques d'icônes locales et les suggestions d'images externes : Lucide Icons (ISC), Tabler Icons (MIT) et Pexels (Pexels License)
 
 Ces informations sont utiles pour identifier la version installée lors d'un signalement de problème ou d'une mise à jour.
 

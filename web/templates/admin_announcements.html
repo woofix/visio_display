@@ -617,7 +617,7 @@ button.chip { font:inherit; cursor:pointer; }
     const qsa = s => Array.from(document.querySelectorAll(s));
     const stage = qs('#stage'), outer = qs('#stage-outer'), viewport = qs('#canvas-viewport'), bg = qs('#stage-bg');
     const guideV = qs('#guide-v'), guideH = qs('#guide-h'), minimap = qs('#minimap-stage');
-    const els = []; let selected = null, seq = 1, iconOffset = 0, iconLoading = false, zoom = 1, isRestoring = false, snapEnabled = true, activeTab = 'style';
+    const els = []; let selected = null, imageFillTargetId = null, seq = 1, iconOffset = 0, iconLoading = false, zoom = 1, isRestoring = false, snapEnabled = true, activeTab = 'style';
     const layerFiles = [];
     const undoStack = [], redoStack = [];
     const themeColor = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -651,6 +651,8 @@ button.chip { font:inherit; cursor:pointer; }
         imageApplySelection: {{ t('announcements_image_apply_selection')|tojson }},
         imageAddLayer: {{ t('announcements_image_add_layer')|tojson }},
         imageFillSelection: {{ t('announcements_image_fill_selection')|tojson }},
+        shapePrompt: {{ t('announcements_shape_prompt')|tojson }},
+        shapePromptInvalid: {{ t('announcements_shape_prompt_invalid')|tojson }},
         previewImage: {{ t('announcements_preview_image')|tojson }},
         selectedValue: {{ t('announcements_selected_value', value='__VALUE__')|tojson }},
         externalUseBackground: {{ t('announcements_external_use_background')|tojson }},
@@ -805,6 +807,36 @@ button.chip { font:inherit; cursor:pointer; }
         const item = current();
         return item && ['rect','circle'].includes(item.type) ? item : null;
     }
+    function shapeTargets() {
+        return els.filter(item => ['rect','circle'].includes(item.type));
+    }
+    function shapeLabel(item, index) {
+        return `${index + 1}. ${item.name || (item.type === 'circle' ? labels.toolCircle : labels.toolRect)}`;
+    }
+    function askShapeTarget() {
+        const shapes = shapeTargets();
+        if (!shapes.length) return null;
+        const preferredId = selectedShape()?.id || imageFillTargetId;
+        const preferredIndex = Math.max(0, shapes.findIndex(item => item.id === preferredId));
+        const answer = window.prompt(
+            `${labels.shapePrompt}\n\n${shapes.map(shapeLabel).join('\n')}`,
+            String(preferredIndex + 1)
+        );
+        if (answer === null) return null;
+        const index = Number.parseInt(answer, 10) - 1;
+        if (!Number.isInteger(index) || !shapes[index]) {
+            window.appUI?.showFlash?.(labels.shapePromptInvalid, 'warning');
+            return null;
+        }
+        imageFillTargetId = shapes[index].id;
+        return shapes[index];
+    }
+    function imageFillTarget() {
+        const shape = selectedShape();
+        if (shape) return shape;
+        const remembered = els.find(item => item.id === imageFillTargetId);
+        return remembered && ['rect','circle'].includes(remembered.type) ? remembered : null;
+    }
     function imageMedia(kind, value) {
         if (kind === 'upload') return {source:'upload', index:value};
         if (kind === 'media') return {source:'media', filename:value};
@@ -835,6 +867,7 @@ button.chip { font:inherit; cursor:pointer; }
         setButtonSelection(qs('#layer-media-add'), labels.imageAddLayer, layerSelection);
         setButtonSelection(qs('#layer-media-fill'), labels.imageFillSelection, layerSelection);
         setSelectionState(qs('#layer-media-state'), layerSelection);
+        qs('#layer-media-fill').disabled = !shapeTargets().length;
         const item = current();
         const currentName = item?.media?.source === 'media' ? item.media.filename : '';
         const propSelection = selectedOptionLabel(qs('#prop-image-media')) || currentName || item?.name || '';
@@ -843,6 +876,7 @@ button.chip { font:inherit; cursor:pointer; }
             labels.imageApplySelection,
             propSelection
         );
+        qs('#prop-image-media-fill').disabled = !isImageTarget(item);
         setSelectionState(qs('#prop-image-media-state'), propSelection);
     }
     function applyImageToItem(item, {src, media, name, fit='cover'}) {
@@ -920,7 +954,14 @@ button.chip { font:inherit; cursor:pointer; }
 	        updateImageActionLabels();
 	    }
     function current() { return els.find(e => e.id === selected); }
-    function select(id) { selected = id; setToolPanel(''); renderAll(); syncProps(); }
+    function select(id) {
+        selected = id;
+        const shape = selectedShape();
+        if (shape) imageFillTargetId = shape.id;
+        setToolPanel('');
+        renderAll();
+        syncProps();
+    }
 
     function renderLayers() {
         const list = qs('#layer-list');
@@ -1179,7 +1220,8 @@ button.chip { font:inherit; cursor:pointer; }
     qs('#layer-media-fill').addEventListener('click', () => {
         updateImageActionLabels();
         const payload = mediaPayloadFromSelect(qs('#layer-media'));
-        if (payload && selectedShape()) applyImageToItem(selectedShape(), payload);
+        const target = askShapeTarget();
+        if (payload && target) applyImageToItem(target, payload);
     });
     qs('#prop-image-upload').addEventListener('click', () => qs('#layer-upload').click());
     qs('#prop-image-media-fill').addEventListener('click', () => {
@@ -1243,16 +1285,17 @@ button.chip { font:inherit; cursor:pointer; }
     async function searchExternalImages(queryInput, resultsNode, applyToSelection=false) {
         const data = await fetch(`/admin/announcements/search-backgrounds?q=${encodeURIComponent(queryInput.value)}`).then(r => r.json());
         resultsNode.classList.add('external-results');
-        const fillLabel = applyToSelection ? labels.imageApplySelection : labels.externalFillShape;
+        const fillSelectedShape = Boolean(applyToSelection ? selectedShape() : shapeTargets().length);
+        const fillLabel = fillSelectedShape ? labels.externalFillShape : (applyToSelection ? labels.imageApplySelection : labels.externalFillShape);
         const addTitle = labels.imageAddLayer || labels.externalAddLayer;
-        const fillTitle = applyToSelection ? labels.imageApplySelection : (labels.imageFillSelection || labels.externalFillShape);
+        const fillTitle = fillSelectedShape ? labels.externalFillShape : (applyToSelection ? labels.imageApplySelection : (labels.imageFillSelection || labels.externalFillShape));
         resultsNode.innerHTML = (data.results || []).map(item => `
             <div class="external-card" data-url="${esc(item.url)}" data-credit="${esc(item.credit)}" data-title="${esc(item.title)}">
                 <img class="thumb" src="${esc(item.thumb_data || '')}" data-src="${esc(item.thumb_data || item.url || '')}" data-fallback-src="${esc(item.thumb_data || '')}" alt="" title="${esc(labels.previewImage)}">
                 <div class="external-actions">
                     <button type="button" class="btn secondary sm" data-external-action="bg" title="${esc(labels.externalUseBackground)}" aria-label="${esc(labels.externalUseBackground)}">${esc(labels.externalUseBackground)}</button>
                     <button type="button" class="btn secondary sm" data-external-action="add" title="${esc(addTitle)}" aria-label="${esc(addTitle)}">${esc(labels.externalAddLayer)}</button>
-                    <button type="button" class="btn secondary sm" data-external-action="fill" title="${esc(fillTitle)}" aria-label="${esc(fillTitle)}">${esc(fillLabel)}</button>
+                    <button type="button" class="btn secondary sm" data-external-action="fill" title="${esc(fillTitle)}" aria-label="${esc(fillTitle)}"${fillSelectedShape || applyToSelection ? '' : ' disabled'}>${esc(fillLabel)}</button>
                 </div>
             </div>`).join('');
         Array.from(resultsNode.querySelectorAll('[data-external-action]')).forEach(btn => btn.addEventListener('click', () => {
@@ -1267,7 +1310,7 @@ button.chip { font:inherit; cursor:pointer; }
             }
             if (btn.dataset.externalAction === 'add') addImageLayer(payload);
             if (btn.dataset.externalAction === 'fill') {
-                const target = applyToSelection && isImageTarget(current()) ? current() : selectedShape();
+                const target = applyToSelection && isImageTarget(current()) && !selectedShape() ? current() : askShapeTarget();
                 if (target) applyImageToItem(target, payload);
             }
         }));

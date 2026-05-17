@@ -1652,5 +1652,6 @@ Visio-Display includes third-party open-source assets:
 
 - Lucide Icons — ISC License — https://lucide.dev
 - Tabler Icons — MIT License — https://tabler.io/icons
+- Pexels — Pexels License — https://www.pexels.com/license/
 
 All trademarks, icons and copyrights remain the property of their respective owners.

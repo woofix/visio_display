@@ -21,6 +21,126 @@ ok()     { echo -e "${GREEN}✓ $1${NC}"; }
 warn()   { echo -e "${YELLOW}⚠ $1${NC}"; }
 die()    { echo -e "${RED}✗ $1${NC}" >&2; exit 1; }
 
+INSTALL_LANG="${VISIO_INSTALL_LANG:-}"
+while [[ "$INSTALL_LANG" != "fr" && "$INSTALL_LANG" != "us" ]]; do
+    read -rp "Langue / Language [fr/us]: " INSTALL_LANG
+    INSTALL_LANG="${INSTALL_LANG:-fr}"
+    INSTALL_LANG="$(echo "$INSTALL_LANG" | tr '[:upper:]' '[:lower:]')"
+done
+
+msg() {
+    key="$1"
+    case "$INSTALL_LANG:$key" in
+        fr:secret_generation_failed) echo "Impossible de générer les secrets : installez python3 ou openssl." ;;
+        us:secret_generation_failed) echo "Cannot generate secrets: install python3 or openssl." ;;
+        fr:checking_prerequisites) echo "Vérification des prérequis" ;;
+        us:checking_prerequisites) echo "Checking prerequisites" ;;
+        fr:docker_missing) echo "Docker n'est pas installé. Voir https://docs.docker.com/engine/install/" ;;
+        us:docker_missing) echo "Docker is not installed. See https://docs.docker.com/engine/install/" ;;
+        fr:compose_missing) echo "Docker Compose (plugin v2) n'est pas installé." ;;
+        us:compose_missing) echo "Docker Compose (plugin v2) is not installed." ;;
+        fr:git_missing) echo "git n'est pas installé (apt install git)." ;;
+        us:git_missing) echo "git is not installed (apt install git)." ;;
+        fr:prerequisites_ok) echo "Docker, Docker Compose et git sont disponibles." ;;
+        us:prerequisites_ok) echo "Docker, Docker Compose and git are available." ;;
+        fr:install_dir_header) echo "Dossier d'installation" ;;
+        us:install_dir_header) echo "Installation directory" ;;
+        fr:install_dir_prompt) echo "Dossier d'installation" ;;
+        us:install_dir_prompt) echo "Installation directory" ;;
+        fr:git_dir_exists) echo "Le dossier contient déjà un dépôt Git. Choisissez un autre dossier." ;;
+        us:git_dir_exists) echo "The directory already contains a Git repository. Choose another directory." ;;
+        fr:dir_not_empty) echo "Le dossier existe et n'est pas vide. Choisissez un autre dossier." ;;
+        us:dir_not_empty) echo "The directory exists and is not empty. Choose another directory." ;;
+        fr:cloning_repository) echo "Clonage du dépôt" ;;
+        us:cloning_repository) echo "Cloning repository" ;;
+        fr:repository_cloned) echo "Dépôt cloné dans" ;;
+        us:repository_cloned) echo "Repository cloned into" ;;
+        fr:admin_header) echo "Création du compte administrateur" ;;
+        us:admin_header) echo "Creating administrator account" ;;
+        fr:admin_user_prompt) echo "Identifiant admin" ;;
+        us:admin_user_prompt) echo "Admin username" ;;
+        fr:invalid_admin_name) echo "Nom invalide. Utilisez uniquement lettres, chiffres, tirets, underscores et points." ;;
+        us:invalid_admin_name) echo "Invalid name. Use only letters, digits, hyphens, underscores and dots." ;;
+        fr:admin_password_prompt) echo "Mot de passe admin" ;;
+        us:admin_password_prompt) echo "Admin password" ;;
+        fr:password_too_short) echo "Le mot de passe doit contenir au moins 10 caractères." ;;
+        us:password_too_short) echo "Password must be at least 10 characters." ;;
+        fr:confirm_password_prompt) echo "Confirmer le mot de passe" ;;
+        us:confirm_password_prompt) echo "Confirm password" ;;
+        fr:passwords_mismatch) echo "Les mots de passe ne correspondent pas." ;;
+        us:passwords_mismatch) echo "Passwords do not match." ;;
+        fr:admin_configured) echo "Compte admin configuré" ;;
+        us:admin_configured) echo "Admin account configured" ;;
+        fr:network_header) echo "Configuration réseau" ;;
+        us:network_header) echo "Network configuration" ;;
+        fr:port_prompt) echo "Port HTTP du serveur" ;;
+        us:port_prompt) echo "Server HTTP port" ;;
+        fr:cleanup_header) echo "Nettoyage" ;;
+        us:cleanup_header) echo "Cleanup" ;;
+        fr:cleanup_warning) echo "Cette étape arrête les conteneurs et supprime les données existantes (base, cache)." ;;
+        us:cleanup_warning) echo "This step will stop the containers and delete all existing data (database, cache)." ;;
+        fr:continue_prompt) echo "Appuyez sur Entrée pour continuer ou Ctrl+C pour annuler..." ;;
+        us:continue_prompt) echo "Press Enter to continue or Ctrl+C to cancel..." ;;
+        fr:volume_removed) echo "Volume supprimé" ;;
+        us:volume_removed) echo "Volume removed" ;;
+        fr:postgres_header) echo "Base PostgreSQL" ;;
+        us:postgres_header) echo "PostgreSQL database" ;;
+        fr:postgres_password_prompt) echo "Mot de passe PostgreSQL" ;;
+        us:postgres_password_prompt) echo "PostgreSQL password" ;;
+        fr:postgres_configured) echo "Mot de passe PostgreSQL configuré." ;;
+        us:postgres_configured) echo "PostgreSQL password configured." ;;
+        fr:pexels_header) echo "API Pexels" ;;
+        us:pexels_header) echo "Pexels API" ;;
+        fr:pexels_help_1) echo "La clé Pexels est optionnelle, mais elle est nécessaire pour proposer automatiquement des images dans les annonces et les menus." ;;
+        us:pexels_help_1) echo "The Pexels key is optional, but it is required to automatically suggest images in announcements and menus." ;;
+        fr:pexels_help_2) echo "Pour la créer : ouvrez https://www.pexels.com/api/, connectez-vous ou créez un compte, cliquez sur « Get Started » / « Your API Key », créez une application, puis copiez la clé fournie." ;;
+        us:pexels_help_2) echo "To create one: open https://www.pexels.com/api/, sign in or create an account, click \"Get Started\" / \"Your API Key\", create an application, then copy the provided key." ;;
+        fr:pexels_help_3) echo "Vous pouvez laisser vide et ajouter plus tard PEXELS_API_KEY dans le fichier .env, puis redémarrer les conteneurs." ;;
+        us:pexels_help_3) echo "You can leave it empty and later add PEXELS_API_KEY to the .env file, then restart the containers." ;;
+        fr:pexels_prompt) echo "Clé API Pexels (optionnelle, Entrée pour ignorer)" ;;
+        us:pexels_prompt) echo "Pexels API key (optional, press Enter to skip)" ;;
+        fr:pexels_configured) echo "Clé API Pexels configurée." ;;
+        us:pexels_configured) echo "Pexels API key configured." ;;
+        fr:pexels_skipped) echo "Clé API Pexels ignorée. La recherche d'images Pexels sera désactivée." ;;
+        us:pexels_skipped) echo "Pexels API key skipped. Pexels image search will be disabled." ;;
+        fr:data_dirs_header) echo "Dossiers de données" ;;
+        us:data_dirs_header) echo "Data directories" ;;
+        fr:media_dir_prompt) echo "Dossier des médias" ;;
+        us:media_dir_prompt) echo "Media directory" ;;
+        fr:private_dir_prompt) echo "Dossier des données privées" ;;
+        us:private_dir_prompt) echo "Private data directory" ;;
+        fr:dirs_created) echo "Dossiers créés." ;;
+        us:dirs_created) echo "Directories created." ;;
+        fr:env_header) echo "Génération du fichier .env" ;;
+        us:env_header) echo "Generating .env file" ;;
+        fr:env_backup) echo "Ancien .env sauvegardé dans .env.bak" ;;
+        us:env_backup) echo "Previous .env saved to .env.bak" ;;
+        fr:env_generated) echo "Fichier .env généré." ;;
+        us:env_generated) echo ".env file generated." ;;
+        fr:security_header) echo "Durcissement de sécurité" ;;
+        us:security_header) echo "Security hardening" ;;
+        fr:security_ok) echo "Sécurité vérifiée." ;;
+        us:security_ok) echo "Security checks completed." ;;
+        fr:security_failed) echo "Le durcissement de sécurité a échoué." ;;
+        us:security_failed) echo "Security hardening failed." ;;
+        fr:starting_header) echo "Démarrage des conteneurs" ;;
+        us:starting_header) echo "Starting containers" ;;
+        fr:containers_started) echo "Conteneurs démarrés." ;;
+        us:containers_started) echo "Containers started." ;;
+        fr:complete) echo "Installation terminée !" ;;
+        us:complete) echo "Installation complete!" ;;
+        fr:admin_label) echo "Admin" ;;
+        us:admin_label) echo "Admin" ;;
+        fr:media_label) echo "Médias" ;;
+        us:media_label) echo "Media" ;;
+        fr:data_label) echo "Données" ;;
+        us:data_label) echo "Data" ;;
+        fr:keep_env_safe) echo "Conservez votre fichier .env en lieu sûr." ;;
+        us:keep_env_safe) echo "Keep your .env file in a safe place." ;;
+        *) echo "$key" ;;
+    esac
+}
+
 generate_secret() {
     if command -v python3 >/dev/null 2>&1; then
         python3 -c 'import secrets; print(secrets.token_urlsafe(48))'
@@ -30,65 +150,65 @@ generate_secret() {
         openssl rand -base64 48 | tr -d '\n'
         echo
     else
-        die "Cannot generate secrets: install python3 or openssl."
+        die "$(msg secret_generation_failed)"
     fi
 }
 
 # ── Prerequisites ─────────────────────────────────────────────────────────────
-header "Checking prerequisites"
+header "$(msg checking_prerequisites)"
 
-command -v docker  >/dev/null 2>&1 || die "Docker is not installed. See https://docs.docker.com/engine/install/"
-docker compose version >/dev/null 2>&1 || die "Docker Compose (plugin v2) is not installed."
-command -v git     >/dev/null 2>&1 || die "git is not installed (apt install git)."
+command -v docker  >/dev/null 2>&1 || die "$(msg docker_missing)"
+docker compose version >/dev/null 2>&1 || die "$(msg compose_missing)"
+command -v git     >/dev/null 2>&1 || die "$(msg git_missing)"
 
-ok "Docker, Docker Compose and git are available."
+ok "$(msg prerequisites_ok)"
 
 # ── Installation directory ────────────────────────────────────────────────────
-header "Installation directory"
-read -rp "Installation directory [${DEFAULT_INSTALL_DIR}]: " INSTALL_DIR
+header "$(msg install_dir_header)"
+read -rp "$(msg install_dir_prompt) [${DEFAULT_INSTALL_DIR}]: " INSTALL_DIR
 INSTALL_DIR="${INSTALL_DIR:-$DEFAULT_INSTALL_DIR}"
 
 if [ -d "$INSTALL_DIR/.git" ]; then
-    die "The directory $INSTALL_DIR already contains a Git repository. Choose another directory."
+    die "$(msg git_dir_exists) $INSTALL_DIR"
 elif [ -d "$INSTALL_DIR" ] && [ -n "$(ls -A "$INSTALL_DIR" 2>/dev/null)" ]; then
-    die "The directory $INSTALL_DIR exists and is not empty. Choose another directory."
+    die "$(msg dir_not_empty) $INSTALL_DIR"
 else
-    header "Cloning repository"
+    header "$(msg cloning_repository)"
     git clone --branch main "$REPO_URL" "$INSTALL_DIR"
-    ok "Repository cloned into $INSTALL_DIR."
+    ok "$(msg repository_cloned) $INSTALL_DIR."
 fi
 
 cd "$INSTALL_DIR"
 
 # ── Administrator account ─────────────────────────────────────────────────────
-header "Creating administrator account"
+header "$(msg admin_header)"
 
 while true; do
-    read -rp "Admin username: " ADMIN_USER
+    read -rp "$(msg admin_user_prompt): " ADMIN_USER
     [[ -n "$ADMIN_USER" && "$ADMIN_USER" =~ ^[a-zA-Z0-9_.-]+$ ]] && break
-    warn "Invalid name. Use only letters, digits, hyphens and dots."
+    warn "$(msg invalid_admin_name)"
 done
 
 while true; do
-    read -srp "Admin password: " ADMIN_PASSWORD; echo
-    [[ ${#ADMIN_PASSWORD} -ge 10 ]] || { warn "Password must be at least 10 characters."; continue; }
-    read -srp "Confirm password: " ADMIN_PASSWORD2; echo
+    read -srp "$(msg admin_password_prompt): " ADMIN_PASSWORD; echo
+    [[ ${#ADMIN_PASSWORD} -ge 10 ]] || { warn "$(msg password_too_short)"; continue; }
+    read -srp "$(msg confirm_password_prompt): " ADMIN_PASSWORD2; echo
     [[ "$ADMIN_PASSWORD" == "$ADMIN_PASSWORD2" ]] && break
-    warn "Passwords do not match."
+    warn "$(msg passwords_mismatch)"
 done
 
-ok "Admin account configured: $ADMIN_USER"
+ok "$(msg admin_configured): $ADMIN_USER"
 
 # ── Port ──────────────────────────────────────────────────────────────────────
-header "Network configuration"
-read -rp "Server HTTP port [${DEFAULT_PORT}]: " PORT
+header "$(msg network_header)"
+read -rp "$(msg port_prompt) [${DEFAULT_PORT}]: " PORT
 PORT="${PORT:-$DEFAULT_PORT}"
 
 # ── Clean existing data ───────────────────────────────────────────────────────
-header "Cleanup"
+header "$(msg cleanup_header)"
 
-warn "This step will stop the containers and delete all existing data (database, cache)."
-read -rp "Press Enter to continue or Ctrl+C to cancel..."
+warn "$(msg cleanup_warning)"
+read -rp "$(msg continue_prompt)"
 
 PROJECT_NAME="$(basename "$INSTALL_DIR" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9_-')"
 docker compose down --remove-orphans 2>/dev/null || true
@@ -96,22 +216,22 @@ for vol in postgres_data redis_data; do
     VNAME="${PROJECT_NAME}_${vol}"
     if docker volume inspect "$VNAME" >/dev/null 2>&1; then
         docker volume rm "$VNAME" >/dev/null
-        ok "Volume $VNAME removed."
+        ok "$(msg volume_removed): $VNAME."
     fi
 done
 
 # ── PostgreSQL password ───────────────────────────────────────────────────────
-header "PostgreSQL database"
+header "$(msg postgres_header)"
 
 while true; do
-    read -srp "PostgreSQL password: " POSTGRES_PASSWORD; echo
-    [[ ${#POSTGRES_PASSWORD} -ge 10 ]] || { warn "Password must be at least 10 characters."; continue; }
-    read -srp "Confirm password: " POSTGRES_PASSWORD2; echo
+    read -srp "$(msg postgres_password_prompt): " POSTGRES_PASSWORD; echo
+    [[ ${#POSTGRES_PASSWORD} -ge 10 ]] || { warn "$(msg password_too_short)"; continue; }
+    read -srp "$(msg confirm_password_prompt): " POSTGRES_PASSWORD2; echo
     [[ "$POSTGRES_PASSWORD" == "$POSTGRES_PASSWORD2" ]] && break
-    warn "Passwords do not match."
+    warn "$(msg passwords_mismatch)"
 done
 
-ok "PostgreSQL password configured."
+ok "$(msg postgres_configured)"
 
 # ── Application secrets ───────────────────────────────────────────────────────
 SECRET_KEY="$(generate_secret)"
@@ -119,37 +239,41 @@ CLIENT_HEARTBEAT_TOKEN="$(generate_secret)"
 DISPLAY_API_TOKEN="$(generate_secret)"
 
 # ── Optional external image provider ─────────────────────────────────────────
-header "Pexels API"
-read -srp "Pexels API key (optional, press Enter to skip): " PEXELS_API_KEY; echo
+header "$(msg pexels_header)"
+echo "$(msg pexels_help_1)"
+echo "$(msg pexels_help_2)"
+echo "$(msg pexels_help_3)"
+echo
+read -srp "$(msg pexels_prompt): " PEXELS_API_KEY; echo
 if [ -n "$PEXELS_API_KEY" ]; then
     PEXELS_API_KEY_VALUE="$PEXELS_API_KEY"
-    ok "Pexels API key configured."
+    ok "$(msg pexels_configured)"
 else
     PEXELS_API_KEY_VALUE=""
-    warn "Pexels API key skipped. Pexels image search will be disabled."
+    warn "$(msg pexels_skipped)"
 fi
 
 # ── Data directories ──────────────────────────────────────────────────────────
-header "Data directories"
+header "$(msg data_dirs_header)"
 
 MEDIA_DIR_DEFAULT="$INSTALL_DIR/media"
 PRIVATE_DIR_DEFAULT="$INSTALL_DIR/private"
 
-read -rp "Media directory [${MEDIA_DIR_DEFAULT}]: " MEDIA_DIR
+read -rp "$(msg media_dir_prompt) [${MEDIA_DIR_DEFAULT}]: " MEDIA_DIR
 MEDIA_DIR="${MEDIA_DIR:-$MEDIA_DIR_DEFAULT}"
 
-read -rp "Private data directory [${PRIVATE_DIR_DEFAULT}]: " PRIVATE_DIR
+read -rp "$(msg private_dir_prompt) [${PRIVATE_DIR_DEFAULT}]: " PRIVATE_DIR
 PRIVATE_DIR="${PRIVATE_DIR:-$PRIVATE_DIR_DEFAULT}"
 
 mkdir -p "$MEDIA_DIR" "$PRIVATE_DIR"
-ok "Directories created."
+ok "$(msg dirs_created)"
 
 # ── .env file ─────────────────────────────────────────────────────────────────
-header "Generating .env file"
+header "$(msg env_header)"
 
 if [ -f "$INSTALL_DIR/.env" ]; then
     cp "$INSTALL_DIR/.env" "$INSTALL_DIR/.env.bak"
-    warn "Previous .env saved to .env.bak"
+    warn "$(msg env_backup)"
 fi
 
 cat > "$INSTALL_DIR/.env" <<EOF
@@ -171,31 +295,39 @@ COMPOSE_PROJECT_NAME=${PROJECT_NAME}
 EOF
 
 chmod 600 "$INSTALL_DIR/.env"
-ok ".env file generated."
+ok "$(msg env_generated)"
 
 # ── Security hardening ────────────────────────────────────────────────────────
-header "Security hardening"
-bash ./scripts/security_bootstrap.sh install "$INSTALL_DIR"
+header "$(msg security_header)"
+SECURITY_LOG="$(mktemp)"
+if bash ./scripts/security_bootstrap.sh install "$INSTALL_DIR" >"$SECURITY_LOG" 2>&1; then
+    rm -f "$SECURITY_LOG"
+    ok "$(msg security_ok)"
+else
+    cat "$SECURITY_LOG" >&2
+    rm -f "$SECURITY_LOG"
+    die "$(msg security_failed)"
+fi
 
 # ── Launch ────────────────────────────────────────────────────────────────────
-header "Starting containers"
+header "$(msg starting_header)"
 
 cd "$INSTALL_DIR"
 docker compose pull --quiet 2>/dev/null || true
 docker compose up -d --build
 
-ok "Containers started."
+ok "$(msg containers_started)"
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo
 echo -e "${BOLD}${GREEN}════════════════════════════════════════${NC}"
-echo -e "${BOLD}  Installation complete!${NC}"
+echo -e "${BOLD}  $(msg complete)${NC}"
 echo -e "${BOLD}${GREEN}════════════════════════════════════════${NC}"
 echo
 echo -e "  URL        : ${CYAN}http://$(hostname -I | awk '{print $1}'):${PORT}${NC}"
-echo -e "  Admin      : ${BOLD}${ADMIN_USER}${NC}"
-echo -e "  Media      : ${MEDIA_DIR}"
-echo -e "  Data       : ${PRIVATE_DIR}"
+echo -e "  $(msg admin_label)      : ${BOLD}${ADMIN_USER}${NC}"
+echo -e "  $(msg media_label)      : ${MEDIA_DIR}"
+echo -e "  $(msg data_label)       : ${PRIVATE_DIR}"
 echo
-echo -e "  ${YELLOW}Keep your .env file in a safe place.${NC}"
+echo -e "  ${YELLOW}$(msg keep_env_safe)${NC}"
 echo

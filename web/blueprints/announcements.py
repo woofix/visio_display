@@ -3,7 +3,7 @@
 from flask import Blueprint, Response, jsonify, redirect, render_template, request, session, url_for
 
 from blueprints.guards import admin_guard, feature_guard
-from services.announcement_svc import _safe_image_url, commons_search, create_announcement, fetch_thumbnail_bytes, image_media_choices
+from services.announcement_svc import _safe_image_url, create_announcement, fetch_thumbnail_bytes, image_media_choices, pexels_search
 from services.config_svc import get_default_screen_name, load_config
 from services.icon_svc import scan_svg_icons
 from services.i18n import _flash, _t
@@ -68,7 +68,7 @@ def search_backgrounds():
         return jsonify({"ok": False, "error": "permission denied"}), 403
     query = request.args.get("q", "").strip()
     try:
-        return jsonify({"ok": True, "results": commons_search(query)})
+        return jsonify({"ok": True, "results": pexels_search(query)})
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc) or "search failed"}), 502
 

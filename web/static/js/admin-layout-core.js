@@ -176,7 +176,12 @@ document.addEventListener('click', event => {
         mImg.classList.add('u-hidden');
         mVid.play();
     } else {
-        mImg.src = el.dataset.src;
+        mImg.onerror = () => {
+            if (el.dataset.fallbackSrc && mImg.src !== el.dataset.fallbackSrc) {
+                mImg.src = el.dataset.fallbackSrc;
+            }
+        };
+        mImg.src = el.dataset.src || el.getAttribute('src') || '';
         mImg.classList.remove('u-hidden');
         mVid.classList.add('u-hidden');
         mVid.pause();

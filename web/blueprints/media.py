@@ -338,6 +338,7 @@ def delete_file(filename):
         cfg["durations"].pop(filename, None)
         cfg.get("groups", {}).pop(filename, None)
         cfg.get("schedules", {}).pop(filename, None)
+        cfg.get("generated_menus", {}).pop(filename, None)
         cleanup_orphan_group_metadata(cfg)
         save_campaigns_to_config(cfg, cleanup_campaigns_for_deleted_media(get_campaigns(cfg), filename))
         for scfg in cfg.get('screens', {}).values():

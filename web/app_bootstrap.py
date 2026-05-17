@@ -47,6 +47,8 @@ from translations import TRANSLATIONS
 
 
 LOGGER = logging.getLogger(__name__)
+_LAST_GENERATED_MENU_CLEANUP = 0.0
+GENERATED_MENU_CLEANUP_INTERVAL_SECONDS = 900
 
 
 CLIENT_HEARTBEAT_EXTRA_COLUMNS = {
@@ -364,6 +366,7 @@ def register_blueprints(app):
     from blueprints.campaigns import bp as campaigns_bp
     from blueprints.ephemeris import bp as ephemeris_bp
     from blueprints.media import bp as media_bp
+    from blueprints.menus import bp as menus_bp
     from blueprints.queue import bp as queue_bp
     from blueprints.roles import bp as roles_bp
     from blueprints.screens import bp as screens_bp
@@ -378,6 +381,7 @@ def register_blueprints(app):
         auth_bp,
         admin_bp,
         announcements_bp,
+        menus_bp,
         campaigns_bp,
         media_bp,
         screens_bp,
@@ -400,6 +404,21 @@ def register_request_hooks(app):
     @app.before_request
     def start_request_timer():
         g.request_started_at = time.perf_counter()
+        return None
+
+    @app.before_request
+    def cleanup_expired_menu_media():
+        global _LAST_GENERATED_MENU_CLEANUP
+        now = time.time()
+        if now - _LAST_GENERATED_MENU_CLEANUP < GENERATED_MENU_CLEANUP_INTERVAL_SECONDS:
+            return None
+        _LAST_GENERATED_MENU_CLEANUP = now
+        try:
+            from services.menu_svc import cleanup_expired_generated_menus
+
+            cleanup_expired_generated_menus()
+        except Exception:
+            LOGGER.exception("Unable to clean expired generated menus")
         return None
 
     @app.before_request

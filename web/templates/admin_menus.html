@@ -1,0 +1,574 @@
+{% extends "admin_layout.html" %}
+{% block title %}{{ t('menus_title') }}{% endblock %}
+{% block page_class %}menus-page{% endblock %}
+{% block breadcrumb %}
+<span class="bc-item">{{ t('nav_home') }}</span>
+<span class="bc-sep">›</span>
+<span class="bc-current">{% block topbar_title %}{{ t('menus_title') }}{% endblock %}</span>
+{% endblock %}
+{% block topbar_sub %}{{ t('menus_topbar_sub') }}{% endblock %}
+
+{% block styles %}
+.menu-builder { display:grid; grid-template-columns:minmax(0,1fr) 420px; gap:18px; align-items:start; }
+.menu-panel { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px; box-shadow:var(--shadow-sm); }
+.menu-panel h2 { margin:0 0 6px; font-size:1rem; }
+.menu-panel-intro { margin:0 0 16px; color:var(--text-3); font-size:.88rem; line-height:1.45; }
+.menu-steps { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-bottom:18px; }
+.menu-step { border:1px solid var(--border); border-radius:10px; padding:12px; background:var(--surface); }
+.menu-step strong { display:block; font-size:.78rem; text-transform:uppercase; letter-spacing:.04em; color:var(--primary); margin-bottom:5px; }
+.menu-step span { display:block; color:var(--text-3); font-size:.82rem; line-height:1.35; }
+.menu-field { display:grid; gap:7px; margin-bottom:14px; }
+.menu-field label { font-size:.76rem; font-weight:900; color:var(--text-2); text-transform:uppercase; letter-spacing:.04em; }
+.menu-field input,.menu-field textarea,.menu-week-day textarea,.menu-week-schedule input { width:100%; border:1px solid var(--border); border-radius:8px; background:var(--input-bg); color:var(--text); padding:10px 11px; font:inherit; }
+.menu-field textarea,.menu-week-day textarea { min-height:132px; resize:vertical; line-height:1.5; }
+.menu-field input::placeholder,.menu-field textarea::placeholder,.menu-week-day textarea::placeholder { color:var(--text-3); opacity:1; }
+.menu-sections { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.menu-section-title { display:flex; align-items:center; gap:8px; }
+.menu-section-title span { display:inline-grid; place-items:center; width:24px; height:24px; border-radius:999px; background:var(--primary-bg); color:var(--primary); font-size:.72rem; font-weight:900; }
+.menu-mode-toggle { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+.menu-mode-option { display:flex !important; align-items:center; gap:8px; border:1px solid var(--border); border-radius:8px; padding:9px 11px; background:var(--surface-alt); color:var(--text) !important; text-transform:none !important; letter-spacing:0 !important; font-size:.86rem !important; font-weight:900; cursor:pointer; }
+.menu-mode-option input { width:16px; height:16px; margin:0; }
+.menu-week-panel { display:grid; gap:14px; }
+.menu-week-start { max-width:260px; }
+.menu-week-days { display:grid; gap:12px; }
+.menu-week-day { border:1px solid var(--border); border-radius:10px; padding:12px; background:var(--surface); }
+.menu-week-day h3 { margin:0 0 10px; font-size:.86rem; }
+.menu-week-schedule { display:grid; grid-template-columns:minmax(0,260px); gap:10px; margin-bottom:10px; }
+.menu-week-schedule label { display:block; margin-bottom:5px; font-size:.68rem; font-weight:900; color:var(--text-2); text-transform:uppercase; letter-spacing:.04em; }
+.menu-week-day-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+.menu-week-day-grid textarea { min-height:82px; }
+.menu-actions { display:flex; flex-wrap:wrap; gap:10px; }
+.menu-preview-panel { margin-top:18px; }
+.menu-preview-head { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:14px; }
+.menu-preview-head h2 { margin:0 0 5px; font-size:1rem; }
+.menu-preview-head p { margin:0; color:var(--text-3); font-size:.88rem; line-height:1.45; }
+.menu-analysis-status { color:var(--text-3); font-size:.82rem; white-space:nowrap; }
+.menu-screen-preview { position:relative; aspect-ratio:16 / 9; border-radius:12px; overflow:hidden; background:var(--surface-alt); border:1px solid var(--border); box-shadow:var(--shadow-sm); }
+.menu-screen-preview.empty { display:grid; place-items:center; min-height:260px; }
+.menu-screen-preview.week { aspect-ratio:auto; overflow:visible; background:transparent; border:0; box-shadow:none; display:grid; gap:14px; }
+.menu-week-preview-card { aspect-ratio:16 / 9; border-radius:12px; overflow:hidden; background:var(--surface-alt); border:1px solid var(--border); box-shadow:var(--shadow-sm); }
+.menu-empty-preview { text-align:center; color:var(--text-3); font-weight:900; padding:24px; }
+.menu-empty-preview strong { display:block; color:var(--text); font-size:1.08rem; margin-bottom:6px; }
+.menu-screen-canvas { height:100%; display:grid; grid-template-rows:auto minmax(0,1fr); background:var(--surface-alt); }
+.menu-screen-top { display:flex; align-items:center; justify-content:space-between; gap:18px; padding:3.2% 4%; background:var(--surface); color:var(--text); border-bottom:1px solid var(--border); }
+.menu-screen-title { font-size:clamp(1.1rem, 2vw, 2.25rem); font-weight:900; line-height:1.1; }
+.menu-screen-date { color:var(--primary); font-size:clamp(.8rem, 1.1vw, 1.2rem); font-weight:900; white-space:nowrap; }
+.menu-screen-sections { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:2%; padding:3%; min-height:0; }
+.menu-screen-section { min-width:0; border:1px solid var(--border); border-radius:10px; background:var(--surface); padding:3%; display:grid; grid-template-rows:auto minmax(0,1fr); gap:3%; }
+.menu-screen-section:nth-child(1),.menu-screen-section:nth-child(2),.menu-screen-section:nth-child(3) { border-top:5px solid var(--primary); }
+.menu-preview-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; color:var(--text); font-size:clamp(.86rem, 1.35vw, 1.45rem); font-weight:900; line-height:1; }
+.menu-preview-heading span { min-width:24px; height:24px; border-radius:999px; display:grid; place-items:center; background:var(--primary-bg); color:var(--primary); font-size:.7em; box-shadow:0 0 0 1px var(--border); }
+.menu-preview-dishes { display:grid; gap:3%; min-height:0; align-content:start; }
+.menu-dish { min-width:0; border:1px solid var(--border); border-radius:8px; padding:2.5%; background:var(--surface-alt); display:grid; gap:3%; }
+.menu-dish-main { display:grid; grid-template-columns:minmax(42px,24%) minmax(0,1fr); gap:4%; align-items:center; }
+.menu-image-carousel { position:relative; width:100%; aspect-ratio:1 / 1; border-radius:7px; background:var(--surface); border:1px solid var(--border); overflow:hidden; cursor:pointer; }
+.menu-dish-thumb { width:100%; height:100%; object-fit:cover; display:block; }
+.menu-dish-thumb.missing { display:grid; place-items:center; color:var(--text-3); font-weight:900; font-size:.72rem; text-align:center; padding:6px; line-height:1.1; }
+.menu-image-carousel::before,.menu-image-carousel::after { position:absolute; top:50%; transform:translateY(-50%); color:#fff; background:rgba(15,23,42,.62); width:18px; height:28px; display:grid; place-items:center; font-size:.9rem; font-weight:900; opacity:0; transition:opacity .14s ease; pointer-events:none; }
+.menu-image-carousel::before { content:"‹"; left:0; border-radius:0 8px 8px 0; }
+.menu-image-carousel::after { content:"›"; right:0; border-radius:8px 0 0 8px; }
+.menu-image-carousel.has-many:hover::before,.menu-image-carousel.has-many:hover::after { opacity:1; }
+.menu-preview-zoom { position:absolute; top:4px; right:4px; width:24px; height:24px; border:0; border-radius:999px; background:rgba(15,23,42,.76); color:#fff; display:grid; place-items:center; padding:0; cursor:pointer; opacity:0; transition:opacity .14s ease, background .14s ease; }
+.menu-preview-zoom svg { width:14px; height:14px; stroke:currentColor; fill:none; stroke-width:2.2; }
+.menu-image-carousel:hover .menu-preview-zoom { opacity:1; }
+.menu-preview-zoom:hover { background:rgba(15,23,42,.94); }
+.menu-image-count { position:absolute; right:4px; bottom:4px; min-width:24px; border-radius:999px; padding:2px 5px; background:rgba(15,23,42,.72); color:#fff; font-size:.62rem; font-weight:900; text-align:center; }
+.menu-dish-title { font-weight:900; color:var(--text); font-size:clamp(.72rem, 1.1vw, 1.18rem); line-height:1.18; overflow-wrap:anywhere; }
+.menu-dish-meta { color:var(--text-3); font-size:.78rem; line-height:1.35; }
+.menu-dish-ok { color:#047857; font-weight:900; }
+.menu-dish-missing { color:#b45309; font-weight:900; }
+.menu-tech-details { margin-top:12px; border:1px solid var(--border); border-radius:10px; background:var(--surface-alt); overflow:hidden; }
+.menu-tech-details summary { cursor:pointer; padding:11px 13px; font-weight:900; color:var(--text-2); font-size:.86rem; }
+.menu-tech-content { display:grid; gap:10px; padding:0 13px 13px; }
+.menu-tech-section { display:grid; gap:7px; }
+.menu-tech-heading { font-size:.74rem; font-weight:900; text-transform:uppercase; letter-spacing:.04em; color:var(--primary); }
+.menu-tech-card { display:grid; grid-template-columns:minmax(0,1fr); gap:4px; border:1px solid var(--border); border-radius:8px; background:var(--surface); padding:9px; }
+.menu-tech-title { font-weight:900; font-size:.86rem; color:var(--text); }
+.menu-loading-overlay { position:fixed; inset:0; z-index:1200; display:none; place-items:center; padding:22px; background:rgba(15,23,42,.72); backdrop-filter:blur(12px); }
+.menu-loading-overlay.open { display:grid; }
+.menu-loading-card { width:min(460px, 100%); border:1px solid color-mix(in srgb, var(--primary) 32%, var(--border)); border-radius:14px; padding:24px; background:var(--surface); box-shadow:var(--shadow-lg); text-align:center; }
+.menu-loading-spinner { width:58px; height:58px; margin:0 auto 16px; border-radius:999px; border:5px solid color-mix(in srgb, var(--primary) 18%, var(--border)); border-top-color:var(--primary); animation:menu-spin .8s linear infinite; }
+.menu-loading-card h2 { margin:0 0 8px; font-size:1.1rem; }
+.menu-loading-card p { margin:0; color:var(--text-3); line-height:1.5; font-size:.9rem; }
+@keyframes menu-spin { to { transform:rotate(360deg); } }
+.screen-list { display:grid; gap:8px; }
+.screen-option { display:grid !important; grid-template-columns:18px minmax(0,1fr); gap:8px; align-items:center; justify-content:start; font-size:.86rem !important; text-transform:none !important; letter-spacing:0 !important; color:var(--text) !important; }
+.screen-option input { width:16px; height:16px; margin:0; }
+.menu-schedule-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; align-items:end; }
+.menu-schedule-grid .menu-field { margin-bottom:0; }
+.menu-schedule-date-field { grid-column:1 / -1; }
+.menu-help { border:1px solid color-mix(in srgb, var(--primary) 24%, var(--border)); background:var(--primary-bg); color:var(--text-2); border-radius:10px; padding:12px; font-size:.84rem; line-height:1.45; margin-top:14px; }
+@media(max-width:980px) {
+    .menu-builder,.menu-steps,.menu-sections { grid-template-columns:1fr; }
+    .menu-week-day-grid { grid-template-columns:1fr; }
+    .menu-week-schedule { grid-template-columns:1fr; }
+    .menu-preview-head { display:grid; }
+    .menu-analysis-status { white-space:normal; }
+}
+@media(max-width:720px) {
+    .menu-screen-preview { aspect-ratio:auto; min-height:620px; }
+    .menu-screen-canvas { min-height:620px; }
+    .menu-screen-sections { grid-template-columns:1fr; gap:12px; padding:14px; }
+    .menu-screen-top { padding:16px; }
+    .menu-screen-section { padding:12px; gap:10px; }
+    .menu-preview-dishes { gap:8px; }
+    .menu-dish-main { grid-template-columns:64px minmax(0,1fr); }
+}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ t('menus_h1') }}</h1>
+    <p>{{ t('menus_sub') }}</p>
+</div>
+
+<div class="menu-steps">
+    <div class="menu-step"><strong>{{ t('menus_step_1_title') }}</strong><span>{{ t('menus_step_1_desc') }}</span></div>
+    <div class="menu-step"><strong>{{ t('menus_step_2_title') }}</strong><span>{{ t('menus_step_2_desc') }}</span></div>
+    <div class="menu-step"><strong>{{ t('menus_step_3_title') }}</strong><span>{{ t('menus_step_3_desc') }}</span></div>
+</div>
+
+<form method="post" action="/admin/menus/create" id="menu-form">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="image_choices" id="menu-image-choices">
+    <div class="menu-builder">
+        <section class="menu-panel">
+            <h2>{{ t('menus_editor_title') }}</h2>
+            <p class="menu-panel-intro">{{ t('menus_editor_intro') }}</p>
+            <div class="menu-mode-toggle">
+                <label class="menu-mode-option"><input type="radio" name="menu_mode" value="day" checked> {{ t('menus_mode_day') }}</label>
+                <label class="menu-mode-option"><input type="radio" name="menu_mode" value="week"> {{ t('menus_mode_week') }}</label>
+            </div>
+            <div class="menu-field">
+                <label for="menu-title">{{ t('menus_field_title') }}</label>
+                <input id="menu-title" name="title" maxlength="90" value="{{ t('menus_default_title') }}">
+            </div>
+            <div class="menu-field menu-day-panel" id="menu-day-panel">
+                <label>{{ t('menus_field_text') }}</label>
+                <div class="menu-sections">
+                    <div>
+                        <label class="menu-section-title" for="menu-starter-text"><span>1</span>{{ t('menus_section_starter') }}</label>
+                        <textarea id="menu-starter-text" class="menu-section-text" name="starter_text" data-section="starter" placeholder="{{ t('menus_starter_placeholder') }}"></textarea>
+                    </div>
+                    <div>
+                        <label class="menu-section-title" for="menu-main-text"><span>2</span>{{ t('menus_section_main') }}</label>
+                        <textarea id="menu-main-text" class="menu-section-text" name="main_text" data-section="main" required placeholder="{{ t('menus_main_placeholder') }}"></textarea>
+                    </div>
+                    <div>
+                        <label class="menu-section-title" for="menu-dessert-text"><span>3</span>{{ t('menus_section_dessert') }}</label>
+                        <textarea id="menu-dessert-text" class="menu-section-text" name="dessert_text" data-section="dessert" placeholder="{{ t('menus_dessert_placeholder') }}"></textarea>
+                    </div>
+                </div>
+                <input type="hidden" id="menu-text" name="menu_text">
+            </div>
+            <div class="menu-week-panel" id="menu-week-panel" hidden>
+                <div class="menu-field menu-week-start">
+                    <label for="menu-week-start">{{ t('menus_week_start') }}</label>
+                    <input id="menu-week-start" name="week_start" type="date">
+                </div>
+                <div class="menu-week-days">
+                    {% for day_index in range(7) %}
+                    <div class="menu-week-day">
+                        <h3>{{ t('weekday_short_' ~ day_index) }}</h3>
+                        <div class="menu-week-schedule">
+                            <div>
+                                <label for="week-{{ day_index }}-date">{{ t('programming_filter_start_date') }}</label>
+                                <input id="week-{{ day_index }}-date" class="menu-week-date" name="week_{{ day_index }}_date" type="date" data-day-index="{{ day_index }}">
+                            </div>
+                        </div>
+                        <div class="menu-week-day-grid">
+                            <div>
+                                <label class="menu-section-title" for="week-{{ day_index }}-starter"><span>1</span>{{ t('menus_section_starter') }}</label>
+                                <textarea id="week-{{ day_index }}-starter" class="menu-week-section-text" name="week_{{ day_index }}_starter" data-section="starter" placeholder="{{ t('menus_starter_placeholder') }}"></textarea>
+                            </div>
+                            <div>
+                                <label class="menu-section-title" for="week-{{ day_index }}-main"><span>2</span>{{ t('menus_section_main') }}</label>
+                                <textarea id="week-{{ day_index }}-main" class="menu-week-section-text" name="week_{{ day_index }}_main" data-section="main" placeholder="{{ t('menus_main_placeholder') }}"></textarea>
+                            </div>
+                            <div>
+                                <label class="menu-section-title" for="week-{{ day_index }}-dessert"><span>3</span>{{ t('menus_section_dessert') }}</label>
+                                <textarea id="week-{{ day_index }}-dessert" class="menu-week-section-text" name="week_{{ day_index }}_dessert" data-section="dessert" placeholder="{{ t('menus_dessert_placeholder') }}"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="menu-actions">
+                <button type="button" class="btn secondary" id="menu-suggest-btn">{{ t('menus_suggest_btn') }}</button>
+                <button type="submit" class="btn">{{ t('menus_create_btn') }}</button>
+            </div>
+        </section>
+
+        <aside class="menu-panel">
+            <h2>{{ t('menus_options_title') }}</h2>
+            <p class="menu-panel-intro">{{ t('menus_options_intro') }}</p>
+            <div class="menu-field">
+                <label for="duration">{{ t('announcements_duration') }}</label>
+                <input id="duration" name="duration" type="number" min="1" max="3600" value="15">
+            </div>
+            <div class="menu-field">
+                <label>{{ t('menus_schedule_title') }}</label>
+                <div class="menu-schedule-grid menu-global-schedule-grid">
+                    <div class="menu-field menu-schedule-date-field">
+                        <div class="menu-date-range-fields">
+                            <label for="menu-date-start">{{ t('menus_broadcast_date') }}</label>
+                            <input id="menu-date-start" name="date_start" type="date">
+                        </div>
+                    </div>
+                    <input id="menu-date-end" name="date_end" type="hidden">
+                    <div class="menu-field">
+                        <label for="menu-time-start">{{ t('programming_start_time') }}</label>
+                        <input id="menu-time-start" name="time_start" type="time">
+                    </div>
+                    <div class="menu-field">
+                        <label for="menu-time-end">{{ t('programming_end_time') }}</label>
+                        <input id="menu-time-end" name="time_end" type="time">
+                    </div>
+                </div>
+            </div>
+            <div class="menu-field">
+                <label>{{ t('announcements_screens') }}</label>
+                <div class="screen-list">
+                    {% for screen in screens %}
+                    <label class="screen-option"><input type="checkbox" name="screens" value="{{ screen.value }}" {% if loop.first %}checked{% endif %}><span>{{ screen.label }}</span></label>
+                    {% endfor %}
+                    {% if not screens %}<span class="menu-dish-meta">{{ t('announcements_no_screens') }}</span>{% endif %}
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <section class="menu-panel menu-preview-panel">
+        <div class="menu-preview-head">
+            <div>
+                <h2>{{ t('menus_preview_title') }}</h2>
+                <p>{{ t('menus_preview_intro') }}</p>
+            </div>
+            <div class="menu-analysis-status" id="menu-analysis-status"></div>
+        </div>
+        <div class="menu-screen-preview empty" id="menu-preview"></div>
+        <details class="menu-tech-details" id="menu-tech-details">
+            <summary>{{ t('menus_technical_details') }}</summary>
+            <div class="menu-tech-content" id="menu-tech-content"></div>
+        </details>
+    </section>
+</form>
+
+<div class="menu-loading-overlay" id="menu-loading-overlay" role="status" aria-live="polite" aria-hidden="true">
+    <div class="menu-loading-card">
+        <div class="menu-loading-spinner" aria-hidden="true"></div>
+        <h2>{{ t('menus_creation_loading_title') }}</h2>
+        <p>{{ t('menus_creation_loading_desc') }}</p>
+    </div>
+</div>
+
+<script>
+(() => {
+    const labels = {
+        loading: {{ t('menus_analysis_loading')|tojson }},
+        done: {{ t('menus_analysis_done')|tojson }},
+        error: {{ t('menus_analysis_error')|tojson }},
+        empty: {{ t('menus_empty_preview')|tojson }},
+        noKeyword: {{ t('menus_no_keyword')|tojson }},
+        keywords: {{ t('menus_keywords_label')|tojson }},
+        imagesFound: {{ t('menus_images_found')|tojson }},
+        noLocalImage: {{ t('menus_no_local_image')|tojson }},
+        imageHint: {{ t('menus_image_nav_hint')|tojson }},
+        externalImage: {{ t('menus_external_image')|tojson }},
+        localImage: {{ t('menus_local_image')|tojson }},
+        previewImage: {{ t('menus_preview_image')|tojson }},
+        previewEmptyTitle: {{ t('menus_preview_empty_title')|tojson }},
+        previewEmptyDesc: {{ t('menus_preview_empty_desc')|tojson }},
+    };
+    const weekdayLabels = [
+        {{ t('weekday_short_0')|tojson }},
+        {{ t('weekday_short_1')|tojson }},
+        {{ t('weekday_short_2')|tojson }},
+        {{ t('weekday_short_3')|tojson }},
+        {{ t('weekday_short_4')|tojson }},
+        {{ t('weekday_short_5')|tojson }},
+        {{ t('weekday_short_6')|tojson }},
+    ];
+    const esc = value => String(value || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'":'&#39;'}[c]));
+    let selectedChoices = {};
+    function suggestionImageUrl(suggestion) {
+        return suggestion?.preview_url || suggestion?.local_url || '';
+    }
+    function serializeSuggestion(suggestion) {
+        return btoa(unescape(encodeURIComponent(JSON.stringify(suggestion || {}))));
+    }
+    function deserializeSuggestion(value) {
+        try { return JSON.parse(decodeURIComponent(escape(atob(value || '')))); }
+        catch (_error) { return {}; }
+    }
+    function syncSelectedChoices() {
+        document.querySelector('#menu-image-choices').value = JSON.stringify(selectedChoices);
+        document.querySelector('#menu-text').value = Object.values(collectSections()).join('\n');
+        if (currentMode() === 'day') {
+            document.querySelector('#menu-date-end').value = document.querySelector('#menu-date-start').value;
+        }
+    }
+    function collectSections() {
+        const sections = {};
+        document.querySelectorAll('.menu-section-text').forEach(field => {
+            sections[field.dataset.section] = field.value;
+        });
+        return sections;
+    }
+    function collectWeeklyDays() {
+        const days = [];
+        for (let index = 0; index < 7; index += 1) {
+            const sections = {};
+            document.querySelectorAll(`[name^="week_${index}_"]`).forEach(field => {
+                const key = field.name.replace(`week_${index}_`, '');
+                if (['date', 'time_start', 'time_end'].includes(key)) return;
+                sections[key] = field.value;
+            });
+            if (Object.values(sections).some(value => String(value || '').trim())) {
+                days.push({index, sections});
+            }
+        }
+        return days;
+    }
+    function isoDateForWeekDay(dayIndex) {
+        const explicit = document.querySelector(`[name="week_${dayIndex}_date"]`)?.value || '';
+        if (explicit) return explicit;
+        return baseIsoDateForWeekDay(dayIndex);
+    }
+    function baseIsoDateForWeekDay(dayIndex) {
+        const start = document.querySelector('#menu-week-start')?.value || '';
+        if (!start) return '';
+        const parts = start.split('-').map(Number);
+        if (parts.length !== 3 || parts.some(Number.isNaN)) return '';
+        const date = new Date(parts[0], parts[1] - 1, parts[2] + dayIndex);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+    function displayDateFromIso(isoDate) {
+        const parts = String(isoDate || '').split('-').map(Number);
+        if (parts.length !== 3 || parts.some(Number.isNaN)) return '';
+        return new Date(parts[0], parts[1] - 1, parts[2]).toLocaleDateString(document.documentElement.lang || 'fr');
+    }
+    function formatWeekTitleDate(dayIndex) {
+        const date = displayDateFromIso(isoDateForWeekDay(dayIndex));
+        return `${weekdayLabels[dayIndex] || ''} ${date}`.trim();
+    }
+    function updateWeekDateFields(force = false) {
+        for (let index = 0; index < 7; index += 1) {
+            const field = document.querySelector(`[name="week_${index}_date"]`);
+            if (field && (force || !field.value)) field.value = baseIsoDateForWeekDay(index);
+        }
+    }
+    function currentMode() {
+        return document.querySelector('input[name="menu_mode"]:checked')?.value || 'day';
+    }
+    function syncTitleForMode() {
+        const title = document.querySelector('#menu-title');
+        const dayTitle = {{ t('menus_default_title')|tojson }};
+        const weekTitle = {{ t('menus_mode_week')|tojson }};
+        if (!title || title.dataset.custom === '1') return;
+        title.value = currentMode() === 'week' ? weekTitle : dayTitle;
+    }
+    function applyMode() {
+        const weekly = currentMode() === 'week';
+        syncTitleForMode();
+        document.querySelector('#menu-day-panel').hidden = weekly;
+        document.querySelector('#menu-week-panel').hidden = !weekly;
+        document.querySelector('#menu-main-text').required = !weekly;
+        document.querySelector('#menu-week-start').required = weekly;
+        document.querySelectorAll('.menu-schedule-date-field').forEach(node => {
+            node.hidden = weekly;
+        });
+        if (weekly) updateWeekDateFields();
+    }
+    function updateDishImage(dish, nextIndex) {
+        const suggestions = JSON.parse(dish.dataset.suggestions || '[]');
+        if (!suggestions.length) return;
+        const index = ((nextIndex % suggestions.length) + suggestions.length) % suggestions.length;
+        dish.dataset.index = String(index);
+        const selected = suggestions[index];
+        selectedChoices[dish.dataset.text] = selected;
+        const image = dish.querySelector('.menu-dish-thumb');
+        const url = suggestionImageUrl(selected);
+            if (url && image?.tagName === 'IMG') image.src = url;
+        const zoom = dish.querySelector('.menu-preview-zoom');
+        if (zoom) zoom.dataset.src = selected.local_url || url || selected.external_url || '';
+        const counter = dish.querySelector('.menu-image-count');
+        if (counter) counter.textContent = `${index + 1}/${suggestions.length}`;
+        const imageState = dish.querySelector('[data-image-state]');
+        if (imageState) {
+            const label = selected.source === 'local' ? labels.localImage : labels.externalImage;
+            imageState.textContent = label;
+            imageState.className = selected.source === 'local' ? 'menu-dish-ok' : 'menu-dish-missing';
+        }
+        syncSelectedChoices();
+    }
+    function setEmptyPreview() {
+        const preview = document.querySelector('#menu-preview');
+        const details = document.querySelector('#menu-tech-details');
+        const tech = document.querySelector('#menu-tech-content');
+        preview.classList.add('empty');
+        preview.classList.remove('week');
+        preview.innerHTML = `<div class="menu-empty-preview"><strong>${esc(labels.previewEmptyTitle)}</strong><span>${esc(labels.previewEmptyDesc)}</span></div>`;
+        tech.innerHTML = '';
+        details.hidden = true;
+    }
+    function bindImageCarousels() {
+        document.querySelectorAll('.menu-image-carousel').forEach(carousel => carousel.addEventListener('click', event => {
+            if (event.target.closest('.menu-preview-zoom')) return;
+            const dish = carousel.closest('.menu-dish');
+            const suggestions = JSON.parse(dish.dataset.suggestions || '[]');
+            if (suggestions.length < 2) return;
+            const current = Number(dish.dataset.index || 0);
+            const rect = carousel.getBoundingClientRect();
+            const direction = event.clientX < rect.left + rect.width / 2 ? -1 : 1;
+            updateDishImage(dish, current + direction);
+            syncSelectedChoices();
+        }));
+        document.querySelectorAll('.menu-preview-zoom').forEach(button => button.addEventListener('click', event => {
+            event.preventDefault();
+            event.stopPropagation();
+            const src = button.dataset.src;
+            const modal = document.querySelector('#modal');
+            const image = document.querySelector('#modal-img');
+            const video = document.querySelector('#modal-video');
+            if (!src || !modal || !image || !video) return;
+            video.pause();
+            video.classList.add('u-hidden');
+            image.onerror = () => {
+                const fallback = button.closest('.menu-image-carousel')?.querySelector('.menu-dish-thumb')?.getAttribute('src') || '';
+                if (fallback && image.src !== fallback) image.src = fallback;
+            };
+            image.src = src;
+            image.classList.remove('u-hidden');
+            modal.classList.add('open');
+        }));
+    }
+    async function loadSuggestions() {
+        const button = document.querySelector('#menu-suggest-btn');
+        const status = document.querySelector('#menu-analysis-status');
+        const preview = document.querySelector('#menu-preview');
+        button.disabled = true;
+        status.textContent = labels.loading;
+        const fetchSuggestions = async sections => {
+            const response = await fetch('/admin/menus/suggest', {
+                method:'POST',
+                headers:{
+                    'Content-Type':'application/json',
+                    'X-CSRF-Token':document.querySelector('input[name="_csrf_token"]').value,
+                },
+                body:JSON.stringify({sections, text:Object.values(sections).join('\n')}),
+            });
+            const data = await response.json();
+            if (!response.ok || !data.ok) throw new Error(data.error || 'analysis failed');
+            return data;
+        };
+        const renderPreviewItem = item => {
+            const suggestions = item.suggestions || [];
+            const first = suggestions[0] || {};
+            if (first.preview_url || first.local_url || first.external_url) selectedChoices[item.text] = first;
+            const imageUrl = suggestionImageUrl(first);
+            const fullImageUrl = first.local_url || imageUrl || first.external_url;
+            const zoomButton = imageUrl ? `<button type="button" class="menu-preview-zoom" data-src="${esc(fullImageUrl)}" title="${esc(labels.previewImage)}" aria-label="${esc(labels.previewImage)}"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"></circle><path d="m16 16 5 5"></path><path d="M11 8v6M8 11h6"></path></svg></button>` : '';
+            const image = imageUrl ? `<img class="menu-dish-thumb" src="${esc(imageUrl)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'menu-dish-thumb missing',textContent:'${esc(labels.noLocalImage)}'}))">` : `<div class="menu-dish-thumb missing">${esc(labels.noLocalImage)}</div>`;
+            const carousel = `<div class="menu-image-carousel${suggestions.length > 1 ? ' has-many' : ''}" title="${esc(labels.imageHint)}">${image}${zoomButton}${suggestions.length > 1 ? `<span class="menu-image-count">1/${suggestions.length}</span>` : ''}</div>`;
+            const encodedSuggestions = esc(JSON.stringify(suggestions.filter(suggestionImageUrl).slice(0, 6)));
+            return `<div class="menu-dish" data-text="${esc(item.text)}" data-index="0" data-suggestions="${encodedSuggestions}"><div class="menu-dish-main">${carousel}<div><div class="menu-dish-title">${esc(item.text)}</div></div></div></div>`;
+        };
+        const renderTechItem = item => {
+            const keywords = (item.keywords || []).map(k => k.keyword).join(', ');
+            const first = (item.suggestions || [])[0] || {};
+            const imageUrl = suggestionImageUrl(first);
+            const imageLabel = first.source === 'local' ? labels.localImage : (imageUrl ? labels.externalImage : labels.noLocalImage);
+            return `<div class="menu-tech-card"><div class="menu-tech-title">${esc(item.text)}</div><div class="menu-dish-meta">${esc(labels.keywords)} ${esc(keywords || labels.noKeyword)}<br><span class="${imageUrl ? 'menu-dish-ok' : 'menu-dish-missing'}">${imageUrl ? esc(imageLabel) : esc(labels.noLocalImage)}</span></div></div>`;
+        };
+        const renderMenuCanvas = (sections, title, date) => `<div class="menu-screen-canvas"><div class="menu-screen-top"><div class="menu-screen-title">${esc(title)}</div><div class="menu-screen-date">${esc(date)}</div></div><div class="menu-screen-sections">${sections.map((section, index) => `<div class="menu-screen-section"><div class="menu-preview-heading">${esc(section.label)}<span>${index + 1}</span></div><div class="menu-preview-dishes">${(section.items || []).map(renderPreviewItem).join('')}</div></div>`).join('')}</div></div>`;
+        selectedChoices = {};
+        try {
+            if (currentMode() === 'week') {
+                const days = collectWeeklyDays();
+                const results = [];
+                for (const day of days) {
+                    const data = await fetchSuggestions(day.sections);
+                    if ((data.sections || []).length) results.push({day, data});
+                }
+                if (results.length) {
+                    const title = document.querySelector('#menu-title').value || {{ t('menus_default_title')|tojson }};
+                    preview.classList.remove('empty');
+                    preview.classList.add('week');
+                    preview.innerHTML = results.map(({day, data}) => {
+                        const titleDate = formatWeekTitleDate(day.index);
+                        const displayDate = displayDateFromIso(isoDateForWeekDay(day.index));
+                        return `<div class="menu-week-preview-card">${renderMenuCanvas(data.sections || [], `${title} - ${titleDate}`, displayDate)}</div>`;
+                    }).join('');
+                    document.querySelector('#menu-tech-content').innerHTML = results.map(({day, data}) => `<div class="menu-tech-section"><div class="menu-tech-heading">${esc(formatWeekTitleDate(day.index))}</div>${(data.items || []).map(renderTechItem).join('')}</div>`).join('');
+                    document.querySelector('#menu-tech-details').hidden = false;
+                    status.textContent = labels.done.replace('__COUNT__', results.reduce((count, result) => count + (result.data.items || []).length, 0));
+                } else {
+                    setEmptyPreview();
+                    status.textContent = labels.empty;
+                }
+            } else {
+                const data = await fetchSuggestions(collectSections());
+                const sections = data.sections || [];
+                const items = data.items || [];
+                if (sections.length) {
+                    const title = document.querySelector('#menu-title').value || {{ t('menus_default_title')|tojson }};
+                    const date = new Date().toLocaleDateString(document.documentElement.lang || 'fr');
+                    preview.classList.remove('empty');
+                    preview.classList.remove('week');
+                    preview.innerHTML = renderMenuCanvas(sections, title, date);
+                    document.querySelector('#menu-tech-content').innerHTML = sections.map(section => `<div class="menu-tech-section"><div class="menu-tech-heading">${esc(section.label)}</div>${(section.items || []).map(renderTechItem).join('')}</div>`).join('');
+                    document.querySelector('#menu-tech-details').hidden = false;
+                } else {
+                    setEmptyPreview();
+                }
+                status.textContent = items.length ? labels.done.replace('__COUNT__', items.length) : labels.empty;
+            }
+        } catch (error) {
+            status.textContent = labels.error;
+            preview.innerHTML = '';
+            preview.classList.remove('week');
+            document.querySelector('#menu-tech-details').hidden = true;
+        }
+        syncSelectedChoices();
+        bindImageCarousels();
+        button.disabled = false;
+    }
+    document.querySelector('#menu-form').addEventListener('submit', () => {
+        syncSelectedChoices();
+        const overlay = document.querySelector('#menu-loading-overlay');
+        const submit = document.querySelector('#menu-form button[type="submit"]');
+        if (overlay) {
+            overlay.classList.add('open');
+            overlay.setAttribute('aria-hidden', 'false');
+        }
+        if (submit) submit.disabled = true;
+    });
+    document.querySelector('#menu-form').addEventListener('keydown', event => {
+        if (event.key !== 'Enter') return;
+        if (event.target.closest('textarea')) return;
+        if (event.target.closest('button')) return;
+        event.preventDefault();
+    });
+    document.querySelector('#menu-suggest-btn').addEventListener('click', loadSuggestions);
+    document.querySelector('#menu-title').addEventListener('input', event => {
+        event.currentTarget.dataset.custom = event.currentTarget.value.trim() ? '1' : '';
+    });
+    document.querySelectorAll('.menu-section-text').forEach(field => field.addEventListener('input', syncSelectedChoices));
+    document.querySelectorAll('.menu-week-section-text').forEach(field => field.addEventListener('input', syncSelectedChoices));
+    document.querySelector('#menu-week-start').addEventListener('change', () => updateWeekDateFields(true));
+    document.querySelectorAll('input[name="menu_mode"]').forEach(field => field.addEventListener('change', () => {
+        applyMode();
+        syncSelectedChoices();
+    }));
+    document.querySelector('#menu-analysis-status').textContent = labels.empty;
+    setEmptyPreview();
+    applyMode();
+    syncSelectedChoices();
+})();
+</script>
+{% endblock %}

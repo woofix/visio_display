@@ -21,10 +21,10 @@ from services.media_svc import clean_filename, ensure_unique_filename, generate_
 
 
 ANNOUNCEMENT_SIZE = (1920, 1080)
-COMMONS_API_URL = "https://commons.wikimedia.org/w/api.php"
-ALLOWED_IMAGE_HOSTS = {"upload.wikimedia.org", "commons.wikimedia.org"}
-COMMONS_RASTER_MIMES = {"image/jpeg", "image/png", "image/webp"}
-WIKIMEDIA_USER_AGENT = (
+PEXELS_SEARCH_URL = "https://api.pexels.com/v1/search"
+ALLOWED_IMAGE_HOSTS = {"images.pexels.com"}
+ALLOWED_RASTER_MIMES = {"image/jpeg", "image/png", "image/webp"}
+EXTERNAL_IMAGE_USER_AGENT = (
     "Visio-Display/1.0 "
     "(https://github.com/woofix/visio_display; contact: https://github.com/woofix/visio_display/issues)"
 )
@@ -305,14 +305,18 @@ def _safe_image_url(url):
     return parsed.scheme == "https" and parsed.hostname in ALLOWED_IMAGE_HOSTS
 
 
+def pexels_api_key():
+    return os.environ.get("PEXELS_API_KEY", "").strip()
+
+
 def _plain_text(value):
     return " ".join(re.sub(r"<[^>]*>", " ", str(value or "")).split())
 
 
-def _wikimedia_headers(accept="*/*"):
+def _external_image_headers(accept="*/*"):
     return {
-        "User-Agent": WIKIMEDIA_USER_AGENT,
-        "Api-User-Agent": WIKIMEDIA_USER_AGENT,
+        "User-Agent": EXTERNAL_IMAGE_USER_AGENT,
+        "Api-User-Agent": EXTERNAL_IMAGE_USER_AGENT,
         "Accept": accept,
     }
 
@@ -323,7 +327,7 @@ def _download_image(url):
     response = requests.get(
         url,
         timeout=12,
-        headers=_wikimedia_headers("image/avif,image/webp,image/apng,image/*,*/*;q=0.8"),
+        headers=_external_image_headers("image/avif,image/webp,image/apng,image/*,*/*;q=0.8"),
     )
     response.raise_for_status()
     if not _safe_image_url(response.url):
@@ -358,7 +362,7 @@ def fetch_thumbnail_bytes(url, *, max_bytes=16 * 1024 * 1024):
     response = requests.get(
         url,
         timeout=(2, 5),
-        headers=_wikimedia_headers("image/avif,image/webp,image/apng,image/*,*/*;q=0.8"),
+        headers=_external_image_headers("image/avif,image/webp,image/apng,image/*,*/*;q=0.8"),
     )
     response.raise_for_status()
     if not _safe_image_url(response.url):
@@ -789,49 +793,45 @@ def create_announcement(form, uploaded_file=None, layer_uploads=None, username=N
     return filename
 
 
-def commons_search(query, limit=12):
+def pexels_search(query, limit=12):
     query = str(query or "").strip()
-    if not query:
+    api_key = pexels_api_key()
+    if not query or not api_key:
         return []
     target_limit = max(1, min(24, int(limit or 12)))
-    params = {
-        "action": "query",
-        "format": "json",
-        "generator": "search",
-        "gsrnamespace": "6",
-        "gsrsearch": query,
-        "gsrlimit": max(target_limit, min(30, target_limit * 3)),
-        "prop": "imageinfo",
-        "iiprop": "url|mime|extmetadata",
-        "iiurlwidth": 480,
-        "iiurlheight": 270,
-        "origin": "*",
-    }
-    response = requests.get(COMMONS_API_URL, params=params, timeout=10, headers=_wikimedia_headers("application/json"))
+    response = requests.get(
+        PEXELS_SEARCH_URL,
+        params={
+            "query": query,
+            "per_page": target_limit,
+            "orientation": "landscape",
+            "size": "large",
+        },
+        timeout=(2, 6),
+        headers={
+            "Authorization": api_key,
+            "User-Agent": EXTERNAL_IMAGE_USER_AGENT,
+        },
+    )
     response.raise_for_status()
-    pages = response.json().get("query", {}).get("pages", {})
     candidates = []
-    for page in pages.values():
-        info = (page.get("imageinfo") or [{}])[0]
-        if info.get("mime") not in COMMONS_RASTER_MIMES:
-            continue
-        url = info.get("url") or ""
-        thumb = info.get("thumburl") or url
+    for item in response.json().get("photos", []):
+        sources = item.get("src") or {}
+        url = sources.get("large2x") or sources.get("large") or sources.get("original") or ""
+        thumb = sources.get("medium") or sources.get("small") or url
         if not _safe_image_url(url) or not _safe_image_url(thumb):
             continue
-        meta = info.get("extmetadata") or {}
-        license_name = _plain_text((meta.get("LicenseShortName") or {}).get("value") or "")
-        artist = _plain_text((meta.get("Artist") or {}).get("value") or "")
-        credit = " ".join(textwrap.wrap(f"{license_name} {artist}".strip(), width=90))[:180]
-        title = str(page.get("title") or "").replace("File:", "")
+        photographer = _plain_text(item.get("photographer") or "")
+        credit = " ".join(textwrap.wrap(f"Pexels {photographer}".strip(), width=90))[:180]
         candidates.append({
-            "title": title,
+            "title": item.get("alt") or query,
             "url": url,
             "thumb_url": thumb,
             "credit": credit,
-            "source": "wikimedia",
+            "source": "pexels",
+            "provider_url": item.get("url") or "",
         })
-        if len(candidates) >= max(target_limit, min(30, target_limit * 2)):
+        if len(candidates) >= target_limit:
             break
     return _attach_thumbnail_data(candidates)[:target_limit]
 

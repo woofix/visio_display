@@ -87,6 +87,7 @@ def _default_features():
     return {
         "upload":         True,
         "announcements":  True,
+        "menus":          True,
         "videos":         True,
         "delete":         True,
         "compress":       True,
@@ -133,6 +134,7 @@ def _default_config():
         "groups": {},
         "group_pools": {},
         "group_screens": {},
+        "generated_menus": {},
         "broadcast_links": {},
         "disabled_groups": [],
         "default_screen_name": "",
@@ -158,6 +160,7 @@ def normalize_config(cfg):
     merged["groups"] = cfg.get("groups", {}) if isinstance(cfg.get("groups"), dict) else {}
     merged["group_pools"] = cfg.get("group_pools", {}) if isinstance(cfg.get("group_pools"), dict) else {}
     merged["group_screens"] = cfg.get("group_screens", {}) if isinstance(cfg.get("group_screens"), dict) else {}
+    merged["generated_menus"] = cfg.get("generated_menus", {}) if isinstance(cfg.get("generated_menus"), dict) else {}
     raw_bl = cfg.get("broadcast_links", {})
     merged["broadcast_links"] = {
         str(k): [str(t) for t in v] if isinstance(v, list) else []

@@ -766,6 +766,223 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertTrue(response.headers["Location"].endswith("/admin"))
 
+    def test_menus_page_renders_for_menus_permission_user(self):
+        with self.app.app_context():
+            from services.users_svc import create_user
+
+            create_user("menu-maker", "operator-pass-123", permissions=["menus"])
+
+        with self.client.session_transaction() as session:
+            session["user"] = "menu-maker"
+
+        response = self.client.get("/admin/menus")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"menu-form", response.data)
+
+    def test_menus_feature_can_be_disabled(self):
+        with self.app.app_context():
+            from services.config_svc import save_config
+
+            save_config({"features": {"menus": False}})
+
+        with self.client.session_transaction() as session:
+            session["user"] = "admin"
+
+        menu_response = self.client.get("/admin/media")
+        self.assertEqual(menu_response.status_code, 200)
+        self.assertNotIn(b"/admin/menus", menu_response.data)
+
+        response = self.client.get("/admin/menus")
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.headers["Location"].endswith("/admin"))
+
+    def test_menu_creation_stores_display_schedule(self):
+        with self.app.app_context():
+            from PIL import Image
+
+            from services.config_svc import load_config, save_config
+            from services import menu_svc
+
+            save_config({"screens": {"hall": {"order": [], "schedules": {}}}})
+
+            with (
+                patch.object(menu_svc, "render_menu_animation", return_value=False),
+                patch.object(menu_svc, "render_menu_image", return_value=Image.new("RGB", (16, 9), "white")),
+                patch.object(menu_svc, "generate_standard_renditions"),
+            ):
+                filename = menu_svc.create_menu_from_text(
+                    "Menu test",
+                    sections={"main": "pizza"},
+                    duration="20",
+                    schedule={
+                        "date_start": "2026-05-17",
+                        "date_end": "2026-05-18",
+                        "time_start": "11:00",
+                        "time_end": "13:30",
+                    },
+                    screens=["__default__", "hall"],
+                    username="admin",
+                )
+
+            cfg = load_config()
+            expected_schedule = {
+                "date_start": "2026-05-17",
+                "date_end": "2026-05-18",
+                "time_start": "11:00",
+                "time_end": "13:30",
+            }
+            self.assertEqual(cfg["schedules"].get(filename), expected_schedule)
+            self.assertEqual(cfg["screens"]["hall"]["schedules"].get(filename), expected_schedule)
+            self.assertEqual(cfg["generated_menus"][filename]["schedule"], expected_schedule)
+            self.assertEqual(cfg["durations"].get(filename), 20)
+
+    def test_weekly_menu_creation_generates_one_scheduled_media_per_day(self):
+        with self.app.app_context():
+            from PIL import Image
+
+            from services.config_svc import load_config
+            from services import menu_svc
+
+            form = {
+                "week_start": "2026-05-19",
+                "week_0_date": "2026-05-18",
+                "week_0_starter": "salade",
+                "week_0_main": "steak",
+                "week_0_dessert": "tarte",
+                "week_1_date": "2026-05-19",
+                "week_1_starter": "taboulé",
+                "week_1_main": "soupe de legume",
+                "week_1_dessert": "flan patissier",
+            }
+
+            with (
+                patch.object(menu_svc, "render_menu_animation", return_value=False),
+                patch.object(menu_svc, "render_menu_image", return_value=Image.new("RGB", (16, 9), "white")) as render_image,
+                patch.object(menu_svc, "generate_standard_renditions"),
+            ):
+                filenames = menu_svc.create_weekly_menus_from_form(
+                    "Menu semaine",
+                    form,
+                    duration="12",
+                    schedule={"time_start": "10:30", "time_end": "15:00"},
+                    screens=["__default__"],
+                    username="admin",
+                )
+
+            cfg = load_config()
+            render_titles = [call.args[0] for call in render_image.call_args_list]
+            self.assertEqual(render_titles, [
+                "Menu semaine - Lundi",
+                "Menu semaine - Mardi",
+            ])
+            render_dates = [call.kwargs.get("date_label") for call in render_image.call_args_list]
+            self.assertEqual(render_dates, ["18/05/2026", "19/05/2026"])
+            self.assertEqual(len(filenames), 2)
+            self.assertNotEqual(filenames[0], filenames[1])
+            self.assertEqual(cfg["schedules"][filenames[0]], {
+                "date_start": "2026-05-18",
+                "date_end": "2026-05-18",
+                "time_start": "10:30",
+                "time_end": "15:00",
+            })
+            self.assertEqual(cfg["schedules"][filenames[1]], {
+                "date_start": "2026-05-19",
+                "date_end": "2026-05-19",
+                "time_start": "10:30",
+                "time_end": "15:00",
+            })
+            self.assertIn(filenames[0], cfg["generated_menus"])
+            self.assertIn(filenames[1], cfg["generated_menus"])
+            self.assertEqual(cfg["durations"][filenames[0]], 12)
+            self.assertEqual(cfg["durations"][filenames[1]], 12)
+
+    def test_weekly_menu_creation_can_be_queued_for_nightly_encoding(self):
+        with self.app.app_context():
+            import json
+
+            from services import menu_svc
+            from services.queue_svc import load_queue
+
+            form = {
+                "week_start": "2026-05-19",
+                "week_0_date": "2026-05-18",
+                "week_0_starter": "salade",
+                "week_0_main": "steak",
+                "week_0_dessert": "tarte",
+            }
+
+            with (
+                patch.object(menu_svc, "render_menu_animation", side_effect=AssertionError("rendered immediately")),
+                patch.object(menu_svc, "render_menu_image", side_effect=AssertionError("rendered immediately")),
+            ):
+                filenames = menu_svc.create_weekly_menus_from_form(
+                    "Menu semaine",
+                    form,
+                    duration="12",
+                    schedule={"time_start": "10:30", "time_end": "15:00"},
+                    screens=["__default__"],
+                    username="admin",
+                    queue_generation=True,
+                )
+
+            jobs = load_queue()
+            self.assertEqual(len(filenames), 1)
+            self.assertEqual(len(jobs), 1)
+            self.assertEqual(jobs[0]["filename"], filenames[0])
+            self.assertEqual(jobs[0]["status"], "pending")
+            message = json.loads(jobs[0]["message"])
+            self.assertEqual(message["type"], "menu_generate")
+            self.assertEqual(message["payload"]["title"], "Menu semaine - Lundi")
+            self.assertEqual(message["payload"]["date_label"], "18/05/2026")
+            self.assertEqual(message["payload"]["schedule"], {
+                "date_start": "2026-05-18",
+                "date_end": "2026-05-18",
+                "time_start": "10:30",
+                "time_end": "15:00",
+            })
+
+    def test_expired_generated_menu_cleanup_removes_media_and_references(self):
+        with self.app.app_context():
+            from constants import UPLOAD_FOLDER
+            from services.config_svc import load_config, save_config
+            from services.menu_svc import cleanup_expired_generated_menus
+
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            filename = "menu_expired.mp4"
+            with open(os.path.join(UPLOAD_FOLDER, filename), "wb") as handle:
+                handle.write(b"expired")
+            save_config({
+                "order": ["intro.jpg", filename],
+                "durations": {filename: 15},
+                "schedules": {filename: {"date_end": "2026-05-16", "time_end": "23:59"}},
+                "generated_menus": {
+                    filename: {
+                        "schedule": {"date_end": "2026-05-16", "time_end": "23:59"},
+                        "screens": ["__default__", "hall"],
+                    }
+                },
+                "screens": {
+                    "hall": {
+                        "order": [filename],
+                        "durations": {filename: 15},
+                        "schedules": {filename: {"date_end": "2026-05-16"}},
+                    }
+                },
+            })
+
+            deleted = cleanup_expired_generated_menus(now=datetime(2026, 5, 17, 9, 0))
+
+            cfg = load_config()
+            self.assertEqual(deleted, [filename])
+            self.assertFalse(os.path.exists(os.path.join(UPLOAD_FOLDER, filename)))
+            self.assertNotIn(filename, cfg["order"])
+            self.assertNotIn(filename, cfg["durations"])
+            self.assertNotIn(filename, cfg["schedules"])
+            self.assertNotIn(filename, cfg["generated_menus"])
+            self.assertNotIn(filename, cfg["screens"]["hall"]["order"])
+            self.assertNotIn(filename, cfg["screens"]["hall"]["schedules"])
+
     def test_media_cleanup_detects_review_candidates(self):
         with self.app.app_context():
             from constants import UPLOAD_FOLDER
@@ -1027,11 +1244,11 @@ class AppSmokeTests(unittest.TestCase):
             self.assertEqual(cfg.get("durations", {}).get(filename), 12)
             self.assertIsNotNone(get_existing_image_rendition_url(filename, "thumb"))
 
-    def test_wikimedia_requests_use_contact_user_agent(self):
+    def test_external_image_requests_use_contact_user_agent(self):
         with self.app.app_context():
             from services import announcement_svc
 
-            headers = announcement_svc._wikimedia_headers("application/json")
+            headers = announcement_svc._external_image_headers("application/json")
 
         self.assertIn("Visio-Display/", headers["User-Agent"])
         self.assertIn("github.com/woofix/visio_display", headers["User-Agent"])
@@ -1052,7 +1269,7 @@ class AppSmokeTests(unittest.TestCase):
             with patch.object(announcement_svc, "_download_image", side_effect=RuntimeError("429")):
                 background = announcement_svc.build_background({
                     "background_mode": "external",
-                    "external_url": "https://upload.wikimedia.org/wikipedia/commons/example.jpg",
+                    "external_url": "https://images.pexels.com/photos/example.jpg",
                     "external_preview": preview,
                 })
 

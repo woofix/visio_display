@@ -1,6 +1,7 @@
 # Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 import os
+import json
 import subprocess
 import threading
 import time
@@ -83,6 +84,37 @@ def enqueue_compress_job(filename):
             "added": datetime.now().isoformat(),
             "started": None,
             "finished": None,
+        }
+        q.append(job)
+        save_queue(q)
+        return job["id"]
+
+
+def _decode_job_message(job):
+    raw = job.get('message')
+    if not raw:
+        return {}
+    try:
+        payload = json.loads(raw)
+    except (TypeError, ValueError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def enqueue_menu_generation_job(filename, payload):
+    with _app_context_for_background_work():
+        q = load_queue()
+        job = {
+            "id": str(uuid.uuid4())[:8],
+            "filename": filename,
+            "status": "pending",
+            "added": datetime.now().isoformat(),
+            "started": None,
+            "finished": None,
+            "message": json.dumps({
+                "type": "menu_generate",
+                "payload": payload,
+            }),
         }
         q.append(job)
         save_queue(q)
@@ -275,6 +307,26 @@ def _rq_compress_job(encode_job_id):
         q   = load_queue()
         job = next((j for j in q if j['id'] == encode_job_id), None)
         if not job:
+            return
+
+        job_payload = _decode_job_message(job)
+        if job_payload.get("type") == "menu_generate":
+            from services.menu_svc import process_queued_menu_generation
+
+            try:
+                process_queued_menu_generation(job["filename"], job_payload.get("payload") or {})
+            except Exception as exc:
+                job["status"] = "error"
+                job["message"] = str(exc)
+                job["finished"] = datetime.now().isoformat()
+                save_queue(q)
+                return
+
+            job["status"] = "done"
+            job["new_name"] = job["filename"]
+            job["message"] = "menu generated"
+            job["finished"] = datetime.now().isoformat()
+            save_queue(q)
             return
 
         src = os.path.join(UPLOAD_FOLDER, job['filename'])

@@ -21,7 +21,7 @@ _DEFAULT_ROLES = [
         'display_name': 'Editor',
         'description':  'Can add, delete and edit media',
         'is_system':    False,
-        'permissions':  ['upload', 'announcements', 'delete', 'reorder', 'toggle', 'duration'],
+        'permissions':  ['upload', 'announcements', 'menus', 'delete', 'reorder', 'toggle', 'duration'],
     },
     {
         'name':         'viewer',

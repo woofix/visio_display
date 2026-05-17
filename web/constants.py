@@ -94,6 +94,7 @@ SCHOOL_ZONES = (
 ALL_PERMISSIONS = [
     ("upload",         "perm_upload"),
     ("announcements", "perm_announcements"),
+    ("menus",          "perm_menus"),
     ("delete",         "perm_delete"),
     ("reorder",        "perm_reorder"),
     ("toggle",         "perm_toggle"),
@@ -107,6 +108,7 @@ ALL_PERMISSIONS = [
 ALL_FEATURES = [
     ("upload",         "feature_upload",         "feature_upload_desc"),
     ("announcements",  "feature_announcements",  "feature_announcements_desc"),
+    ("menus",          "feature_menus",          "feature_menus_desc"),
     ("videos",         "feature_videos",         "feature_videos_desc"),
     ("delete",         "feature_delete",          "feature_delete_desc"),
     ("compress",       "feature_compress",        "feature_compress_desc"),

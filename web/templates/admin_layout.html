@@ -95,6 +95,12 @@
             {{ t('nav_announcements') }}
         </a>
         {% endif %}
+        {% if has_permission('menus') and is_feature_enabled('menus') %}
+        <a href="/admin/menus" class="nav-item {% if path == '/admin/menus' %}active{% endif %}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 3h16"/><path d="M5 3v18"/><path d="M19 3v18"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h5"/></svg>
+            {{ t('nav_menus') }}
+        </a>
+        {% endif %}
         {% if is_feature_enabled('campaigns') %}
         <a href="/admin/campaigns" class="nav-item {% if path == '/admin/campaigns' %}active{% endif %}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7V3m8 4V3"/><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 11h18"/><path d="M8 15h3"/><path d="M13 15h3"/><path d="M8 18h8"/></svg>

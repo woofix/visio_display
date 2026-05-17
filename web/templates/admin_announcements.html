@@ -651,6 +651,7 @@ button.chip { font:inherit; cursor:pointer; }
         imageApplySelection: {{ t('announcements_image_apply_selection')|tojson }},
         imageAddLayer: {{ t('announcements_image_add_layer')|tojson }},
         imageFillSelection: {{ t('announcements_image_fill_selection')|tojson }},
+        previewImage: {{ t('announcements_preview_image')|tojson }},
         selectedValue: {{ t('announcements_selected_value', value='__VALUE__')|tojson }},
         externalUseBackground: {{ t('announcements_external_use_background')|tojson }},
         externalAddLayer: {{ t('announcements_external_add_layer')|tojson }},
@@ -1247,7 +1248,7 @@ button.chip { font:inherit; cursor:pointer; }
         const fillTitle = applyToSelection ? labels.imageApplySelection : (labels.imageFillSelection || labels.externalFillShape);
         resultsNode.innerHTML = (data.results || []).map(item => `
             <div class="external-card" data-url="${esc(item.url)}" data-credit="${esc(item.credit)}" data-title="${esc(item.title)}">
-                <img src="${esc(item.thumb_data || '')}" alt="">
+                <img class="thumb" src="${esc(item.thumb_data || '')}" data-src="${esc(item.thumb_data || item.url || '')}" data-fallback-src="${esc(item.thumb_data || '')}" alt="" title="${esc(labels.previewImage)}">
                 <div class="external-actions">
                     <button type="button" class="btn secondary sm" data-external-action="bg" title="${esc(labels.externalUseBackground)}" aria-label="${esc(labels.externalUseBackground)}">${esc(labels.externalUseBackground)}</button>
                     <button type="button" class="btn secondary sm" data-external-action="add" title="${esc(addTitle)}" aria-label="${esc(addTitle)}">${esc(labels.externalAddLayer)}</button>

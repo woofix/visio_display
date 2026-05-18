@@ -321,6 +321,7 @@
             el.muted       = true;
             el.controls    = false;
             el.playsInline = true;
+            el.preload     = 'auto';
         } else {
             el = document.createElement('img');
             el.src = mediaUrl(item);
@@ -355,9 +356,11 @@
         currentSlide = slide;
         currentItem = item;
         if (item.type === 'video') {
-            ['error', 'stalled', 'abort'].forEach(evt => {
-                el.addEventListener(evt, onLoadError, { once: true });
-            });
+            el.addEventListener('error', onLoadError, { once: true });
+            const playPromise = el.play();
+            if (playPromise && typeof playPromise.catch === 'function') {
+                playPromise.catch(onLoadError);
+            }
         } else {
             el.addEventListener('error', onLoadError, { once: true });
         }

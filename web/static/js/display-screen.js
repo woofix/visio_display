@@ -81,6 +81,7 @@
     let mediaRefreshChannel = null;
     let mediaSignature = '';
     let poolSignature = '';
+    let playlistRevision = '';
 
     const alertBox = document.getElementById('priority-alert');
     const alertText = document.getElementById('priority-alert-message');
@@ -88,11 +89,25 @@
     async function fetchMedia() {
         try {
             const res = await fetch(mediaApiUrl(), { cache: 'no-store' });
-            if (!res.ok) return media.length ? media : [];
+            if (!res.ok) return { items: media.length ? media : [], revision: null };
             const fetched = await res.json();
-            return fetched.length ? fetched : [];
+            return {
+                items: fetched.length ? fetched : [],
+                revision: res.headers.get('X-Visio-Playlist-Revision') || null,
+            };
         } catch (e) {
-            return media.length ? media : [];
+            return { items: media.length ? media : [], revision: null };
+        }
+    }
+
+    async function fetchDisplayRevision() {
+        try {
+            const res = await fetch(displayApiUrl('/api/display-revision'), { cache: 'no-store' });
+            if (!res.ok) return null;
+            const data = await res.json();
+            return data.playlist || null;
+        } catch (e) {
+            return null;
         }
     }
 
@@ -282,7 +297,7 @@
         discardCurrentSlide(slide);
 
         try {
-            await refreshMediaState();
+            await refreshMediaState({ force: true });
         } catch (e) {
             // Keep the current in-memory fallback if the refresh also fails.
         }
@@ -349,12 +364,25 @@
         return el;
     }
 
-    async function refreshMediaState() {
-        const [freshMedia, freshDurations, freshPools] = await Promise.all([
+    async function refreshMediaState(options = {}) {
+        const force = !!options.force;
+        let nextPlaylistRevision = null;
+        if (!force && playlistRevision) {
+            nextPlaylistRevision = await fetchDisplayRevision();
+            if (nextPlaylistRevision && nextPlaylistRevision === playlistRevision) return;
+        }
+
+        const [freshMediaResult, freshDurations, freshPools] = await Promise.all([
             fetchMedia(), fetchDurations(), fetchPools()
         ]);
+        const freshMedia = freshMediaResult.items || [];
         durations  = freshDurations;
         groupPools = freshPools;
+        if (freshMediaResult.revision) {
+            playlistRevision = freshMediaResult.revision;
+        } else if (nextPlaylistRevision) {
+            playlistRevision = nextPlaylistRevision;
+        }
         if (!freshMedia.length) return;
         const nextMediaSignature = computeMediaSignature(freshMedia);
         const nextPoolSignature = computePoolSignature(groupPools);
@@ -379,7 +407,7 @@
     }
 
     async function handleExternalMediaRefresh() {
-        await refreshMediaState();
+        await refreshMediaState({ force: true });
     }
 
     function setupMediaRefreshListeners() {

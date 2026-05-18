@@ -5,6 +5,8 @@ import json
 import math
 import os
 import threading
+import time
+from copy import deepcopy
 from datetime import date, datetime, timezone, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -22,6 +24,29 @@ from translations import JOURS_BY_LANG, MOIS_BY_LANG, WMO_CODES_BY_LANG
 _EPHEMERIS_LOCK = threading.Lock()
 _EPHEMERIS_ASYNC_LOCK = threading.Lock()
 _EPHEMERIS_ASYNC_RUNNING = False
+_EPHEMERIS_DATA_CACHE = {}
+_EPHEMERIS_DATA_CACHE_MAX_ENTRIES = 64
+_EPHEMERIS_DATA_CACHE_TTL_SECONDS = 60
+_EPHEMERIS_CURRENT_CACHE = {}
+_EPHEMERIS_CURRENT_CACHE_TTL_SECONDS = 15
+_EPHEMERIS_CACHE_LOCK = threading.Lock()
+_EPHEMERIS_CACHE_MISS = object()
+
+
+def _ephemeris_cache_get(cache, key):
+    now = time.monotonic()
+    with _EPHEMERIS_CACHE_LOCK:
+        entry = cache.get(key)
+        if entry and now < entry[0]:
+            return deepcopy(entry[1])
+    return _EPHEMERIS_CACHE_MISS
+
+
+def _ephemeris_cache_set(cache, key, value, ttl):
+    with _EPHEMERIS_CACHE_LOCK:
+        cache[key] = (time.monotonic() + ttl, deepcopy(value))
+        while len(cache) > _EPHEMERIS_DATA_CACHE_MAX_ENTRIES:
+            cache.pop(next(iter(cache)))
 
 
 def _configured_zoneinfo(cfg=None):
@@ -130,6 +155,22 @@ def _ephemeride_file_is_current(path, target_date, lang=None):
     return False
 
 
+def _ephemeride_file_is_current_cached(path, target_date, lang=None):
+    cache_key = (path, target_date.isoformat(), lang or "")
+    cached = _ephemeris_cache_get(_EPHEMERIS_CURRENT_CACHE, cache_key)
+    if cached is not _EPHEMERIS_CACHE_MISS and cached is True:
+        return True
+    current = _ephemeride_file_is_current(path, target_date, lang)
+    if current:
+        _ephemeris_cache_set(
+            _EPHEMERIS_CURRENT_CACHE,
+            cache_key,
+            True,
+            _EPHEMERIS_CURRENT_CACHE_TTL_SECONDS,
+        )
+    return current
+
+
 def _normalize_school_zone(zone):
     normalized = _normalize_text(zone)
     aliases = {
@@ -224,6 +265,10 @@ def get_next_school_holiday(cfg=None):
         cfg = load_config()
     lang = get_language()
     zone = get_school_zone(cfg)
+    cache_key = ("school_holiday", _today_for_ephemeris(cfg).isoformat(), lang, zone)
+    cached = _ephemeris_cache_get(_EPHEMERIS_DATA_CACHE, cache_key)
+    if cached is not _EPHEMERIS_CACHE_MISS:
+        return cached
     zone_label = f"Zone {zone}" if zone in {"A", "B", "C"} else zone
     normalized_zone_label = _normalize_text(zone_label)
     try:
@@ -293,6 +338,12 @@ def get_next_school_holiday(cfg=None):
                 if best is None or candidate["delta"] < best["delta"]:
                     best = candidate
             if best is not None:
+                _ephemeris_cache_set(
+                    _EPHEMERIS_DATA_CACHE,
+                    cache_key,
+                    best,
+                    _EPHEMERIS_DATA_CACHE_TTL_SECONDS,
+                )
                 return best
 
         ics_url_map = {
@@ -312,6 +363,12 @@ def get_next_school_holiday(cfg=None):
         }
         ics_url = ics_url_map.get(zone)
         if not ics_url:
+            _ephemeris_cache_set(
+                _EPHEMERIS_DATA_CACHE,
+                cache_key,
+                None,
+                _EPHEMERIS_DATA_CACHE_TTL_SECONDS,
+            )
             return None
         response = requests.get(ics_url, timeout=5)
         response.raise_for_status()
@@ -346,9 +403,21 @@ def get_next_school_holiday(cfg=None):
             }
             if best is None or candidate["delta"] < best["delta"]:
                 best = candidate
+        _ephemeris_cache_set(
+            _EPHEMERIS_DATA_CACHE,
+            cache_key,
+            best,
+            _EPHEMERIS_DATA_CACHE_TTL_SECONDS,
+        )
         return best
     except Exception as e:
         print("[SCHOOL HOLIDAYS ERROR]", e)
+    _ephemeris_cache_set(
+        _EPHEMERIS_DATA_CACHE,
+        cache_key,
+        None,
+        _EPHEMERIS_DATA_CACHE_TTL_SECONDS,
+    )
     return None
 
 
@@ -458,7 +527,7 @@ def ensure_ephemeride_image_async(force=False):
     lang = get_language()
     cfg = load_config()
     _filename, path, today = _ephemeride_target(cfg)
-    if not force and _ephemeride_file_is_current(path, today, lang):
+    if not force and _ephemeride_file_is_current_cached(path, today, lang):
         return False
 
     with _EPHEMERIS_ASYNC_LOCK:
@@ -552,6 +621,10 @@ def _extract_modern_name(contenu):
 
 def get_ephemeride_nominis(target_date=None):
     target_date = target_date or _today_for_ephemeris()
+    cache_key = ("nominis", target_date.isoformat(), get_language())
+    cached = _ephemeris_cache_get(_EPHEMERIS_DATA_CACHE, cache_key)
+    if cached is not _EPHEMERIS_CACHE_MISS:
+        return cached
     nameday = get_nameday_for_date(target_date)
     url = "https://nominis.cef.fr/json/saintdujour.php"
     try:
@@ -564,17 +637,27 @@ def get_ephemeride_nominis(target_date=None):
             desc = strip_html(saint.get("description", "")).strip()
             modern = _extract_modern_name(saint.get("contenu", ""))
             display = nameday or _clean_nameday_candidate(modern) or _clean_nameday_candidate(traditional_name)
-            return display or None, desc
-        return nameday or None, ""
+            result = (display or None, desc)
+            _ephemeris_cache_set(_EPHEMERIS_DATA_CACHE, cache_key, result, _EPHEMERIS_DATA_CACHE_TTL_SECONDS)
+            return result
+        result = (nameday or None, "")
+        _ephemeris_cache_set(_EPHEMERIS_DATA_CACHE, cache_key, result, _EPHEMERIS_DATA_CACHE_TTL_SECONDS)
+        return result
     except Exception as e:
         print("[NOMINIS ERROR]", e)
-        return nameday or None, ""
+        result = (nameday or None, "")
+        _ephemeris_cache_set(_EPHEMERIS_DATA_CACHE, cache_key, result, _EPHEMERIS_DATA_CACHE_TTL_SECONDS)
+        return result
 
 
 def get_sun_times(cfg=None):
     if cfg is None:
         cfg = load_config()
     lat, lng, _tz, _ville = _get_meteo_location(cfg)
+    cache_key = ("sun", _today_for_ephemeris(cfg).isoformat(), lat, lng, _tz)
+    cached = _ephemeris_cache_get(_EPHEMERIS_DATA_CACHE, cache_key)
+    if cached is not _EPHEMERIS_CACHE_MISS:
+        return cached
     try:
         r = requests.get(
             "https://api.sunrise-sunset.org/json",
@@ -586,10 +669,14 @@ def get_sun_times(cfg=None):
         tz      = _configured_zoneinfo(cfg) or timezone(timedelta(hours=get_utc_offset(cfg)))
         lever   = datetime.fromisoformat(data["sunrise"]).astimezone(tz).strftime("%H:%M")
         coucher = datetime.fromisoformat(data["sunset"]).astimezone(tz).strftime("%H:%M")
-        return lever, coucher
+        result = (lever, coucher)
+        _ephemeris_cache_set(_EPHEMERIS_DATA_CACHE, cache_key, result, _EPHEMERIS_DATA_CACHE_TTL_SECONDS)
+        return result
     except Exception as e:
         print("[SUN ERROR]", e)
-        return "--:--", "--:--"
+        result = ("--:--", "--:--")
+        _ephemeris_cache_set(_EPHEMERIS_DATA_CACHE, cache_key, result, _EPHEMERIS_DATA_CACHE_TTL_SECONDS)
+        return result
 
 
 def get_weather_palette(code):
@@ -622,6 +709,10 @@ def get_meteo(cfg=None):
         cfg = load_config()
     lat, lng, tz_name, _ville = _get_meteo_location(cfg)
     lang = get_language()
+    cache_key = ("weather", lat, lng, tz_name, lang)
+    cached = _ephemeris_cache_get(_EPHEMERIS_DATA_CACHE, cache_key)
+    if cached is not _EPHEMERIS_CACHE_MISS:
+        return cached
     wmo  = WMO_CODES_BY_LANG.get(lang, WMO_CODES_BY_LANG['fr'])
     try:
         r = requests.get(
@@ -641,7 +732,7 @@ def get_meteo(cfg=None):
         vent      = current.get("wind_speed_10m", current.get("windspeed_10m", "--"))
         precip    = current.get("precipitation", 0)
         condition = wmo.get(code, _t('ephemeris_weather_unknown', lang))
-        return {
+        result = {
             "temp":      f"{temp:.0f}°C",
             "ressenti":  f"{temp_res:.0f}°C",
             "condition": condition.upper(),
@@ -649,11 +740,15 @@ def get_meteo(cfg=None):
             "precip":    f"{precip:.1f} mm",
             "code":      code,
         }
+        _ephemeris_cache_set(_EPHEMERIS_DATA_CACHE, cache_key, result, _EPHEMERIS_DATA_CACHE_TTL_SECONDS)
+        return result
     except Exception as e:
         print("[METEO ERROR]", e)
-        return {"temp": "--°C", "ressenti": "--°C",
-                "condition": _t('ephemeris_weather_unknown', lang).upper(),
-                "vent": "-- km/h", "precip": "-- mm", "code": -1}
+        result = {"temp": "--°C", "ressenti": "--°C",
+                  "condition": _t('ephemeris_weather_unknown', lang).upper(),
+                  "vent": "-- km/h", "precip": "-- mm", "code": -1}
+        _ephemeris_cache_set(_EPHEMERIS_DATA_CACHE, cache_key, result, _EPHEMERIS_DATA_CACHE_TTL_SECONDS)
+        return result
 
 
 def draw_weather_icon(draw, cx, cy, code, size=150):
@@ -758,11 +853,11 @@ def generate_ephemeride_image(force=False):
 
     filename, path, today = _ephemeride_target(cfg)
 
-    if not force and _ephemeride_file_is_current(path, today, lang):
+    if not force and _ephemeride_file_is_current_cached(path, today, lang):
         return
 
     with _EPHEMERIS_LOCK:
-        if not force and _ephemeride_file_is_current(path, today, lang):
+        if not force and _ephemeride_file_is_current_cached(path, today, lang):
             return
 
         cfg_changed = _replace_ephemeride_references(cfg, filename)

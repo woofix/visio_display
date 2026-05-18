@@ -7,6 +7,7 @@ from db import AppConfig, db
 
 DEFAULT_HALO_COLOR = "#8a2be2"
 DEFAULT_SCREEN_KEY = ""
+CONFIG_REVISION_KEY = "_config_revision"
 
 
 def normalize_default_screen_name(value):
@@ -147,6 +148,7 @@ def _default_backup_retention():
 
 def _default_config():
     return {
+        CONFIG_REVISION_KEY: 0,
         "order": [],
         "durations": {},
         "disabled": [],
@@ -179,6 +181,10 @@ def normalize_config(cfg):
         cfg = {}
     merged = _default_config()
     merged.update(cfg)
+    try:
+        merged[CONFIG_REVISION_KEY] = max(0, int(cfg.get(CONFIG_REVISION_KEY, 0) or 0))
+    except (TypeError, ValueError):
+        merged[CONFIG_REVISION_KEY] = 0
     merged["groups"] = cfg.get("groups", {}) if isinstance(cfg.get("groups"), dict) else {}
     merged["group_pools"] = cfg.get("group_pools", {}) if isinstance(cfg.get("group_pools"), dict) else {}
     merged["group_screens"] = cfg.get("group_screens", {}) if isinstance(cfg.get("group_screens"), dict) else {}
@@ -308,6 +314,14 @@ def get_screen_halo_color(screen_name="", cfg=None):
 def save_config(cfg):
     normalized = normalize_config(cfg)
     row = db.session.get(AppConfig, 1)
+    current_revision = 0
+    if row is not None:
+        try:
+            current_data = json.loads(row.data)
+            current_revision = int(current_data.get(CONFIG_REVISION_KEY, 0) or 0)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            current_revision = 0
+    normalized[CONFIG_REVISION_KEY] = current_revision + 1
     if row is None:
         db.session.add(AppConfig(id=1, data=json.dumps(normalized)))
     else:

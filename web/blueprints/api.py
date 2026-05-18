@@ -20,6 +20,12 @@ from services.media_svc import (
     is_media_disabled, get_media_groups, is_group_active_on_screen,
     get_media_url, get_original_media_url,
 )
+from services.playlist_cache_svc import (
+    get_cached_playlist,
+    make_config_revision,
+    make_media_revision,
+    make_playlist_revision,
+)
 from services.campaign_svc import resolve_campaign_override
 from services.ephemeris_svc import ensure_ephemeride_image_async
 from constants import UPLOAD_FOLDER
@@ -71,6 +77,61 @@ def _heartbeat_token_is_valid(data):
     return bool(provided) and secrets.compare_digest(provided, expected)
 
 
+def _media_rev(filename):
+    path = os.path.join(UPLOAD_FOLDER, filename)
+    return int(os.path.getmtime(path)) if os.path.exists(path) else 0
+
+
+def _playlist_item(filename, cfg, screen, bounds):
+    media_type = get_media_type(filename)
+    return {
+        "path": _media_path(filename, media_type, bounds),
+        "type": media_type,
+        "name": filename,
+        "rev": _media_rev(filename),
+        "groups": [
+            group for group in get_media_groups(filename, cfg)
+            if is_group_active_on_screen(group, cfg, screen)
+        ],
+    }
+
+
+def _revision_token(revision):
+    return "|".join(str(revision.get(key, "")) for key in ("config", "media", "time"))
+
+
+def _build_images_playlist(cfg, screen, bounds, campaign_override):
+    if screen and screen in cfg.get('screens', {}):
+        scfg = cfg['screens'][screen]
+        effective_cfg = dict(scfg)
+        effective_cfg['groups'] = cfg.get('groups', {})
+        effective_cfg['group_screens'] = cfg.get('group_screens', {})
+        if campaign_override:
+            files = campaign_override.get('files', [])
+        else:
+            all_files = get_all_media(cfg)
+            all_files_set = set(all_files)
+            screen_order = scfg.get('order', [])
+            if screen_order:
+                assigned = [f for f in screen_order if f in all_files_set]
+                ephemeride_extras = [f for f in all_files if f.startswith('ephemeride_') and f not in screen_order]
+                files = assigned + ephemeride_extras
+            else:
+                files = all_files
+        return [
+            _playlist_item(f, effective_cfg, screen, bounds)
+            for f in files
+            if not is_media_disabled(f, effective_cfg) and is_media_scheduled(f, scfg)
+        ]
+
+    files = campaign_override.get('files', []) if campaign_override else get_all_media(cfg)
+    return [
+        _playlist_item(f, cfg, '', bounds)
+        for f in files
+        if not is_media_disabled(f, cfg) and is_media_scheduled(f, cfg)
+    ]
+
+
 @bp.route('/api/config')
 def api_config():
     if not is_admin():
@@ -104,6 +165,19 @@ def api_client_policy():
     })
 
 
+@bp.route('/api/display-revision')
+def api_display_revision():
+    guard = _screen_api_guard()
+    if guard:
+        return guard
+    cfg = load_config()
+    revision = make_playlist_revision(cfg)
+    return jsonify({
+        **revision,
+        "playlist": _revision_token(revision),
+    })
+
+
 @bp.route('/api/images')
 def get_images():
     guard = _screen_api_guard()
@@ -118,43 +192,16 @@ def get_images():
     cfg    = load_config()
     screen = normalize_screen_key(request.args.get('screen', ''), cfg)
     campaign_override = resolve_campaign_override(cfg, screen=screen)
-
-    if screen and screen in cfg.get('screens', {}):
-        scfg      = cfg['screens'][screen]
-        effective_cfg = dict(scfg)
-        effective_cfg['groups'] = cfg.get('groups', {})
-        effective_cfg['group_screens'] = cfg.get('group_screens', {})
-        if campaign_override:
-            files = campaign_override.get('files', [])
-        else:
-            all_files = get_all_media(cfg)
-            all_files_set = set(all_files)
-            screen_order = scfg.get('order', [])
-            if screen_order:
-                assigned = [f for f in screen_order if f in all_files_set]
-                ephemeride_extras = [f for f in all_files if f.startswith('ephemeride_') and f not in screen_order]
-                files = assigned + ephemeride_extras
-            else:
-                files = all_files
-        return jsonify([
-            {"path": _media_path(f, get_media_type(f), bounds), "type": get_media_type(f),
-             "name": f,
-             "rev": int(os.path.getmtime(os.path.join(UPLOAD_FOLDER, f))) if os.path.exists(os.path.join(UPLOAD_FOLDER, f)) else 0,
-             "groups": [g for g in get_media_groups(f, effective_cfg)
-                        if is_group_active_on_screen(g, cfg, screen)]}
-            for f in files
-            if not is_media_disabled(f, effective_cfg) and is_media_scheduled(f, scfg)
-        ])
-
-    files = campaign_override.get('files', []) if campaign_override else get_all_media(cfg)
-    return jsonify([
-        {"path": _media_path(f, get_media_type(f), bounds), "type": get_media_type(f),
-         "name": f,
-         "rev": int(os.path.getmtime(os.path.join(UPLOAD_FOLDER, f))) if os.path.exists(os.path.join(UPLOAD_FOLDER, f)) else 0,
-         "groups": [g for g in get_media_groups(f, cfg) if is_group_active_on_screen(g, cfg, '')]}
-        for f in files
-        if not is_media_disabled(f, cfg) and is_media_scheduled(f, cfg)
-    ])
+    revision = make_playlist_revision(cfg)
+    playlist = get_cached_playlist(
+        ('api-images', screen, bounds),
+        (make_config_revision(cfg), revision["time"]),
+        make_media_revision(),
+        lambda: _build_images_playlist(cfg, screen, bounds, campaign_override),
+    )
+    response = jsonify(playlist)
+    response.headers["X-Visio-Playlist-Revision"] = _revision_token(revision)
+    return response
 
 
 @bp.route('/api/durations')

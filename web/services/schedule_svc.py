@@ -74,6 +74,8 @@ def build_schedule_entries(cfg, media_infos, allowed_screens, default_screen_nam
                 "filename": filename,
                 "groups": get_media_groups(filename, cfg),
                 "type": media_infos.get(filename, {}).get("type", "unknown"),
+                "size": media_infos.get(filename, {}).get("size", "--"),
+                "dims": media_infos.get(filename, {}).get("dims", "--"),
                 "date_start": date_start,
                 "date_end": date_end,
                 "time_start": time_start,

@@ -5,6 +5,8 @@ import json
 import os
 import re
 import subprocess
+import threading
+import time
 from datetime import date, datetime, time as dtime
 
 from PIL import Image, ImageOps
@@ -16,6 +18,7 @@ from constants import (
     IMAGE_EXTS, VIDEO_EXTS, MEDIA_EXTS, ORIGINAL_MEDIA_URL,
 )
 from services.config_svc import load_config
+from services.playlist_cache_svc import make_media_revision
 
 THUMB_SIZE = (480, 270)
 MAX_VARIANT_WIDTH = 3840
@@ -45,6 +48,16 @@ DEFAULT_CONTEXTS = {
     'preview': {'image_profile': 'medium', 'video_poster_profile': 'medium', 'video_profile': 'v1080'},
     'display': {'image_profile': 'large', 'video_poster_profile': 'large', 'video_profile': 'v1080'},
 }
+_ALL_MEDIA_CACHE = {}
+_ALL_MEDIA_CACHE_MAX_ENTRIES = 32
+_ALL_MEDIA_CACHE_LOCK = threading.Lock()
+_MEDIA_METADATA_CACHE = {}
+_MEDIA_METADATA_CACHE_MAX_ENTRIES = 512
+_MEDIA_METADATA_CACHE_LOCK = threading.Lock()
+_DISK_USAGE_CACHE = None
+_DISK_USAGE_CACHE_EXPIRES_AT = 0.0
+_DISK_USAGE_CACHE_TTL_SECONDS = 10
+_DISK_USAGE_CACHE_LOCK = threading.Lock()
 
 
 def strip_html(text):
@@ -679,15 +692,15 @@ def get_media_url(filename, *, context='admin', bounds=None, allow_original=Fals
 
 
 def build_media_preview_map(files, context='admin', *, generate_missing=False):
-    previews = {}
-    for filename in files:
-        previews[filename] = get_media_url(
-            filename,
-            context=context,
-            allow_original=False,
-            generate_missing=generate_missing,
-        ) or '/static/images/logo.svg'
-    return previews
+    metadata = build_media_metadata_map(
+        files,
+        preview_contexts=(context,),
+        generate_missing=generate_missing,
+    )
+    return {
+        filename: metadata.get(filename, {}).get('preview_urls', {}).get(context) or '/static/images/logo.svg'
+        for filename in files
+    }
 
 
 def is_safe_svg_file(path):
@@ -713,16 +726,40 @@ def is_media_allowed_by_features(filename, cfg=None):
     return True
 
 
-def get_all_media(cfg=None):
-    cfg   = cfg or load_config()
+def _all_media_config_signature(cfg):
+    return (
+        tuple(str(filename) for filename in cfg.get("order", []) if isinstance(filename, str)),
+        bool(cfg.get("features", {}).get("videos", True)),
+    )
+
+
+def _scan_all_media(cfg):
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-    files = [f for f in os.listdir(UPLOAD_FOLDER)
-             if f.lower().endswith(MEDIA_EXTS)]
+    files = [
+        f for f in os.listdir(UPLOAD_FOLDER)
+        if f.lower().endswith(MEDIA_EXTS)
+    ]
     files = [f for f in files if is_media_allowed_by_features(f, cfg)]
-    order     = cfg.get("order", [])
-    ordered   = [f for f in order if f in files]
+    order = cfg.get("order", [])
+    ordered = [f for f in order if f in files]
     unordered = [f for f in files if f not in ordered]
     return ordered + unordered
+
+
+def get_all_media(cfg=None):
+    cfg = cfg or load_config()
+    cache_key = (_all_media_config_signature(cfg), make_media_revision())
+    with _ALL_MEDIA_CACHE_LOCK:
+        cached = _ALL_MEDIA_CACHE.get(cache_key)
+        if cached is not None:
+            return list(cached)
+
+    files = _scan_all_media(cfg)
+    with _ALL_MEDIA_CACHE_LOCK:
+        _ALL_MEDIA_CACHE[cache_key] = tuple(files)
+        while len(_ALL_MEDIA_CACHE) > _ALL_MEDIA_CACHE_MAX_ENTRIES:
+            _ALL_MEDIA_CACHE.pop(next(iter(_ALL_MEDIA_CACHE)))
+    return list(files)
 
 
 def normalize_group_name(name):
@@ -879,6 +916,12 @@ def get_logo_path():
 
 def get_disk_usage():
     import shutil
+    global _DISK_USAGE_CACHE, _DISK_USAGE_CACHE_EXPIRES_AT
+
+    now = time.monotonic()
+    with _DISK_USAGE_CACHE_LOCK:
+        if _DISK_USAGE_CACHE is not None and now < _DISK_USAGE_CACHE_EXPIRES_AT:
+            return dict(_DISK_USAGE_CACHE)
 
     media_bytes = 0
     for folder in (UPLOAD_FOLDER, VIDEO_THUMB_FOLDER, IMAGE_VARIANT_FOLDER,
@@ -893,32 +936,139 @@ def get_disk_usage():
                     pass
 
     stat = shutil.disk_usage(UPLOAD_FOLDER)
-    return {
+    usage = {
         "total": round(stat.total / (1024**3), 1),
         "used":  round(media_bytes / (1024**3), 1),
         "free":  round(stat.free  / (1024**3), 1),
     }
+    with _DISK_USAGE_CACHE_LOCK:
+        _DISK_USAGE_CACHE = dict(usage)
+        _DISK_USAGE_CACHE_EXPIRES_AT = time.monotonic() + _DISK_USAGE_CACHE_TTL_SECONDS
+    return usage
+
+
+def _size_label(size_bytes, media_type='unknown'):
+    if media_type == 'video':
+        return f"{round(size_bytes / 1024 / 1024, 1)} Mo"
+    return f"{round(size_bytes / 1024)} Ko"
+
+
+def _metadata_cache_key(filename, stat_result, preview_contexts, generate_missing):
+    return (
+        filename,
+        stat_result.st_size,
+        stat_result.st_mtime_ns,
+        tuple(preview_contexts),
+        bool(generate_missing),
+        make_media_revision(),
+    )
+
+
+def _metadata_snapshot(metadata):
+    snapshot = dict(metadata)
+    snapshot['dimensions'] = dict(metadata.get('dimensions') or {})
+    snapshot['preview_urls'] = dict(metadata.get('preview_urls') or {})
+    return snapshot
+
+
+def _build_media_metadata(filename, stat_result, preview_contexts, generate_missing):
+    media_type = get_media_type(filename)
+    width = 0
+    height = 0
+    if media_type == 'image':
+        width, height = get_image_dimensions(filename)
+    elif media_type == 'video':
+        width, height = get_video_dimensions(filename)
+
+    dims_label = f'{width}x{height}' if width and height else media_type if media_type != 'unknown' else '--'
+    preview_urls = {}
+    for context in preview_contexts:
+        preview_urls[context] = get_media_url(
+            filename,
+            context=context,
+            allow_original=context in ('preview', 'display'),
+            generate_missing=generate_missing,
+        ) or '/static/images/logo.svg'
+    original_url = get_original_media_url(filename)
+    if original_url:
+        preview_urls['original'] = original_url
+
+    return {
+        'filename': filename,
+        'type': media_type,
+        'size_bytes': stat_result.st_size,
+        'size': _size_label(stat_result.st_size, media_type),
+        'mtime': stat_result.st_mtime,
+        'mtime_ns': stat_result.st_mtime_ns,
+        'modified_at': datetime.fromtimestamp(stat_result.st_mtime).isoformat(timespec='minutes'),
+        'dimensions': {'width': width, 'height': height},
+        'width': width,
+        'height': height,
+        'dims': dims_label,
+        'preview_urls': preview_urls,
+    }
+
+
+def get_media_metadata(filename, *, preview_contexts=('admin',), generate_missing=False):
+    path = os.path.join(UPLOAD_FOLDER, filename)
+    try:
+        stat_result = os.stat(path)
+    except OSError:
+        return {
+            'filename': filename,
+            'type': 'unknown',
+            'size_bytes': 0,
+            'size': '--',
+            'mtime': 0,
+            'mtime_ns': 0,
+            'modified_at': '',
+            'dimensions': {'width': 0, 'height': 0},
+            'width': 0,
+            'height': 0,
+            'dims': '--',
+            'preview_urls': {},
+        }
+
+    preview_contexts = tuple(dict.fromkeys(str(context) for context in preview_contexts if context))
+    cache_key = _metadata_cache_key(filename, stat_result, preview_contexts, generate_missing)
+    with _MEDIA_METADATA_CACHE_LOCK:
+        cached = _MEDIA_METADATA_CACHE.get(cache_key)
+        if cached is not None:
+            return _metadata_snapshot(cached)
+
+    metadata = _build_media_metadata(filename, stat_result, preview_contexts, generate_missing)
+    with _MEDIA_METADATA_CACHE_LOCK:
+        _MEDIA_METADATA_CACHE[cache_key] = _metadata_snapshot(metadata)
+        while len(_MEDIA_METADATA_CACHE) > _MEDIA_METADATA_CACHE_MAX_ENTRIES:
+            _MEDIA_METADATA_CACHE.pop(next(iter(_MEDIA_METADATA_CACHE)))
+    return _metadata_snapshot(metadata)
+
+
+def build_media_metadata_map(files, *, preview_contexts=('admin',), generate_missing=False):
+    return {
+        filename: get_media_metadata(
+            filename,
+            preview_contexts=preview_contexts,
+            generate_missing=generate_missing,
+        )
+        for filename in files
+    }
+
+
+def clear_media_metadata_cache():
+    with _MEDIA_METADATA_CACHE_LOCK:
+        _MEDIA_METADATA_CACHE.clear()
 
 
 def get_file_info(filename, *, include_dimensions=True):
     path = os.path.join(UPLOAD_FOLDER, filename)
     if not os.path.exists(path):
         return {"size": "--", "dims": "--", "type": "unknown"}
-    size = os.path.getsize(path)
-    ext  = os.path.splitext(filename)[1].lower()
-    if ext in IMAGE_EXTS:
-        if not include_dimensions:
-            return {"size": f"{round(size/1024)} Ko", "dims": "image", "type": "image"}
-        try:
-            with Image.open(path) as img:
-                img = ImageOps.exif_transpose(img)
-                w, h = img.size
-        except Exception:
-            w, h = 0, 0
-        return {"size": f"{round(size/1024)} Ko", "dims": f"{w}x{h}", "type": "image"}
-    elif ext in VIDEO_EXTS:
-        return {"size": f"{round(size/1024/1024, 1)} Mo", "dims": "video", "type": "video"}
-    return {"size": f"{round(size/1024)} Ko", "dims": "--", "type": "unknown"}
+    metadata = get_media_metadata(filename, preview_contexts=())
+    if not include_dimensions:
+        dims = metadata['type'] if metadata['type'] != 'unknown' else '--'
+        return {"size": metadata["size"], "dims": dims, "type": metadata["type"]}
+    return {"size": metadata["size"], "dims": metadata["dims"], "type": metadata["type"]}
 
 
 def is_h264_mp4(path):

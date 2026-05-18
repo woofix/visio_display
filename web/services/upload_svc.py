@@ -19,6 +19,7 @@ from services.media_svc import (
     generate_standard_renditions,
     is_valid_uploaded_image,
 )
+from services.playlist_cache_svc import bump_media_revision
 from services.queue_svc import enqueue_compress_job
 
 MAX_FILE_UPLOAD_SIZE = getattr(C, "MAX_FILE_UPLOAD_SIZE", 150 * 1024 * 1024)
@@ -266,4 +267,5 @@ def handle_media_upload(files, form_data, username):
     redirect_url = "/admin/media"
     if queued_video_files:
         redirect_url = "/admin/queue"
+    bump_media_revision()
     return jsonify({"ok": True, "queued_files": queued_video_files, "redirect": redirect_url})

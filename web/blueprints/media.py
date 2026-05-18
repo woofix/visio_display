@@ -16,15 +16,16 @@ from services.config_svc import (
 )
 from services.users_svc import load_users, has_permission, has_screen_access, is_superadmin
 from services.media_svc import (
-    get_all_media, get_file_info, get_logo_path,
+    get_all_media, get_logo_path,
     clean_filename, get_media_groups,
     collect_group_states, is_media_disabled, normalize_group_name,
     cleanup_orphan_group_metadata,
     delete_image_variants, delete_media_thumbnail, delete_video_variants,
-    get_media_url, get_original_media_url,
+    build_media_metadata_map,
     build_media_preview_map,
 )
 from services.media_cleanup_svc import analyze_media_cleanup
+from services.playlist_cache_svc import bump_media_revision
 from services.queue_svc import load_queue, save_queue
 from services.upload_svc import handle_media_upload
 from services.i18n import _flash, _t
@@ -115,7 +116,8 @@ def admin_media():
     cfg       = load_config()
     screen    = normalize_screen_key(request.args.get('screen', ''), cfg)
     all_media = get_all_media()
-    infos     = {f: get_file_info(f, include_dimensions=False) for f in all_media}
+    media_metadata = build_media_metadata_map(all_media, preview_contexts=('admin', 'preview'))
+    infos     = media_metadata
     q         = load_queue()
     queued    = {j['filename'] for j in q if j['status'] in ('pending', 'processing')}
     users     = load_users()
@@ -142,21 +144,17 @@ def admin_media():
         schedules  = cfg.get('schedules', {})
 
     media_groups = {f: get_media_groups(f, cfg) for f in all_media}
-    preview_urls = {}
-    preview_media_urls = {}
-    for filename in all_media:
-        preview_urls[filename] = get_media_url(
-            filename,
-            context='admin',
-            allow_original=False,
-            generate_missing=False,
-        ) or '/static/images/logo.svg'
-        preview_media_urls[filename] = get_media_url(
-            filename,
-            context='preview',
-            allow_original=True,
-            generate_missing=False,
-        ) or get_original_media_url(filename)
+    preview_urls = {
+        filename: media_metadata[filename].get('preview_urls', {}).get('admin') or '/static/images/logo.svg'
+        for filename in all_media
+    }
+    preview_media_urls = {
+        filename: (
+            media_metadata[filename].get('preview_urls', {}).get('preview')
+            or media_metadata[filename].get('preview_urls', {}).get('original')
+        )
+        for filename in all_media
+    }
     effective_cfg = dict(view_cfg)
     effective_cfg['groups'] = cfg.get('groups', {})
     effective_cfg['group_pools'] = cfg.get('group_pools', {})
@@ -233,7 +231,7 @@ def admin_programming_page():
     cfg = load_config()
     users = load_users()
     files = get_all_media()
-    media_infos = {filename: get_file_info(filename, include_dimensions=False) for filename in files}
+    media_infos = build_media_metadata_map(files, preview_contexts=('campaign',))
     allowed_screens = [screen for screen in cfg.get('screens', {}) if has_screen_access(screen)]
     default_screen_name = get_default_screen_name(cfg) or _t('media_screen_default')
 
@@ -267,8 +265,6 @@ def admin_programming_page():
     filter_screen_choices = ([('__global__', default_screen_name)] if has_screen_access('') else []) + [(screen, screen) for screen in allowed_screens]
     group_choices = sorted({group for entry in entries for group in entry.get('groups', [])}, key=str.casefold)
 
-    media_preview_map = build_media_preview_map(files, context='campaign')
-
     return render_template(
         'admin_programming.html',
         entries=entries,
@@ -288,7 +284,7 @@ def admin_programming_page():
                 'type': media_infos[f].get('type', 'unknown'),
                 'size': media_infos[f].get('size', '--'),
                 'dims': media_infos[f].get('dims', '--'),
-                'preview_url': media_preview_map.get(f),
+                'preview_url': media_infos[f].get('preview_urls', {}).get('campaign'),
             }
             for f in files
         ],
@@ -347,6 +343,7 @@ def delete_file(filename):
             scfg.get('durations', {}).pop(filename, None)
             scfg.get('schedules', {}).pop(filename, None)
         save_config(cfg)
+        bump_media_revision()
         q = load_queue()
         q = [j for j in q if not (j['filename'] == filename and j['status'] == 'pending')]
         save_queue(q)

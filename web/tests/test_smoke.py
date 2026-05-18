@@ -621,6 +621,45 @@ class AppSmokeTests(unittest.TestCase):
             save_config({"features": {"videos": False, "ephemeris": False}, "order": ["clip.mp4", "poster.jpg"]})
             self.assertEqual(get_all_media(), ["poster.jpg"])
 
+    def test_get_all_media_uses_cache_and_keeps_config_order(self):
+        with self.app.app_context():
+            from constants import UPLOAD_FOLDER
+            from services.config_svc import save_config
+            from services import media_svc
+
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            for filename in ("a.jpg", "b.jpg", "c.jpg"):
+                with open(os.path.join(UPLOAD_FOLDER, filename), "wb") as handle:
+                    handle.write(filename.encode("utf-8"))
+            save_config({"features": {"ephemeris": False}, "order": ["c.jpg", "a.jpg"]})
+
+            with patch.object(media_svc.os, "listdir", wraps=media_svc.os.listdir) as listdir:
+                first = media_svc.get_all_media()
+                second = media_svc.get_all_media()
+
+            self.assertEqual(first, ["c.jpg", "a.jpg", "b.jpg"])
+            self.assertEqual(second, first)
+            self.assertEqual(listdir.call_count, 1)
+
+    def test_get_all_media_cache_invalidates_after_config_or_media_change(self):
+        with self.app.app_context():
+            from constants import UPLOAD_FOLDER
+            from services.config_svc import save_config
+            from services.media_svc import get_all_media
+
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            with open(os.path.join(UPLOAD_FOLDER, "a.jpg"), "wb") as handle:
+                handle.write(b"a")
+            save_config({"features": {"ephemeris": False}, "order": ["a.jpg"]})
+
+            self.assertEqual(get_all_media(), ["a.jpg"])
+
+            with open(os.path.join(UPLOAD_FOLDER, "b.jpg"), "wb") as handle:
+                handle.write(b"b")
+            save_config({"features": {"ephemeris": False}, "order": ["b.jpg", "a.jpg"]})
+
+            self.assertEqual(get_all_media(), ["b.jpg", "a.jpg"])
+
     def test_upload_rejects_video_when_video_feature_disabled(self):
         with self.app.app_context():
             from services.config_svc import save_config
@@ -1916,6 +1955,30 @@ class AppSmokeTests(unittest.TestCase):
         self.assertTrue(previews["clip.mp4"].startswith("/static/data/video_posters/clip__mp4__thumb.jpg?v="))
         self.assertTrue(previews["poster.jpg"].startswith("/static/data/variants/poster__jpg__thumb.jpg?v="))
 
+    def test_media_metadata_cache_includes_dimensions_and_preview_urls(self):
+        with self.app.app_context():
+            from PIL import Image
+            from constants import UPLOAD_FOLDER
+            from services import media_svc
+
+            filename = "metadata.jpg"
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            Image.new("RGB", (640, 360), "#336699").save(os.path.join(UPLOAD_FOLDER, filename), "JPEG")
+            media_svc.generate_standard_renditions(filename)
+            media_svc.clear_media_metadata_cache()
+
+            with patch.object(media_svc, "get_image_dimensions", wraps=media_svc.get_image_dimensions) as dimensions:
+                first = media_svc.get_media_metadata(filename, preview_contexts=("admin", "preview"))
+                second = media_svc.get_media_metadata(filename, preview_contexts=("admin", "preview"))
+
+        self.assertEqual(first["type"], "image")
+        self.assertEqual(first["dimensions"], {"width": 640, "height": 360})
+        self.assertEqual(first["dims"], "640x360")
+        self.assertTrue(first["preview_urls"]["admin"].startswith("/static/data/variants/metadata__jpg__thumb.jpg?v="))
+        self.assertTrue(first["preview_urls"]["preview"].startswith("/static/data/original/metadata.jpg?v="))
+        self.assertEqual(second["dimensions"], first["dimensions"])
+        self.assertEqual(dimensions.call_count, 1)
+
     def test_delete_media_thumbnail_removes_cached_poster(self):
         media_dir = os.path.join(self.temp_dir.name, "media")
         thumb_dir = os.path.join(media_dir, "thumbnails")
@@ -1948,6 +2011,130 @@ class AppSmokeTests(unittest.TestCase):
         payload = response.get_json()
         target = next(item for item in payload if item["name"] == filename)
         self.assertIn("/static/data/variants/screen__jpg__medium.jpg", target["path"])
+
+    def test_api_images_caches_playlist_per_screen_and_resolution(self):
+        with self.app.app_context():
+            from constants import UPLOAD_FOLDER
+            from services.config_svc import save_config
+
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            with open(os.path.join(UPLOAD_FOLDER, "hall.jpg"), "wb") as handle:
+                handle.write(b"jpg")
+            save_config({
+                "features": {"ephemeris": False},
+                "screens": {"hall": {"order": ["hall.jpg"]}},
+            })
+
+        api_module = import_module("blueprints.api")
+        with patch.object(api_module, "get_all_media", wraps=api_module.get_all_media) as get_all_media:
+            first = self.client.get(
+                "/api/images?screen=hall&w=1280&h=720",
+                headers={"X-Screen-Token": "screen-secret"},
+            )
+            second = self.client.get(
+                "/api/images?screen=hall&w=1280&h=720",
+                headers={"X-Screen-Token": "screen-secret"},
+            )
+            third = self.client.get(
+                "/api/images?screen=hall&w=1920&h=1080",
+                headers={"X-Screen-Token": "screen-secret"},
+            )
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(third.status_code, 200)
+        self.assertEqual(first.get_json(), second.get_json())
+        self.assertEqual(get_all_media.call_count, 2)
+
+    def test_api_images_cache_invalidates_when_config_changes(self):
+        with self.app.app_context():
+            from constants import UPLOAD_FOLDER
+            from services.config_svc import save_config
+
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            for filename in ("a.jpg", "b.jpg"):
+                with open(os.path.join(UPLOAD_FOLDER, filename), "wb") as handle:
+                    handle.write(filename.encode("utf-8"))
+            save_config({"features": {"ephemeris": False}, "order": ["a.jpg", "b.jpg"]})
+
+        first = self.client.get("/api/images?w=1280&h=720", headers={"X-Screen-Token": "screen-secret"})
+        self.assertEqual([item["name"] for item in first.get_json()], ["a.jpg", "b.jpg"])
+
+        with self.app.app_context():
+            from services.config_svc import save_config
+
+            save_config({"features": {"ephemeris": False}, "order": ["a.jpg", "b.jpg"], "disabled": ["a.jpg"]})
+
+        second = self.client.get("/api/images?w=1280&h=720", headers={"X-Screen-Token": "screen-secret"})
+        self.assertEqual([item["name"] for item in second.get_json()], ["b.jpg"])
+
+    def test_api_images_cache_invalidates_when_media_changes(self):
+        with self.app.app_context():
+            from constants import UPLOAD_FOLDER
+            from services.config_svc import save_config
+
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            with open(os.path.join(UPLOAD_FOLDER, "a.jpg"), "wb") as handle:
+                handle.write(b"a")
+            save_config({"features": {"ephemeris": False}, "order": ["a.jpg"]})
+
+        first = self.client.get("/api/images?w=1280&h=720", headers={"X-Screen-Token": "screen-secret"})
+        self.assertEqual([item["name"] for item in first.get_json()], ["a.jpg"])
+
+        with self.app.app_context():
+            from constants import UPLOAD_FOLDER
+
+            with open(os.path.join(UPLOAD_FOLDER, "b.jpg"), "wb") as handle:
+                handle.write(b"b")
+
+        second = self.client.get("/api/images?w=1280&h=720", headers={"X-Screen-Token": "screen-secret"})
+        self.assertEqual([item["name"] for item in second.get_json()], ["a.jpg", "b.jpg"])
+
+    def test_display_revision_changes_when_config_or_media_changes(self):
+        with self.app.app_context():
+            from constants import UPLOAD_FOLDER
+            from services.config_svc import save_config
+
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            with open(os.path.join(UPLOAD_FOLDER, "a.jpg"), "wb") as handle:
+                handle.write(b"a")
+            save_config({"features": {"ephemeris": False}, "order": ["a.jpg"]})
+
+        first = self.client.get("/api/display-revision", headers={"X-Screen-Token": "screen-secret"})
+        self.assertEqual(first.status_code, 200)
+        first_payload = first.get_json()
+
+        with self.app.app_context():
+            from services.config_svc import save_config
+
+            save_config({"features": {"ephemeris": False}, "order": ["a.jpg"], "disabled": ["a.jpg"]})
+
+        after_config = self.client.get("/api/display-revision", headers={"X-Screen-Token": "screen-secret"})
+        self.assertNotEqual(first_payload["playlist"], after_config.get_json()["playlist"])
+
+        with self.app.app_context():
+            from constants import UPLOAD_FOLDER
+
+            with open(os.path.join(UPLOAD_FOLDER, "b.jpg"), "wb") as handle:
+                handle.write(b"b")
+
+        after_media = self.client.get("/api/display-revision", headers={"X-Screen-Token": "screen-secret"})
+        self.assertNotEqual(after_config.get_json()["playlist"], after_media.get_json()["playlist"])
+
+    def test_api_images_returns_playlist_revision_header(self):
+        with self.app.app_context():
+            from constants import UPLOAD_FOLDER
+            from services.config_svc import save_config
+
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            with open(os.path.join(UPLOAD_FOLDER, "a.jpg"), "wb") as handle:
+                handle.write(b"a")
+            save_config({"features": {"ephemeris": False}, "order": ["a.jpg"]})
+
+        response = self.client.get("/api/images?w=1280&h=720", headers={"X-Screen-Token": "screen-secret"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.headers.get("X-Visio-Playlist-Revision"))
 
     def test_group_metadata_is_removed_when_last_media_leaves_group(self):
         with self.app.app_context():

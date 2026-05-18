@@ -1,8 +1,12 @@
 # Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
+import json
+import threading
+import time
 from datetime import date, datetime
 from uuid import uuid4
 
+from services.playlist_cache_svc import make_media_revision
 from services.media_svc import (
     get_all_media,
     get_media_groups,
@@ -10,6 +14,13 @@ from services.media_svc import (
     normalize_group_name,
 )
 from services.config_svc import get_screen_keys, normalize_screen_key
+
+_CAMPAIGN_TARGET_CACHE = {}
+_CAMPAIGN_OVERRIDE_CACHE = {}
+_CAMPAIGN_CACHE_MAX_ENTRIES = 256
+_CAMPAIGN_CACHE_TTL_SECONDS = 5
+_CAMPAIGN_CACHE_LOCK = threading.Lock()
+_CAMPAIGN_CACHE_MISS = object()
 
 
 def normalize_campaign_name(value):
@@ -152,14 +163,86 @@ def campaign_is_active(campaign, now=None):
     return True
 
 
+def _compact_json(value):
+    try:
+        return json.dumps(value, sort_keys=True, separators=(",", ":"), default=str)
+    except (TypeError, ValueError):
+        return repr(value)
+
+
+def _campaign_signature(campaign):
+    return (
+        campaign.get("id", ""),
+        bool(campaign.get("enabled")),
+        bool(campaign.get("archived")),
+        campaign.get("priority", 0),
+        campaign.get("start_date", ""),
+        campaign.get("end_date", ""),
+        tuple(campaign.get("screens", [])),
+        tuple(campaign.get("groups", [])),
+        tuple(campaign.get("media", [])),
+    )
+
+
+def _campaign_cfg_signature(cfg):
+    cfg = cfg or {}
+    return (
+        str(cfg.get("_config_revision", 0) or 0),
+        _compact_json(cfg.get("campaigns", [])),
+        _compact_json(cfg.get("groups", {})),
+        _compact_json(cfg.get("group_screens", {})),
+        tuple(sorted((cfg.get("screens", {}) or {}).keys())),
+        _compact_json(cfg.get("order", [])),
+        bool(cfg.get("features", {}).get("videos", True)),
+    )
+
+
+def _cache_get(cache, key, copier):
+    now = time.monotonic()
+    with _CAMPAIGN_CACHE_LOCK:
+        entry = cache.get(key)
+        if entry and now < entry[0]:
+            return copier(entry[1])
+    return _CAMPAIGN_CACHE_MISS
+
+
+def _cache_set(cache, key, value):
+    with _CAMPAIGN_CACHE_LOCK:
+        cache[key] = (time.monotonic() + _CAMPAIGN_CACHE_TTL_SECONDS, value)
+        while len(cache) > _CAMPAIGN_CACHE_MAX_ENTRIES:
+            cache.pop(next(iter(cache)))
+
+
+def _copy_campaign_override(value):
+    if value is None:
+        return None
+    return {
+        "priority": value["priority"],
+        "campaigns": [dict(campaign) for campaign in value["campaigns"]],
+        "files": list(value["files"]),
+    }
+
+
 def campaign_target_media(campaign, cfg, *, screen="", available_files=None):
     if screen and not campaign_matches_screen(campaign, screen):
         return set()
+
+    available_marker = tuple(available_files) if available_files is not None else make_media_revision()
+    cache_key = (
+        _campaign_cfg_signature(cfg),
+        _campaign_signature(campaign),
+        screen,
+        available_marker,
+    )
+    cached = _cache_get(_CAMPAIGN_TARGET_CACHE, cache_key, set)
+    if cached is not _CAMPAIGN_CACHE_MISS:
+        return cached
 
     available = set(available_files or get_all_media())
     selected = {filename for filename in campaign.get("media", []) if filename in available}
     group_targets = set(campaign.get("groups", []))
     if not group_targets:
+        _cache_set(_CAMPAIGN_TARGET_CACHE, cache_key, set(selected))
         return selected
 
     for filename in available:
@@ -171,6 +254,7 @@ def campaign_target_media(campaign, cfg, *, screen="", available_files=None):
                 continue
             selected.add(filename)
             break
+    _cache_set(_CAMPAIGN_TARGET_CACHE, cache_key, set(selected))
     return selected
 
 
@@ -182,11 +266,22 @@ def order_campaign_media(filenames, ordered_files):
 
 
 def resolve_campaign_override(cfg, screen=""):
+    cache_key = (
+        _campaign_cfg_signature(cfg),
+        screen,
+        datetime.now().date().isoformat(),
+        make_media_revision(),
+    )
+    cached = _cache_get(_CAMPAIGN_OVERRIDE_CACHE, cache_key, _copy_campaign_override)
+    if cached is not _CAMPAIGN_CACHE_MISS:
+        return cached
+
     campaigns = [
         campaign for campaign in get_campaigns(cfg)
         if campaign_is_active(campaign) and campaign_matches_screen(campaign, screen)
     ]
     if not campaigns:
+        _cache_set(_CAMPAIGN_OVERRIDE_CACHE, cache_key, None)
         return None
 
     top_priority = max(campaign.get("priority", 0) for campaign in campaigns)
@@ -197,13 +292,16 @@ def resolve_campaign_override(cfg, screen=""):
         targeted.update(campaign_target_media(campaign, cfg, screen=screen, available_files=ordered_media))
 
     if not targeted:
+        _cache_set(_CAMPAIGN_OVERRIDE_CACHE, cache_key, None)
         return None
 
-    return {
+    override = {
         "priority": top_priority,
         "campaigns": selected_campaigns,
         "files": order_campaign_media(targeted, ordered_media),
     }
+    _cache_set(_CAMPAIGN_OVERRIDE_CACHE, cache_key, _copy_campaign_override(override))
+    return override
 
 
 def campaign_target_counts(campaign, cfg):

@@ -24,6 +24,7 @@ from services.media_svc import (
     delete_video_variants,
     generate_standard_renditions,
 )
+from services.playlist_cache_svc import bump_media_revision
 
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379')
 
@@ -277,6 +278,7 @@ def _rq_upload_encode(job_id, src_tmp, dest, final_name):
     with _get_worker_app().app_context():
         if ok:
             generate_standard_renditions(final_name)
+            bump_media_revision()
             cfg = load_config()
             if final_name not in cfg.get('disabled', []):
                 cfg.setdefault('disabled', []).append(final_name)
@@ -297,6 +299,7 @@ def _rq_upload_encode(job_id, src_tmp, dest, final_name):
                 os.remove(dest)
             except Exception:
                 pass
+            bump_media_revision()
 
 
 def _rq_compress_job(encode_job_id):
@@ -354,6 +357,7 @@ def _rq_compress_job(encode_job_id):
                 delete_media_thumbnail(job['filename'])
                 delete_video_variants(job['filename'])
             generate_standard_renditions(os.path.basename(out), force=True)
+            bump_media_revision()
             size_after = os.path.getsize(out)
             new_name   = os.path.basename(out)
             job['status']   = 'done'

@@ -98,6 +98,7 @@
 .media-vignette-badge { position:absolute; top:4px; left:4px; border-radius:999px; padding:2px 5px; background:rgba(0,0,0,.55); color:#fff; font-size:.52rem; font-weight:700; letter-spacing:.04em; backdrop-filter:blur(4px); }
 .media-vignette-label { padding:5px 6px; }
 .media-vignette-name { font-size:.67rem; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; }
+.media-vignette-meta { margin-top:2px; font-size:.6rem; color:var(--text-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .media-vignette-empty { font-size:.78rem; color:var(--text-3); text-align:center; padding:20px; }
 .media-vignette-count { font-size:.72rem; color:var(--text-3); }
 .media-vignette-error { font-size:.75rem; color:var(--red); font-weight:600; display:none; margin-top:2px; }
@@ -268,7 +269,7 @@
                         data-date-end="{{ entry.date_end }}">
                         <td>
                             <div class="media-chip">{{ entry.filename }}</div>
-                            <div class="muted" style="margin-top:6px">{{ entry.type|upper }}</div>
+                            <div class="muted" style="margin-top:6px">{{ entry.type|upper }} · {{ entry.dims }} · {{ entry.size }}</div>
                         </td>
                         <td>
                             <span class="status-chip {% if entry.screen %}scope-screen{% else %}scope-global{% endif %}">
@@ -444,6 +445,7 @@
                             </div>
                             <div class="media-vignette-label">
                                 <span class="media-vignette-name" title="{{ media.filename }}">{{ media.filename }}</span>
+                                <div class="media-vignette-meta">{{ media.dims }} · {{ media.size }}</div>
                             </div>
                         </div>
                         {% endfor %}

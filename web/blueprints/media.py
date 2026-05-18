@@ -373,6 +373,8 @@ def toggle_file(filename):
     data     = request.get_json(silent=True) or {}
     cfg = load_config()
     screen   = normalize_screen_key(data.get('screen', ''), cfg)
+    if filename not in set(get_all_media()):
+        return jsonify({"error": "media not found"}), 404
     if screen and not has_screen_access(screen):
         return jsonify({"error": "screen access denied"}), 403
 
@@ -392,7 +394,16 @@ def toggle_file(filename):
     save_config(cfg)
     details = state + (' → ' + screen if screen else '')
     log_activity(session.get('user'), 'toggle', filename=filename, details=details)
-    return jsonify({"state": state})
+    effective_cfg = dict(screen_cfg)
+    effective_cfg['groups'] = cfg.get('groups', {})
+    effective_disabled = is_media_disabled(filename, effective_cfg)
+    return jsonify({
+        "file": filename,
+        "state": state,
+        "manual_disabled": filename in disabled,
+        "group_disabled": effective_disabled and filename not in disabled,
+        "disabled": effective_disabled,
+    })
 
 
 @bp.route('/set_groups/<filename>', methods=['POST'])

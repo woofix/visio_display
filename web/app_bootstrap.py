@@ -560,16 +560,20 @@ def register_template_context(app):
                     commit = result.stdout.strip()
             except Exception:
                 commit = ""
-        static_js_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "js", "admin-settings.js")
+        static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+        static_stamp = 0
         try:
-            static_stamp = str(int(os.path.getmtime(static_js_path)))
+            for root, _dirs, files in os.walk(static_dir):
+                for filename in files:
+                    if filename.endswith((".css", ".js")):
+                        static_stamp = max(static_stamp, int(os.path.getmtime(os.path.join(root, filename))))
         except OSError:
-            static_stamp = ""
+            static_stamp = 0
         parts = [version]
         if commit:
             parts.append(commit)
         if static_stamp:
-            parts.append(static_stamp)
+            parts.append(str(static_stamp))
         return "-".join(parts)
 
     @app.context_processor

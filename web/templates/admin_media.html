@@ -592,8 +592,14 @@
                             {% if (can_toggle and file not in queued) or can_schedule or file in queued %}
                             <div class="dropdown-label">{{ t('dropdown_label_manage') }}</div>
                             {% if can_toggle and file not in queued %}
-                            <button class="dropdown-item btn-toggle" data-file="{{ file }}">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                            <button class="dropdown-item {% if file in cfg.disabled %}success-item{% else %}warning-item{% endif %} btn-toggle"
+                                    data-file="{{ file }}"
+                                    data-state="{% if file in cfg.disabled %}disabled{% else %}enabled{% endif %}">
+                                {% if file in cfg.disabled %}
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                                {% else %}
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                                {% endif %}
                                 {% if file in cfg.disabled %}{{ t('action_enable') }}{% else %}{{ t('action_disable') }}{% endif %}
                             </button>
                             {% endif %}
@@ -754,6 +760,8 @@
     'scheduleSaved': t('js_schedule_saved'),
     'scheduleCleared': t('js_schedule_cleared'),
     'saveError': t('js_save_error'),
+    'toggleEnabled': t('js_media_toggle_enabled'),
+    'toggleDisabled': t('js_media_toggle_disabled'),
     'disabledLabel': t('js_media_disabled_label'),
     'activeSchedule': t('modal_active_schedule'),
     'actionEnable': t('action_enable'),

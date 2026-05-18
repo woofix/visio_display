@@ -11,6 +11,8 @@ const JS_FLASH_ADDED_QUEUE    = adminMediaConfig.flashAddedQueue || '';
 const JS_SCHEDULE_SAVED       = adminMediaConfig.scheduleSaved || '';
 const JS_SCHEDULE_CLEARED     = adminMediaConfig.scheduleCleared || '';
 const JS_SAVE_ERROR           = adminMediaConfig.saveError || '';
+const JS_TOGGLE_ENABLED       = adminMediaConfig.toggleEnabled || '';
+const JS_TOGGLE_DISABLED      = adminMediaConfig.toggleDisabled || '';
 const JS_DISABLED_LABEL       = adminMediaConfig.disabledLabel || '';
 const JS_ACTIVE_SCHEDULE      = adminMediaConfig.activeSchedule || '';
 const JS_ACTION_ENABLE        = adminMediaConfig.actionEnable || '';
@@ -39,6 +41,58 @@ const DISPLAY_API_TOKEN       = adminMediaConfig.displayApiToken || '';
 const JS_DELETE_TITLE         = adminMediaConfig.deleteTitle || 'Delete media';
 const JS_DELETE_LABEL         = adminMediaConfig.deleteLabel || 'Delete';
 const JS_REMOVE_SCREEN_TITLE  = adminMediaConfig.removeFromScreenTitle || 'Remove from screen';
+
+function csrfHeaders(extra = {}) {
+    const headers = { ...extra };
+    if (window.CSRF_TOKEN) headers['X-CSRF-Token'] = window.CSRF_TOKEN;
+    return headers;
+}
+
+function csrfPayload(payload = {}) {
+    return window.CSRF_TOKEN ? { ...payload, _csrf_token: window.CSRF_TOKEN } : payload;
+}
+
+async function readJsonResponse(res) {
+    const text = await res.text();
+    if (!text) return {};
+    try {
+        return JSON.parse(text);
+    } catch {
+        return { error: res.ok ? JS_SAVE_ERROR : JS_SAVE_ERROR };
+    }
+}
+
+function logMediaError(kind, details) {
+    console.error(`[Visio media] ${kind}`, details);
+}
+
+function restoreFloatingMenu(menu) {
+    if (!menu) return;
+    const card = menu.__dropdownCard || menu.closest('.file-card');
+    menu.classList.remove('open', 'drop-down', 'is-floating');
+    menu.style.top = '';
+    menu.style.left = '';
+    menu.style.right = '';
+    menu.style.bottom = '';
+    menu.style.visibility = '';
+    if (menu.__dropdownParent && menu.parentNode !== menu.__dropdownParent) {
+        menu.__dropdownParent.insertBefore(menu, menu.__dropdownNext || null);
+    }
+    if (card) card.classList.remove('has-dropdown-open');
+}
+
+function getActionMenu(btn) {
+    return btn?.closest('.dropdown-menu') || null;
+}
+
+function getMediaCardFromAction(btn) {
+    const menu = getActionMenu(btn);
+    return btn?.closest('.file-card') || menu?.__dropdownCard || null;
+}
+
+function closeActionMenu(btn) {
+    restoreFloatingMenu(getActionMenu(btn));
+}
 
 /* ── Screen preview modal ── */
 (function() {
@@ -70,18 +124,17 @@ const JS_REMOVE_SCREEN_TITLE  = adminMediaConfig.removeFromScreenTitle || 'Remov
 /* ── Sort active on top, disabled at bottom ── */
 function sortMediaCards() {
     const grid = document.getElementById('file-grid');
-    const cards = [...grid.querySelectorAll('.file-card')];
+    const cards = [...grid.children].filter(el => el.classList.contains('file-card'));
     const active   = cards.filter(c => c.dataset.disabled === 'false');
     const disabled = cards.filter(c => c.dataset.disabled === 'true');
-    grid.querySelector('.disabled-sep')?.remove();
-    active.forEach(c => grid.appendChild(c));
+    const ordered = [...active];
     if (disabled.length) {
         const sep = document.createElement('div');
         sep.className = 'disabled-sep';
         sep.innerHTML = `<div class="disabled-sep-line"></div><span class="disabled-sep-label">${JS_DISABLED_LABEL.replace('{n}', disabled.length)}</span><div class="disabled-sep-line"></div>`;
-        grid.appendChild(sep);
-        disabled.forEach(c => grid.appendChild(c));
+        ordered.push(sep, ...disabled);
     }
+    grid.replaceChildren(...ordered);
 }
 sortMediaCards();
 
@@ -98,7 +151,8 @@ function applyFilter() {
     const q   = document.getElementById('media-search').value.toLowerCase().trim();
     const fil = document.getElementById('media-filter').value;
     let visible = 0;
-    document.querySelectorAll('.file-card').forEach(card => {
+    let visibleDisabled = 0;
+    document.querySelectorAll('#file-grid .file-card').forEach(card => {
         const name     = card.dataset.file.toLowerCase();
         const type     = card.dataset.type;
         const disabled = card.dataset.disabled === 'true';
@@ -109,11 +163,30 @@ function applyFilter() {
         if (show && fil === 'video')    show = type === 'video';
         card.style.display = show ? '' : 'none';
         if (show) visible++;
+        if (show && disabled) visibleDisabled++;
     });
+    document.getElementById('unassigned-grid')?.querySelectorAll('.file-card').forEach(card => {
+        const name = card.dataset.file.toLowerCase();
+        const type = card.dataset.type;
+        let show = name.includes(q);
+        if (show && fil === 'active')   show = false;
+        if (show && fil === 'disabled') show = false;
+        if (show && fil === 'image')    show = type === 'image';
+        if (show && fil === 'video')    show = type === 'video';
+        card.style.display = show ? '' : 'none';
+        if (show) visible++;
+    });
+    const separator = document.querySelector('#file-grid .disabled-sep');
+    if (separator) separator.style.display = visibleDisabled > 0 ? '' : 'none';
     document.getElementById('media-empty').style.display = visible === 0 ? 'block' : 'none';
 }
 document.getElementById('media-search').addEventListener('input', applyFilter);
 document.getElementById('media-filter').addEventListener('change', applyFilter);
+
+function refreshMediaGrid() {
+    sortMediaCards();
+    applyFilter();
+}
 
 function refreshCardDisabledState(card) {
     const isDisabled = card.dataset.manuallyDisabled === 'true' || card.dataset.groupDisabled === 'true';
@@ -125,6 +198,44 @@ function refreshCardDisabledState(card) {
         preview.dataset.previewDisabled = isDisabled ? 'true' : 'false';
         preview.style.pointerEvents = isDisabled ? 'none' : '';
     }
+}
+
+function setToggleButtonState(btn, state) {
+    const isDisabled = state === 'disabled';
+    btn.classList.toggle('warning-item', isDisabled);
+    btn.classList.toggle('success-item', !isDisabled);
+    btn.dataset.state = state;
+    btn.innerHTML = isDisabled
+        ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> ${JS_ACTION_ENABLE}`
+        : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg> ${JS_ACTION_DISABLE}`;
+}
+
+function applyToggleResponse(file, data, sourceButton) {
+    if (!data || !['enabled', 'disabled'].includes(data.state)) {
+        logMediaError('unexpected toggle response', { file, data });
+        showFlash(data?.error || JS_SAVE_ERROR, 'error');
+        return false;
+    }
+
+    const card = sourceButton?.closest('.file-card')
+        || document.querySelector(`#file-grid .file-card[data-file="${CSS.escape(file)}"]`);
+    if (!card) {
+        logMediaError('media card not found in DOM after toggle', { file, data });
+        showFlash(JS_SAVE_ERROR, 'error');
+        return false;
+    }
+
+    card.dataset.manuallyDisabled = data.manual_disabled ? 'true' : 'false';
+    card.dataset.groupDisabled = data.group_disabled ? 'true' : 'false';
+    refreshCardDisabledState(card);
+
+    const btn = sourceButton || card.querySelector('.btn-toggle');
+    if (btn) setToggleButtonState(btn, data.state);
+    else logMediaError('toggle button not found in DOM after toggle', { file, data });
+
+    refreshMediaGrid();
+    showFlash((data.state === 'disabled' ? JS_TOGGLE_DISABLED : JS_TOGGLE_ENABLED).replace('{file}', file), 'success');
+    return true;
 }
 
 /* ── Grid / list view toggle ── */
@@ -148,26 +259,35 @@ function refreshCardDisabledState(card) {
 document.querySelectorAll('.btn-toggle').forEach(btn => {
     btn.addEventListener('click', async e => {
         e.stopPropagation();
-        btn.closest('.dropdown-menu')?.classList.remove('open');
         const file = btn.dataset.file;
-        const res  = await fetch(`/toggle/${encodeURIComponent(file)}`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ screen: CURRENT_SCREEN })
-        });
-        const data = await res.json();
-        const card = btn.closest('.file-card');
-        if (data.state === 'disabled') {
-            card.dataset.manuallyDisabled = 'true';
-            btn.classList.replace('success-item', 'warning-item');
-            btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> ${JS_ACTION_ENABLE}`;
-        } else {
-            card.dataset.manuallyDisabled = 'false';
-            btn.classList.replace('warning-item', 'success-item');
-            btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg> ${JS_ACTION_DISABLE}`;
+        closeActionMenu(btn);
+        const card = btn.closest('.file-card')
+            || document.querySelector(`#file-grid .file-card[data-file="${CSS.escape(file)}"]`);
+        if (!card) {
+            logMediaError('media card not found before toggle', { file });
+            showFlash(JS_SAVE_ERROR, 'error');
+            return;
         }
-        refreshCardDisabledState(card);
-        sortMediaCards();
+        btn.disabled = true;
+        try {
+            const res  = await fetch(`/toggle/${encodeURIComponent(file)}`, {
+                method: 'POST',
+                headers: csrfHeaders({'Content-Type': 'application/json'}),
+                body: JSON.stringify(csrfPayload({ screen: CURRENT_SCREEN }))
+            });
+            const data = await readJsonResponse(res);
+            if (!res.ok) {
+                logMediaError('toggle API error', { file, status: res.status, response: data });
+                showFlash(data.error || JS_SAVE_ERROR, 'error');
+                return;
+            }
+            applyToggleResponse(file, data, btn);
+        } catch (err) {
+            logMediaError('toggle network error', { file, error: err });
+            showFlash(JS_COMPRESS_ERR_NET, 'error');
+        } finally {
+            btn.disabled = false;
+        }
     });
 });
 
@@ -182,10 +302,10 @@ document.querySelectorAll('.btn-save-groups').forEach(btn => {
         try {
             const res = await fetch(`/set_groups/${encodeURIComponent(file)}`, {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ groups })
+                headers: csrfHeaders({'Content-Type': 'application/json'}),
+                body: JSON.stringify(csrfPayload({ groups }))
             });
-            const data = await res.json();
+            const data = await readJsonResponse(res);
             if (data.ok) {
                 window.appUI.showFlashAfterReload(JS_GROUPS_SAVED.replace('{file}', file), 'success');
                 window.location.reload();
@@ -216,10 +336,10 @@ document.querySelectorAll('.btn-toggle-group').forEach(btn => {
         try {
             const res = await fetch(`/toggle_group/${encodeURIComponent(group)}`, {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ screen: CURRENT_SCREEN })
+                headers: csrfHeaders({'Content-Type': 'application/json'}),
+                body: JSON.stringify(csrfPayload({ screen: CURRENT_SCREEN }))
             });
-            const data = await res.json();
+            const data = await readJsonResponse(res);
             if (data.state === 'disabled') {
                 window.appUI.showFlashAfterReload(JS_GROUP_DISABLED.replace('{group}', group), 'success');
             } else if (data.state === 'enabled') {
@@ -246,10 +366,10 @@ document.querySelectorAll('.group-pool-input').forEach(input => {
         try {
             const res = await fetch(`/set_group_pool/${encodeURIComponent(group)}`, {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ pool_size: poolSize })
+                headers: csrfHeaders({'Content-Type': 'application/json'}),
+                body: JSON.stringify(csrfPayload({ pool_size: poolSize }))
             });
-            const data = await res.json();
+            const data = await readJsonResponse(res);
             if (data.ok) {
                 if (poolSize > 0) {
                     showFlash(JS_GROUP_POOL_SAVED.replace('{group}', group).replace('{size}', poolSize), 'success');
@@ -290,10 +410,10 @@ document.querySelectorAll('.btn-group-screen-link').forEach(btn => {
         btn.disabled = true;
         try {
             const res  = await fetch(`/set_group_screens/${encodeURIComponent(group)}`, {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ screens: next })
+                method: 'POST', headers: csrfHeaders({'Content-Type': 'application/json'}),
+                body: JSON.stringify(csrfPayload({ screens: next }))
             });
-            const data = await res.json();
+            const data = await readJsonResponse(res);
             if (data.ok) {
                 chip.dataset.screens = JSON.stringify(data.screens);
                 btn.classList.toggle('linked', data.screens.includes(screen));
@@ -330,8 +450,8 @@ document.querySelectorAll('.duration-input').forEach(input => {
     input.addEventListener('input', () => {
         clearTimeout(timer);
         timer = setTimeout(() => fetch(`/set_duration/${encodeURIComponent(input.dataset.file)}`, {
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ duration: parseInt(input.value), screen: CURRENT_SCREEN })
+            method:'POST', headers: csrfHeaders({'Content-Type':'application/json'}),
+            body: JSON.stringify(csrfPayload({ duration: parseInt(input.value), screen: CURRENT_SCREEN }))
         }), 600);
     });
 });
@@ -340,7 +460,7 @@ document.querySelectorAll('.duration-input').forEach(input => {
 document.querySelectorAll('.btn-compress').forEach(btn => {
     btn.addEventListener('click', async e => {
         e.stopPropagation();
-        btn.closest('.dropdown-menu')?.classList.remove('open');
+        closeActionMenu(btn);
         const file = btn.dataset.file;
         if (!await window.appUI.confirm({
             titleText: JS_ACTION_COMPRESS,
@@ -350,8 +470,8 @@ document.querySelectorAll('.btn-compress').forEach(btn => {
         })) return;
         btn.disabled = true; btn.textContent = JS_COMPRESS_ADDING;
         try {
-            const res  = await fetch(`/compress/${encodeURIComponent(file)}`, { method:'POST' });
-            const data = await res.json();
+            const res  = await fetch(`/compress/${encodeURIComponent(file)}`, { method:'POST', headers: csrfHeaders() });
+            const data = await readJsonResponse(res);
             if (data.ok) { btn.textContent = JS_COMPRESS_WAITING; showFlash(JS_FLASH_ADDED_QUEUE.replace('{file}', file), 'success'); }
             else { showFlash(JS_COMPRESS_ERR_PREFIX + data.error, 'error'); btn.disabled = false; btn.textContent = '🗜 ' + JS_ACTION_COMPRESS; }
         } catch { showFlash(JS_COMPRESS_ERR_NET, 'error'); btn.disabled = false; btn.textContent = '🗜 ' + JS_ACTION_COMPRESS; }
@@ -362,7 +482,7 @@ document.querySelectorAll('.btn-compress').forEach(btn => {
 document.querySelectorAll('.btn-force-encode').forEach(btn => {
     btn.addEventListener('click', async e => {
         e.stopPropagation();
-        btn.closest('.dropdown-menu')?.classList.remove('open');
+        closeActionMenu(btn);
         const file = btn.dataset.file;
         if (!await window.appUI.confirm({
             titleText: JS_ACTION_FORCE,
@@ -373,8 +493,8 @@ document.querySelectorAll('.btn-force-encode').forEach(btn => {
         btn.disabled = true;
         btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ${JS_FORCE_LAUNCHING}`;
         try {
-            const res  = await fetch(`/admin/compress/${encodeURIComponent(file)}/force`, { method: 'POST' });
-            const data = await res.json();
+            const res  = await fetch(`/admin/compress/${encodeURIComponent(file)}/force`, { method: 'POST', headers: csrfHeaders() });
+            const data = await readJsonResponse(res);
             if (data.ok) {
                 btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ${JS_FORCE_RUNNING}`;
                 showFlash(JS_FLASH_ADDED_QUEUE.replace('{file}', file), 'success');
@@ -469,13 +589,11 @@ document.getElementById('chk-date').addEventListener('change', e => {
 
 async function saveSchedule(payload) {
     const res  = await fetch(`/schedule/${encodeURIComponent(_scheduleFile)}`, {
-        method: 'POST', headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': window.CSRF_TOKEN,
-        },
-        body: JSON.stringify({ ...payload, screen: CURRENT_SCREEN })
+        method: 'POST',
+        headers: csrfHeaders({'Content-Type': 'application/json'}),
+        body: JSON.stringify(csrfPayload({ ...payload, screen: CURRENT_SCREEN }))
     });
-    const data = await res.json();
+    const data = await readJsonResponse(res);
     if (data.ok) {
         const card = document.querySelector(`.file-card[data-file="${CSS.escape(_scheduleFile)}"]`);
         const isEmpty = !payload.time_start && !payload.time_end && !payload.date_start && !payload.date_end;
@@ -519,9 +637,19 @@ document.getElementById('schedule-modal').addEventListener('click', e => {
 document.querySelectorAll('.btn-schedule').forEach(btn => {
     btn.addEventListener('click', e => {
         e.stopPropagation();
-        btn.closest('.dropdown-menu')?.classList.remove('open');
-        const card  = btn.closest('.file-card');
-        const sched = JSON.parse(card.dataset.schedule || '{}');
+        const card = getMediaCardFromAction(btn);
+        closeActionMenu(btn);
+        if (!card) {
+            logMediaError('media card not found before opening schedule modal', { file: btn.dataset.file });
+            showFlash(JS_SAVE_ERROR, 'error');
+            return;
+        }
+        let sched = {};
+        try {
+            sched = JSON.parse(card.dataset.schedule || '{}');
+        } catch (err) {
+            logMediaError('invalid schedule data on media card', { file: btn.dataset.file, error: err });
+        }
         openScheduleModal(btn.dataset.file, sched);
     });
 });
@@ -529,10 +657,10 @@ document.querySelectorAll('.btn-schedule').forEach(btn => {
 /* ── Screen assign / remove ── */
 async function screenAssign(file, action) {
     const res  = await fetch(`/screen_assign/${encodeURIComponent(file)}`, {
-        method: 'POST', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ screen: CURRENT_SCREEN, action })
+        method: 'POST', headers: csrfHeaders({'Content-Type': 'application/json'}),
+        body: JSON.stringify(csrfPayload({ screen: CURRENT_SCREEN, action }))
     });
-    return await res.json();
+    return await readJsonResponse(res);
 }
 
 document.querySelectorAll('.btn-add-to-screen').forEach(btn => {
@@ -552,7 +680,7 @@ document.querySelectorAll('.btn-add-to-screen').forEach(btn => {
 document.querySelectorAll('.btn-remove-from-screen').forEach(btn => {
     btn.addEventListener('click', async e => {
         e.stopPropagation();
-        btn.closest('.dropdown-menu')?.classList.remove('open');
+        closeActionMenu(btn);
         const file = btn.dataset.file;
         if (!await window.appUI.confirm({
             titleText: JS_REMOVE_SCREEN_TITLE,
@@ -643,8 +771,8 @@ document.querySelectorAll('.btn-remove-from-screen').forEach(btn => {
         const order = [...grid.querySelectorAll('.file-card[data-file]')].map(c => c.dataset.file);
         await fetch('/reorder', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ order, screen: CURRENT_SCREEN })
+            headers: csrfHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify(csrfPayload({ order, screen: CURRENT_SCREEN }))
         });
     }
 

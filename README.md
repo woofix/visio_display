@@ -225,7 +225,7 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 | `VISIO_UPDATE_REMOTE` | Remote Git utilisée par la page de mise à jour serveur (défaut : `origin`) |
 | `CLIENT_HEARTBEAT_TOKEN` | Jeton partagé exigé par `/api/client-heartbeat` |
 | `DISPLAY_API_TOKEN` | Jeton écran obligatoire exigé par `/` et les endpoints publics d'affichage |
-| `PEXELS_API_KEY` | Clé API optionnelle pour activer la recherche d'images Pexels dans les annonces et les menus. L'installateur l'enregistre en clair dans `.env`. |
+| `PEXELS_API_KEY` | Clé API optionnelle requise pour utiliser la recherche d'images Pexels dans les annonces et les menus. Créez-la depuis https://www.pexels.com/api/. L'installateur l'enregistre en clair dans `.env`. |
 | `UPDATER_API_TOKEN` | Jeton interne obligatoire entre `app` et le service Docker privilégié `updater` |
 | `SESSION_COOKIE_SECURE` | Force le cookie de session en mode `Secure` (recommandé derrière HTTPS) |
 | `SESSION_COOKIE_NAME` | Nom du cookie de session Flask (défaut : `visio_session`) |
@@ -1074,6 +1074,7 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 | `VISIO_UPDATE_REMOTE` | Git remote used by the server update page (default: `origin`) |
 | `CLIENT_HEARTBEAT_TOKEN` | Shared token required by `/api/client-heartbeat` |
 | `DISPLAY_API_TOKEN` | Required screen token for `/` and public display endpoints |
+| `PEXELS_API_KEY` | Optional API key required to use Pexels image search in announcements and menus. Create it from https://www.pexels.com/api/. The installer stores it in plain text in `.env`. |
 | `UPDATER_API_TOKEN` | Required internal token between `app` and the Docker-privileged `updater` service |
 | `SESSION_COOKIE_SECURE` | Forces the session cookie to use `Secure` (recommended behind HTTPS) |
 | `SESSION_COOKIE_NAME` | Flask session cookie name (default: `visio_session`) |

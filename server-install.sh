@@ -216,9 +216,14 @@ looks_like_visio_install() {
 
 can_update_visio_install() {
     local dir="$1"
-    [ -w "$dir" ] &&
-    [ -w "$dir/.git" ] &&
-    [ -w "$dir/.git/FETCH_HEAD" -o ! -e "$dir/.git/FETCH_HEAD" ]
+    local probe_file="$dir/.git/.visio-write-test-$$"
+    [ -w "$dir" ] || return 1
+    [ -w "$dir/.git" ] || return 1
+    touch "$probe_file" 2>/dev/null || return 1
+    rm -f "$probe_file" 2>/dev/null || return 1
+    if [ -e "$dir/.git/FETCH_HEAD" ]; then
+        : >> "$dir/.git/FETCH_HEAD" 2>/dev/null || return 1
+    fi
 }
 
 run_security_bootstrap() {

@@ -30,6 +30,7 @@ from services.schedule_svc import parse_iso_date, parse_time_to_minutes
 
 
 MENU_SIZE = (1920, 1080)
+MENU_VIDEO_DURATION_SECONDS = 15
 MENU_SECTIONS = (
     ("starter", "Entrée"),
     ("main", "Plat"),
@@ -601,6 +602,7 @@ def _render_menu_canvas(
     visible_section_count=None,
     section_reveal_progress=1.0,
     active_pulse=0.0,
+    active_item_index=0,
     animation_phase=0,
     date_label=None,
 ):
@@ -619,7 +621,8 @@ def _render_menu_canvas(
     active_idx = max(0, min(section_count - 1, active_idx))
     active_section = sections[active_idx]
     active_items = active_section.get("items", [])[:4]
-    hero_item = active_items[0] if active_items else None
+    item_idx = max(0, min(len(active_items) - 1, int(active_item_index or 0))) if active_items else 0
+    hero_item = active_items[item_idx] if active_items else None
     accent = SECTION_ACCENTS[active_idx % len(SECTION_ACCENTS)]
     reveal = max(0.0, min(1.0, float(section_reveal_progress)))
     panel_shift = int((1.0 - reveal) * 80)
@@ -668,11 +671,25 @@ def render_menu_image(title, text=None, *, sections=None, image_choices=None, da
 
 
 def _animation_duration_seconds(duration):
-    try:
-        seconds = int(duration)
-    except (TypeError, ValueError):
-        seconds = 15
-    return max(6, min(15, seconds))
+    return MENU_VIDEO_DURATION_SECONDS
+
+
+def _active_animation_section_index(step, total_frames, section_count):
+    section_count = max(1, int(section_count or 1))
+    total_frames = max(1, int(total_frames or 1))
+    frames_per_section = max(1, math.ceil(total_frames / section_count))
+    return min(section_count - 1, max(0, int(step or 0) // frames_per_section))
+
+
+def _active_animation_item_index(step, total_frames, section_count, item_count):
+    item_count = max(1, int(item_count or 1))
+    section_count = max(1, int(section_count or 1))
+    total_frames = max(1, int(total_frames or 1))
+    frames_per_section = max(1, math.ceil(total_frames / section_count))
+    section_start = _active_animation_section_index(step, total_frames, section_count) * frames_per_section
+    section_step = max(0, int(step or 0) - section_start)
+    frames_per_item = max(1, math.ceil(frames_per_section / item_count))
+    return min(item_count - 1, section_step // frames_per_item)
 
 
 def render_menu_animation(title, text=None, *, sections=None, image_choices=None, destination=None, duration=None, date_label=None):
@@ -690,13 +707,16 @@ def render_menu_animation(title, text=None, *, sections=None, image_choices=None
     with tempfile.TemporaryDirectory(prefix="visio-menu-animation-") as tmp_dir:
         frame_index = 0
         for step in range(total_frames):
-            active_index = (step // max(1, fps)) % section_count
+            active_index = _active_animation_section_index(step, total_frames, section_count)
+            active_items = grouped_sections[active_index].get("items", [])[:4]
+            active_item_index = _active_animation_item_index(step, total_frames, section_count, len(active_items))
             pulse = 0.45 + 0.35 * (1.0 + math.sin(step * 0.55)) / 2
             frame = _render_menu_canvas(
                 title,
                 grouped_sections,
                 image_choices,
                 active_section_index=active_index,
+                active_item_index=active_item_index,
                 active_pulse=pulse,
                 animation_phase=step,
                 date_label=date_label,
@@ -740,7 +760,9 @@ def create_menu_from_text(title, text=None, *, sections=None, duration=None, sch
     generate_standard_renditions(filename)
 
     cfg = load_config()
-    if duration:
+    if animated:
+        cfg.setdefault("durations", {})[filename] = MENU_VIDEO_DURATION_SECONDS
+    elif duration:
         try:
             cfg.setdefault("durations", {})[filename] = max(1, min(3600, int(duration)))
         except (TypeError, ValueError):
@@ -765,6 +787,8 @@ def create_menu_from_text(title, text=None, *, sections=None, duration=None, sch
                 cfg["screens"][screen].setdefault("schedules", {})[filename] = dict(schedule)
     cfg.setdefault("generated_menus", {})[filename] = {
         "created_at": datetime.now().isoformat(timespec="minutes"),
+        "duration_locked": bool(animated),
+        "duration": MENU_VIDEO_DURATION_SECONDS if animated else cfg.get("durations", {}).get(filename),
         "schedule": dict(schedule or {}),
         "screens": selected_screens,
     }

@@ -1156,12 +1156,14 @@
                         <div class="fname" title="{{ file }}">{{ file }}</div>
                         <div class="finfo">{{ info.dims }} &nbsp;·&nbsp; {{ info.size }}</div>
                         <div class="card-actions" style="justify-content:space-between">
+                            {% set menu_video_locked = info.type == 'video' and file in cfg.generated_menus %}
                             <div style="display:flex;align-items:center;gap:5px">
                                 <input type="number" class="duration-input"
                                        min="3" max="300"
-                                       value="{{ cfg.durations.get(file, 15) }}"
-                                       title="Durée d'affichage (secondes)"
-                                       data-file="{{ file }}">
+                                       value="{{ 15 if menu_video_locked else cfg.durations.get(file, 15) }}"
+                                       title="{{ 'Durée verrouillée à 15 s pour les vidéos Menus' if menu_video_locked else \"Durée d'affichage (secondes)\" }}"
+                                       data-file="{{ file }}"
+                                       {% if menu_video_locked %}disabled data-locked="menu-video"{% endif %}>
                                 <span class="duration-unit">s</span>
                             </div>
                             <div class="dropdown">
@@ -1614,6 +1616,7 @@ document.querySelectorAll('.btn-toggle').forEach(btn => {
 
 /* ─── Duration auto-save ─── */
 document.querySelectorAll('.duration-input').forEach(input => {
+    if (input.disabled) return;
     let timer;
     input.addEventListener('input', () => {
         clearTimeout(timer);

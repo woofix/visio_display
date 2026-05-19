@@ -1,5 +1,6 @@
 import io
 import os
+import sys
 import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -46,6 +47,20 @@ class KeywordRecognitionTests(unittest.TestCase):
 
 class ImageSuggestionServiceTests(unittest.TestCase):
     def setUp(self):
+        os.environ["MEDIA_DIR"] = os.path.dirname(UPLOAD_FOLDER)
+        os.environ["PRIVATE_DIR"] = PRIVATE_DATA_DIR
+        for module_name in (
+            "constants",
+            "services.announcement_svc",
+            "services.image_suggestions_svc",
+            "services.menu_svc",
+        ):
+            sys.modules.pop(module_name, None)
+        services_pkg = sys.modules.get("services")
+        if services_pkg is not None:
+            for attr in ("announcement_svc", "image_suggestions_svc", "menu_svc"):
+                if hasattr(services_pkg, attr):
+                    delattr(services_pkg, attr)
         os.makedirs(UPLOAD_FOLDER, exist_ok=True)
         for entry in os.listdir(UPLOAD_FOLDER):
             os.remove(os.path.join(UPLOAD_FOLDER, entry))
@@ -147,6 +162,8 @@ class ImageSuggestionServiceTests(unittest.TestCase):
         self.assertIn('name="main_text"', html)
         self.assertIn('name="dessert_text"', html)
         self.assertIn("menu-image-carousel", html)
+        self.assertIn("menu-image-choice-list", html)
+        self.assertIn("menu-image-choice", html)
         self.assertIn("menu-preview-zoom", html)
         self.assertIn("first.local_url || imageUrl || first.external_url", html)
         self.assertNotIn("loadSuggestions();", html)
@@ -228,7 +245,7 @@ class ImageSuggestionServiceTests(unittest.TestCase):
         self.assertIn("salad food", " ".join(pexels_queries))
         self.assertEqual(data["suggestions"][0]["source"], "pexels")
 
-    def test_external_suggestions_try_full_dish_before_keywords(self):
+    def test_external_suggestions_try_exact_dish_before_keywords(self):
         from services import image_suggestions_svc
 
         dish = {
@@ -243,7 +260,34 @@ class ImageSuggestionServiceTests(unittest.TestCase):
         ):
             data = image_suggestions_svc.suggest_images("steak frites", include_external=True)
 
-        self.assertIn("steak frite food dish", pexels_search.call_args_list[0].args[0])
+        self.assertEqual("steak frites", pexels_search.call_args_list[0].args[0])
+        self.assertEqual("", pexels_search.call_args_list[0].kwargs["orientation"])
+        self.assertEqual("", pexels_search.call_args_list[0].kwargs["size"])
+        self.assertEqual(data["suggestions"][0]["title"], "Steak and chips")
+
+    def test_external_suggestions_try_augmented_dish_when_exact_has_no_results(self):
+        from services import image_suggestions_svc
+
+        dish = {
+            "title": "Steak and chips",
+            "url": "https://images.pexels.com/photos/steak-chips.jpeg",
+            "thumb_url": "https://images.pexels.com/photos/steak-chips-small.jpeg",
+            "source": "pexels",
+        }
+
+        def fake_pexels(query, **_kwargs):
+            if query == "steak frites":
+                return []
+            return [dish]
+
+        with (
+            patch.object(image_suggestions_svc, "load_config", return_value=self.cfg),
+            patch.object(image_suggestions_svc, "pexels_search", side_effect=fake_pexels) as pexels_search,
+        ):
+            data = image_suggestions_svc.suggest_images("steak frites", include_external=True)
+
+        pexels_queries = [call.args[0] for call in pexels_search.call_args_list]
+        self.assertEqual(["steak frites", "steak frite food dish"], pexels_queries[:2])
         self.assertEqual(data["suggestions"][0]["title"], "Steak and chips")
 
     def test_pexels_is_skipped_without_api_key(self):
@@ -299,14 +343,34 @@ class ImageSuggestionServiceTests(unittest.TestCase):
 
         with (
             patch.object(announcement_svc, "pexels_api_key", return_value="api-key"),
-            patch.object(announcement_svc.requests, "get", return_value=response),
+            patch.object(announcement_svc.requests, "get", return_value=response) as requests_get,
             patch.object(announcement_svc, "fetch_thumbnail_bytes", side_effect=RuntimeError("thumbnail blocked")),
         ):
             results = announcement_svc.pexels_search("pizza", limit=1)
 
+        self.assertEqual(requests_get.call_args.kwargs["params"]["orientation"], "landscape")
+        self.assertEqual(requests_get.call_args.kwargs["params"]["size"], "large")
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]["thumb_url"], "https://images.pexels.com/photos/pizza-small.jpeg")
         self.assertNotIn("thumb_data", results[0])
+
+    def test_pexels_search_can_skip_visual_filters(self):
+        from services import announcement_svc
+
+        response = Mock()
+        response.json.return_value = {"photos": []}
+        response.raise_for_status.return_value = None
+
+        with (
+            patch.object(announcement_svc, "pexels_api_key", return_value="api-key"),
+            patch.object(announcement_svc.requests, "get", return_value=response) as requests_get,
+        ):
+            announcement_svc.pexels_search("tarte citron", limit=1, orientation="", size="")
+
+        params = requests_get.call_args.kwargs["params"]
+        self.assertEqual(params["query"], "tarte citron")
+        self.assertNotIn("orientation", params)
+        self.assertNotIn("size", params)
 
     def test_menu_image_choices_are_parsed_and_cached(self):
         from services import menu_svc
@@ -349,6 +413,60 @@ class ImageSuggestionServiceTests(unittest.TestCase):
         self.assertTrue(filename.endswith(".mp4"))
         self.assertTrue(os.path.exists(os.path.join(UPLOAD_FOLDER, filename)))
         renditions.assert_called_once_with(filename)
+
+    def test_quick_menu_video_duration_is_locked_to_15_seconds(self):
+        from services import menu_svc
+
+        saved_configs = []
+
+        def fake_ffmpeg(args, **_kwargs):
+            Path(args[-1]).write_bytes(b"mp4")
+            return Mock(returncode=0)
+
+        with (
+            patch.object(menu_svc, "suggest_images", return_value={"keywords": [], "suggestions": []}),
+            patch.object(menu_svc, "load_config", return_value={"order": []}),
+            patch.object(menu_svc, "save_config", side_effect=lambda cfg: saved_configs.append(cfg)),
+            patch.object(menu_svc, "generate_standard_renditions"),
+            patch.object(menu_svc, "log_activity"),
+            patch.object(menu_svc.subprocess, "run", side_effect=fake_ffmpeg),
+        ):
+            filename = menu_svc.create_menu_from_text(
+                "Menu verrouillé",
+                sections={"starter": "salade", "main": "poulet", "dessert": "tarte"},
+                duration=6,
+                screens=["__default__"],
+                username="admin",
+            )
+
+        cfg = saved_configs[-1]
+        self.assertEqual(cfg["durations"][filename], 15)
+        self.assertEqual(cfg["generated_menus"][filename]["duration"], 15)
+        self.assertTrue(cfg["generated_menus"][filename]["duration_locked"])
+
+    def test_menu_animation_spreads_three_sections_over_full_duration(self):
+        from services import menu_svc
+
+        total_frames = 15 * 8
+
+        self.assertEqual(menu_svc._active_animation_section_index(0, total_frames, 3), 0)
+        self.assertEqual(menu_svc._active_animation_section_index(39, total_frames, 3), 0)
+        self.assertEqual(menu_svc._active_animation_section_index(40, total_frames, 3), 1)
+        self.assertEqual(menu_svc._active_animation_section_index(79, total_frames, 3), 1)
+        self.assertEqual(menu_svc._active_animation_section_index(80, total_frames, 3), 2)
+        self.assertEqual(menu_svc._active_animation_section_index(119, total_frames, 3), 2)
+
+    def test_menu_animation_spreads_items_inside_active_section(self):
+        from services import menu_svc
+
+        total_frames = 15 * 8
+
+        self.assertEqual(menu_svc._active_animation_item_index(0, total_frames, 3, 3), 0)
+        self.assertEqual(menu_svc._active_animation_item_index(13, total_frames, 3, 3), 0)
+        self.assertEqual(menu_svc._active_animation_item_index(14, total_frames, 3, 3), 1)
+        self.assertEqual(menu_svc._active_animation_item_index(27, total_frames, 3, 3), 1)
+        self.assertEqual(menu_svc._active_animation_item_index(28, total_frames, 3, 3), 2)
+        self.assertEqual(menu_svc._active_animation_item_index(39, total_frames, 3, 3), 2)
 
     def test_quick_menu_falls_back_to_png_when_animation_fails(self):
         from services import menu_svc

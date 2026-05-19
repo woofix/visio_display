@@ -73,6 +73,15 @@ def _scope_details(screen):
     return f'screen:{screen}' if screen else 'global'
 
 
+def _is_generated_menu_video(cfg, filename):
+    generated = cfg.get("generated_menus", {})
+    return (
+        isinstance(generated, dict)
+        and filename in generated
+        and str(filename or "").lower().endswith(".mp4")
+    )
+
+
 def _schedule_details(sched):
     parts = []
     for key in ('time_start', 'time_end', 'date_start', 'date_end'):
@@ -539,6 +548,8 @@ def set_duration(filename):
     data     = request.json or {}
     cfg      = load_config()
     screen   = normalize_screen_key(data.get('screen', ''), cfg)
+    if _is_generated_menu_video(cfg, filename):
+        return jsonify({"error": "menu video duration is locked"}), 403
     if screen and not has_screen_access(screen):
         return jsonify({"error": "screen access denied"}), 403
     try:

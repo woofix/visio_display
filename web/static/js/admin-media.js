@@ -446,6 +446,7 @@ document.querySelectorAll('.btn-group-screen-link').forEach(btn => {
 
 /* ── Duration auto-save ── */
 document.querySelectorAll('.duration-input').forEach(input => {
+    if (input.disabled) return;
     let timer;
     input.addEventListener('input', () => {
         clearTimeout(timer);

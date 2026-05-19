@@ -136,6 +136,13 @@ class AppSmokeTests(unittest.TestCase):
             self.auth_module._login_attempts.clear()
         for name in ("redis", "rq", "rq.job", "rq.registry"):
             sys.modules.pop(name, None)
+        for module_name in list(sys.modules):
+            if (
+                module_name in {"app", "app_bootstrap", "constants", "db"}
+                or module_name.startswith("blueprints.")
+                or module_name.startswith("services.")
+            ):
+                sys.modules.pop(module_name, None)
         for key, value in self._env_backup.items():
             if value is None:
                 os.environ.pop(key, None)
@@ -887,6 +894,36 @@ class AppSmokeTests(unittest.TestCase):
                 build_menu_schedule({"date_start": "2026-05-18", "time_start": "11:00"}),
                 {"date_start": "2026-05-18", "time_start": "11:00", "time_end": "14:00"},
             )
+            self.assertEqual(
+                build_menu_schedule({"time_end": "14:00"}),
+                {"time_end": "14:00"},
+            )
+
+    def test_generated_menu_video_duration_cannot_be_changed(self):
+        with self.app.app_context():
+            from services.config_svc import load_config, save_config
+
+            save_config({
+                "order": ["menu_test.mp4"],
+                "durations": {"menu_test.mp4": 15},
+                "generated_menus": {
+                    "menu_test.mp4": {
+                        "duration": 15,
+                        "duration_locked": True,
+                    }
+                },
+            })
+
+        with self.client.session_transaction() as session:
+            session["user"] = "admin"
+            session["_csrf_token"] = "duration-token"
+
+        response = self.client.post("/set_duration/menu_test.mp4", json={"duration": 30, "_csrf_token": "duration-token"})
+
+        self.assertEqual(response.status_code, 403)
+        with self.app.app_context():
+            cfg = load_config()
+            self.assertEqual(cfg["durations"]["menu_test.mp4"], 15)
 
     def test_time_end_only_schedule_does_not_hide_media(self):
         with self.app.app_context():

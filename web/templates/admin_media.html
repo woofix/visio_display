@@ -619,10 +619,13 @@
             <div class="group-hint">{{ t('media_group_hint') }}</div>
             <div class="card-actions">
                 <div class="card-actions-right">
+                    {% set menu_video_locked = info.type == 'video' and file in cfg.generated_menus %}
                     <div style="display:flex;align-items:center;gap:4px">
                         <input type="number" class="duration-input" min="3" max="300"
-                               value="{{ cfg.durations.get(file, 15) }}"
-                               title="{{ t('duration_title') }}" data-file="{{ file }}">
+                               value="{{ 15 if menu_video_locked else cfg.durations.get(file, 15) }}"
+                               title="{{ 'Durée verrouillée à 15 s pour les vidéos Menus' if menu_video_locked else t('duration_title') }}"
+                               data-file="{{ file }}"
+                               {% if menu_video_locked %}disabled data-locked="menu-video"{% endif %}>
                         <span class="duration-unit">s</span>
                     </div>
                     {% if (can_toggle and file not in queued) or can_schedule or file in queued or info.type == 'video' or current_screen %}

@@ -163,23 +163,34 @@ def _external_query(keyword):
     return FOOD_SEARCH_QUERIES.get(normalized, f"{normalized} food")
 
 
-def _dish_query(text):
+def _dish_search_terms(text):
+    phrase = " ".join(str(text or "").split())[:120]
     words = tokenize(text)
-    if not words:
-        return ""
-    return f"{' '.join(words[:6])} food dish"
+    terms = []
+    if phrase:
+        terms.append(phrase)
+    if words:
+        terms.append(f"{' '.join(words[:6])} food dish")
+    deduped = []
+    seen = set()
+    for term in terms:
+        key = normalize_text(term)
+        if key and key not in seen:
+            deduped.append(term)
+            seen.add(key)
+    return deduped
 
 
 def _external_detection_items(text, detected):
     items = []
-    query = _dish_query(text)
-    if query:
+    dish_terms = _dish_search_terms(text)
+    if dish_terms:
         label = " ".join(str(text or "").split())[:80]
         items.append({
-            "keyword": label or query,
+            "keyword": label or dish_terms[0],
             "score": 104,
-            "query": query,
-            "search_terms": [query],
+            "query": dish_terms[0],
+            "search_terms": dish_terms,
             "is_dish": True,
         })
     for item in detected:
@@ -216,12 +227,15 @@ def _safe_external_image_url(url):
 def _external_suggestions(detected, *, text="", limit_per_keyword=4):
     suggestions = []
     for item in _external_detection_items(text, detected):
-        query = item.get("query") or _external_query(item["keyword"])
+        search_terms = item.get("search_terms") or [item.get("query") or _external_query(item["keyword"])]
         provider_results = []
-        try:
-            provider_results.extend(pexels_search(query, limit=limit_per_keyword))
-        except Exception as exc:
-            LOGGER.info("pexels image suggestion skipped for %s: %s", item["keyword"], exc)
+        for query in search_terms:
+            try:
+                provider_results.extend(pexels_search(query, limit=limit_per_keyword, orientation="", size=""))
+            except Exception as exc:
+                LOGGER.info("pexels image suggestion skipped for %s: %s", item["keyword"], exc)
+            if len(provider_results) >= limit_per_keyword:
+                break
         seen_urls = set()
         for result in provider_results:
             url = result.get("url") or ""

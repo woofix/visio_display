@@ -100,6 +100,18 @@ def _revision_token(revision):
     return "|".join(str(revision.get(key, "")) for key in ("config", "media", "time"))
 
 
+def _assigned_playlist_files(cfg, screen_cfg):
+    all_files = get_all_media(cfg)
+    all_files_set = set(all_files)
+    screen_order = screen_cfg.get('order', [])
+    assigned = [f for f in screen_order if f in all_files_set]
+    ephemeride_extras = [
+        f for f in all_files
+        if f.startswith('ephemeride_') and f not in screen_order
+    ]
+    return assigned + ephemeride_extras
+
+
 def _build_images_playlist(cfg, screen, bounds, campaign_override):
     if screen and screen in cfg.get('screens', {}):
         scfg = cfg['screens'][screen]
@@ -109,22 +121,14 @@ def _build_images_playlist(cfg, screen, bounds, campaign_override):
         if campaign_override:
             files = campaign_override.get('files', [])
         else:
-            all_files = get_all_media(cfg)
-            all_files_set = set(all_files)
-            screen_order = scfg.get('order', [])
-            if screen_order:
-                assigned = [f for f in screen_order if f in all_files_set]
-                ephemeride_extras = [f for f in all_files if f.startswith('ephemeride_') and f not in screen_order]
-                files = assigned + ephemeride_extras
-            else:
-                files = all_files
+            files = _assigned_playlist_files(cfg, scfg)
         return [
             _playlist_item(f, effective_cfg, screen, bounds)
             for f in files
             if not is_media_disabled(f, effective_cfg) and is_media_scheduled(f, scfg)
         ]
 
-    files = campaign_override.get('files', []) if campaign_override else get_all_media(cfg)
+    files = campaign_override.get('files', []) if campaign_override else _assigned_playlist_files(cfg, cfg)
     return [
         _playlist_item(f, cfg, '', bounds)
         for f in files

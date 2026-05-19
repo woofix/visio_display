@@ -1,6 +1,7 @@
 const adminMediaConfigEl = document.getElementById('admin-media-config');
 const adminMediaConfig = adminMediaConfigEl ? JSON.parse(adminMediaConfigEl.textContent || '{}') : {};
 const CURRENT_SCREEN          = adminMediaConfig.currentScreen || '';
+const CURRENT_SCREEN_LABEL    = adminMediaConfig.currentScreenLabel || CURRENT_SCREEN;
 const JS_CONFIRM_COMPRESS     = adminMediaConfig.confirmCompress || '';
 const JS_CONFIRM_DELETE       = adminMediaConfig.confirmDelete || '';
 const JS_COMPRESS_ADDING      = adminMediaConfig.compressAdding || '';
@@ -685,7 +686,7 @@ document.querySelectorAll('.btn-remove-from-screen').forEach(btn => {
         const file = btn.dataset.file;
         if (!await window.appUI.confirm({
             titleText: JS_REMOVE_SCREEN_TITLE,
-            messageText: JS_SCREEN_REMOVE_CONFIRM.replace('{file}', file).replace('{screen}', CURRENT_SCREEN),
+            messageText: JS_SCREEN_REMOVE_CONFIRM.replace('{file}', file).replace('{screen}', CURRENT_SCREEN_LABEL),
             tone: 'warning',
             confirmLabel: JS_REMOVE_SCREEN_TITLE,
         })) return;

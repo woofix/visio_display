@@ -678,7 +678,7 @@
                             {% endif %}
                             <div class="dropdown-separator"></div>
                             <div class="dropdown-label">{{ t('dropdown_label_danger') }}</div>
-                            {% if current_screen %}
+                            {% if can_toggle %}
                             <button class="dropdown-item danger btn-remove-from-screen" data-file="{{ file }}">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                                 {{ t('action_remove_from_screen') }}
@@ -698,7 +698,7 @@
     {% endfor %}
 </div>
 
-{% if current_screen and unassigned %}
+{% if can_toggle and unassigned %}
 <div class="unassigned-sep">
     <div class="unassigned-sep-line"></div>
     <span class="unassigned-sep-label">{{ t('media_unassigned_section', n=unassigned|length) }}</span>
@@ -796,6 +796,7 @@
 {% block scripts %}
 <script id="admin-media-config" type="application/json">{{ {
     'currentScreen': current_screen,
+    'currentScreenLabel': current_screen_label,
     'confirmCompress': t('js_confirm_compress'),
     'confirmDelete': t('js_confirm_delete'),
     'compressAdding': t('js_compress_adding'),

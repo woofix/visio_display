@@ -799,6 +799,10 @@ class AppSmokeTests(unittest.TestCase):
     def test_image_upload_is_saved_and_renditions_are_generated(self):
         from PIL import Image
 
+        with self.app.app_context():
+            from services.config_svc import save_config
+            save_config({"features": {"ephemeris": False}})
+
         image = Image.new("RGB", (24, 16), "blue")
         payload = BytesIO()
         image.save(payload, format="JPEG")
@@ -820,10 +824,56 @@ class AppSmokeTests(unittest.TestCase):
 
         with self.app.app_context():
             from constants import UPLOAD_FOLDER
+            from services.config_svc import load_config
             from services.media_svc import get_existing_image_rendition_url
 
             self.assertTrue(os.path.exists(os.path.join(UPLOAD_FOLDER, "photo.jpg")))
             self.assertIsNotNone(get_existing_image_rendition_url("photo.jpg", "thumb"))
+            self.assertNotIn("photo.jpg", load_config().get("order", []))
+
+        hidden = self.client.get("/api/images", headers={"X-Screen-Token": "screen-secret"})
+        self.assertEqual(hidden.status_code, 200)
+        self.assertEqual([item["name"] for item in hidden.get_json()], [])
+
+        media_page = self.client.get("/admin/media")
+        self.assertEqual(media_page.status_code, 200)
+        self.assertIn('btn-add-to-screen" data-file="photo.jpg"', media_page.get_data(as_text=True))
+
+        with self.client.session_transaction() as session:
+            session["user"] = "admin"
+            session["_csrf_token"] = "assign-token"
+
+        assigned = self.client.post(
+            "/screen_assign/photo.jpg",
+            json={"screen": "", "action": "add", "_csrf_token": "assign-token"},
+        )
+        self.assertEqual(assigned.status_code, 200)
+        self.assertEqual(assigned.get_json(), {"ok": True})
+
+        visible = self.client.get("/api/images", headers={"X-Screen-Token": "screen-secret"})
+        self.assertEqual([item["name"] for item in visible.get_json()], ["photo.jpg"])
+
+    def test_named_screen_with_empty_order_does_not_display_all_media(self):
+        with self.app.app_context():
+            from constants import UPLOAD_FOLDER
+            from services.config_svc import save_config
+
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            for filename in ("hall.jpg", "loose.jpg"):
+                with open(os.path.join(UPLOAD_FOLDER, filename), "wb") as handle:
+                    handle.write(filename.encode("utf-8"))
+            save_config({
+                "features": {"ephemeris": False},
+                "screens": {"hall": {"order": []}},
+            })
+
+        response = self.client.get(
+            "/api/images?screen=hall",
+            headers={"X-Screen-Token": "screen-secret"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json(), [])
 
     def test_announcements_page_renders_for_upload_user(self):
         with self.client.session_transaction() as session:
@@ -1163,7 +1213,7 @@ class AppSmokeTests(unittest.TestCase):
             categories = cleanup["categories"]
 
             self.assertEqual([item["filename"] for item in categories["expired"]], ["expired.jpg"])
-            self.assertNotIn("unused.jpg", [item["filename"] for item in categories["unused"]])
+            self.assertIn("unused.jpg", [item["filename"] for item in categories["unused"]])
             self.assertEqual(len(categories["duplicates"]), 1)
             self.assertEqual(
                 [item["filename"] for item in categories["duplicates"][0]["files"]],
@@ -1215,9 +1265,9 @@ class AppSmokeTests(unittest.TestCase):
             ]
 
             self.assertNotIn("campaign-screen.jpg", unused)
-            self.assertNotIn("unused.jpg", unused)
+            self.assertIn("unused.jpg", unused)
 
-    def test_media_cleanup_keeps_media_used_by_screen_with_empty_order(self):
+    def test_media_cleanup_marks_media_unused_when_screen_order_is_empty(self):
         with self.app.app_context():
             from constants import UPLOAD_FOLDER
             from services.config_svc import save_config
@@ -1246,10 +1296,10 @@ class AppSmokeTests(unittest.TestCase):
                 for item in analyze_media_cleanup()["categories"]["unused"]
             ]
 
-            self.assertNotIn("screen-default.jpg", unused)
-            self.assertNotIn("screen-video.mp4", unused)
+            self.assertIn("screen-default.jpg", unused)
+            self.assertIn("screen-video.mp4", unused)
 
-    def test_media_cleanup_keeps_media_used_by_global_screen_with_empty_order(self):
+    def test_media_cleanup_marks_media_unused_when_global_order_is_empty(self):
         with self.app.app_context():
             from constants import UPLOAD_FOLDER
             from services.config_svc import save_config
@@ -1271,8 +1321,8 @@ class AppSmokeTests(unittest.TestCase):
                 for item in analyze_media_cleanup()["categories"]["unused"]
             ]
 
-            self.assertNotIn("global-default.jpg", unused)
-            self.assertNotIn("global-video.mp4", unused)
+            self.assertIn("global-default.jpg", unused)
+            self.assertIn("global-video.mp4", unused)
 
     def test_default_screen_name_is_accepted_as_screen_alias(self):
         with self.app.app_context():
@@ -1588,6 +1638,8 @@ class AppSmokeTests(unittest.TestCase):
             )
             with open(media_path, "wb") as handle:
                 handle.write(gif_bytes)
+            from services.config_svc import save_config
+            save_config({"order": ["fallback.jpg"]})
 
         with patch("blueprints.api.ensure_ephemeride_image_async", side_effect=RuntimeError("boom")):
             response = self.client.get("/api/images", headers={"X-Screen-Token": "screen-secret"})
@@ -2174,7 +2226,9 @@ class AppSmokeTests(unittest.TestCase):
             filename = "screen.jpg"
             Image.new("RGB", (2200, 1400), "#336699").save(os.path.join(UPLOAD_FOLDER, filename), "JPEG")
             from services import media_svc
+            from services.config_svc import save_config
             media_svc.generate_standard_renditions(filename)
+            save_config({"features": {"ephemeris": False}, "order": [filename]})
 
         response = self.client.get("/api/images?w=1280&h=720", headers={"X-Screen-Token": "screen-secret"})
 
@@ -2259,7 +2313,7 @@ class AppSmokeTests(unittest.TestCase):
                 handle.write(b"b")
 
         second = self.client.get("/api/images?w=1280&h=720", headers={"X-Screen-Token": "screen-secret"})
-        self.assertEqual([item["name"] for item in second.get_json()], ["a.jpg", "b.jpg"])
+        self.assertEqual([item["name"] for item in second.get_json()], ["a.jpg"])
 
     def test_display_revision_changes_when_config_or_media_changes(self):
         with self.app.app_context():

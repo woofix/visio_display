@@ -82,6 +82,14 @@ def _is_generated_menu_video(cfg, filename):
     )
 
 
+def _assigned_media_for_screen(all_media, screen_cfg):
+    assigned_set = set(screen_cfg.get('order', []))
+    all_media_set = set(all_media)
+    files = [f for f in screen_cfg.get('order', []) if f in all_media_set]
+    unassigned = [f for f in all_media if f not in assigned_set]
+    return files, unassigned
+
+
 def _schedule_details(sched):
     parts = []
     for key in ('time_start', 'time_end', 'date_start', 'date_end'):
@@ -136,9 +144,7 @@ def admin_media():
         if not has_screen_access(screen):
             return redirect('/admin/media?screen=' + (screens[0] if screens else ''))
         scfg         = cfg['screens'][screen]
-        assigned_set = set(scfg.get('order', []))
-        files        = [f for f in scfg.get('order', []) if f in set(all_media)]
-        unassigned   = [f for f in all_media if f not in assigned_set]
+        files, unassigned = _assigned_media_for_screen(all_media, scfg)
         view_cfg     = {'disabled': scfg.get('disabled', []),
                         'disabled_groups': scfg.get('disabled_groups', []),
                         'durations': scfg.get('durations', {})}
@@ -147,8 +153,7 @@ def admin_media():
         if not has_screen_access(''):
             return redirect('/admin/media?screen=' + (screens[0] if screens else ''))
         screen     = ''
-        files      = all_media
-        unassigned = []
+        files, unassigned = _assigned_media_for_screen(all_media, cfg)
         view_cfg   = cfg
         schedules  = cfg.get('schedules', {})
 
@@ -185,6 +190,7 @@ def admin_media():
         logo_path=get_logo_path(), can_toggle=has_permission('toggle'),
         can_schedule=has_permission('schedule'),
         current_user_is_superadmin=is_superadmin(),
+        current_screen_label=(get_default_screen_name(cfg) if not screen else screen),
         active_broadcast_targets=active_broadcast_targets,
         broadcast_source=broadcast_source)
 

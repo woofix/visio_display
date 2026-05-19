@@ -81,16 +81,16 @@ def _collect_references(cfg, available_files=None):
     def add(filename, label):
         references.setdefault(filename, set()).add(label)
 
-    for filename in available_files:
-        add(filename, "global")
+    for filename in cfg.get("order", []):
+        if filename in available_files:
+            add(filename, "global")
 
     for screen, screen_cfg in cfg.get("screens", {}).items():
         if not isinstance(screen_cfg, dict):
             continue
-        screen_order = screen_cfg.get("order", [])
-        screen_files = screen_order if screen_order else available_files
-        for filename in screen_files:
-            add(filename, f"screen:{screen}")
+        for filename in screen_cfg.get("order", []):
+            if filename in available_files:
+                add(filename, f"screen:{screen}")
 
     for campaign in cfg.get("campaigns", []):
         if not isinstance(campaign, dict) or campaign.get("archived"):

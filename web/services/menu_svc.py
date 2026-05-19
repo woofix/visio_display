@@ -31,6 +31,7 @@ from services.schedule_svc import parse_iso_date, parse_time_to_minutes
 
 MENU_SIZE = (1920, 1080)
 MENU_VIDEO_DURATION_SECONDS = 15
+MEDIA_FFMPEG_TIMEOUT_SECONDS = 120
 MENU_SECTIONS = (
     ("starter", "Entrée"),
     ("main", "Plat"),
@@ -733,6 +734,7 @@ def render_menu_animation(title, text=None, *, sections=None, image_choices=None
                 ],
                 capture_output=True,
                 check=True,
+                timeout=MEDIA_FFMPEG_TIMEOUT_SECONDS,
             )
             return os.path.exists(destination)
         except Exception:
@@ -761,18 +763,23 @@ def create_menu_from_text(title, text=None, *, sections=None, duration=None, sch
             cfg.setdefault("durations", {})[filename] = max(1, min(3600, int(duration)))
         except (TypeError, ValueError):
             pass
+    from services.config_svc import normalize_screen_key
+
     selected_screens = [str(screen or "").strip().lower() for screen in (screens or [])]
     if not selected_screens:
         selected_screens = ["__default__"]
     if "__default__" in selected_screens:
-        order = cfg.setdefault("order", [])
+        default_screen = normalize_screen_key("", cfg)
+        target_cfg = cfg["screens"].setdefault(default_screen, {}) if default_screen else cfg
+        order = target_cfg.setdefault("order", [])
         if filename not in order:
             order.append(filename)
         if schedule:
-            cfg.setdefault("schedules", {})[filename] = dict(schedule)
+            target_cfg.setdefault("schedules", {})[filename] = dict(schedule)
     for screen in selected_screens:
         if screen == "__default__":
             continue
+        screen = normalize_screen_key(screen, cfg)
         if screen in cfg.get("screens", {}):
             order = cfg["screens"][screen].setdefault("order", [])
             if filename not in order:
@@ -784,7 +791,7 @@ def create_menu_from_text(title, text=None, *, sections=None, duration=None, sch
         "duration_locked": bool(animated),
         "duration": MENU_VIDEO_DURATION_SECONDS if animated else cfg.get("durations", {}).get(filename),
         "schedule": dict(schedule or {}),
-        "screens": selected_screens,
+        "screens": [normalize_screen_key("", cfg) if screen == "__default__" else normalize_screen_key(screen, cfg) for screen in selected_screens],
     }
     save_config(cfg)
     log_activity(username, "upload", filename=filename, details="menu rapide")

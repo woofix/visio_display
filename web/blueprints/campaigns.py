@@ -33,10 +33,11 @@ def _allowed_screens(cfg):
 
 
 def _screen_choices(cfg):
+    default_screen_key = get_default_screen_name(cfg)
     choices = []
-    if has_screen_access(''):
-        choices.append(("__default__", ""))
-    choices.extend((screen, screen) for screen in _allowed_screens(cfg))
+    for screen in _allowed_screens(cfg):
+        label = default_screen_key if screen == normalize_screen_key("", cfg) else screen
+        choices.append((screen, label or screen))
     return choices
 
 
@@ -330,6 +331,10 @@ def delete_campaign(campaign_id):
     target = next((item for item in campaigns if item["id"] == campaign_id), None)
     if target is None:
         _flash("flash_campaign_not_found", "error")
+        return _campaign_redirect()
+
+    if not campaign_allowed_for_user(target, _allowed_screens(cfg), is_superadmin=is_superadmin()):
+        _flash("flash_no_screen_access", "error")
         return _campaign_redirect()
 
     current_user = session.get("user")

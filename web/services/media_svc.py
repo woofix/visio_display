@@ -9,6 +9,7 @@ import threading
 import time
 from datetime import date, datetime, time as dtime
 
+import constants as C
 from PIL import Image, ImageOps
 from unidecode import unidecode
 
@@ -17,12 +18,14 @@ from constants import (
     IMAGES_FOLDER, DEFAULT_LOGO,
     IMAGE_EXTS, VIDEO_EXTS, MEDIA_EXTS, ORIGINAL_MEDIA_URL,
 )
-from services.config_svc import load_config
+from services.config_svc import load_config, normalize_screen_key
 from services.playlist_cache_svc import make_media_revision
 
 THUMB_SIZE = (480, 270)
 MAX_VARIANT_WIDTH = 3840
 MAX_VARIANT_HEIGHT = 3840
+MEDIA_PROBE_TIMEOUT_SECONDS = max(1, getattr(C, "MEDIA_PROBE_TIMEOUT_SECONDS", 15))
+MEDIA_FFMPEG_TIMEOUT_SECONDS = max(1, getattr(C, "MEDIA_CONVERT_TIMEOUT_SECONDS", 120))
 IMAGE_RENDITION_PROFILES = {
     'thumb': {'max_width': 320, 'max_height': 320, 'quality': 82},
     'small': {'max_width': 640, 'max_height': 640, 'quality': 84},
@@ -372,7 +375,7 @@ def generate_video_thumbnail(source_path, filename):
             '-frames:v', '1',
             '-q:v', '5',
             thumb_path,
-        ], capture_output=True, check=True)
+        ], capture_output=True, check=True, timeout=MEDIA_FFMPEG_TIMEOUT_SECONDS)
         return thumb_path
     except Exception:
         return None
@@ -397,7 +400,7 @@ def generate_video_poster(source_path, filename, profile_name):
             '-frames:v', '1',
             '-q:v', '5',
             poster_path,
-        ], capture_output=True, check=True)
+        ], capture_output=True, check=True, timeout=MEDIA_FFMPEG_TIMEOUT_SECONDS)
         return poster_path
     except Exception:
         return None
@@ -429,7 +432,7 @@ def generate_video_variant(source_path, filename, profile_name):
             '-c:a', 'aac',
             '-b:a', profile['audio_bitrate'],
             variant_path,
-        ], capture_output=True, check=True)
+        ], capture_output=True, check=True, timeout=MEDIA_FFMPEG_TIMEOUT_SECONDS)
         return variant_path
     except Exception:
         return None
@@ -536,7 +539,7 @@ def get_video_dimensions(filename):
     try:
         result = subprocess.run([
             'ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_streams', source_path
-        ], capture_output=True, text=True, check=True)
+        ], capture_output=True, text=True, check=True, timeout=MEDIA_PROBE_TIMEOUT_SECONDS)
         info = json.loads(result.stdout)
         for stream in info.get('streams', []):
             if stream.get('codec_type') != 'video':
@@ -845,13 +848,16 @@ def is_media_disabled(filename, cfg):
 
 def get_group_active_screens(group_name, cfg):
     """Return the list of screens this group is linked to (empty = global)."""
-    return cfg.get("group_screens", {}).get(group_name, [])
+    return [
+        normalize_screen_key(screen, cfg)
+        for screen in cfg.get("group_screens", {}).get(group_name, [])
+    ]
 
 
 def is_group_active_on_screen(group_name, cfg, screen):
     """True if the group is active on the given screen (globally or explicitly linked)."""
     screens = get_group_active_screens(group_name, cfg)
-    return not screens or screen in screens
+    return not screens or normalize_screen_key(screen, cfg) in screens
 
 
 def collect_group_states(files, cfg, screen=None):
@@ -1091,7 +1097,7 @@ def is_h264_mp4(path):
     try:
         result = subprocess.run([
             'ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_streams', path
-        ], capture_output=True, check=True)
+        ], capture_output=True, check=True, timeout=MEDIA_PROBE_TIMEOUT_SECONDS)
         info = json.loads(result.stdout)
         for stream in info.get('streams', []):
             if stream.get('codec_type') == 'video':
@@ -1105,7 +1111,7 @@ def _get_video_duration_ms(path):
     try:
         result = subprocess.run([
             'ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_format', path
-        ], capture_output=True, text=True, check=True)
+        ], capture_output=True, text=True, check=True, timeout=MEDIA_PROBE_TIMEOUT_SECONDS)
         info     = json.loads(result.stdout)
         duration = float(info.get('format', {}).get('duration', 0))
         return int(duration * 1000)

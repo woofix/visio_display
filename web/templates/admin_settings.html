@@ -1366,7 +1366,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                                 <div class="perm-item">
                                     <input type="checkbox" name="screen_{{ s }}" id="screen_{{ username }}_{{ s }}"
                                            {% if user_screens is none or s in user_screens %}checked{% endif %}>
-                                    <label for="screen_{{ username }}_{{ s }}">{% if s == '' %}{{ cfg.get('default_screen_name') or t('media_screen_default') }}{% else %}{{ s }}{% endif %}</label>
+                                    <label for="screen_{{ username }}_{{ s }}">{{ screen_labels.get(s, s) if screen_labels is defined else s }}</label>
                                 </div>
                                 {% endfor %}
                             </div>
@@ -1435,10 +1435,11 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                     {% for s in all_screens %}
                     <li class="screen-admin-item">
                         <div>
-                            <div class="screen-admin-name">{% if s == '' %}{{ cfg.get('default_screen_name') or t('media_screen_default') }}{% else %}{{ s }}{% endif %}</div>
+                            <div class="screen-admin-name">{{ screen_labels.get(s, s) if screen_labels is defined else s }}</div>
                             <div class="screen-admin-meta">{{ t('superadmin_screens_manage') }}</div>
                         </div>
                         <div class="screen-admin-actions">
+                            {% if s != default_screen_key %}
                             <form method="post" action="/admin/screens/delete/{{ s }}"
                                   data-confirm="{{ t('media_screen_delete_confirm') | replace('{name}', s) }}"
                                   data-confirm-title="{{ t('superadmin_delete') }}"
@@ -1446,6 +1447,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                                   data-confirm-ok="{{ t('superadmin_delete') }}">
                                 <button type="submit" class="btn sm danger">{{ t('superadmin_delete') }}</button>
                             </form>
+                            {% endif %}
                         </div>
                     </li>
                     {% endfor %}

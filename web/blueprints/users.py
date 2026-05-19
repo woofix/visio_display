@@ -22,7 +22,7 @@ from services.users_svc import (
     user_exists,
     verify_user_password,
 )
-from services.config_svc import load_config, save_config
+from services.config_svc import get_screen_keys, load_config, save_config
 from services.media_svc import get_logo_path
 from services.i18n import _flash, _t
 from blueprints.guards import superadmin_guard, feature_guard_json
@@ -178,7 +178,7 @@ def set_user_screens(username):
         _flash('flash_superadmin_perms_locked', 'error')
         return redirect('/admin/settings/comptes-permissions')
     cfg         = load_config()
-    all_screens = ['', *cfg.get('screens', {}).keys()]
+    all_screens = get_screen_keys(cfg)
     selected    = [s for s in all_screens if request.form.get(f'screen_{s}')]
     update_user_screens(username, selected)
     log_config_change(session.get('user'), f'screens {username}: {", ".join(selected) if selected else "all"}')

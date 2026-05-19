@@ -767,17 +767,22 @@ def create_announcement(form, uploaded_file=None, layer_uploads=None, username=N
         except ValueError:
             pass
 
+    from services.config_svc import normalize_screen_key
+
     selected_screens = [str(screen or "").strip().lower() for screen in form.getlist("screens")]
     if not selected_screens:
         selected_screens = ["__default__"]
     if "__default__" in selected_screens:
-        cfg.setdefault("order", [])
-        if filename not in cfg["order"]:
-            cfg["order"].append(filename)
+        default_screen = normalize_screen_key("", cfg)
+        target_cfg = cfg["screens"].setdefault(default_screen, {}) if default_screen else cfg
+        target_cfg.setdefault("order", [])
+        if filename not in target_cfg["order"]:
+            target_cfg["order"].append(filename)
 
     for screen in selected_screens:
         if screen == "__default__":
             continue
+        screen = normalize_screen_key(screen, cfg)
         if screen in cfg.get("screens", {}):
             order = cfg["screens"][screen].setdefault("order", [])
             if filename not in order:

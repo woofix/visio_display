@@ -17,7 +17,13 @@ from constants import (
 from services.backup_svc import backup_retention_limit, list_backups
 from services.backup_scheduler_svc import get_backup_schedule
 from services.clients_svc import list_known_clients
-from services.config_svc import load_config
+from services.config_svc import (
+    get_default_screen_key,
+    get_default_screen_name,
+    get_screen_keys,
+    load_config,
+    normalize_screen_key,
+)
 from services.ephemeris_svc import get_school_zone
 from services.i18n import _t
 from services.media_svc import get_logo_path
@@ -71,6 +77,17 @@ def _build_settings_context(tab='logo', install_defaults=None, install_result=No
         'max_versions': backup_retention_limit(cfg),
     } if is_sa else {}
     users = load_users()
+    if is_sa:
+        for entry in users.values():
+            if isinstance(entry, dict) and isinstance(entry.get('screens'), list):
+                entry['screens'] = [normalize_screen_key(screen, cfg) for screen in entry['screens']]
+    default_screen_key = get_default_screen_key(cfg)
+    default_screen_label = get_default_screen_name(cfg) or _t('media_screen_default')
+    all_screens = get_screen_keys(cfg) if is_sa else []
+    screen_labels = {
+        screen_name: (default_screen_label if screen_name == default_screen_key else screen_name)
+        for screen_name in all_screens
+    }
     today = date.today()
     raw_events = cfg.get("events", [])
     events = []
@@ -149,7 +166,9 @@ def _build_settings_context(tab='logo', install_defaults=None, install_result=No
         known_clients=list_known_clients() if is_sa else [],
         available_backups=list_backups() if is_sa else [],
         all_permissions=[(k, _t(lbl_key)) for k, lbl_key in ALL_PERMISSIONS] if is_sa else [],
-        all_screens=['', *cfg.get('screens', {}).keys()] if is_sa else [],
+        all_screens=all_screens,
+        screen_labels=screen_labels,
+        default_screen_key=default_screen_key,
         all_roles=get_all_roles() if is_sa else [],
         user_roles_map={u: [r.display_name for r in get_user_roles(u)] for u in users.keys()} if is_sa else {},
         user_effective_permissions_map=effective_permissions_map,

@@ -11,6 +11,8 @@ from services.config_svc import (
     load_config,
     save_config,
     get_default_screen_name,
+    get_default_screen_key,
+    get_screen_keys,
     get_screen_config,
     normalize_screen_key,
 )
@@ -138,7 +140,13 @@ def admin_media():
     q         = load_queue()
     queued    = {j['filename'] for j in q if j['status'] in ('pending', 'processing')}
     users     = load_users()
-    screens   = [s for s in cfg.get('screens', {}).keys() if has_screen_access(s)]
+    screens   = [s for s in get_screen_keys(cfg) if s in cfg.get('screens', {}) and has_screen_access(s)]
+    default_screen_key = get_default_screen_key(cfg)
+    default_screen_label = get_default_screen_name(cfg) or _t('media_screen_default')
+    screen_labels = {
+        screen_name: (default_screen_label if screen_name == default_screen_key else screen_name)
+        for screen_name in screens
+    }
 
     if screen and screen in cfg.get('screens', {}):
         if not has_screen_access(screen):
@@ -183,14 +191,16 @@ def admin_media():
     return render_template('admin_media.html',
         files=files, unassigned=unassigned, infos=infos, cfg=view_cfg, queued=queued,
         schedules=schedules, current_screen=screen, screens=screens,
-        has_default_screen=has_screen_access(''),
+        screen_labels=screen_labels,
+        default_screen_key=default_screen_key,
+        has_default_screen=False,
         media_groups=media_groups, group_states=group_states, disabled_map=disabled_map,
         preview_urls=preview_urls, preview_media_urls=preview_media_urls,
         users=list(users.keys()), current_user=session.get('user'),
         logo_path=get_logo_path(), can_toggle=has_permission('toggle'),
         can_schedule=has_permission('schedule'),
         current_user_is_superadmin=is_superadmin(),
-        current_screen_label=(get_default_screen_name(cfg) if not screen else screen),
+        current_screen_label=screen_labels.get(screen, screen),
         active_broadcast_targets=active_broadcast_targets,
         broadcast_source=broadcast_source)
 
@@ -471,12 +481,19 @@ def set_group_screens(group_name):
     if not isinstance(screens_list, list):
         return jsonify({"error": "invalid screens"}), 400
     cfg = load_config()
-    valid_screens = set(cfg.get('screens', {}).keys()) | {''}
-    screens_list = [
-        normalize_screen_key(s, cfg)
-        for s in screens_list
-        if normalize_screen_key(s, cfg) in valid_screens
-    ]
+    valid_screens = {normalize_screen_key(screen, cfg) for screen in cfg.get('screens', {}).keys()} | {''}
+    normalized_screens = []
+    seen = set()
+    for screen in screens_list:
+        normalized_screen = normalize_screen_key(screen, cfg)
+        if normalized_screen not in valid_screens:
+            return jsonify({"error": "screen not found"}), 404
+        if not has_screen_access(normalized_screen):
+            return jsonify({"error": "screen access denied"}), 403
+        if normalized_screen not in seen:
+            normalized_screens.append(normalized_screen)
+            seen.add(normalized_screen)
+    screens_list = normalized_screens
     group_screens = cfg.setdefault('group_screens', {})
     if screens_list:
         group_screens[normalized] = screens_list

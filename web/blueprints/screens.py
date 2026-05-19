@@ -6,6 +6,7 @@ from flask import Blueprint, jsonify, redirect, request, session, url_for
 
 from services.activity_svc import log_config_change
 from services.config_svc import (
+    get_default_screen_key,
     load_config,
     save_config,
     normalize_default_screen_name,
@@ -74,7 +75,7 @@ def delete_screen(name):
     if redir: return redir
     cfg     = load_config()
     name = normalize_screen_key(name, cfg)
-    if name == '':
+    if name == '' or name == get_default_screen_key(cfg):
         _flash('flash_screen_not_found', 'error')
         return _redirect_after_screen_change(url_for('media.admin_media'))
     screens = cfg.get('screens', {})

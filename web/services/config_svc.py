@@ -1,6 +1,7 @@
 # Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 import json
+import re
 
 import constants as C
 from db import AppConfig, db
@@ -38,7 +39,14 @@ def get_default_screen_name(cfg=None):
 
 
 def get_default_screen_key(cfg=None):
-    return str(get_default_screen_name(cfg) or "").strip().lower()
+    return normalize_screen_name(get_default_screen_name(cfg) or "")
+
+
+def normalize_screen_name(value):
+    screen = str(value or "").strip().lower()
+    screen = re.sub(r"\s+", "_", screen)
+    screen = "".join(ch for ch in screen if ch.isalnum() or ch in ("_", "-"))
+    return screen[:32]
 
 
 def is_default_screen(screen_name, cfg=None):
@@ -47,9 +55,11 @@ def is_default_screen(screen_name, cfg=None):
 
 
 def normalize_screen_key(screen_name, cfg=None):
-    screen = str(screen_name or "").strip().lower()
-    if is_default_screen(screen, cfg):
-        return DEFAULT_SCREEN_KEY
+    screen = normalize_screen_name(screen_name)
+    if screen == DEFAULT_SCREEN_KEY:
+        default_key = get_default_screen_key(cfg)
+        screens = (cfg or {}).get("screens", {}) if isinstance(cfg, dict) else {}
+        return default_key if default_key and default_key in screens else DEFAULT_SCREEN_KEY
     return screen
 
 
@@ -66,11 +76,40 @@ def get_screen_config(cfg, screen_name):
 
 
 def get_screen_keys(cfg, *, include_default=True):
+    screens = cfg.get("screens", {})
     keys = []
     if include_default:
-        keys.append(DEFAULT_SCREEN_KEY)
-    keys.extend(cfg.get("screens", {}).keys())
+        default_key = normalize_screen_key(DEFAULT_SCREEN_KEY, cfg)
+        keys.append(default_key)
+    keys.extend(screen for screen in screens.keys() if screen not in keys)
     return keys
+
+
+def _replace_screen_refs(value, replacements):
+    if not replacements:
+        return value
+    if isinstance(value, list):
+        updated = []
+        seen = set()
+        for item in value:
+            key = str(item)
+            replacement = replacements.get(key, replacements.get(normalize_screen_name(key), key))
+            if replacement not in seen:
+                updated.append(replacement)
+                seen.add(replacement)
+        return updated
+    if isinstance(value, dict):
+        updated = {}
+        for key, item in value.items():
+            replacement_key = replacements.get(str(key), replacements.get(normalize_screen_name(key), str(key)))
+            if isinstance(item, list):
+                item = _replace_screen_refs(item, replacements)
+            if replacement_key in updated and isinstance(updated[replacement_key], list) and isinstance(item, list):
+                updated[replacement_key] = _replace_screen_refs(updated[replacement_key] + item, {})
+            else:
+                updated[replacement_key] = item
+        return updated
+    return value
 
 
 def _default_screen_config(halo_color=DEFAULT_HALO_COLOR):
@@ -269,12 +308,65 @@ def normalize_config(cfg):
     normalized_screens = {}
     if isinstance(screens, dict):
         for name, screen_cfg in screens.items():
+            screen_key = normalize_screen_name(name)
+            if not screen_key:
+                continue
             base = _default_screen_config(default_halo_color)
             if isinstance(screen_cfg, dict):
                 base.update(screen_cfg)
             base["halo_color"] = normalize_halo_color(base.get("halo_color", default_halo_color), default_halo_color)
-            normalized_screens[name] = base
+            if screen_key in normalized_screens:
+                existing = normalized_screens[screen_key]
+                for list_key in ("order", "disabled", "disabled_groups"):
+                    existing[list_key] = _replace_screen_refs(existing.get(list_key, []) + base.get(list_key, []), {})
+                for dict_key in ("durations", "schedules"):
+                    existing.setdefault(dict_key, {}).update(base.get(dict_key, {}))
+                existing["halo_color"] = base.get("halo_color", existing.get("halo_color", default_halo_color))
+            else:
+                normalized_screens[screen_key] = base
+    default_screen_key = get_default_screen_key(merged)
+    replacements = {
+        str(name): normalize_screen_name(name)
+        for name in (screens.keys() if isinstance(screens, dict) else [])
+        if normalize_screen_name(name)
+    }
+    if default_screen_key:
+        legacy_default = _default_screen_config(default_halo_color)
+        for key in ("order", "disabled", "disabled_groups", "durations", "schedules"):
+            legacy_default[key] = merged.get(key, legacy_default[key])
+        legacy_default["halo_color"] = normalize_halo_color(
+            merged.get("default_halo_color", default_halo_color),
+            default_halo_color,
+        )
+        if default_screen_key not in normalized_screens:
+            normalized_screens[default_screen_key] = legacy_default
+        else:
+            target = normalized_screens[default_screen_key]
+            if not target.get("order") and legacy_default.get("order"):
+                target["order"] = list(legacy_default["order"])
+            if not target.get("disabled") and legacy_default.get("disabled"):
+                target["disabled"] = list(legacy_default["disabled"])
+            if not target.get("disabled_groups") and legacy_default.get("disabled_groups"):
+                target["disabled_groups"] = list(legacy_default["disabled_groups"])
+            if not target.get("durations") and legacy_default.get("durations"):
+                target["durations"] = dict(legacy_default["durations"])
+            if not target.get("schedules") and legacy_default.get("schedules"):
+                target["schedules"] = dict(legacy_default["schedules"])
+        replacements[DEFAULT_SCREEN_KEY] = default_screen_key
     merged["screens"] = normalized_screens
+    if replacements:
+        merged["group_screens"] = {
+            group: _replace_screen_refs(screens, replacements)
+            for group, screens in merged.get("group_screens", {}).items()
+        }
+        merged["broadcast_links"] = _replace_screen_refs(merged.get("broadcast_links", {}), replacements)
+        migrated_campaigns = []
+        for campaign in merged.get("campaigns", []):
+            if isinstance(campaign, dict):
+                campaign = dict(campaign)
+                campaign["screens"] = _replace_screen_refs(campaign.get("screens", []), replacements)
+            migrated_campaigns.append(campaign)
+        merged["campaigns"] = migrated_campaigns
     alert = cfg.get('priority_alert', {})
     if not isinstance(alert, dict):
         alert = {}

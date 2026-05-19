@@ -398,16 +398,21 @@ document.querySelectorAll('.btn-group-screens-toggle').forEach(btn => {
 });
 
 /* ── Group-to-screen link ── */
+function normalizeScreenKey(value) {
+    return String(value || '').trim().toLowerCase();
+}
+
 document.querySelectorAll('.btn-group-screen-link').forEach(btn => {
     btn.addEventListener('click', async e => {
         e.stopPropagation();
         const group  = btn.dataset.group;
         const screen = btn.dataset.screen;
+        const screenKey = normalizeScreenKey(screen);
         const chip   = document.querySelector(`.group-chip[data-group-chip="${group}"]`);
-        const current = JSON.parse(chip.dataset.screens || '[]');
-        const next    = current.includes(screen)
-            ? current.filter(s => s !== screen)
-            : [...current, screen];
+        const current = JSON.parse(chip.dataset.screens || '[]').map(normalizeScreenKey);
+        const next    = current.includes(screenKey)
+            ? current.filter(s => s !== screenKey)
+            : [...current, screenKey];
         btn.disabled = true;
         try {
             const res  = await fetch(`/set_group_screens/${encodeURIComponent(group)}`, {
@@ -417,7 +422,8 @@ document.querySelectorAll('.btn-group-screen-link').forEach(btn => {
             const data = await readJsonResponse(res);
             if (data.ok) {
                 chip.dataset.screens = JSON.stringify(data.screens);
-                btn.classList.toggle('linked', data.screens.includes(screen));
+                const linkedScreens = (data.screens || []).map(normalizeScreenKey);
+                btn.classList.toggle('linked', linkedScreens.includes(screenKey));
                 chip.classList.toggle('screens-linked', data.screens.length > 0);
                 const countEl = chip.querySelector('.group-screens-count');
                 const toggleBtn = chip.querySelector('.btn-group-screens-toggle');

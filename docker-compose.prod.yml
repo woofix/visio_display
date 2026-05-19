@@ -1,0 +1,68 @@
+# Optional production hardening overlay.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# The main compose file stays permissive enough for installer/update workflows.
+# This overlay drops Linux capabilities, prevents privilege escalation, and runs
+# app/worker as an unprivileged UID/GID when the mounted host directories allow it.
+
+x-visio-security: &visio-security
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  redis:
+    <<: *visio-security
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  postgres:
+    <<: *visio-security
+    tmpfs:
+      - /tmp
+      - /run
+
+  app:
+    <<: *visio-security
+    user: "${VISIO_RUNTIME_UID_GID:-1000:1000}"
+    read_only: true
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+    tmpfs:
+      - /tmp
+    volumes:
+      - ${VISIO_HOST_ROOT:-.}:/opt/visio-display:ro
+      - ${VISIO_HOST_ROOT:-.}/.env:/app/.env:ro
+      - ${MEDIA_DIR:?MEDIA_DIR absent. Lancez le module d'installation ou renseignez .env.}:/app/static/data
+      - ${PRIVATE_DIR:?PRIVATE_DIR absent. Lancez le module d'installation ou renseignez .env.}:/app/data
+
+  worker:
+    <<: *visio-security
+    user: "${VISIO_RUNTIME_UID_GID:-1000:1000}"
+    read_only: true
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+    tmpfs:
+      - /tmp
+    volumes:
+      - ${VISIO_HOST_ROOT:-.}:/opt/visio-display:ro
+      - ${VISIO_HOST_ROOT:-.}/.env:/app/.env:ro
+      - ${MEDIA_DIR:?MEDIA_DIR absent. Lancez le module d'installation ou renseignez .env.}:/app/static/data
+      - ${PRIVATE_DIR:?PRIVATE_DIR absent. Lancez le module d'installation ou renseignez .env.}:/app/data
+
+  updater:
+    <<: *visio-security
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+    # The updater intentionally keeps docker.sock and a writable repository mount:
+    # it applies self-hosted updates and restarts the stack from inside Docker.
+    # Restrict this service operationally to trusted admins and private hosts.
+    volumes:
+      - ${VISIO_HOST_ROOT:-.}:/opt/visio-display
+      - ${VISIO_HOST_ROOT:-.}/.env:/app/.env:ro
+      - ${PRIVATE_DIR:?PRIVATE_DIR absent. Lancez le module d'installation ou renseignez .env.}:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock

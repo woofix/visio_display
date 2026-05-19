@@ -42,7 +42,7 @@ from services.display_token_svc import (
 from services.i18n import _flash, _trans, get_language
 from services.rbac_svc import init_rbac
 from services.settings_sections import is_settings_nav_path, settings_nav_groups
-from services.users_svc import get_user, has_permission, init_users, is_superadmin, load_users
+from services.users_svc import get_user, has_permission, init_users, is_admin, is_superadmin, load_users
 from translations import TRANSLATIONS
 
 
@@ -641,6 +641,8 @@ def register_template_context(app):
 def register_public_routes(app):
     @app.route(f"{C.STATIC_MEDIA_URL}/<path:filename>")
     def static_media(filename):
+        if not (screen_token_is_valid(request) or is_admin()):
+            return "", 403
         response = send_from_directory(C.STATIC_MEDIA_DIR, filename, conditional=True)
         response.headers["Cache-Control"] = "public, max-age=2592000, immutable"
         response.headers.pop("Pragma", None)

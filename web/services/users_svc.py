@@ -282,7 +282,8 @@ def has_permission(perm):
 def has_screen_access(screen_name):
     from services.config_svc import load_config, normalize_screen_key
 
-    screen_name = normalize_screen_key(screen_name, load_config())
+    cfg = load_config()
+    screen_name = normalize_screen_key(screen_name, cfg)
     if is_superadmin():
         return True
     username = session.get('user')
@@ -293,4 +294,5 @@ def has_screen_access(screen_name):
         return False
     if u.screens is None:
         return True
-    return screen_name in _json_list(u.screens)
+    allowed_screens = {normalize_screen_key(screen, cfg) for screen in _json_list(u.screens)}
+    return screen_name in allowed_screens

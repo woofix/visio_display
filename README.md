@@ -183,6 +183,8 @@ docker compose up -d --build
 
 L'application est disponible sur `http://<hôte>:8081`. Ouvrir l'administration sur `http://<hôte>:8081/admin`, puis l'affichage public avec `?screen_token=<DISPLAY_API_TOKEN>`.
 
+Pour le durcissement Docker en production et l'audit des dépendances, voir `docs/security-hardening.md`.
+
 ### Installation
 
 **Cette section concerne uniquement l'installation du serveur Visio-Display.**
@@ -1031,6 +1033,8 @@ docker compose up -d --build
 ```
 
 The application is available at `http://<host>:8081`. Open the admin UI at `http://<host>:8081/admin`, then open the public display with `?screen_token=<DISPLAY_API_TOKEN>`.
+
+For Docker production hardening and dependency auditing, see `docs/security-hardening.md`.
 
 ### Installation
 

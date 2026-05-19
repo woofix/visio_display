@@ -483,8 +483,8 @@
     <div class="screen-tabs">
         {% if has_default_screen %}<a href="/admin/media" class="screen-tab {% if not current_screen %}active{% endif %}" data-screen="">{{ default_screen_name }}</a>{% endif %}
         {% for s in screens %}
-        <a href="/admin/media?screen={{ s }}" class="screen-tab {% if current_screen == s %}active{% endif %}" data-screen="{{ s }}">{{ s }}</a>
-        {% if current_screen == s and current_user_is_superadmin %}
+        <a href="/admin/media?screen={{ s }}" class="screen-tab {% if current_screen == s %}active{% endif %}" data-screen="{{ s }}">{{ screen_labels.get(s, s) if screen_labels is defined else s }}</a>
+        {% if current_screen == s and current_user_is_superadmin and s != default_screen_key %}
         <form method="post" action="/admin/screens/delete/{{ s }}" style="display:inline"
               data-confirm="{{ t('media_screen_delete_confirm') | replace('{name}', s) }}"
               data-confirm-title="{{ t('media_screen_delete_title') }}"
@@ -533,7 +533,7 @@
     <div class="group-chip-list">
         {% for group in group_states %}
         <div class="group-chip {% if group.disabled %}disabled{% endif %} {% if group.screens %}screens-linked{% endif %}"
-             data-group-chip="{{ group.name }}" data-screens="{{ group.screens | tojson | e }}">
+             data-group-chip="{{ group.name }}" data-screens='{{ group.screens | tojson }}'>
             <div class="group-chip-main">
                 <span class="group-chip-name">{{ group.name }}</span>
                 <span class="group-chip-count">{{ group.count }}</span>
@@ -558,11 +558,10 @@
             {% if screens %}
             <div class="group-screens-row">
                 <span class="group-screens-label">{{ t('group_screens_label') }} :</span>
-                <button class="btn-group-screen-link {% if '' in group.screens %}linked{% endif %}"
-                        data-group="{{ group.name }}" data-screen="">{{ default_screen_name }}</button>
                 {% for s in screens %}
-                <button class="btn-group-screen-link {% if s in group.screens %}linked{% endif %}"
-                        data-group="{{ group.name }}" data-screen="{{ s }}">{{ s }}</button>
+                {% set screen_key = s | lower %}
+                <button class="btn-group-screen-link {% if screen_key in group.screens %}linked{% endif %}"
+                        data-group="{{ group.name }}" data-screen="{{ screen_key }}">{{ screen_labels.get(s, s) if screen_labels is defined else s }}</button>
                 {% endfor %}
                 {% if not group.screens %}<span class="group-screens-hint">{{ t('group_screens_global') }}</span>{% endif %}
             </div>

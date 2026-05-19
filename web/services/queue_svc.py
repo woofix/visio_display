@@ -27,6 +27,7 @@ from services.media_svc import (
 from services.playlist_cache_svc import bump_media_revision
 
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379')
+MEDIA_PROBE_TIMEOUT_SECONDS = 15
 
 _redis: Redis = None
 _flask_app = None
@@ -188,7 +189,7 @@ def _get_video_duration_ms(path):
     try:
         result = subprocess.run([
             'ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_format', path
-        ], capture_output=True, text=True, check=True)
+        ], capture_output=True, text=True, check=True, timeout=MEDIA_PROBE_TIMEOUT_SECONDS)
         info     = _json.loads(result.stdout)
         duration = float(info.get('format', {}).get('duration', 0))
         return int(duration * 1000)

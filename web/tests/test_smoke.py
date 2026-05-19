@@ -775,7 +775,8 @@ class AppSmokeTests(unittest.TestCase):
             session["_csrf_token"] = "upload-token"
             token = session["_csrf_token"]
 
-        with patch("services.upload_svc.enqueue_compress_job", return_value="job-123") as enqueue_job:
+        with patch("services.upload_svc.get_video_duration_seconds", return_value=None), \
+             patch("services.upload_svc.enqueue_compress_job", return_value="job-123") as enqueue_job:
             response = self.client.post(
                 "/upload",
                 data={"file": (BytesIO(b"fake-video"), "clip.mp4"), "_csrf_token": token},
@@ -852,6 +853,50 @@ class AppSmokeTests(unittest.TestCase):
 
         visible = self.client.get("/api/images", headers={"X-Screen-Token": "screen-secret"})
         self.assertEqual([item["name"] for item in visible.get_json()], ["photo.jpg"])
+
+    def test_upload_validation_rejects_oversized_image_dimensions(self):
+        from PIL import Image
+        from services import upload_svc
+
+        image = Image.new("RGB", (20, 20), "red")
+        payload = BytesIO()
+        image.save(payload, format="JPEG")
+        payload.seek(0)
+
+        with self.client.session_transaction() as session:
+            session["user"] = "admin"
+            session["_csrf_token"] = "upload-token"
+            token = session["_csrf_token"]
+
+        with patch.object(upload_svc, "MAX_UPLOAD_IMAGE_PIXELS", 100):
+            response = self.client.post(
+                "/upload",
+                data={"file": (payload, "huge.jpg"), "_csrf_token": token},
+                content_type="multipart/form-data",
+            )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json()["error"], "image dimensions too large")
+
+    def test_upload_validation_rejects_pdf_with_too_many_pages(self):
+        from services import upload_svc
+
+        with patch("pdf2image.pdfinfo_from_path", return_value={"Pages": "3"}), \
+             patch.object(upload_svc, "MAX_UPLOAD_PDF_PAGES", 2), \
+             self.assertRaises(upload_svc.UploadValidationError) as raised:
+            upload_svc.validate_pdf_page_count("/tmp/fake.pdf")
+
+        self.assertEqual(raised.exception.payload["error"], "pdf page count too large")
+
+    def test_upload_validation_rejects_too_long_video_when_probe_succeeds(self):
+        from services import upload_svc
+
+        with patch.object(upload_svc, "get_video_duration_seconds", return_value=3661), \
+             patch.object(upload_svc, "MAX_UPLOAD_VIDEO_SECONDS", 3600), \
+             self.assertRaises(upload_svc.UploadValidationError) as raised:
+            upload_svc.validate_video_duration("/tmp/fake.mp4")
+
+        self.assertEqual(raised.exception.payload["error"], "video duration too long")
 
     def test_named_screen_with_empty_order_does_not_display_all_media(self):
         with self.app.app_context():
@@ -1349,8 +1394,8 @@ class AppSmokeTests(unittest.TestCase):
             from services.config_svc import load_config
 
             cfg = load_config()
-            self.assertIn("default-alias.jpg", cfg.get("order", []))
-            self.assertNotIn("client1", cfg.get("screens", {}))
+            self.assertIn("client1", cfg.get("screens", {}))
+            self.assertIn("default-alias.jpg", cfg["screens"]["client1"].get("order", []))
 
     def test_media_cleanup_page_renders(self):
         with self.app.app_context():
@@ -1484,7 +1529,8 @@ class AppSmokeTests(unittest.TestCase):
             Image.new("RGB", (24, 16), "white"),
             Image.new("RGB", (24, 16), "black"),
         ]
-        with patch("pdf2image.convert_from_path", return_value=pages):
+        with patch("pdf2image.pdfinfo_from_path", return_value={"Pages": "2"}), \
+             patch("pdf2image.convert_from_path", return_value=pages):
             response = self.client.post(
                 "/upload",
                 data={"file": (BytesIO(b"%PDF-1.4 fake"), "document.pdf"), "_csrf_token": token},
@@ -2020,6 +2066,70 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(blocked_page.status_code, 403)
         self.assertEqual(allowed_page.status_code, 200)
 
+    def test_static_data_requires_screen_token_but_other_static_assets_remain_public(self):
+        with self.app.app_context():
+            from constants import UPLOAD_FOLDER
+
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            with open(os.path.join(UPLOAD_FOLDER, "poster.jpg"), "wb") as handle:
+                handle.write(b"image-bytes")
+
+        blocked = self.client.get("/static/data/original/poster.jpg")
+        allowed_header = self.client.get("/static/data/original/poster.jpg", headers={"X-Screen-Token": "screen-secret"})
+        allowed_query = self.client.get("/static/data/original/poster.jpg?screen_token=screen-secret")
+        css = self.client.get("/static/css/display-screen.css")
+
+        self.assertEqual(blocked.status_code, 403)
+        self.assertEqual(allowed_header.status_code, 200)
+        self.assertEqual(allowed_query.status_code, 200)
+        self.assertEqual(css.status_code, 200)
+
+        with self.client.session_transaction() as session:
+            session["user"] = "admin"
+        admin_asset = self.client.get("/static/data/original/poster.jpg")
+        self.assertEqual(admin_asset.status_code, 200)
+
+    def test_non_superadmin_cannot_delete_campaign_outside_screen_scope(self):
+        with self.app.app_context():
+            from constants import UPLOAD_FOLDER
+            from services.config_svc import save_config, load_config
+            from services.users_svc import create_user
+
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            with open(os.path.join(UPLOAD_FOLDER, "poster.jpg"), "wb") as handle:
+                handle.write(b"image-bytes")
+            create_user("operator", "operator-pass-123", permissions=["schedule"], screens=["hall"])
+            save_config({
+                "features": {"campaigns": True},
+                "screens": {
+                    "hall": {},
+                    "kitchen": {},
+                },
+                "campaigns": [{
+                    "id": "legacy-campaign",
+                    "name": "Legacy kitchen campaign",
+                    "enabled": True,
+                    "screens": ["kitchen"],
+                    "media": ["poster.jpg"],
+                    "created_by": "",
+                }],
+            })
+
+        with self.client.session_transaction() as session:
+            session["user"] = "operator"
+            session["_csrf_token"] = "campaign-delete-token"
+
+        response = self.client.post(
+            "/admin/campaigns/legacy-campaign/delete",
+            data={"_csrf_token": "campaign-delete-token"},
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 302)
+        with self.app.app_context():
+            campaigns = load_config()["campaigns"]
+            self.assertEqual([campaign["id"] for campaign in campaigns], ["legacy-campaign"])
+
     def test_admin_preview_links_include_display_token(self):
         self._login()
 
@@ -2092,7 +2202,7 @@ class AppSmokeTests(unittest.TestCase):
 
         from services import media_svc
 
-        def fake_ffmpeg(cmd, capture_output=False, check=False):
+        def fake_ffmpeg(cmd, capture_output=False, check=False, **_kwargs):
             thumb_path = cmd[-1]
             with open(thumb_path, "wb") as handle:
                 handle.write(b"thumb")
@@ -2396,6 +2506,229 @@ class AppSmokeTests(unittest.TestCase):
             self.assertNotIn("Menu", cfg["group_screens"])
             self.assertNotIn("Menu", cfg["disabled_groups"])
             self.assertNotIn("Menu", cfg["screens"]["hall"]["disabled_groups"])
+
+    def test_set_group_screens_rejects_inaccessible_screen_targets(self):
+        with self.app.app_context():
+            from services.config_svc import save_config, load_config
+            from services.users_svc import create_user
+
+            create_user("operator", "operator-pass-123", permissions=["toggle"], screens=["hall"])
+            save_config({
+                "screens": {
+                    "hall": {},
+                    "kitchen": {},
+                },
+                "group_screens": {
+                    "Menu": ["hall"],
+                },
+            })
+
+        with self.client.session_transaction() as session:
+            session["user"] = "operator"
+            session["_csrf_token"] = "group-screen-token"
+
+        response = self.client.post(
+            "/set_group_screens/Menu",
+            json={"screens": ["kitchen"], "_csrf_token": "group-screen-token"},
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.get_json()["error"], "screen access denied")
+
+        with self.app.app_context():
+            self.assertEqual(load_config()["group_screens"]["Menu"], ["hall"])
+
+    def test_set_group_screens_accepts_screen_access_saved_with_original_case(self):
+        with self.app.app_context():
+            from services.config_svc import save_config, load_config
+            from services.users_svc import create_user
+
+            create_user("operator", "operator-pass-123", permissions=["toggle"], screens=["Client1", "Client2"])
+            save_config({
+                "screens": {
+                    "Client1": {},
+                    "client2": {},
+                    "client3": {},
+                },
+                "group_screens": {
+                    "Menu": ["Client1"],
+                },
+            })
+
+        with self.client.session_transaction() as session:
+            session["user"] = "operator"
+            session["_csrf_token"] = "group-screen-token"
+
+        response = self.client.post(
+            "/set_group_screens/Menu",
+            json={"screens": ["Client1", "client2"], "_csrf_token": "group-screen-token"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["screens"], ["client1", "client2"])
+
+        with self.app.app_context():
+            self.assertEqual(load_config()["group_screens"]["Menu"], ["client1", "client2"])
+
+    def test_named_default_screen_is_migrated_to_regular_screen(self):
+        with self.app.app_context():
+            from services.config_svc import get_screen_config, get_screen_keys, normalize_screen_key, save_config, load_config
+
+            save_config({
+                "default_screen_name": "Client1",
+                "order": ["poster.jpg"],
+                "disabled_groups": ["Menu"],
+                "durations": {"poster.jpg": 12},
+                "schedules": {"poster.jpg": {"time_start": "08:00"}},
+                "screens": {
+                    "client2": {},
+                },
+                "group_screens": {
+                    "Menu": [""],
+                },
+                "campaigns": [{
+                    "id": "campaign-default",
+                    "name": "Default campaign",
+                    "screens": [""],
+                    "media": ["poster.jpg"],
+                }],
+                "broadcast_links": {
+                    "": ["client2"],
+                },
+            })
+
+            cfg = load_config()
+            self.assertIn("client1", cfg["screens"])
+            self.assertEqual(normalize_screen_key("", cfg), "client1")
+            self.assertEqual(get_screen_keys(cfg), ["client1", "client2"])
+            self.assertEqual(get_screen_config(cfg, "")["order"], ["poster.jpg"])
+            self.assertEqual(cfg["group_screens"]["Menu"], ["client1"])
+            self.assertEqual(cfg["campaigns"][0]["screens"], ["client1"])
+            self.assertEqual(cfg["broadcast_links"]["client1"], ["client2"])
+
+    def test_default_screen_is_first_deduped_and_not_deletable(self):
+        with self.app.app_context():
+            from services.config_svc import get_screen_keys, save_config, load_config
+
+            save_config({
+                "default_screen_name": "Client1",
+                "screens": {
+                    "client2": {},
+                    "client3": {},
+                    "client4": {},
+                    "Client1": {},
+                },
+                "group_screens": {
+                    "test": ["", "client2", "Client1"],
+                },
+            })
+
+            cfg = load_config()
+            self.assertEqual(get_screen_keys(cfg), ["client1", "client2", "client3", "client4"])
+            self.assertEqual(cfg["group_screens"]["test"], ["client1", "client2"])
+
+        with self.client.session_transaction() as session:
+            session["user"] = "admin"
+            session["_csrf_token"] = "screen-delete-token"
+
+        delete_response = self.client.post(
+            "/admin/screens/delete/client1",
+            data={"_csrf_token": "screen-delete-token"},
+            follow_redirects=False,
+        )
+
+        self.assertEqual(delete_response.status_code, 302)
+        with self.app.app_context():
+            self.assertIn("client1", load_config()["screens"])
+
+    def test_admin_media_does_not_render_duplicate_default_group_screen_link(self):
+        with self.app.app_context():
+            from constants import UPLOAD_FOLDER
+            from services.config_svc import save_config
+
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            with open(os.path.join(UPLOAD_FOLDER, "poster.jpg"), "wb") as handle:
+                handle.write(b"image")
+            save_config({
+                "default_screen_name": "Client1",
+                "screens": {
+                    "client2": {"order": ["poster.jpg"]},
+                    "Client1": {},
+                },
+                "groups": {
+                    "poster.jpg": ["test"],
+                },
+                "group_screens": {
+                    "test": ["", "client2", "Client1"],
+                },
+            })
+
+        with self.client.session_transaction() as session:
+            session["user"] = "admin"
+
+        response = self.client.get("/admin/media?screen=client2")
+        html = response.get_data(as_text=True)
+        row_start = html.find('<div class="group-screens-row">')
+        row = html[row_start:html.find("</div>", row_start)]
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(row.count("Client1"), 1)
+        self.assertLess(row.find("Client1"), row.find("client2"))
+
+    def test_group_state_normalizes_legacy_screen_case(self):
+        with self.app.app_context():
+            from services.media_svc import collect_group_states, is_group_active_on_screen
+
+            cfg = {
+                "screens": {
+                    "Client1": {},
+                    "client2": {},
+                },
+                "groups": {
+                    "poster.jpg": ["Menu"],
+                },
+                "group_screens": {
+                    "Menu": ["Client1", "client2"],
+                },
+            }
+
+            self.assertTrue(is_group_active_on_screen("Menu", cfg, "client1"))
+            self.assertTrue(is_group_active_on_screen("Menu", cfg, "Client1"))
+            self.assertEqual(
+                collect_group_states(["poster.jpg"], cfg, screen="client1"),
+                [{"name": "Menu", "count": 1, "disabled": False, "pool_size": 0, "screens": ["client1", "client2"]}],
+            )
+
+    def test_admin_media_group_screens_json_attribute_is_valid(self):
+        with self.app.app_context():
+            from constants import UPLOAD_FOLDER
+            from services.config_svc import save_config
+
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            with open(os.path.join(UPLOAD_FOLDER, "poster.jpg"), "wb") as handle:
+                handle.write(b"image")
+            save_config({
+                "default_screen_name": "Client1",
+                "screens": {
+                    "client2": {"order": ["poster.jpg"]},
+                },
+                "groups": {
+                    "poster.jpg": ["Menu"],
+                },
+                "group_screens": {
+                    "Menu": ["client1", "client2"],
+                },
+            })
+
+        with self.client.session_transaction() as session:
+            session["user"] = "admin"
+
+        response = self.client.get("/admin/media?screen=client2")
+        html = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("data-screens='[", html)
+        self.assertNotIn('data-screens="["', html)
 
     def test_recreated_group_name_does_not_inherit_deleted_group_state(self):
         with self.app.app_context():

@@ -32,7 +32,6 @@
     function displayApiUrl(path, extraParams = {}) {
         const params = new URLSearchParams();
         if (SCREEN) params.set('screen', SCREEN);
-        params.set('screen_token', DISPLAY_API_TOKEN);
         Object.entries(extraParams).forEach(([key, value]) => {
             if (value !== undefined && value !== null && value !== '') {
                 params.set(key, value);
@@ -46,6 +45,12 @@
         if (screen) params.set('screen', screen);
         params.set('screen_token', DISPLAY_API_TOKEN);
         return `/?${params.toString()}`;
+    }
+
+    function screenTokenFetchOptions(options = {}) {
+        const headers = new Headers(options.headers || {});
+        if (DISPLAY_API_TOKEN) headers.set('X-Screen-Token', DISPLAY_API_TOKEN);
+        return { ...options, headers };
     }
 
     function getDisplayBounds() {
@@ -88,7 +93,7 @@
 
     async function fetchMedia() {
         try {
-            const res = await fetch(mediaApiUrl(), { cache: 'no-store' });
+            const res = await fetch(mediaApiUrl(), screenTokenFetchOptions({ cache: 'no-store' }));
             if (!res.ok) return { items: media.length ? media : [], revision: null };
             const fetched = await res.json();
             return {
@@ -102,7 +107,7 @@
 
     async function fetchDisplayRevision() {
         try {
-            const res = await fetch(displayApiUrl('/api/display-revision'), { cache: 'no-store' });
+            const res = await fetch(displayApiUrl('/api/display-revision'), screenTokenFetchOptions({ cache: 'no-store' }));
             if (!res.ok) return null;
             const data = await res.json();
             return data.playlist || null;
@@ -113,7 +118,7 @@
 
     async function fetchPools() {
         try {
-            const res = await fetch(displayApiUrl('/api/pools'), { cache: 'no-store' });
+            const res = await fetch(displayApiUrl('/api/pools'), screenTokenFetchOptions({ cache: 'no-store' }));
             if (!res.ok) return {};
             return await res.json();
         } catch (e) {
@@ -123,7 +128,7 @@
 
     async function fetchHalo() {
         try {
-            const res = await fetch(displayApiUrl('/api/halo'), { cache: 'no-store' });
+            const res = await fetch(displayApiUrl('/api/halo'), screenTokenFetchOptions({ cache: 'no-store' }));
             if (!res.ok) return null;
             return await res.json();
         } catch (e) {
@@ -155,8 +160,12 @@
     }
 
     function mediaUrl(item) {
-        const sep = item.path.includes('?') ? '&' : '?';
-        return `${item.path}${sep}v=${encodeURIComponent(item?.rev || Date.now())}`;
+        const url = new URL(item.path, location.origin);
+        if (DISPLAY_API_TOKEN && url.pathname.startsWith('/static/data/')) {
+            url.searchParams.set('screen_token', DISPLAY_API_TOKEN);
+        }
+        url.searchParams.set('v', item?.rev || Date.now());
+        return `${url.pathname}${url.search}`;
     }
 
     function computePoolSignature(pools) {
@@ -195,7 +204,7 @@
 
     async function fetchDurations() {
         try {
-            const res = await fetch(displayApiUrl('/api/durations'), { cache: 'no-store' });
+            const res = await fetch(displayApiUrl('/api/durations'), screenTokenFetchOptions({ cache: 'no-store' }));
             if (!res.ok) return {};
             return await res.json();
         } catch (e) {
@@ -205,7 +214,7 @@
 
     async function fetchPriorityAlert() {
         try {
-            const res = await fetch(displayApiUrl('/api/priority-alert'), { cache: 'no-store' });
+            const res = await fetch(displayApiUrl('/api/priority-alert'), screenTokenFetchOptions({ cache: 'no-store' }));
             if (!res.ok) return alertMessage;
             const data = await res.json();
             return (data.message || '').trim();

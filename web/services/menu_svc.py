@@ -541,11 +541,9 @@ def _draw_food_hero(canvas, draw, item, image_choices, *, phase=0, accent=(255, 
         odraw.line((x, 0, x, MENU_SIZE[1]), fill=(15, 23, 42, alpha))
     odraw.rectangle((0, 0, 1120, MENU_SIZE[1]), fill=(15, 23, 42, 64))
     canvas.paste(Image.alpha_composite(canvas.convert("RGBA"), overlay).convert("RGB"))
-    draw.rounded_rectangle((76, 760, 876, 930), radius=42, fill=(255, 255, 255), outline=(15, 23, 42), width=5)
-    draw.rounded_rectangle((106, 790, 250, 848), radius=29, fill=accent)
-    draw.text((132, 802), "FRAIS", font=_font(27, bold=True), fill=(255, 255, 255))
+    draw.rounded_rectangle((76, 790, 876, 930), radius=42, fill=(255, 255, 255), outline=(15, 23, 42), width=5)
     if item:
-        _draw_wrapped(draw, item["text"], 106, 862, 720, _font(50, bold=True), (15, 23, 42), line_gap=4, max_lines=2)
+        _draw_wrapped(draw, item["text"], 106, 820, 720, _font(50, bold=True), (15, 23, 42), line_gap=4, max_lines=2)
 
 
 def _draw_menu_item_row(draw, item, box, *, accent, active=False):

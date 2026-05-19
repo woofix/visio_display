@@ -46,6 +46,11 @@
 .menu-screen-preview { position:relative; aspect-ratio:16 / 9; border-radius:12px; overflow:hidden; background:var(--surface-alt); border:1px solid var(--border); box-shadow:var(--shadow-sm); }
 .menu-screen-preview.empty { display:grid; place-items:center; min-height:260px; }
 .menu-screen-preview.week { aspect-ratio:auto; overflow:visible; background:transparent; border:0; box-shadow:none; display:grid; gap:14px; }
+.menu-screen-preview.is-analyzing > :not(.menu-analysis-overlay) { filter:blur(7px); transform:scale(1.015); opacity:.58; pointer-events:none; user-select:none; transition:filter .16s ease, opacity .16s ease, transform .16s ease; }
+.menu-analysis-overlay { position:absolute; inset:0; z-index:5; display:none; place-items:center; padding:24px; background:color-mix(in srgb, var(--surface) 68%, transparent); backdrop-filter:blur(2px); text-align:center; }
+.menu-screen-preview.is-analyzing .menu-analysis-overlay { display:grid; }
+.menu-analysis-overlay-card { display:grid; justify-items:center; gap:10px; width:min(360px, 100%); border:1px solid color-mix(in srgb, var(--primary) 28%, var(--border)); border-radius:12px; padding:18px; background:var(--surface); box-shadow:var(--shadow-sm); color:var(--text); font-weight:900; }
+.menu-analysis-spinner { width:34px; height:34px; border-radius:999px; border:4px solid color-mix(in srgb, var(--primary) 16%, var(--border)); border-top-color:var(--primary); animation:menu-spin .8s linear infinite; }
 .menu-week-preview-card { aspect-ratio:16 / 9; border-radius:12px; overflow:hidden; background:var(--surface-alt); border:1px solid var(--border); box-shadow:var(--shadow-sm); }
 .menu-empty-preview { text-align:center; color:var(--text-3); font-weight:900; padding:24px; }
 .menu-empty-preview strong { display:block; color:var(--text); font-size:1.08rem; margin-bottom:6px; }
@@ -421,6 +426,15 @@
         tech.innerHTML = '';
         details.hidden = true;
     }
+    function setPreviewAnalyzing(active) {
+        const preview = document.querySelector('#menu-preview');
+        if (!preview) return;
+        preview.classList.toggle('is-analyzing', active);
+        preview.setAttribute('aria-busy', active ? 'true' : 'false');
+        preview.querySelectorAll('.menu-analysis-overlay').forEach(node => node.remove());
+        if (!active) return;
+        preview.insertAdjacentHTML('beforeend', `<div class="menu-analysis-overlay" role="status" aria-live="polite"><div class="menu-analysis-overlay-card"><div class="menu-analysis-spinner" aria-hidden="true"></div><span>${esc(labels.loading)}</span></div></div>`);
+    }
     function bindImageCarousels() {
         document.querySelectorAll('.menu-image-carousel').forEach(carousel => carousel.addEventListener('click', event => {
             if (event.target.closest('.menu-preview-zoom')) return;
@@ -458,6 +472,7 @@
         const preview = document.querySelector('#menu-preview');
         button.disabled = true;
         status.textContent = labels.loading;
+        setPreviewAnalyzing(true);
         const fetchSuggestions = async sections => {
             const response = await fetch('/admin/menus/suggest', {
                 method:'POST',
@@ -539,6 +554,7 @@
             preview.classList.remove('week');
             document.querySelector('#menu-tech-details').hidden = true;
         }
+        setPreviewAnalyzing(false);
         syncSelectedChoices();
         bindImageCarousels();
         button.disabled = false;

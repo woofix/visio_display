@@ -2061,6 +2061,71 @@ class AppSmokeTests(unittest.TestCase):
         self.assertTrue(previews["clip.mp4"].startswith("/static/data/video_posters/clip__mp4__thumb.jpg?v="))
         self.assertTrue(previews["poster.jpg"].startswith("/static/data/variants/poster__jpg__thumb.jpg?v="))
 
+    def test_admin_media_generates_missing_previews_for_video_thumbnails(self):
+        with self.app.app_context():
+            from constants import UPLOAD_FOLDER
+
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            with open(os.path.join(UPLOAD_FOLDER, "clip.mp4"), "wb") as handle:
+                handle.write(b"video")
+
+        with self.client.session_transaction() as session:
+            session["user"] = "admin"
+
+        media_module = import_module("blueprints.media")
+        metadata = {
+            "clip.mp4": {
+                "type": "video",
+                "size": "1 KB",
+                "dims": "1920x1080",
+                "preview_urls": {
+                    "admin": "/static/data/video_posters/clip__mp4__thumb.jpg",
+                    "preview": "/static/data/original/clip.mp4",
+                },
+            }
+        }
+        with patch.object(media_module, "build_media_metadata_map", return_value=metadata) as build_metadata:
+            response = self.client.get("/admin/media")
+
+        self.assertEqual(response.status_code, 200)
+        build_metadata.assert_called_once_with(["clip.mp4"], preview_contexts=("admin", "preview"), generate_missing=True)
+
+    def test_video_renditions_are_limited_to_profiles_supported_by_source_resolution(self):
+        from services import media_svc
+
+        with patch.object(media_svc, "get_video_dimensions", return_value=(1920, 1080)):
+            self.assertEqual(media_svc._eligible_video_profiles("clip.mp4"), ["v1080"])
+
+        with patch.object(media_svc, "get_video_dimensions", return_value=(3840, 2160)):
+            self.assertEqual(media_svc._eligible_video_profiles("clip.mp4"), ["v1080", "v2160"])
+
+        with patch.object(media_svc, "get_video_dimensions", return_value=(1280, 720)):
+            self.assertEqual(media_svc._eligible_video_profiles("clip.mp4"), [])
+
+    def test_display_video_url_uses_4k_variant_for_4k_bounds_and_falls_back_to_1080(self):
+        media_dir = os.path.join(self.temp_dir.name, "media")
+        video_variant_dir = os.path.join(media_dir, "video_variants")
+        os.makedirs(media_dir, exist_ok=True)
+        os.makedirs(video_variant_dir, exist_ok=True)
+        with open(os.path.join(media_dir, "clip.mp4"), "wb") as handle:
+            handle.write(b"original")
+        with open(os.path.join(video_variant_dir, "clip__v1080.mp4"), "wb") as handle:
+            handle.write(b"1080")
+
+        from services import media_svc
+
+        with patch.object(media_svc, "UPLOAD_FOLDER", media_dir), \
+             patch.object(media_svc, "VIDEO_VARIANT_FOLDER", video_variant_dir):
+            fallback_url = media_svc.get_media_url("clip.mp4", context="display", bounds=(3840, 2160), allow_original=True)
+            with open(os.path.join(video_variant_dir, "clip__v2160.mp4"), "wb") as handle:
+                handle.write(b"2160")
+            four_k_url = media_svc.get_media_url("clip.mp4", context="display", bounds=(3840, 2160), allow_original=True)
+            full_hd_url = media_svc.get_media_url("clip.mp4", context="display", bounds=(1920, 1080), allow_original=True)
+
+        self.assertIn("/static/data/video_variants/clip__v1080.mp4", fallback_url)
+        self.assertIn("/static/data/video_variants/clip__v2160.mp4", four_k_url)
+        self.assertIn("/static/data/video_variants/clip__v1080.mp4", full_hd_url)
+
     def test_media_metadata_cache_includes_dimensions_and_preview_urls(self):
         with self.app.app_context():
             from PIL import Image

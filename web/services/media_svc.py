@@ -42,6 +42,7 @@ VIDEO_RENDITION_PROFILES = {
     'v1440': {'width': 2560, 'height': 1440, 'video_bitrate': '9000k', 'audio_bitrate': '192k'},
     'v2160': {'width': 3840, 'height': 2160, 'video_bitrate': '16000k', 'audio_bitrate': '192k'},
 }
+DISPLAY_VIDEO_PROFILES = ('v1080', 'v2160')
 DEFAULT_CONTEXTS = {
     'admin': {'image_profile': 'thumb', 'video_poster_profile': 'thumb', 'video_profile': 'v720'},
     'campaign': {'image_profile': 'small', 'video_poster_profile': 'small', 'video_profile': 'v720'},
@@ -562,7 +563,17 @@ def _eligible_image_profiles(filename):
 
 
 def _eligible_video_profiles(filename):
-    return ['v1080']
+    width, height = get_video_dimensions(filename)
+    if width <= 0 or height <= 0:
+        return []
+    longest_edge = max(width, height)
+    shortest_edge = min(width, height)
+    eligible = []
+    for profile_name in DISPLAY_VIDEO_PROFILES:
+        profile = VIDEO_RENDITION_PROFILES[profile_name]
+        if longest_edge >= max(profile['width'], profile['height']) and shortest_edge >= min(profile['width'], profile['height']):
+            eligible.append(profile_name)
+    return eligible
 
 
 def generate_standard_image_renditions(filename, *, force=False):
@@ -629,14 +640,16 @@ def _pick_image_profile(context='admin', bounds=None):
 def _pick_video_profile(context='admin', bounds=None):
     if context == 'display' and bounds:
         target = max(bounds[0], bounds[1])
-        if target <= 1280:
-            return 'v720'
-        if target <= 1920:
-            return 'v1080'
-        if target <= 2560:
-            return 'v1440'
-        return 'v2160'
+        if target >= 3840:
+            return 'v2160'
+        return 'v1080'
     return DEFAULT_CONTEXTS.get(context, DEFAULT_CONTEXTS['admin'])['video_profile']
+
+
+def _video_profile_fallbacks(profile_name):
+    if profile_name == 'v2160':
+        return ('v2160', 'v1080')
+    return (profile_name,)
 
 
 def _pick_video_poster_profile(context='admin', bounds=None):
@@ -674,9 +687,10 @@ def get_media_url(filename, *, context='admin', bounds=None, allow_original=Fals
             video_profile = _pick_video_profile(context=context, bounds=bounds)
             # Video transcoding is intentionally left to the background worker.
             # HTTP requests should never block on generating a missing rendition.
-            video_url = get_existing_video_variant_url(filename, video_profile)
-            if video_url:
-                return video_url
+            for candidate_profile in _video_profile_fallbacks(video_profile):
+                video_url = get_existing_video_variant_url(filename, candidate_profile)
+                if video_url:
+                    return video_url
             if allow_original:
                 return get_original_media_url(filename)
             return get_existing_thumbnail_url(filename)

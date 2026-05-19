@@ -348,6 +348,7 @@ def _rq_compress_job(encode_job_id):
 
         from services.activity_svc import log_activity
         log_activity('system', 'compress', filename=job['filename'], details='started')
+        generate_standard_renditions(job['filename'], force=True)
         ok = _reencode_with_progress(src, tmp, compress=True, job_id=encode_job_id)
         if ok:
             os.replace(tmp, out)
@@ -357,8 +358,9 @@ def _rq_compress_job(encode_job_id):
                 except Exception:
                     pass
                 delete_media_thumbnail(job['filename'])
-                delete_video_variants(job['filename'])
-            generate_standard_renditions(os.path.basename(out), force=True)
+                if os.path.splitext(job['filename'])[0] != os.path.splitext(os.path.basename(out))[0]:
+                    delete_video_variants(job['filename'])
+            generate_standard_renditions(os.path.basename(out))
             bump_media_revision()
             size_after = os.path.getsize(out)
             new_name   = os.path.basename(out)

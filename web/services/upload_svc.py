@@ -9,7 +9,7 @@ import constants as C
 from constants import UPLOAD_FOLDER, VIDEO_EXTS
 from services.activity_svc import log_activity
 from services.config_svc import load_config, save_config
-from services.i18n import _flash
+from services.i18n import _flash, _t
 from services.media_svc import (
     are_videos_enabled,
     clean_filename,
@@ -17,6 +17,7 @@ from services.media_svc import (
     delete_media_thumbnail,
     delete_video_variants,
     generate_standard_renditions,
+    get_video_dimensions,
     is_valid_uploaded_image,
 )
 from services.playlist_cache_svc import bump_media_revision
@@ -164,9 +165,23 @@ def save_pdf_upload(file, filename, planned_filenames, username):
             os.remove(dest)
 
 
-def save_video_upload(file, filename, queued_video_files, username):
+def _video_resolution_warnings(filename):
+    width, height = get_video_dimensions(filename)
+    if width <= 0 or height <= 0:
+        return []
+    longest_edge = max(width, height)
+    shortest_edge = min(width, height)
+    if longest_edge < 1920 or shortest_edge < 1080:
+        return [_t("upload_video_too_small_for_hd", filename=filename, width=width, height=height)]
+    if longest_edge < 3840 or shortest_edge < 2160:
+        return [_t("upload_video_too_small_for_4k", filename=filename, width=width, height=height)]
+    return []
+
+
+def save_video_upload(file, filename, queued_video_files, upload_warnings, username):
     dest = os.path.join(UPLOAD_FOLDER, filename)
     file.save(dest)
+    upload_warnings.extend(_video_resolution_warnings(filename))
     cfg = load_config()
     disabled = cfg.setdefault("disabled", [])
     if filename not in disabled:
@@ -210,6 +225,7 @@ def handle_media_upload(files, form_data, username):
         return _json_error({"error": "batch too large"}, 400)
 
     queued_video_files = []
+    upload_warnings = []
     planned_filenames = set()
     for file_index, file in enumerate(files):
         if not file or file.filename == "":
@@ -260,7 +276,7 @@ def handle_media_upload(files, form_data, username):
         if ext == ".pdf":
             save_pdf_upload(file, filename, planned_filenames, username)
         elif ext in VIDEO_EXTS:
-            save_video_upload(file, filename, queued_video_files, username)
+            save_video_upload(file, filename, queued_video_files, upload_warnings, username)
         elif not save_image_upload(file, filename, username):
             return _json_error({"error": "invalid image file"}, 400)
 
@@ -268,4 +284,9 @@ def handle_media_upload(files, form_data, username):
     if queued_video_files:
         redirect_url = "/admin/queue"
     bump_media_revision()
-    return jsonify({"ok": True, "queued_files": queued_video_files, "redirect": redirect_url})
+    return jsonify({
+        "ok": True,
+        "queued_files": queued_video_files,
+        "redirect": redirect_url,
+        "warnings": upload_warnings,
+    })

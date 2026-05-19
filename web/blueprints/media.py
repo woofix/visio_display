@@ -125,7 +125,7 @@ def admin_media():
     cfg       = load_config()
     screen    = normalize_screen_key(request.args.get('screen', ''), cfg)
     all_media = get_all_media()
-    media_metadata = build_media_metadata_map(all_media, preview_contexts=('admin', 'preview'))
+    media_metadata = build_media_metadata_map(all_media, preview_contexts=('admin', 'preview'), generate_missing=True)
     infos     = media_metadata
     q         = load_queue()
     queued    = {j['filename'] for j in q if j['status'] in ('pending', 'processing')}
@@ -215,7 +215,7 @@ def admin_media_cleanup_page():
                 cleanup_files.update(file_item["filename"] for file_item in group.get("files", []))
             continue
         cleanup_files.update(item["filename"] for item in items)
-    preview_urls = build_media_preview_map(sorted(cleanup_files, key=str.casefold), context='admin')
+    preview_urls = build_media_preview_map(sorted(cleanup_files, key=str.casefold), context='admin', generate_missing=True)
     return render_template(
         'admin_media_cleanup.html',
         cleanup=cleanup,
@@ -240,7 +240,7 @@ def admin_programming_page():
     cfg = load_config()
     users = load_users()
     files = get_all_media()
-    media_infos = build_media_metadata_map(files, preview_contexts=('campaign',))
+    media_infos = build_media_metadata_map(files, preview_contexts=('campaign',), generate_missing=True)
     allowed_screens = [screen for screen in cfg.get('screens', {}) if has_screen_access(screen)]
     default_screen_name = get_default_screen_name(cfg) or _t('media_screen_default')
 

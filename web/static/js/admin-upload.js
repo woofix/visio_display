@@ -551,6 +551,9 @@ function submitUploadFiles(files, strategy = '', renameMap = null) {
             showFlash(message, 'error');
             return;
         }
+        if (Array.isArray(data.warnings) && data.warnings.length) {
+            window.appUI.showFlashAfterReload(data.warnings.join('\n'), 'warning');
+        }
         window.location.href = data.redirect || '/admin/media';
     });
     xhr.addEventListener('error', async () => {

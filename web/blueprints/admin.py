@@ -31,6 +31,7 @@ def admin_page():
     return render_template('admin_dashboard.html',
         files=files, cfg=cfg, disk=disk, screens=screens, nb_active=nb_active,
         server_stats=server_stats,
+        priority_alert=cfg.get('priority_alert', {}),
         active_campaigns=active_campaigns,
         users=list(users.keys()), current_user=session.get('user'),
         logo_path=get_logo_path())

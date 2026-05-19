@@ -205,6 +205,9 @@ def set_priority_alert():
     detail = 'priority alert cleared' if not message else f'priority alert:{message}'
     log_config_change(session.get('user'), detail)
 
+    if request.form.get('redirect_to') == '/admin':
+        return redirect('/admin')
+
     return jsonify({
         'ok': True,
         'message': message,

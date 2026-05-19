@@ -62,6 +62,50 @@
 .disk-legend .used::before { background:var(--primary); }
 .disk-legend .free::before { background:#ede9fe; border:1px solid var(--border); }
 
+.priority-alert-card {
+    display:grid; grid-template-columns:minmax(220px,.9fr) minmax(260px,1.2fr) auto;
+    align-items:center; gap:16px; margin-bottom:18px; padding:16px 18px;
+    border-radius:var(--radius); border:1px solid rgba(245,158,11,.28);
+    background:
+        radial-gradient(circle at 92% 0%, rgba(245,158,11,.17), transparent 32%),
+        linear-gradient(135deg, color-mix(in srgb, var(--surface) 92%, #451a03), var(--surface));
+    box-shadow:var(--shadow-sm);
+}
+.priority-alert-card.inactive {
+    border-color:var(--border);
+    background:var(--surface);
+}
+.priority-alert-main { display:flex; align-items:center; gap:12px; min-width:0; }
+.priority-alert-icon {
+    width:42px; height:42px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+    flex-shrink:0; color:#fff; background:linear-gradient(135deg,#f97316,#dc2626);
+    box-shadow:0 12px 26px rgba(220,38,38,.18);
+}
+.priority-alert-card.inactive .priority-alert-icon {
+    background:var(--surface-alt); color:var(--text-3); box-shadow:none; border:1px solid var(--border);
+}
+.priority-alert-icon svg { width:20px; height:20px; }
+.priority-alert-kicker { font-size:.68rem; color:var(--orange); font-weight:900; text-transform:uppercase; letter-spacing:.08em; }
+.priority-alert-card.inactive .priority-alert-kicker { color:var(--text-3); }
+.priority-alert-title { font-size:.94rem; font-weight:800; color:var(--text); margin-top:2px; }
+.priority-alert-sub { font-size:.74rem; color:var(--text-3); margin-top:3px; }
+.priority-alert-preview {
+    min-width:0; padding:12px 14px; border-radius:12px; background:rgba(255,255,255,.06);
+    border:1px solid rgba(245,158,11,.2);
+}
+.priority-alert-card.inactive .priority-alert-preview { border-color:var(--border); background:var(--surface-alt); }
+.priority-alert-message { font-size:.86rem; font-weight:800; color:var(--text); line-height:1.35; overflow-wrap:anywhere; }
+.priority-alert-meta { margin-top:6px; font-size:.7rem; color:var(--text-3); display:flex; align-items:center; gap:6px; }
+.priority-alert-meta svg { width:13px; height:13px; color:var(--orange); flex-shrink:0; }
+.priority-alert-actions { display:flex; align-items:center; justify-content:flex-end; gap:9px; flex-wrap:wrap; }
+.priority-alert-status {
+    border-radius:999px; padding:6px 10px; background:rgba(220,38,38,.12); color:#b91c1c;
+    border:1px solid rgba(220,38,38,.2); font-size:.68rem; font-weight:900; letter-spacing:.06em;
+}
+.priority-alert-status.inactive { background:var(--surface-alt); color:var(--text-3); border-color:var(--border); }
+.priority-alert-actions .btn { white-space:nowrap; }
+.priority-alert-actions form { display:inline-flex; }
+
 .quick-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
 .quick-card { background:var(--surface); border-radius:var(--radius); padding:18px 20px; box-shadow:var(--shadow-sm); border:1px solid var(--border); text-decoration:none; color:inherit; transition:box-shadow .2s, transform .15s; display:block; }
 .quick-card:hover { box-shadow:var(--shadow); transform:translateY(-2px); }
@@ -93,7 +137,7 @@
 .campaign-pill span { display:block; font-size:.7rem; color:var(--text-3); }
 .campaign-priority { background:var(--primary-bg); color:var(--primary); border-radius:999px; padding:4px 9px; font-size:.68rem; font-weight:800; }
 
-@media(max-width:1000px) { .hero-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .quick-grid { grid-template-columns:1fr 1fr; } }
+@media(max-width:1000px) { .hero-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .priority-alert-card { grid-template-columns:1fr; align-items:start; } .priority-alert-actions { justify-content:flex-start; } .quick-grid { grid-template-columns:1fr 1fr; } }
 @media(max-width:800px) { .quick-grid { grid-template-columns:1fr; } }
 @media(max-width:640px) {
     .hero { padding: 20px 16px 18px; }
@@ -104,6 +148,11 @@
     .hero-stat-val { font-size: 1.45rem; }
     .disk-header { flex-wrap: wrap; gap: 8px; }
     .disk-legend { flex-direction: column; gap: 8px; }
+    .priority-alert-card { padding:14px; }
+    .priority-alert-main { align-items:flex-start; }
+    .priority-alert-actions { align-items:stretch; }
+    .priority-alert-actions .btn, .priority-alert-actions form { width:100%; }
+    .priority-alert-actions .btn { justify-content:center; }
     .quick-card { padding: 16px; }
 }
 {% endblock %}
@@ -190,6 +239,68 @@
         </div>
     </div>
 </div>
+
+{% if is_feature_enabled('priority_alert') %}
+{% set priority_alert_message = priority_alert.message | default('') | trim %}
+<div class="priority-alert-card{% if not priority_alert_message %} inactive{% endif %}">
+    <div class="priority-alert-main">
+        <div class="priority-alert-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+        </div>
+        <div>
+            <div class="priority-alert-kicker">{{ t('dashboard_priority_alert_kicker') }}</div>
+            <div class="priority-alert-title">{{ t('superadmin_priority_alert_title') }}</div>
+            <div class="priority-alert-sub">
+                {% if priority_alert_message %}
+                {{ t('dashboard_priority_alert_live_sub') }}
+                {% else %}
+                {{ t('dashboard_priority_alert_empty_sub') }}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="priority-alert-preview">
+        <div class="priority-alert-message">
+            {% if priority_alert_message %}
+            {{ priority_alert_message }}
+            {% else %}
+            {{ t('dashboard_priority_alert_empty_message') }}
+            {% endif %}
+        </div>
+        <div class="priority-alert-meta">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+            </svg>
+            {% if priority_alert_message %}
+            {{ t('dashboard_priority_alert_active_meta') }}
+            {% else %}
+            {{ t('dashboard_priority_alert_empty_meta') }}
+            {% endif %}
+        </div>
+    </div>
+    <div class="priority-alert-actions">
+        <span class="priority-alert-status{% if not priority_alert_message %} inactive{% endif %}">
+            {% if priority_alert_message %}{{ t('dashboard_priority_alert_status_active') }}{% else %}{{ t('dashboard_priority_alert_status_inactive') }}{% endif %}
+        </span>
+        {% if current_user_is_superadmin %}
+        <a class="btn secondary sm" href="/admin/settings/alerte-prioritaire">{{ t('dashboard_priority_alert_edit') }}</a>
+        {% if priority_alert_message %}
+        <form method="post" action="/admin/priority-alert">
+            <input type="hidden" name="message" value="">
+            <input type="hidden" name="redirect_to" value="/admin">
+            <button type="submit" class="btn secondary sm">{{ t('dashboard_priority_alert_disable') }}</button>
+        </form>
+        {% endif %}
+        {% endif %}
+        <a class="btn sm" href="/?{{ screen_token_query_param }}={{ display_api_token | urlencode }}" target="_blank" rel="noopener noreferrer">{{ t('dashboard_priority_alert_preview') }}</a>
+    </div>
+</div>
+{% endif %}
 
 <!-- Disk bar -->
 <div class="disk-card">

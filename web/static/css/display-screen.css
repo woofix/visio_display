@@ -87,11 +87,15 @@ body::before {
 .priority-alert {
     position: fixed;
     top: 22px;
-    left: 50%;
-    transform: translate(-50%, -18px);
-    width: min(92vw, 1520px);
-    padding: 18px 24px;
-    border-radius: 22px;
+    left: 24px;
+    right: 24px;
+    left: max(24px, env(safe-area-inset-left));
+    right: max(24px, env(safe-area-inset-right));
+    width: auto;
+    padding: clamp(14px, 1.2vw, 32px) clamp(18px, 1.8vw, 48px);
+    overflow: hidden;
+    transform: translateY(-18px);
+    border-radius: clamp(16px, 1.15vw, 30px);
     background: linear-gradient(135deg, rgba(127, 29, 29, .96), rgba(220, 38, 38, .94));
     color: #fff;
     box-shadow: 0 20px 60px rgba(0, 0, 0, .45);
@@ -105,19 +109,19 @@ body::before {
 
 .priority-alert.visible {
     opacity: 1;
-    transform: translate(-50%, 0);
+    transform: translateY(0);
 }
 
 .priority-alert-label {
-    font: 800 .88rem/1.1 var(--display-font-base);
+    font: 800 clamp(.78rem, .62vw, 1.35rem)/1.1 var(--display-font-base);
     letter-spacing: .12em;
     text-transform: uppercase;
     opacity: .82;
-    margin-bottom: 8px;
+    margin-bottom: clamp(6px, .5vw, 14px);
 }
 
 .priority-alert-message {
-    font: 700 clamp(1.35rem, 2vw, 2.45rem)/1.18 var(--display-font-display);
+    font: 700 clamp(1.2rem, 1.8vw, 3.8rem)/1.16 var(--display-font-display);
     white-space: pre-wrap;
     word-break: break-word;
     text-wrap: balance;
@@ -193,6 +197,10 @@ body::before {
 @media (max-width: 640px) {
     .priority-alert {
         top: 14px;
+        left: 10px;
+        right: 10px;
+        left: max(10px, env(safe-area-inset-left));
+        right: max(10px, env(safe-area-inset-right));
         padding: 14px 16px;
         border-radius: 18px;
     }
@@ -229,13 +237,14 @@ body::before {
     }
 
     .priority-alert {
-        left: calc(10px + env(safe-area-inset-left));
-        right: calc(10px + env(safe-area-inset-right));
-        width: auto;
         transform: translateY(-18px);
     }
 
     .priority-alert.visible {
         transform: translateY(0);
+    }
+
+    .priority-alert-message {
+        font-size: clamp(1.15rem, 4.6vw, 2rem);
     }
 }

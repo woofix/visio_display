@@ -97,6 +97,7 @@
 .menu-schedule-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; align-items:end; }
 .menu-schedule-grid .menu-field { margin-bottom:0; }
 .menu-schedule-date-field { grid-column:1 / -1; }
+.menu-time-hint { margin:8px 0 0; color:var(--text-3); font-size:.8rem; line-height:1.4; }
 .menu-help { border:1px solid color-mix(in srgb, var(--primary) 24%, var(--border)); background:var(--primary-bg); color:var(--text-2); border-radius:10px; padding:12px; font-size:.84rem; line-height:1.45; margin-top:14px; }
 @media(max-width:980px) {
     .menu-builder,.menu-steps,.menu-sections { grid-template-columns:1fr; }
@@ -226,6 +227,7 @@
                         <input id="menu-time-end" name="time_end" type="time">
                     </div>
                 </div>
+                <p class="menu-time-hint">{{ t('menus_default_end_hint') }}</p>
             </div>
             <div class="menu-field">
                 <label>{{ t('announcements_screens') }}</label>
@@ -280,6 +282,9 @@
         previewImage: {{ t('menus_preview_image')|tojson }},
         previewEmptyTitle: {{ t('menus_preview_empty_title')|tojson }},
         previewEmptyDesc: {{ t('menus_preview_empty_desc')|tojson }},
+        defaultEndTitle: {{ t('menus_default_end_confirm_title')|tojson }},
+        defaultEndMessage: {{ t('menus_default_end_confirm_message')|tojson }},
+        defaultEndConfirm: {{ t('menus_default_end_confirm_btn')|tojson }},
     };
     const weekdayLabels = [
         {{ t('weekday_short_0')|tojson }},
@@ -538,7 +543,28 @@
         bindImageCarousels();
         button.disabled = false;
     }
-    document.querySelector('#menu-form').addEventListener('submit', () => {
+    document.querySelector('#menu-form').addEventListener('submit', async event => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const timeEnd = document.querySelector('#menu-time-end');
+        const hasScheduleLimit = currentMode() === 'week'
+            || Boolean(document.querySelector('#menu-date-start')?.value)
+            || Boolean(document.querySelector('#menu-time-start')?.value);
+        if (timeEnd && !timeEnd.value && hasScheduleLimit) {
+            let accepted = true;
+            if (window.appUI?.confirm) {
+                accepted = await window.appUI.confirm({
+                    titleText: labels.defaultEndTitle,
+                    messageText: labels.defaultEndMessage,
+                    confirmLabel: labels.defaultEndConfirm,
+                    tone: 'warning',
+                });
+            } else {
+                accepted = confirm(labels.defaultEndMessage);
+            }
+            if (!accepted) return;
+            timeEnd.value = '14:00';
+        }
         syncSelectedChoices();
         const overlay = document.querySelector('#menu-loading-overlay');
         const submit = document.querySelector('#menu-form button[type="submit"]');
@@ -547,6 +573,34 @@
             overlay.setAttribute('aria-hidden', 'false');
         }
         if (submit) submit.disabled = true;
+        try {
+            const response = await fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-Token': document.querySelector('input[name="_csrf_token"]').value,
+                },
+                body: new FormData(form),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.ok) throw new Error(data.error || {{ t('generic_unknown_error')|tojson }});
+            if (data.message && window.appUI?.showFlashAfterReload) {
+                window.appUI.showFlashAfterReload(data.message, 'success');
+            }
+            window.location.assign(data.redirect || '/admin/media');
+        } catch (error) {
+            if (overlay) {
+                overlay.classList.remove('open');
+                overlay.setAttribute('aria-hidden', 'true');
+            }
+            if (submit) submit.disabled = false;
+            if (window.appUI?.alert) {
+                await window.appUI.alert(error.message || {{ t('generic_unknown_error')|tojson }}, { tone: 'error' });
+            } else {
+                alert(error.message || {{ t('generic_unknown_error')|tojson }});
+            }
+        }
     });
     document.querySelector('#menu-form').addEventListener('keydown', event => {
         if (event.key !== 'Enter') return;

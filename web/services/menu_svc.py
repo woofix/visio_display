@@ -36,9 +36,9 @@ MENU_SECTIONS = (
     ("dessert", "Dessert"),
 )
 SECTION_ACCENTS = (
-    (34, 211, 238),
-    (244, 114, 182),
-    (163, 230, 53),
+    (255, 107, 107),
+    (75, 123, 236),
+    (32, 201, 151),
 )
 MENU_SCHEDULE_KEYS = ("date_start", "date_end", "time_start", "time_end")
 WEEKDAY_SECTION_KEYS = tuple(key for key, _label in MENU_SECTIONS)
@@ -167,6 +167,8 @@ def build_menu_schedule(data):
         value = str(data.get(key, "") if hasattr(data, "get") else "").strip()
         if value:
             schedule[key] = value
+    if not schedule.get("time_end") and any(schedule.get(key) for key in ("date_start", "date_end", "time_start")):
+        schedule["time_end"] = "14:00"
 
     for key in ("date_start", "date_end"):
         if key in schedule and not parse_iso_date(schedule[key]):
@@ -188,6 +190,8 @@ def build_daily_schedule(base_schedule, day, day_schedule=None):
             schedule[key] = value
     schedule["date_start"] = day.isoformat()
     schedule["date_end"] = day.isoformat()
+    if not schedule.get("time_end"):
+        schedule["time_end"] = "14:00"
     return schedule
 
 
@@ -402,10 +406,7 @@ def _font(size, bold=False):
 def _fit_image(path, size):
     with Image.open(path) as image:
         image = ImageOps.exif_transpose(image).convert("RGB")
-        image.thumbnail(size, Image.Resampling.LANCZOS)
-        canvas = Image.new("RGB", size, (235, 239, 246))
-        canvas.paste(image, ((size[0] - image.width) // 2, (size[1] - image.height) // 2))
-        return canvas
+        return ImageOps.fit(image, size, method=Image.Resampling.LANCZOS)
 
 
 def _blend_color(a, b, ratio):
@@ -414,31 +415,35 @@ def _blend_color(a, b, ratio):
 
 
 def _draw_modern_background(draw, phase=0):
-    top = (12, 18, 32)
-    bottom = (30, 41, 59)
+    top = (255, 247, 237)
+    bottom = (232, 245, 255)
     for y in range(MENU_SIZE[1]):
         ratio = y / max(1, MENU_SIZE[1] - 1)
         draw.line((0, y, MENU_SIZE[0], y), fill=_blend_color(top, bottom, ratio))
-    for index, accent in enumerate(SECTION_ACCENTS):
-        offset = int(math.sin((phase + index * 9) * 0.18) * 36)
-        x = 170 + index * 610 + offset
-        y = 250 + int(math.cos((phase + index * 7) * 0.14) * 42)
-        for radius, mix in ((300, 0.12), (220, 0.16), (140, 0.2)):
-            color = _blend_color((18, 24, 38), accent, mix)
-            draw.ellipse((x - radius, y - radius, x + radius, y + radius), outline=color, width=18)
-    for x in range(-260, MENU_SIZE[0] + 260, 260):
-        drift = int((phase * 7) % 260)
-        draw.line((x + drift, 1080, x + drift + 520, 0), fill=(42, 53, 77), width=2)
+    draw.rounded_rectangle((-80, 42, 560, 258), radius=110, fill=(255, 221, 87))
+    draw.rounded_rectangle((1390, -66, 2030, 218), radius=140, fill=(255, 159, 243))
+    draw.rounded_rectangle((1260, 820, 1980, 1158), radius=170, fill=(126, 214, 223))
+    draw.rounded_rectangle((-130, 790, 520, 1110), radius=150, fill=(186, 220, 88))
+    for index, accent in enumerate(SECTION_ACCENTS * 2):
+        offset = int(math.sin((phase + index * 5) * 0.16) * 18)
+        x = 170 + (index * 315) % 1620 + offset
+        y = 155 + ((index * 137) % 760)
+        draw.ellipse((x, y, x + 30, y + 30), fill=accent)
+        draw.line((x + 54, y + 12, x + 112, y + 12 + int(math.cos(phase * 0.2 + index) * 18)), fill=accent, width=8)
+    for x in range(-80, MENU_SIZE[0], 180):
+        y = 1000 + int(math.sin((phase + x) * 0.02) * 18)
+        draw.arc((x, y, x + 80, y + 52), 180, 360, fill=(15, 23, 42), width=4)
 
 
 def _draw_fallback(draw, box, text):
     x, y, w, h = box
-    draw.rounded_rectangle((x, y, x + w, y + h), radius=28, fill=(15, 23, 42), outline=(71, 85, 105), width=3)
+    draw.rounded_rectangle((x, y, x + w, y + h), radius=34, fill=(255, 236, 153), outline=(15, 23, 42), width=4)
     keyword = extract_keywords(text)
     label = (keyword[0]["keyword"] if keyword else text[:1] or "?").upper()
-    font = _font(48, bold=True)
+    label = label[:2]
+    font = _font(56, bold=True)
     bbox = draw.textbbox((0, 0), label, font=font)
-    draw.text((x + (w - bbox[2]) / 2, y + (h - bbox[3]) / 2), label, font=font, fill=(226, 232, 240))
+    draw.text((x + (w - bbox[2]) / 2, y + (h - bbox[3]) / 2), label, font=font, fill=(15, 23, 42))
 
 
 def _draw_wrapped(draw, text, x, y, width, font, fill, line_gap=8, max_lines=2):
@@ -462,14 +467,15 @@ def _draw_wrapped(draw, text, x, y, width, font, fill, line_gap=8, max_lines=2):
 
 def _draw_section_dish(canvas, draw, item, box, image_choices, *, accent=(148, 163, 184), active=False, pulse=0.0):
     x, y, w, h = box
-    fill = _blend_color((15, 23, 42), accent, 0.08 if active else 0.035)
-    outline = _blend_color((51, 65, 85), accent, 0.45 if active else 0.16)
+    draw.rounded_rectangle((x + 8, y + 10, x + w + 8, y + h + 10), radius=30, fill=(211, 220, 232))
+    fill = (255, 255, 255)
+    outline = accent if active else (226, 232, 240)
     if active:
-        glow = 6 + int(pulse * 9)
-        draw.rounded_rectangle((x - glow, y - glow, x + w + glow, y + h + glow), radius=22, outline=_blend_color((15, 23, 42), accent, 0.85), width=3)
-    draw.rounded_rectangle((x, y, x + w, y + h), radius=16, fill=fill, outline=outline, width=3 if active else 2)
-    image_size = min(146, h - 28)
-    image_box = (x + 14, y + 14, image_size, image_size)
+        glow = 4 + int(pulse * 6)
+        draw.rounded_rectangle((x - glow, y - glow, x + w + glow, y + h + glow), radius=34, outline=accent, width=5)
+    draw.rounded_rectangle((x, y, x + w, y + h), radius=30, fill=fill, outline=outline, width=5 if active else 2)
+    image_size = min(176, h - 28)
+    image_box = (x + 16, y + 14, image_size, image_size)
     chosen = _safe_choice(image_choices.get(item["text"]))
     suggestion = chosen or next(
         (
@@ -480,15 +486,110 @@ def _draw_section_dish(canvas, draw, item, box, image_choices, *, accent=(148, 1
     )
     if suggestion and suggestion.get("local_path") and os.path.exists(suggestion["local_path"]):
         thumb = _fit_image(suggestion["local_path"], (image_box[2], image_box[3]))
-        canvas.paste(thumb, (image_box[0], image_box[1]))
-        draw.rounded_rectangle((image_box[0], image_box[1], image_box[0] + image_box[2], image_box[1] + image_box[3]), radius=18, outline=_blend_color((255, 255, 255), accent, 0.55), width=3)
+        mask = Image.new("L", (image_box[2], image_box[3]), 0)
+        ImageDraw.Draw(mask).rounded_rectangle((0, 0, image_box[2], image_box[3]), radius=32, fill=255)
+        canvas.paste(thumb, (image_box[0], image_box[1]), mask)
+        draw.rounded_rectangle((image_box[0], image_box[1], image_box[0] + image_box[2], image_box[1] + image_box[3]), radius=32, outline=(15, 23, 42), width=4)
     else:
         _draw_fallback(draw, image_box, item["text"])
-    text_x = x + image_size + 34
-    _draw_wrapped(draw, item["text"], text_x, y + 34, w - image_size - 54, _font(34, bold=True), (248, 250, 252), max_lines=2)
+    text_x = x + image_size + 42
+    _draw_wrapped(draw, item["text"], text_x, y + 30, w - image_size - 62, _font(42, bold=True), (15, 23, 42), max_lines=2)
     keywords = ", ".join(k["keyword"] for k in item["keywords"][:3])
     if keywords:
-        draw.text((text_x, y + h - 42), keywords, font=_font(21), fill=(148, 163, 184))
+        pill_w = min(w - image_size - 62, draw.textbbox((0, 0), keywords, font=_font(22, bold=True))[2] + 34)
+        draw.rounded_rectangle((text_x, y + h - 48, text_x + pill_w, y + h - 16), radius=16, fill=_blend_color((255, 255, 255), accent, 0.24))
+        draw.text((text_x + 17, y + h - 44), keywords, font=_font(22, bold=True), fill=(51, 65, 85))
+
+
+def _dish_suggestion(item, image_choices):
+    chosen = _safe_choice(image_choices.get(item["text"]))
+    if chosen and chosen.get("local_path") and os.path.exists(chosen["local_path"]):
+        return chosen
+    return next(
+        (
+            suggestion for suggestion in item.get("suggestions", [])
+            if suggestion.get("local_path") and os.path.exists(suggestion["local_path"])
+        ),
+        None,
+    )
+
+
+def _draw_food_hero(canvas, draw, item, image_choices, *, phase=0, accent=(255, 107, 107)):
+    hero_box = (-24, 0, 1126, MENU_SIZE[1])
+    suggestion = _dish_suggestion(item, image_choices) if item else None
+    if suggestion:
+        image = _fit_image(suggestion["local_path"], (hero_box[2] - hero_box[0] + 120, MENU_SIZE[1] + 120))
+        pan_x = int(math.sin(phase * 0.055) * 28)
+        pan_y = int(math.cos(phase * 0.04) * 22)
+        canvas.paste(image, (hero_box[0] - 60 + pan_x, -60 + pan_y))
+    else:
+        for y in range(MENU_SIZE[1]):
+            ratio = y / max(1, MENU_SIZE[1] - 1)
+            color = _blend_color(_blend_color((255, 236, 153), accent, 0.22), _blend_color((255, 247, 237), accent, 0.52), ratio)
+            draw.line((hero_box[0], y, hero_box[2], y), fill=color)
+        for radius, mix in ((380, 0.14), (270, 0.2), (160, 0.28)):
+            cx = 468 + int(math.sin(phase * 0.08) * 22)
+            cy = 482 + int(math.cos(phase * 0.06) * 18)
+            draw.ellipse((cx - radius, cy - radius, cx + radius, cy + radius), outline=_blend_color((255, 255, 255), accent, mix), width=24)
+        _draw_fallback(draw, (382, 380, 260, 260), item["text"] if item else "Menu")
+
+    overlay = Image.new("RGBA", MENU_SIZE, (0, 0, 0, 0))
+    odraw = ImageDraw.Draw(overlay)
+    for x in range(940):
+        alpha = int(98 * (1 - x / 940))
+        odraw.line((x, 0, x, MENU_SIZE[1]), fill=(15, 23, 42, alpha))
+    odraw.rectangle((0, 0, 1120, MENU_SIZE[1]), fill=(15, 23, 42, 64))
+    canvas.paste(Image.alpha_composite(canvas.convert("RGBA"), overlay).convert("RGB"))
+    draw.rounded_rectangle((76, 760, 876, 930), radius=42, fill=(255, 255, 255), outline=(15, 23, 42), width=5)
+    draw.rounded_rectangle((106, 790, 250, 848), radius=29, fill=accent)
+    draw.text((132, 802), "FRAIS", font=_font(27, bold=True), fill=(255, 255, 255))
+    if item:
+        _draw_wrapped(draw, item["text"], 106, 862, 720, _font(50, bold=True), (15, 23, 42), line_gap=4, max_lines=2)
+
+
+def _draw_menu_item_row(draw, item, box, *, accent, active=False):
+    x, y, w, h = box
+    shadow = (213, 220, 231)
+    draw.rounded_rectangle((x + 7, y + 9, x + w + 7, y + h + 9), radius=26, fill=shadow)
+    draw.rounded_rectangle((x, y, x + w, y + h), radius=26, fill=(255, 255, 255), outline=accent if active else (226, 232, 240), width=4 if active else 2)
+    draw.ellipse((x + 24, y + 25, x + 76, y + 77), fill=accent)
+    initial = " ".join(str(item.get("text", "?")).split())[:1].upper() or "?"
+    bbox = draw.textbbox((0, 0), initial, font=_font(30, bold=True))
+    draw.text((x + 50 - bbox[2] / 2, y + 35), initial, font=_font(30, bold=True), fill=(255, 255, 255))
+    _draw_wrapped(draw, item.get("text", ""), x + 98, y + 20, w - 122, _font(31, bold=True), (15, 23, 42), line_gap=2, max_lines=2)
+
+
+def _draw_compact_menu_section(draw, section, box, *, accent, active=False):
+    x, y, w, h = box
+    shadow = (213, 220, 231)
+    draw.rounded_rectangle((x + 7, y + 9, x + w + 7, y + h + 9), radius=28, fill=shadow)
+    draw.rounded_rectangle((x, y, x + w, y + h), radius=28, fill=(255, 255, 255), outline=accent if active else (226, 232, 240), width=4 if active else 2)
+    draw.rounded_rectangle((x + 22, y + 18, x + 180, y + 60), radius=21, fill=accent)
+    draw.text((x + 44, y + 27), section.get("label", "Menu").upper(), font=_font(21, bold=True), fill=(255, 255, 255))
+
+    items = section.get("items", [])[:4]
+    if not items:
+        _draw_wrapped(draw, "-", x + 30, y + 78, w - 60, _font(24, bold=True), (100, 116, 139), max_lines=1)
+        return
+
+    row_top = y + 70
+    row_gap = 5
+    row_h = max(24, min(44, (h - 82 - row_gap * (len(items) - 1)) // len(items)))
+    for index, item in enumerate(items):
+        row_y = row_top + index * (row_h + row_gap)
+        dot_y = row_y + max(5, (row_h - 15) // 2)
+        draw.ellipse((x + 30, dot_y, x + 45, dot_y + 15), fill=accent)
+        _draw_wrapped(
+            draw,
+            item.get("text", ""),
+            x + 62,
+            row_y + max(2, (row_h - 25) // 2),
+            w - 92,
+            _font(22, bold=True),
+            (15, 23, 42),
+            line_gap=1,
+            max_lines=1,
+        )
 
 
 def _render_menu_canvas(
@@ -503,69 +604,59 @@ def _render_menu_canvas(
     animation_phase=0,
     date_label=None,
 ):
-    canvas = Image.new("RGB", MENU_SIZE, (12, 18, 32))
+    canvas = Image.new("RGB", MENU_SIZE, (255, 247, 237))
     draw = ImageDraw.Draw(canvas)
     _draw_modern_background(draw, animation_phase)
     title = " ".join(str(title or "Menu du jour").split())[:90] or "Menu du jour"
-    draw.rounded_rectangle((70, 38, 1850, 142), radius=32, fill=(15, 23, 42), outline=(51, 65, 85), width=2)
-    draw.line((104, 132, 520, 132), fill=SECTION_ACCENTS[animation_phase % len(SECTION_ACCENTS)], width=5)
-    draw.text((104, 62), title, font=_font(54, bold=True), fill=(255, 255, 255))
     date_text = " ".join(str(date_label or datetime.now().strftime("%d/%m/%Y")).split())
-    date_box = draw.textbbox((0, 0), date_text, font=_font(34, bold=True))
-    draw.text((1800 - date_box[2], 70), date_text, font=_font(34, bold=True), fill=(203, 213, 225))
 
     if not sections:
-        _draw_wrapped(draw, "Ajoutez une entrée, un plat ou un dessert.", 92, 320, 1100, _font(58, bold=True), (226, 232, 240))
+        _draw_wrapped(draw, "Ajoutez une entrée, un plat ou un dessert.", 92, 320, 1100, _font(58, bold=True), (15, 23, 42))
         return canvas
 
-    section_gap = 34
-    section_w = (1736 - section_gap * 2) // 3
-    section_y = 210
-    section_h = 790
+    section_count = min(3, len(sections))
+    active_idx = active_section_index if active_section_index is not None else 0
+    active_idx = max(0, min(section_count - 1, active_idx))
+    active_section = sections[active_idx]
+    active_items = active_section.get("items", [])[:4]
+    hero_item = active_items[0] if active_items else None
+    accent = SECTION_ACCENTS[active_idx % len(SECTION_ACCENTS)]
+    reveal = max(0.0, min(1.0, float(section_reveal_progress)))
+    panel_shift = int((1.0 - reveal) * 80)
+
+    _draw_food_hero(canvas, draw, hero_item, image_choices, phase=animation_phase, accent=accent)
+    draw.polygon([(1010, 0), (1920, 0), (1920, 1080), (900, 1080)], fill=(255, 247, 237))
+    draw.line((990, 0, 900, 1080), fill=accent, width=11)
+
+    panel_x = 1046 + panel_shift
+    draw.rounded_rectangle((panel_x, 70, 1846, 1016), radius=58, fill=(255, 255, 255), outline=(15, 23, 42), width=5)
+    draw.rounded_rectangle((panel_x + 46, 112, panel_x + 214, 174), radius=31, fill=accent)
+    draw.text((panel_x + 78, 126), "MENU", font=_font(29, bold=True), fill=(255, 255, 255))
+    date_box = draw.textbbox((0, 0), date_text, font=_font(28, bold=True))
+    draw.text((panel_x + 734 - date_box[2], 128), date_text, font=_font(28, bold=True), fill=(71, 85, 105))
+    _draw_wrapped(draw, title, panel_x + 46, 210, 680, _font(58, bold=True), (15, 23, 42), line_gap=4, max_lines=2)
+
+    menu_top = 322
+    menu_bottom = 932
+    section_gap = 18
+    section_h = (menu_bottom - menu_top - section_gap * (section_count - 1)) // section_count
     for section_index, section in enumerate(sections[:3]):
-        if visible_section_count is not None and section_index >= visible_section_count:
-            continue
-        x = 92 + section_index * (section_w + section_gap)
-        current_section_y = section_y
-        if active_section_index == section_index:
-            reveal = max(0.0, min(1.0, float(section_reveal_progress)))
-            current_section_y += int((1.0 - reveal) * 72)
-        is_active = active_section_index is None or section_index == active_section_index
-        accent = SECTION_ACCENTS[section_index % len(SECTION_ACCENTS)]
-        fill = _blend_color((15, 23, 42), accent, 0.11 if is_active else 0.045)
-        outline = _blend_color((71, 85, 105), accent, 0.9 if is_active else 0.22)
-        width = 6 + int(active_pulse * 8) if active_section_index == section_index else 2
-        if active_section_index == section_index:
-            for glow_pad, mix in ((28, 0.35), (16, 0.58), (8, 0.9)):
-                draw.rounded_rectangle(
-                    (x - glow_pad, current_section_y - glow_pad, x + section_w + glow_pad, current_section_y + section_h + glow_pad),
-                    radius=32,
-                    outline=_blend_color((15, 23, 42), accent, mix),
-                    width=max(2, int(2 + active_pulse * 3)),
-                )
-        draw.rounded_rectangle((x, current_section_y, x + section_w, current_section_y + section_h), radius=22, fill=fill, outline=outline, width=width)
-        header_fill = _blend_color((15, 23, 42), accent, 0.72)
-        draw.rounded_rectangle((x + 18, current_section_y + 18, x + section_w - 18, current_section_y + 78), radius=18, fill=header_fill, outline=_blend_color((255, 255, 255), accent, 0.6), width=2)
-        draw.text((x + 38, current_section_y + 29), section["label"].upper(), font=_font(34, bold=True), fill=(255, 255, 255))
-        dish_y = current_section_y + 98
-        available = section_h - 126
-        visible_items = section["items"][:4]
-        if not visible_items:
-            break
-        dish_gap = 18
-        dish_h = min(176, (available - dish_gap * (len(visible_items) - 1)) // len(visible_items))
-        for item_index, item in enumerate(visible_items):
-            y = dish_y + item_index * (dish_h + dish_gap)
-            _draw_section_dish(
-                canvas,
-                draw,
-                item,
-                (x + 18, y, section_w - 36, dish_h),
-                image_choices,
-                accent=accent,
-                active=is_active,
-                pulse=active_pulse,
-            )
+        section_y = menu_top + section_index * (section_h + section_gap)
+        section_accent = SECTION_ACCENTS[section_index % len(SECTION_ACCENTS)]
+        _draw_compact_menu_section(
+            draw,
+            section,
+            (panel_x + 46, section_y, 700, section_h),
+            accent=section_accent,
+            active=section_index == active_idx,
+        )
+
+    nav_y = 956
+    for section_index, section in enumerate(sections[:3]):
+        dot_x = panel_x + 46 + section_index * 150
+        dot_accent = SECTION_ACCENTS[section_index % len(SECTION_ACCENTS)]
+        fill = dot_accent if section_index == active_idx else (226, 232, 240)
+        draw.rounded_rectangle((dot_x, nav_y, dot_x + 112, nav_y + 18), radius=9, fill=fill)
     return canvas
 
 
@@ -600,10 +691,7 @@ def render_menu_animation(title, text=None, *, sections=None, image_choices=None
         frame_index = 0
         for step in range(total_frames):
             active_index = (step // max(1, fps)) % section_count
-            local_step = step % max(1, fps)
-            blink = 1.0 if local_step in (0, 1, 4) else 0.22
-            flicker = 0.35 * (1.0 + math.sin(step * 2.7))
-            pulse = max(0.18, min(1.0, blink + flicker))
+            pulse = 0.45 + 0.35 * (1.0 + math.sin(step * 0.55)) / 2
             frame = _render_menu_canvas(
                 title,
                 grouped_sections,

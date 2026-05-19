@@ -878,6 +878,24 @@ class AppSmokeTests(unittest.TestCase):
             self.assertEqual(cfg["generated_menus"][filename]["schedule"], expected_schedule)
             self.assertEqual(cfg["durations"].get(filename), 20)
 
+    def test_menu_schedule_defaults_missing_end_time_to_14h(self):
+        with self.app.app_context():
+            from services.menu_svc import build_menu_schedule
+
+            self.assertEqual(build_menu_schedule({}), {})
+            self.assertEqual(
+                build_menu_schedule({"date_start": "2026-05-18", "time_start": "11:00"}),
+                {"date_start": "2026-05-18", "time_start": "11:00", "time_end": "14:00"},
+            )
+
+    def test_time_end_only_schedule_does_not_hide_media(self):
+        with self.app.app_context():
+            from services import media_svc
+
+            self.assertTrue(media_svc.is_media_scheduled("menu.mp4", {
+                "schedules": {"menu.mp4": {"time_end": "14:00"}}
+            }))
+
     def test_weekly_menu_creation_generates_one_scheduled_media_per_day(self):
         with self.app.app_context():
             from PIL import Image

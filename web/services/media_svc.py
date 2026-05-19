@@ -886,6 +886,8 @@ def is_media_scheduled(filename, cfg):
 
     time_start = sched.get("time_start")
     time_end   = sched.get("time_end")
+    if time_end and not time_start and not date_start and not date_end:
+        return True
     if time_start or time_end:
         current = now.time().replace(second=0, microsecond=0)
         if time_start:

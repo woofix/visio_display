@@ -87,13 +87,23 @@ def menu_suggestion_cache(filename):
 
 @bp.route("/admin/menus/create", methods=["POST"])
 def create_menu():
+    wants_json = (
+        request.headers.get("X-Requested-With") == "XMLHttpRequest"
+        or "application/json" in request.headers.get("Accept", "")
+    )
     redir = admin_guard()
     if redir:
+        if wants_json:
+            return jsonify({"ok": False, "error": "unauthorized"}), 401
         return redir
     redir = feature_guard("menus")
     if redir:
+        if wants_json:
+            return jsonify({"ok": False, "error": "feature disabled"}), 403
         return redir
     if not _has_menu_permission():
+        if wants_json:
+            return jsonify({"ok": False, "error": "permission denied"}), 403
         _flash("flash_no_perm_menus", "error")
         return redirect(url_for("menus.admin_menus_page"))
     try:
@@ -108,7 +118,7 @@ def create_menu():
                 screens=request.form.getlist("screens"),
                 username=session.get("user"),
                 image_choices=request.form.get("image_choices"),
-                queue_generation=True,
+                queue_generation=not wants_json,
             )
             filename = ", ".join(filenames)
         else:
@@ -129,8 +139,18 @@ def create_menu():
                 image_choices=request.form.get("image_choices"),
             )
     except Exception as exc:
+        error = str(exc) or _t("generic_unknown_error")
+        if wants_json:
+            return jsonify({"ok": False, "error": error}), 400
         _flash("flash_announcement_failed", "error", error=str(exc) or _t("generic_unknown_error"))
         return redirect(url_for("menus.admin_menus_page"))
+    if wants_json:
+        return jsonify({
+            "ok": True,
+            "filename": filename,
+            "message": _t("flash_announcement_created", filename=filename),
+            "redirect": url_for("media.admin_media"),
+        })
     _flash("flash_announcement_created", "success", filename=filename)
     if weekly_mode:
         return redirect(url_for("queue.admin_queue_view"))

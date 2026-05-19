@@ -78,6 +78,11 @@
 .menu-image-carousel:hover .menu-preview-zoom { opacity:1; }
 .menu-preview-zoom:hover { background:rgba(15,23,42,.94); }
 .menu-image-count { position:absolute; right:4px; bottom:4px; min-width:24px; border-radius:999px; padding:2px 5px; background:rgba(15,23,42,.72); color:#fff; font-size:.62rem; font-weight:900; text-align:center; }
+.menu-image-choice-list { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:4px; }
+.menu-image-choice { position:relative; aspect-ratio:1 / 1; border:1px solid var(--border); border-radius:6px; padding:0; overflow:hidden; background:var(--surface); cursor:pointer; box-shadow:none; }
+.menu-image-choice img { width:100%; height:100%; display:block; object-fit:cover; }
+.menu-image-choice.is-active { border-color:var(--primary); box-shadow:0 0 0 2px var(--primary-bg); }
+.menu-image-choice.is-active::after { content:""; position:absolute; inset:3px; border:2px solid #fff; border-radius:4px; pointer-events:none; }
 .menu-dish-title { font-weight:900; color:var(--text); font-size:clamp(.72rem, 1.1vw, 1.18rem); line-height:1.18; overflow-wrap:anywhere; }
 .menu-dish-meta { color:var(--text-3); font-size:.78rem; line-height:1.35; }
 .menu-dish-ok { color:#047857; font-weight:900; }
@@ -211,7 +216,8 @@
             <p class="menu-panel-intro">{{ t('menus_options_intro') }}</p>
             <div class="menu-field">
                 <label for="duration">{{ t('announcements_duration') }}</label>
-                <input id="duration" name="duration" type="number" min="1" max="3600" value="15">
+                <input type="hidden" name="duration" value="15">
+                <input id="duration" type="number" min="15" max="15" value="15" disabled title="Durée verrouillée à 15 s pour les vidéos Menus">
             </div>
             <div class="menu-field">
                 <label>{{ t('menus_schedule_title') }}</label>
@@ -408,6 +414,9 @@
         if (zoom) zoom.dataset.src = selected.local_url || url || selected.external_url || '';
         const counter = dish.querySelector('.menu-image-count');
         if (counter) counter.textContent = `${index + 1}/${suggestions.length}`;
+        dish.querySelectorAll('.menu-image-choice').forEach(button => {
+            button.classList.toggle('is-active', Number(button.dataset.index || -1) === index);
+        });
         const imageState = dish.querySelector('[data-image-state]');
         if (imageState) {
             const label = selected.source === 'local' ? labels.localImage : labels.externalImage;
@@ -465,6 +474,13 @@
             image.classList.remove('u-hidden');
             modal.classList.add('open');
         }));
+        document.querySelectorAll('.menu-image-choice').forEach(button => button.addEventListener('click', event => {
+            event.preventDefault();
+            event.stopPropagation();
+            const dish = button.closest('.menu-dish');
+            if (!dish) return;
+            updateDishImage(dish, Number(button.dataset.index || 0));
+        }));
     }
     async function loadSuggestions() {
         const button = document.querySelector('#menu-suggest-btn');
@@ -476,6 +492,7 @@
         const fetchSuggestions = async sections => {
             const response = await fetch('/admin/menus/suggest', {
                 method:'POST',
+                cache:'no-store',
                 headers:{
                     'Content-Type':'application/json',
                     'X-CSRF-Token':document.querySelector('input[name="_csrf_token"]').value,
@@ -487,7 +504,7 @@
             return data;
         };
         const renderPreviewItem = item => {
-            const suggestions = item.suggestions || [];
+            const suggestions = (item.suggestions || []).filter(suggestionImageUrl).slice(0, 6);
             const first = suggestions[0] || {};
             if (first.preview_url || first.local_url || first.external_url) selectedChoices[item.text] = first;
             const imageUrl = suggestionImageUrl(first);
@@ -495,8 +512,11 @@
             const zoomButton = imageUrl ? `<button type="button" class="menu-preview-zoom" data-src="${esc(fullImageUrl)}" title="${esc(labels.previewImage)}" aria-label="${esc(labels.previewImage)}"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"></circle><path d="m16 16 5 5"></path><path d="M11 8v6M8 11h6"></path></svg></button>` : '';
             const image = imageUrl ? `<img class="menu-dish-thumb" src="${esc(imageUrl)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'menu-dish-thumb missing',textContent:'${esc(labels.noLocalImage)}'}))">` : `<div class="menu-dish-thumb missing">${esc(labels.noLocalImage)}</div>`;
             const carousel = `<div class="menu-image-carousel${suggestions.length > 1 ? ' has-many' : ''}" title="${esc(labels.imageHint)}">${image}${zoomButton}${suggestions.length > 1 ? `<span class="menu-image-count">1/${suggestions.length}</span>` : ''}</div>`;
-            const encodedSuggestions = esc(JSON.stringify(suggestions.filter(suggestionImageUrl).slice(0, 6)));
-            return `<div class="menu-dish" data-text="${esc(item.text)}" data-index="0" data-suggestions="${encodedSuggestions}"><div class="menu-dish-main">${carousel}<div><div class="menu-dish-title">${esc(item.text)}</div></div></div></div>`;
+            const choices = suggestions.length > 1
+                ? `<div class="menu-image-choice-list">${suggestions.map((suggestion, index) => `<button type="button" class="menu-image-choice${index === 0 ? ' is-active' : ''}" data-index="${index}" title="${esc(suggestion.title || item.text)}" aria-label="${esc(suggestion.title || item.text)}"><img src="${esc(suggestionImageUrl(suggestion))}" alt=""></button>`).join('')}</div>`
+                : '';
+            const encodedSuggestions = esc(JSON.stringify(suggestions));
+            return `<div class="menu-dish" data-text="${esc(item.text)}" data-index="0" data-suggestions="${encodedSuggestions}"><div class="menu-dish-main">${carousel}<div><div class="menu-dish-title">${esc(item.text)}</div></div></div>${choices}</div>`;
         };
         const renderTechItem = item => {
             const keywords = (item.keywords || []).map(k => k.keyword).join(', ');
@@ -563,10 +583,7 @@
         event.preventDefault();
         const form = event.currentTarget;
         const timeEnd = document.querySelector('#menu-time-end');
-        const hasScheduleLimit = currentMode() === 'week'
-            || Boolean(document.querySelector('#menu-date-start')?.value)
-            || Boolean(document.querySelector('#menu-time-start')?.value);
-        if (timeEnd && !timeEnd.value && hasScheduleLimit) {
+        if (timeEnd && !timeEnd.value) {
             let accepted = true;
             if (window.appUI?.confirm) {
                 accepted = await window.appUI.confirm({

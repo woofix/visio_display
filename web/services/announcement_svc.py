@@ -791,20 +791,23 @@ def create_announcement(form, uploaded_file=None, layer_uploads=None, username=N
     return filename
 
 
-def pexels_search(query, limit=12):
+def pexels_search(query, limit=12, orientation="landscape", size="large"):
     query = str(query or "").strip()
     api_key = pexels_api_key()
     if not query or not api_key:
         return []
     target_limit = max(1, min(24, int(limit or 12)))
+    params = {
+        "query": query,
+        "per_page": target_limit,
+    }
+    if orientation:
+        params["orientation"] = str(orientation)
+    if size:
+        params["size"] = str(size)
     response = requests.get(
         PEXELS_SEARCH_URL,
-        params={
-            "query": query,
-            "per_page": target_limit,
-            "orientation": "landscape",
-            "size": "large",
-        },
+        params=params,
         timeout=(2, 6),
         headers={
             "Authorization": api_key,

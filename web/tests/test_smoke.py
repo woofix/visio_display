@@ -597,6 +597,57 @@ class AppSmokeTests(unittest.TestCase):
         self.assertNotIn("/admin/announcements", page_urls)
         self.assertIn("/admin/announcements", restricted_urls)
 
+    def test_search_restricts_media_cleanup_without_required_permission(self):
+        with self.app.app_context():
+            from services.users_svc import create_user
+
+            create_user("operator", "operator-pass-123", permissions=[])
+
+        with self.client.session_transaction() as session:
+            session["user"] = "operator"
+
+        response = self.client.get("/api/search?q=nettoyage")
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        page_urls = {item["url"] for item in payload["pages"]}
+        restricted_urls = {item["url"] for item in payload["restricted"]}
+
+        self.assertNotIn("/admin/settings/nettoyage-medias", page_urls)
+        self.assertIn("/admin/settings/nettoyage-medias", restricted_urls)
+
+    def test_cleanup_permission_can_be_granted_and_revoked(self):
+        with self.app.app_context():
+            from services.users_svc import create_user
+
+            create_user("operator", "operator-pass-123", permissions=[])
+
+        with self.client.session_transaction() as session:
+            session["user"] = "admin"
+            session["_csrf_token"] = "cleanup-permission-token"
+            token = session["_csrf_token"]
+
+        grant_response = self.client.post(
+            "/admin/users/permissions/operator",
+            data={"perm_cleanup": "on", "_csrf_token": token},
+        )
+        self.assertEqual(grant_response.status_code, 302)
+
+        with self.app.app_context():
+            from services.users_svc import get_user
+
+            self.assertIn("cleanup", get_user("operator").to_dict()["permissions"])
+
+        revoke_response = self.client.post(
+            "/admin/users/permissions/operator",
+            data={"_csrf_token": token},
+        )
+        self.assertEqual(revoke_response.status_code, 302)
+
+        with self.app.app_context():
+            from services.users_svc import get_user
+
+            self.assertNotIn("cleanup", get_user("operator").to_dict()["permissions"])
+
     def test_save_config_normalizes_missing_sections(self):
         with self.app.app_context():
             from services.config_svc import load_config, save_config
@@ -885,14 +936,14 @@ class AppSmokeTests(unittest.TestCase):
             self.assertEqual(cfg["generated_menus"][filename]["schedule"], expected_schedule)
             self.assertEqual(cfg["durations"].get(filename), 20)
 
-    def test_menu_schedule_defaults_missing_end_time_to_14h(self):
+    def test_menu_schedule_keeps_missing_end_time_open(self):
         with self.app.app_context():
             from services.menu_svc import build_menu_schedule
 
             self.assertEqual(build_menu_schedule({}), {})
             self.assertEqual(
                 build_menu_schedule({"date_start": "2026-05-18", "time_start": "11:00"}),
-                {"date_start": "2026-05-18", "time_start": "11:00", "time_end": "14:00"},
+                {"date_start": "2026-05-18", "time_start": "11:00"},
             )
             self.assertEqual(
                 build_menu_schedule({"time_end": "14:00"}),

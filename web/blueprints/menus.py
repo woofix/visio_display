@@ -8,7 +8,7 @@ from services.i18n import _flash, _t
 from services.image_suggestions_svc import cached_image_path
 from services.menu_svc import (
     build_menu_schedule,
-    create_menu_from_text,
+    enqueue_menu_from_text,
     create_weekly_menus_from_form,
     suggest_menu_sections,
 )
@@ -118,13 +118,13 @@ def create_menu():
                 screens=request.form.getlist("screens"),
                 username=session.get("user"),
                 image_choices=request.form.get("image_choices"),
-                queue_generation=not wants_json,
+                queue_generation=True,
             )
             filename = ", ".join(filenames)
         else:
             if schedule.get("date_start"):
                 schedule["date_end"] = schedule["date_start"]
-            filename = create_menu_from_text(
+            filename = enqueue_menu_from_text(
                 request.form.get("title"),
                 request.form.get("menu_text"),
                 sections={
@@ -148,10 +148,8 @@ def create_menu():
         return jsonify({
             "ok": True,
             "filename": filename,
-            "message": _t("flash_announcement_created", filename=filename),
-            "redirect": url_for("media.admin_media"),
+            "message": _t("flash_menu_queued", filename=filename),
+            "redirect": url_for("queue.admin_queue_view"),
         })
-    _flash("flash_announcement_created", "success", filename=filename)
-    if weekly_mode:
-        return redirect(url_for("queue.admin_queue_view"))
-    return redirect(url_for("media.admin_media"))
+    _flash("flash_menu_queued", "success", filename=filename)
+    return redirect(url_for("queue.admin_queue_view"))

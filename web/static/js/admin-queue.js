@@ -124,8 +124,11 @@ async function refreshQueue() {
                 const isDone = j.status === 'done';
                 const safeStatus = escapeHtmlAttr(j.status || '');
                 const safeId = escapeHtmlAttr(j.id || '');
-                const result = isDone
+                const hasCompressionStats = j.before !== undefined && j.after !== undefined && j.ratio !== undefined;
+                const result = isDone && hasCompressionStats
                     ? `<span class="job-result">${escapeHtml(j.before)} Mo → ${escapeHtml(j.after)} Mo (÷${escapeHtml(j.ratio)})</span>`
+                    : isDone
+                        ? `<span class="job-result">${escapeHtml(j.message || JS_DONE)}</span>`
                     : `<span class="job-result error">${escapeHtml(j.message || 'ffmpeg failed')}</span>`;
                 return `<div class="job-card">
                     <div class="job-icon result">${isDone ? '✅' : '❌'}</div>

@@ -168,8 +168,6 @@ def build_menu_schedule(data):
         value = str(data.get(key, "") if hasattr(data, "get") else "").strip()
         if value:
             schedule[key] = value
-    if not schedule.get("time_end") and any(schedule.get(key) for key in ("date_start", "date_end", "time_start")):
-        schedule["time_end"] = "14:00"
 
     for key in ("date_start", "date_end"):
         if key in schedule and not parse_iso_date(schedule[key]):
@@ -191,8 +189,6 @@ def build_daily_schedule(base_schedule, day, day_schedule=None):
             schedule[key] = value
     schedule["date_start"] = day.isoformat()
     schedule["date_end"] = day.isoformat()
-    if not schedule.get("time_end"):
-        schedule["time_end"] = "14:00"
     return schedule
 
 
@@ -795,9 +791,46 @@ def create_menu_from_text(title, text=None, *, sections=None, duration=None, sch
     return filename
 
 
-def _planned_menu_filename(title, day):
-    stem = clean_filename("menu_" + (title or "semaine").lower()) or "menu"
-    return ensure_unique_filename(UPLOAD_FOLDER, f"{stem}_{day.strftime('%Y%m%d')}.mp4")
+def _queued_filenames():
+    try:
+        return {
+            os.path.basename(job.get("filename", ""))
+            for job in load_queue()
+            if job.get("status") in ("pending", "processing")
+        }
+    except Exception:
+        return set()
+
+
+def _planned_menu_filename(title, date_suffix=None):
+    stem = clean_filename("menu_" + (title or "du_jour").lower()) or "menu"
+    suffix = date_suffix or datetime.now().strftime("%Y%m%d_%H%M")
+    filename = ensure_unique_filename(UPLOAD_FOLDER, f"{stem}_{suffix}.mp4")
+    queued = _queued_filenames()
+    if filename not in queued:
+        return filename
+    base, ext = os.path.splitext(filename)
+    counter = 2
+    while f"{base}_{counter}{ext}" in queued or os.path.exists(os.path.join(UPLOAD_FOLDER, f"{base}_{counter}{ext}")):
+        counter += 1
+    return f"{base}_{counter}{ext}"
+
+
+def enqueue_menu_from_text(title, text=None, *, sections=None, duration=None, schedule=None, screens=None, username=None, image_choices=None, date_label=None):
+    filename = _planned_menu_filename(title)
+    enqueue_menu_generation_job(filename, {
+        "title": title,
+        "text": text,
+        "sections": sections,
+        "duration": duration,
+        "schedule": schedule,
+        "screens": screens,
+        "username": username,
+        "image_choices": image_choices,
+        "date_label": date_label,
+    })
+    log_activity(username, "compress", filename=filename, details="menu ajouté à la file")
+    return filename
 
 
 def process_queued_menu_generation(filename, payload):
@@ -825,7 +858,7 @@ def create_weekly_menus_from_form(title, form, *, duration=None, schedule=None, 
         day_title = f"{title or 'Menu'} - {day_label}"
         daily_schedule = build_daily_schedule(schedule, day["date"], day.get("schedule"))
         if queue_generation:
-            filename = _planned_menu_filename(day_title, day["date"])
+            filename = _planned_menu_filename(day_title, day["date"].strftime("%Y%m%d"))
             enqueue_menu_generation_job(filename, {
                 "title": day_title,
                 "sections": day["sections"],

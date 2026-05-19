@@ -22,6 +22,7 @@ _URL_PERMISSION_MAP = [
     ('/admin/upload', ('upload',)),
     ('/admin/announcements', ('announcements', 'upload')),
     ('/admin/programming', ('schedule',)),
+    ('/admin/settings/nettoyage-medias', ('cleanup',)),
 ]
 
 _URL_FEATURE_MAP = [

@@ -238,7 +238,6 @@
                         <input id="menu-time-end" name="time_end" type="time">
                     </div>
                 </div>
-                <p class="menu-time-hint">{{ t('menus_default_end_hint') }}</p>
             </div>
             <div class="menu-field">
                 <label>{{ t('announcements_screens') }}</label>
@@ -293,9 +292,6 @@
         previewImage: {{ t('menus_preview_image')|tojson }},
         previewEmptyTitle: {{ t('menus_preview_empty_title')|tojson }},
         previewEmptyDesc: {{ t('menus_preview_empty_desc')|tojson }},
-        defaultEndTitle: {{ t('menus_default_end_confirm_title')|tojson }},
-        defaultEndMessage: {{ t('menus_default_end_confirm_message')|tojson }},
-        defaultEndConfirm: {{ t('menus_default_end_confirm_btn')|tojson }},
     };
     const weekdayLabels = [
         {{ t('weekday_short_0')|tojson }},
@@ -582,22 +578,6 @@
     document.querySelector('#menu-form').addEventListener('submit', async event => {
         event.preventDefault();
         const form = event.currentTarget;
-        const timeEnd = document.querySelector('#menu-time-end');
-        if (timeEnd && !timeEnd.value) {
-            let accepted = true;
-            if (window.appUI?.confirm) {
-                accepted = await window.appUI.confirm({
-                    titleText: labels.defaultEndTitle,
-                    messageText: labels.defaultEndMessage,
-                    confirmLabel: labels.defaultEndConfirm,
-                    tone: 'warning',
-                });
-            } else {
-                accepted = confirm(labels.defaultEndMessage);
-            }
-            if (!accepted) return;
-            timeEnd.value = '14:00';
-        }
         syncSelectedChoices();
         const overlay = document.querySelector('#menu-loading-overlay');
         const submit = document.querySelector('#menu-form button[type="submit"]');

@@ -142,6 +142,7 @@ def save_queue(q):
             row = EncodeJob(id=job['id'], filename=job['filename'],
                             status=job['status'], added=job['added'])
             db.session.add(row)
+        row.filename  = job['filename']
         row.status    = job['status']
         row.started   = job.get('started')
         row.finished  = job.get('finished')
@@ -317,7 +318,7 @@ def _rq_compress_job(encode_job_id):
             from services.menu_svc import process_queued_menu_generation
 
             try:
-                process_queued_menu_generation(job["filename"], job_payload.get("payload") or {})
+                generated_filename = process_queued_menu_generation(job["filename"], job_payload.get("payload") or {})
             except Exception as exc:
                 job["status"] = "error"
                 job["message"] = str(exc)
@@ -326,8 +327,9 @@ def _rq_compress_job(encode_job_id):
                 return
 
             job["status"] = "done"
+            job["filename"] = generated_filename or job["filename"]
             job["new_name"] = job["filename"]
-            job["message"] = "menu generated"
+            job["message"] = _t("queue_menu_generated")
             job["finished"] = datetime.now().isoformat()
             save_queue(q)
             return

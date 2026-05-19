@@ -7,6 +7,7 @@ REPO_URL="https://github.com/woofix/visio_display.git"
 DEFAULT_INSTALL_DIR="$(pwd)/visio_display"
 DEFAULT_PORT="8081"
 DEFAULT_UPDATE_BRANCH="main"
+REQUESTED_MODE="${1:-}"
 
 # ── Colors ────────────────────────────────────────────────────────────────────
 BOLD='\033[1m'
@@ -33,6 +34,16 @@ msg() {
     case "$INSTALL_LANG:$key" in
         fr:secret_generation_failed) echo "Impossible de générer les secrets : installez python3 ou openssl." ;;
         us:secret_generation_failed) echo "Cannot generate secrets: install python3 or openssl." ;;
+        fr:mode_header) echo "Mode d'exécution" ;;
+        us:mode_header) echo "Run mode" ;;
+        fr:mode_prompt) echo "Que voulez-vous faire ? [1=nouvelle installation, 2=mise à jour]" ;;
+        us:mode_prompt) echo "What do you want to do? [1=new installation, 2=update]" ;;
+        fr:invalid_mode) echo "Choix invalide. Répondez 1/install ou 2/update." ;;
+        us:invalid_mode) echo "Invalid choice. Use 1/install or 2/update." ;;
+        fr:mode_install) echo "Nouvelle installation" ;;
+        us:mode_install) echo "New installation" ;;
+        fr:mode_update) echo "Mise à jour" ;;
+        us:mode_update) echo "Update" ;;
         fr:checking_prerequisites) echo "Vérification des prérequis" ;;
         us:checking_prerequisites) echo "Checking prerequisites" ;;
         fr:docker_missing) echo "Docker n'est pas installé. Voir https://docs.docker.com/engine/install/" ;;
@@ -47,6 +58,12 @@ msg() {
         us:install_dir_header) echo "Installation directory" ;;
         fr:install_dir_prompt) echo "Dossier d'installation" ;;
         us:install_dir_prompt) echo "Installation directory" ;;
+        fr:update_dir_prompt) echo "Dossier de l'installation existante" ;;
+        us:update_dir_prompt) echo "Existing installation directory" ;;
+        fr:update_dir_missing) echo "Le dossier d'installation existante est introuvable." ;;
+        us:update_dir_missing) echo "Existing installation directory not found." ;;
+        fr:update_dir_invalid) echo "Le dossier existe mais ne semble pas être une installation Visio-Display. Aucune modification effectuée." ;;
+        us:update_dir_invalid) echo "The directory exists but does not look like a Visio-Display installation. No changes were made." ;;
         fr:git_dir_exists) echo "Le dossier contient déjà un dépôt Git. Choisissez un autre dossier." ;;
         us:git_dir_exists) echo "The directory already contains a Git repository. Choose another directory." ;;
         fr:dir_not_empty) echo "Le dossier existe et n'est pas vide. Choisissez un autre dossier." ;;
@@ -123,12 +140,20 @@ msg() {
         us:security_ok) echo "Security checks completed." ;;
         fr:security_failed) echo "Le durcissement de sécurité a échoué." ;;
         us:security_failed) echo "Security hardening failed." ;;
+        fr:updating_header) echo "Mise à jour du dépôt" ;;
+        us:updating_header) echo "Updating repository" ;;
+        fr:update_branch) echo "Branche de mise à jour" ;;
+        us:update_branch) echo "Update branch" ;;
+        fr:repository_updated) echo "Dépôt mis à jour." ;;
+        us:repository_updated) echo "Repository updated." ;;
         fr:starting_header) echo "Démarrage des conteneurs" ;;
         us:starting_header) echo "Starting containers" ;;
         fr:containers_started) echo "Conteneurs démarrés." ;;
         us:containers_started) echo "Containers started." ;;
         fr:complete) echo "Installation terminée !" ;;
         us:complete) echo "Installation complete!" ;;
+        fr:update_complete) echo "Mise à jour terminée !" ;;
+        us:update_complete) echo "Update complete!" ;;
         fr:admin_label) echo "Admin" ;;
         us:admin_label) echo "Admin" ;;
         fr:media_label) echo "Médias" ;;
@@ -154,6 +179,72 @@ generate_secret() {
     fi
 }
 
+normalize_mode() {
+    case "$(echo "${1:-}" | tr '[:upper:]' '[:lower:]')" in
+        1|install|installation|new|nouvelle) echo "install" ;;
+        2|update|maj|mise-a-jour|mise_à_jour|miseajour) echo "update" ;;
+        *) echo "" ;;
+    esac
+}
+
+env_file_value() {
+    local key="$1"
+    local file="$2"
+    local name value
+    [ -f "$file" ] || return 0
+    while IFS='=' read -r name value; do
+        [ "$name" = "$key" ] || continue
+        value="${value%\"}"
+        value="${value#\"}"
+        value="${value%\'}"
+        value="${value#\'}"
+        echo "$value"
+        return 0
+    done < "$file"
+}
+
+looks_like_visio_install() {
+    local dir="$1"
+    [ -d "$dir/.git" ] &&
+    [ -f "$dir/docker-compose.yml" ] &&
+    [ -f "$dir/scripts/security_bootstrap.sh" ] &&
+    [ -f "$dir/web/app_bootstrap.py" ] &&
+    [ -f "$dir/.env" ]
+}
+
+run_security_bootstrap() {
+    local mode="$1"
+    local dir="$2"
+    local security_log
+    header "$(msg security_header)"
+    security_log="$(mktemp)"
+    if bash ./scripts/security_bootstrap.sh "$mode" "$dir" >"$security_log" 2>&1; then
+        rm -f "$security_log"
+        ok "$(msg security_ok)"
+    else
+        cat "$security_log" >&2
+        rm -f "$security_log"
+        die "$(msg security_failed)"
+    fi
+}
+
+header "$(msg mode_header)"
+INSTALL_MODE="$(normalize_mode "$REQUESTED_MODE")"
+while [[ "$INSTALL_MODE" != "install" && "$INSTALL_MODE" != "update" ]]; do
+    if [ -n "$REQUESTED_MODE" ]; then
+        warn "$(msg invalid_mode)"
+        REQUESTED_MODE=""
+    fi
+    read -rp "$(msg mode_prompt): " MODE_CHOICE
+    INSTALL_MODE="$(normalize_mode "$MODE_CHOICE")"
+    [ -n "$INSTALL_MODE" ] || warn "$(msg invalid_mode)"
+done
+if [ "$INSTALL_MODE" = "install" ]; then
+    ok "$(msg mode_install)"
+else
+    ok "$(msg mode_update)"
+fi
+
 # ── Prerequisites ─────────────────────────────────────────────────────────────
 header "$(msg checking_prerequisites)"
 
@@ -162,6 +253,47 @@ docker compose version >/dev/null 2>&1 || die "$(msg compose_missing)"
 command -v git     >/dev/null 2>&1 || die "$(msg git_missing)"
 
 ok "$(msg prerequisites_ok)"
+
+if [ "$INSTALL_MODE" = "update" ]; then
+    # ── Existing installation directory ───────────────────────────────────────
+    header "$(msg install_dir_header)"
+    if looks_like_visio_install "$(pwd)"; then
+        DEFAULT_UPDATE_DIR="$(pwd)"
+    else
+        DEFAULT_UPDATE_DIR="$DEFAULT_INSTALL_DIR"
+    fi
+    read -rp "$(msg update_dir_prompt) [${DEFAULT_UPDATE_DIR}]: " INSTALL_DIR
+    INSTALL_DIR="${INSTALL_DIR:-$DEFAULT_UPDATE_DIR}"
+
+    [ -d "$INSTALL_DIR" ] || die "$(msg update_dir_missing) $INSTALL_DIR"
+    looks_like_visio_install "$INSTALL_DIR" || die "$(msg update_dir_invalid) $INSTALL_DIR"
+
+    cd "$INSTALL_DIR"
+    UPDATE_BRANCH="$(env_file_value VISIO_UPDATE_BRANCH "$INSTALL_DIR/.env")"
+    UPDATE_BRANCH="${UPDATE_BRANCH:-$DEFAULT_UPDATE_BRANCH}"
+
+    # ── Repository update ────────────────────────────────────────────────────
+    header "$(msg updating_header)"
+    ok "$(msg update_branch): $UPDATE_BRANCH"
+    git fetch origin "$UPDATE_BRANCH"
+    git checkout "$UPDATE_BRANCH"
+    git pull --ff-only origin "$UPDATE_BRANCH"
+    ok "$(msg repository_updated)"
+
+    run_security_bootstrap update "$INSTALL_DIR"
+
+    # ── Launch ───────────────────────────────────────────────────────────────
+    header "$(msg starting_header)"
+    docker compose up -d --build
+    ok "$(msg containers_started)"
+
+    echo
+    echo -e "${BOLD}${GREEN}════════════════════════════════════════${NC}"
+    echo -e "${BOLD}  $(msg update_complete)${NC}"
+    echo -e "${BOLD}${GREEN}════════════════════════════════════════${NC}"
+    echo
+    exit 0
+fi
 
 # ── Installation directory ────────────────────────────────────────────────────
 header "$(msg install_dir_header)"
@@ -237,6 +369,7 @@ ok "$(msg postgres_configured)"
 SECRET_KEY="$(generate_secret)"
 CLIENT_HEARTBEAT_TOKEN="$(generate_secret)"
 DISPLAY_API_TOKEN="$(generate_secret)"
+UPDATER_API_TOKEN="$(generate_secret)"
 
 # ── Optional external image provider ─────────────────────────────────────────
 header "$(msg pexels_header)"
@@ -289,6 +422,7 @@ POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
 POSTGRES_DB=visio
 CLIENT_HEARTBEAT_TOKEN=${CLIENT_HEARTBEAT_TOKEN}
 DISPLAY_API_TOKEN=${DISPLAY_API_TOKEN}
+UPDATER_API_TOKEN=${UPDATER_API_TOKEN}
 PEXELS_API_KEY=${PEXELS_API_KEY_VALUE}
 VISIO_UPDATE_BRANCH=${DEFAULT_UPDATE_BRANCH}
 COMPOSE_PROJECT_NAME=${PROJECT_NAME}
@@ -297,17 +431,7 @@ EOF
 chmod 600 "$INSTALL_DIR/.env"
 ok "$(msg env_generated)"
 
-# ── Security hardening ────────────────────────────────────────────────────────
-header "$(msg security_header)"
-SECURITY_LOG="$(mktemp)"
-if bash ./scripts/security_bootstrap.sh install "$INSTALL_DIR" >"$SECURITY_LOG" 2>&1; then
-    rm -f "$SECURITY_LOG"
-    ok "$(msg security_ok)"
-else
-    cat "$SECURITY_LOG" >&2
-    rm -f "$SECURITY_LOG"
-    die "$(msg security_failed)"
-fi
+run_security_bootstrap install "$INSTALL_DIR"
 
 # ── Launch ────────────────────────────────────────────────────────────────────
 header "$(msg starting_header)"

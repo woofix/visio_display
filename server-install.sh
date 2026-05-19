@@ -64,6 +64,8 @@ msg() {
         us:update_dir_missing) echo "Existing installation directory not found." ;;
         fr:update_dir_invalid) echo "Le dossier existe mais ne semble pas être une installation Visio-Display. Aucune modification effectuée." ;;
         us:update_dir_invalid) echo "The directory exists but does not look like a Visio-Display installation. No changes were made." ;;
+        fr:update_dir_not_writable) echo "Le dossier d'installation n'est pas accessible en écriture avec cet utilisateur. Corrigez les droits ou relancez avec l'utilisateur propriétaire de l'installation." ;;
+        us:update_dir_not_writable) echo "The installation directory is not writable by this user. Fix ownership/permissions or rerun as the installation owner." ;;
         fr:git_dir_exists) echo "Le dossier contient déjà un dépôt Git. Choisissez un autre dossier." ;;
         us:git_dir_exists) echo "The directory already contains a Git repository. Choose another directory." ;;
         fr:dir_not_empty) echo "Le dossier existe et n'est pas vide. Choisissez un autre dossier." ;;
@@ -212,6 +214,13 @@ looks_like_visio_install() {
     [ -f "$dir/.env" ]
 }
 
+can_update_visio_install() {
+    local dir="$1"
+    [ -w "$dir" ] &&
+    [ -w "$dir/.git" ] &&
+    [ -w "$dir/.git/FETCH_HEAD" -o ! -e "$dir/.git/FETCH_HEAD" ]
+}
+
 run_security_bootstrap() {
     local mode="$1"
     local dir="$2"
@@ -267,6 +276,7 @@ if [ "$INSTALL_MODE" = "update" ]; then
 
     [ -d "$INSTALL_DIR" ] || die "$(msg update_dir_missing) $INSTALL_DIR"
     looks_like_visio_install "$INSTALL_DIR" || die "$(msg update_dir_invalid) $INSTALL_DIR"
+    can_update_visio_install "$INSTALL_DIR" || die "$(msg update_dir_not_writable) $INSTALL_DIR"
 
     cd "$INSTALL_DIR"
     UPDATE_BRANCH="$(env_file_value VISIO_UPDATE_BRANCH "$INSTALL_DIR/.env")"

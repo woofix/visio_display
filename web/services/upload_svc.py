@@ -171,7 +171,7 @@ def save_video_upload(file, filename, queued_video_files, username):
     disabled = cfg.setdefault("disabled", [])
     if filename not in disabled:
         disabled.append(filename)
-        save_config(cfg)
+    save_config(cfg)
     enqueue_compress_job(filename)
     queued_video_files.append(filename)
     log_activity(username, "upload", filename=filename, details="queued for nightly encoding")

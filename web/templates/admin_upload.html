@@ -607,7 +607,7 @@ body.site-uploading .mobile-sidebar-backdrop {
 {% endblock %}
 
 {% block scripts %}
-<script id="admin-upload-config" type="application/json">{{ {
+<script nonce="{{ csp_nonce() }}" id="admin-upload-config" type="application/json">{{ {
     'tooLarge': t('js_upload_too_large'),
     'tooLargeSingle': t('js_upload_too_large_single'),
     'batchTooLarge': t('js_upload_batch_too_large'),
@@ -660,5 +660,5 @@ body.site-uploading .mobile-sidebar-backdrop {
     'acceptedLabels': ['JPG','PNG','PDF'] + (['MP4','MOV','WebM','AVI','MKV'] if is_feature_enabled('videos') else []),
     'realtimeQueueEnabled': is_feature_enabled('videos') and is_feature_enabled('compress')
 }|tojson }}</script>
-<script src="{{ url_for('static', filename='js/admin-upload.js', v=static_version) }}"></script>
+<script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/admin-upload.js', v=static_version) }}"></script>
 {% endblock %}

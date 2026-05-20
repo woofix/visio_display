@@ -84,8 +84,8 @@
                     <div class="role-display">{{ role.name }}</div>
                 </div>
                 {% if not role.is_system %}
-                <button type="button" class="btn secondary sm"
-                        onclick="openEditModal({{ role.id }}, {{ role.display_name|tojson }}, {{ (role.description or '')|tojson }})">
+                <button type="button" class="btn secondary sm js-edit-role"
+                        data-role-id="{{ role.id }}" data-role-name="{{ role.display_name|tojson }}" data-role-desc="{{ (role.description or '')|tojson }}">
                     {{ t('roles_edit_btn') }}
                 </button>
                 <form action="/admin/roles/{{ role.id }}/delete" method="post"
@@ -114,7 +114,7 @@
                 </div>
                 <div class="role-actions">
                     <button type="submit" class="btn success sm">{{ t('roles_save_perms') }}</button>
-                    <button type="button" class="btn secondary sm" onclick="toggleAll(this)">{{ t('superadmin_check_all') }}</button>
+                    <button type="button" class="btn secondary sm js-toggle-all">{{ t('superadmin_check_all') }}</button>
                 </div>
             </form>
         </div>
@@ -220,7 +220,7 @@
                 <input type="text" name="description" id="edit-description" class="form-input">
             </div>
             <div class="edit-modal-actions">
-                <button type="button" class="btn secondary sm" onclick="closeEditModal()">{{ t('modal_cancel') }}</button>
+                <button type="button" class="btn secondary sm js-close-modal">{{ t('modal_cancel') }}</button>
                 <button type="submit" class="btn success sm">{{ t('roles_save_perms') }}</button>
             </div>
         </form>
@@ -229,5 +229,25 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/admin-roles.js', v=static_version) }}"></script>
+<script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/admin-roles.js', v=static_version) }}"></script>
+<script nonce="{{ csp_nonce() }}">
+document.querySelectorAll('.js-edit-role').forEach(el => {
+  el.addEventListener('click', function() {
+    const roleId = this.dataset.roleId;
+    const roleName = this.dataset.roleName;
+    const roleDesc = this.dataset.roleDesc;
+    openEditModal(roleId, roleName, roleDesc);
+  });
+});
+document.querySelectorAll('.js-toggle-all').forEach(el => {
+  el.addEventListener('click', function() {
+    const form = this.closest('form');
+    const boxes = form.querySelectorAll('input[type=checkbox]');
+    const allChecked = Array.from(boxes).every(b => b.checked);
+    boxes.forEach(b => b.checked = !allChecked);
+    this.textContent = allChecked ? '{{ t("superadmin_check_all") }}' : '{{ t("superadmin_uncheck_all") }}';
+  });
+});
+document.querySelector('.js-close-modal')?.addEventListener('click', closeEditModal);
+</script>
 {% endblock %}

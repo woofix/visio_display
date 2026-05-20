@@ -14,7 +14,7 @@
     </style>
 </head>
 <body>
-<script id="admin-layout-config" type="application/json">{
+<script nonce="{{ csp_nonce() }}" id="admin-layout-config" type="application/json">{
   "csrfToken": {{ csrf_token() | tojson }},
   "globalQueueEnabled": {{ (is_feature_enabled('videos') and is_feature_enabled('compress')) | tojson }},
   "uiText": {{ {
@@ -58,7 +58,7 @@
     {% endwith %}
   ]
 }</script>
-<script src="{{ url_for('static', filename='js/admin-layout-head.js', v=static_version) }}"></script>
+<script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/admin-layout-head.js', v=static_version) }}"></script>
 
 {% set path = request.path %}
 
@@ -408,11 +408,11 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/admin-layout-core.js', v=static_version) }}"></script>
+<script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/admin-layout-core.js', v=static_version) }}"></script>
 
 {% block scripts %}{% endblock %}
 
-<script src="{{ url_for('static', filename='js/admin-layout-search.js', v=static_version) }}"></script>
+<script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/admin-layout-search.js', v=static_version) }}"></script>
 
 </body>
 </html>

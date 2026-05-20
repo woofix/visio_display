@@ -152,7 +152,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
             <form method="post" action="/admin/features/toggle" class="toggle-form" data-feature="{{ key }}">
                 <input type="hidden" name="feature" value="{{ key }}">
                 <label class="toggle-switch" title="{{ t('features_toggle') }} {{ t(name_key) }}">
-                    <input type="checkbox" {% if enabled %}checked{% endif %} onchange="this.closest('form').submit()">
+                    <input type="checkbox" class="js-feature-toggle" {% if enabled %}checked{% endif %}>
                     <span class="toggle-slider"></span>
                 </label>
             </form>
@@ -160,4 +160,12 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
     </div>
     {% endfor %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script nonce="{{ csp_nonce() }}">
+document.querySelectorAll('.js-feature-toggle').forEach(el => {
+  el.addEventListener('change', function() { this.closest('form').submit(); });
+});
+</script>
 {% endblock %}

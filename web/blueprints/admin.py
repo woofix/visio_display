@@ -3,7 +3,7 @@
 from flask import Blueprint, render_template, session
 
 from services.users_svc import load_users
-from services.config_svc import load_config
+from services.config_svc import get_default_screen_key, load_config
 from services.media_svc import get_all_media, get_disk_usage, get_logo_path, is_media_disabled
 from services.campaign_svc import get_campaigns, serialize_campaign_for_view
 from services.server_stats_svc import get_server_stats
@@ -22,7 +22,8 @@ def admin_page():
     disk    = get_disk_usage()
     server_stats = get_server_stats()
     users   = load_users()
-    screens = list(cfg.get('screens', {}).keys())
+    default_screen_key = get_default_screen_key(cfg)
+    screens = [screen for screen in cfg.get('screens', {}) if screen != default_screen_key]
     active_campaigns = []
     for campaign in get_campaigns(cfg):
         serialized = serialize_campaign_for_view(campaign, cfg)

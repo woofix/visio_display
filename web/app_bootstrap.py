@@ -414,6 +414,7 @@ def register_request_hooks(app):
     @app.before_request
     def start_request_timer():
         g.request_started_at = time.perf_counter()
+        g.csp_nonce = secrets.token_urlsafe(16)
         return None
 
     @app.before_request
@@ -469,6 +470,7 @@ def register_request_hooks(app):
                     response.calculate_content_length() or "-",
                 )
 
+        nonce = getattr(g, 'csp_nonce', '')
         csp = (
             "default-src 'self'; "
             "base-uri 'self'; "
@@ -478,7 +480,7 @@ def register_request_hooks(app):
             "img-src 'self' data:; "
             "font-src 'self'; "
             "style-src 'self' 'unsafe-inline'; "
-            "script-src 'self' 'unsafe-inline'; "
+            f"script-src 'self' 'nonce-{nonce}'; "
             "connect-src 'self' https://geocoding-api.open-meteo.com; "
             "media-src 'self' blob: data:; "
             "worker-src 'self' blob:"
@@ -622,7 +624,11 @@ def register_template_context(app):
         current_user_is_superadmin = is_superadmin()
         current_user_permissions = [key for key, _label_key in ALL_PERMISSIONS if has_permission(key)]
 
+        def get_csp_nonce():
+            return getattr(g, 'csp_nonce', '')
+
         return dict(
+            csp_nonce=get_csp_nonce,
             admin_update_status=admin_update_status,
             current_user_is_superadmin=current_user_is_superadmin,
             current_user_must_change_password=current_user_must_change_password,

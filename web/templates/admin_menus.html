@@ -275,7 +275,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce() }}">
 (() => {
     const labels = {
         loading: {{ t('menus_analysis_loading')|tojson }},
@@ -477,6 +477,19 @@
             if (!dish) return;
             updateDishImage(dish, Number(button.dataset.index || 0));
         }));
+        bindImageFallbacks();
+    }
+    function bindImageFallbacks() {
+        document.querySelectorAll('img[data-fallback]').forEach(img => {
+            img.addEventListener('error', function() {
+                const fallback = this.dataset.fallback || '';
+                const div = document.createElement('div');
+                div.className = 'menu-dish-thumb missing';
+                div.textContent = fallback;
+                this.replaceWith(div);
+            });
+        });
+    }
     }
     async function loadSuggestions() {
         const button = document.querySelector('#menu-suggest-btn');
@@ -506,7 +519,7 @@
             const imageUrl = suggestionImageUrl(first);
             const fullImageUrl = first.local_url || imageUrl || first.external_url;
             const zoomButton = imageUrl ? `<button type="button" class="menu-preview-zoom" data-src="${esc(fullImageUrl)}" title="${esc(labels.previewImage)}" aria-label="${esc(labels.previewImage)}"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"></circle><path d="m16 16 5 5"></path><path d="M11 8v6M8 11h6"></path></svg></button>` : '';
-            const image = imageUrl ? `<img class="menu-dish-thumb" src="${esc(imageUrl)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'menu-dish-thumb missing',textContent:'${esc(labels.noLocalImage)}'}))">` : `<div class="menu-dish-thumb missing">${esc(labels.noLocalImage)}</div>`;
+            const image = imageUrl ? `<img class="menu-dish-thumb" src="${esc(imageUrl)}" alt="" data-fallback="${esc(labels.noLocalImage)}">` : `<div class="menu-dish-thumb missing">${esc(labels.noLocalImage)}</div>`;
             const carousel = `<div class="menu-image-carousel${suggestions.length > 1 ? ' has-many' : ''}" title="${esc(labels.imageHint)}">${image}${zoomButton}${suggestions.length > 1 ? `<span class="menu-image-count">1/${suggestions.length}</span>` : ''}</div>`;
             const choices = suggestions.length > 1
                 ? `<div class="menu-image-choice-list">${suggestions.map((suggestion, index) => `<button type="button" class="menu-image-choice${index === 0 ? ' is-active' : ''}" data-index="${index}" title="${esc(suggestion.title || item.text)}" aria-label="${esc(suggestion.title || item.text)}"><img src="${esc(suggestionImageUrl(suggestion))}" alt=""></button>`).join('')}</div>`

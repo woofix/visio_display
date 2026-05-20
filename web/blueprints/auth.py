@@ -2,9 +2,10 @@
 
 from flask import Blueprint, render_template, request, redirect, url_for, session
 import logging
+import os
 import secrets
-import threading
-import time
+from redis import Redis
+
 from services.users_svc import load_users, normalize_username, verify_user_password
 from services.media_svc import get_logo_path
 from services.i18n import _flash
@@ -16,62 +17,58 @@ LOGGER = logging.getLogger(__name__)
 LOGIN_WINDOW_SECONDS = 15 * 60
 LOGIN_BLOCK_SECONDS = 15 * 60
 LOGIN_MAX_FAILURES = 5
-_login_attempts = {}
-_login_lock = threading.Lock()
+REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379')
+
+_redis: Redis = None
+
+
+def get_redis() -> Redis:
+    global _redis
+    if _redis is None:
+        _redis = Redis.from_url(REDIS_URL)
+    return _redis
 
 
 def _client_ip():
     return str(request.remote_addr or '').strip()
 
 
-def _prune_attempts(now):
-    expired_keys = [
-        key for key, entry in _login_attempts.items()
-        if entry.get('blocked_until', 0) <= now and not entry.get('failures')
-    ]
-    for key in expired_keys:
-        _login_attempts.pop(key, None)
+def _login_rate_limit_key(username, ip=None):
+    return f"visio-display:rate-limit:login:{(ip if ip is not None else _client_ip())}::{username.casefold()}"
 
 
-def _login_attempt_key(username, ip=None):
-    return f"{(ip if ip is not None else _client_ip())}::{username.casefold()}"
+def _login_blocked_key(username, ip=None):
+    return f"visio-display:rate-limit:login:blocked:{(ip if ip is not None else _client_ip())}::{username.casefold()}"
 
 
 def _login_is_blocked(username, ip=None):
-    now = time.time()
-    key = _login_attempt_key(username, ip)
-    with _login_lock:
-        entry = _login_attempts.get(key)
-        if not entry:
-            return False
-        if entry.get('blocked_until', 0) > now:
-            return True
-        failures = [ts for ts in entry.get('failures', []) if now - ts < LOGIN_WINDOW_SECONDS]
-        entry['failures'] = failures
-        entry['blocked_until'] = 0
-        if not failures:
-            _login_attempts.pop(key, None)
-        _prune_attempts(now)
+    r = get_redis()
+    blocked_key = _login_blocked_key(username, ip)
+    if r.exists(blocked_key):
+        return True
+    key = _login_rate_limit_key(username, ip)
+    count = r.get(key)
+    if count is not None and int(count) >= LOGIN_MAX_FAILURES:
+        ttl = r.ttl(key)
+        r.setex(blocked_key, max(ttl, LOGIN_BLOCK_SECONDS), '1')
+        return True
     return False
 
 
 def _record_login_failure(username, ip=None):
-    now = time.time()
-    key = _login_attempt_key(username, ip)
-    with _login_lock:
-        entry = _login_attempts.setdefault(key, {'failures': [], 'blocked_until': 0})
-        failures = [ts for ts in entry['failures'] if now - ts < LOGIN_WINDOW_SECONDS]
-        failures.append(now)
-        entry['failures'] = failures
-        if len(failures) >= LOGIN_MAX_FAILURES:
-            entry['blocked_until'] = now + LOGIN_BLOCK_SECONDS
-        _prune_attempts(now)
+    r = get_redis()
+    key = _login_rate_limit_key(username, ip)
+    count = r.incr(key)
+    if count == 1:
+        r.expire(key, LOGIN_WINDOW_SECONDS)
+    if int(count) >= LOGIN_MAX_FAILURES:
+        r.setex(_login_blocked_key(username, ip), LOGIN_BLOCK_SECONDS, '1')
 
 
 def _clear_login_failures(username, ip=None):
-    key = _login_attempt_key(username, ip)
-    with _login_lock:
-        _login_attempts.pop(key, None)
+    r = get_redis()
+    r.delete(_login_rate_limit_key(username, ip))
+    r.delete(_login_blocked_key(username, ip))
 
 
 @bp.route('/login', methods=['GET', 'POST'])

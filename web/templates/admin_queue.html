@@ -238,7 +238,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script id="admin-queue-config" type="application/json">{{ {
+<script nonce="{{ csp_nonce() }}" id="admin-queue-config" type="application/json">{{ {
     'windowActive': t('js_queue_window_active'),
     'windowInactive': t('js_queue_window_inactive_prefix'),
     'tonight': t('js_queue_tonight'),
@@ -253,5 +253,5 @@
     'emptyRecent': t('js_queue_empty_recent'),
     'confirmCancel': t('js_queue_confirm_cancel')
 }|tojson }}</script>
-<script src="{{ url_for('static', filename='js/admin-queue.js', v=static_version) }}"></script>
+<script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/admin-queue.js', v=static_version) }}"></script>
 {% endblock %}

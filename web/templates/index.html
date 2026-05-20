@@ -16,7 +16,7 @@
     <div class="priority-alert-label">{{ t('display_priority_alert') }}</div>
     <div id="priority-alert-message" class="priority-alert-message"></div>
 </div>
-<script id="display-config" type="application/json">{{ {'defaultScreenName': default_screen_name, 'displayApiToken': display_api_token}|tojson }}</script>
-<script src="{{ url_for('static', filename='js/display-screen.js', v=static_version) }}"></script>
+<script nonce="{{ csp_nonce() }}" id="display-config" type="application/json">{{ {'defaultScreenName': default_screen_name, 'displayApiToken': display_api_token}|tojson }}</script>
+<script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/display-screen.js', v=static_version) }}"></script>
 </body>
 </html>

@@ -229,7 +229,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce() }}">
 (() => {
     const qs = (sel) => document.querySelector(sel);
     const qsa = (sel) => Array.from(document.querySelectorAll(sel));

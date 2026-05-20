@@ -353,7 +353,7 @@
     }
 }
 </style>
-<script id="admin-version-config" type="application/json">{{ {
+<script nonce="{{ csp_nonce() }}" id="admin-version-config" type="application/json">{{ {
     'stepPull': t('version_step_pull'),
     'stepStop': t('version_step_stop'),
     'stepRestart': t('version_step_restart'),
@@ -392,5 +392,5 @@
     'applyLabel': t('version_apply_btn'),
     'applyStart': t('version_apply_start')
 } | tojson }}</script>
-<script src="{{ url_for('static', filename='js/admin-version.js', v=static_version) }}"></script>
+<script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/admin-version.js', v=static_version) }}"></script>
 {% endblock %}

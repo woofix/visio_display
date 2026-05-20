@@ -2211,6 +2211,31 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'href="/?screen_token=screen-secret"', response.data)
 
+    def test_admin_preview_links_do_not_duplicate_named_default_screen(self):
+        with self.app.app_context():
+            from services.config_svc import save_config
+
+            save_config({
+                "default_screen_name": "Client1",
+                "screens": {
+                    "client1": {},
+                    "client2": {},
+                    "client3": {},
+                    "client4": {},
+                },
+            })
+
+        self._login()
+        response = self.client.get("/admin")
+        html = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(html.count('class="quick-card-screen-btn"'), 4)
+        self.assertNotIn('href="/?screen=client1&amp;screen_token=screen-secret"', html)
+        self.assertIn('href="/?screen=client2&amp;screen_token=screen-secret"', html)
+        self.assertIn('href="/?screen=client3&amp;screen_token=screen-secret"', html)
+        self.assertIn('href="/?screen=client4&amp;screen_token=screen-secret"', html)
+
     def test_app_refuses_to_start_without_display_api_token(self):
         from app import create_app
 

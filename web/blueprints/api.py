@@ -3,6 +3,7 @@
 import os
 import secrets
 from flask import Blueprint, request, jsonify
+from redis import Redis
 
 from services.config_svc import (
     get_screen_halo_color,
@@ -31,6 +32,32 @@ from services.ephemeris_svc import ensure_ephemeride_image_async
 from constants import UPLOAD_FOLDER
 
 bp = Blueprint('api', __name__)
+
+REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379')
+HEARTBEAT_RATE_LIMIT = 60
+HEARTBEAT_RATE_WINDOW = 60
+
+_redis: Redis = None
+
+
+def get_redis() -> Redis:
+    global _redis
+    if _redis is None:
+        _redis = Redis.from_url(REDIS_URL)
+    return _redis
+
+
+def _check_heartbeat_rate_limit():
+    key = f"visio-display:rate-limit:heartbeat:{_client_ip()}"
+    r = get_redis()
+    count = r.incr(key)
+    if count == 1:
+        r.expire(key, HEARTBEAT_RATE_WINDOW)
+    return int(count) <= HEARTBEAT_RATE_LIMIT
+
+
+def _client_ip():
+    return str(request.remote_addr or '').strip()
 
 
 def _screen_api_token_is_valid():
@@ -263,6 +290,8 @@ def api_diskusage():
 
 @bp.route('/api/client-heartbeat', methods=['POST'])
 def api_client_heartbeat():
+    if not _check_heartbeat_rate_limit():
+        return jsonify({'ok': False, 'error': 'rate_limited'}), 429
     data = request.get_json(silent=True) or {}
     if not os.environ.get('CLIENT_HEARTBEAT_TOKEN', '').strip():
         return jsonify({'ok': False, 'error': 'client_heartbeat_token_required'}), 403

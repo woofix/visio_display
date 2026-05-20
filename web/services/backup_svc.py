@@ -549,7 +549,7 @@ def _safe_extract_tar(archive, target_dir):
         member_path = os.path.abspath(os.path.join(target_dir, member.name))
         if os.path.commonpath([target_dir, member_path]) != target_dir:
             raise ValueError("Unsafe path detected in backup archive")
-    archive.extractall(target_dir)
+    archive.extractall(target_dir, filter='data')
 
 
 def _replace_directory_contents(source_dir, destination_dir, *, preserve_names=None):

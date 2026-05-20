@@ -28,6 +28,7 @@ from services.playlist_cache_svc import bump_media_revision
 
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379')
 MEDIA_PROBE_TIMEOUT_SECONDS = 15
+MEDIA_ENCODE_TIMEOUT_SECONDS = 3600
 
 _redis: Redis = None
 _flask_app = None
@@ -230,7 +231,7 @@ def _reencode_with_progress(src, dst, compress, job_id):
                     get_redis().set(f'visio-display:progress:{job_id}', pct, ex=3600)
                 except (ValueError, ZeroDivisionError):
                     pass
-        proc.wait()
+        proc.wait(timeout=MEDIA_ENCODE_TIMEOUT_SECONDS)
         ok = proc.returncode == 0
         if rq_job:
             rq_job.meta['progress'] = 100 if ok else -1
@@ -238,6 +239,15 @@ def _reencode_with_progress(src, dst, compress, job_id):
             rq_job.save_meta()
         get_redis().delete(f'visio-display:progress:{job_id}')
         return ok
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait()
+        print("[FFMPEG ERROR] encoding timed out")
+        if rq_job:
+            rq_job.meta['status']   = 'error'
+            rq_job.meta['progress'] = -1
+            rq_job.save_meta()
+        return False
     except Exception as e:
         print(f"[FFMPEG ERROR] {e}")
         if rq_job:

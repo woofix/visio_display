@@ -496,7 +496,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script id="admin-programming-config" type="application/json">{{ {
+<script nonce="{{ csp_nonce() }}" id="admin-programming-config" type="application/json">{{ {
     'canSchedule': can_schedule,
     'labels': {
         'newSlot': t('programming_new_slot'),
@@ -513,5 +513,5 @@
         'closeLabel': t('programming_modal_close')
     }
 }|tojson }}</script>
-<script src="{{ url_for('static', filename='js/admin-programming.js', v=static_version) }}"></script>
+<script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/admin-programming.js', v=static_version) }}"></script>
 {% endblock %}

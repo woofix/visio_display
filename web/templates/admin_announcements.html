@@ -611,7 +611,7 @@ button.chip { font:inherit; cursor:pointer; }
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce() }}">
 (() => {
     const qs = s => document.querySelector(s);
     const qsa = s => Array.from(document.querySelectorAll(s));

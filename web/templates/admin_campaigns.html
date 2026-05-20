@@ -557,5 +557,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/admin-campaigns.js', v=static_version) }}"></script>
+<script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/admin-campaigns.js', v=static_version) }}"></script>
 {% endblock %}

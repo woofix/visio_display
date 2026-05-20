@@ -1,12 +1,12 @@
 # Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
-Flask
-Flask-SQLAlchemy
-psycopg2-binary
-gunicorn
-Pillow
-pdf2image
-unidecode
-requests
-rq
-redis
+Flask==3.1.3
+Flask-SQLAlchemy==3.1.1
+psycopg2-binary==2.9.12
+gunicorn==26.0.0
+Pillow==12.2.0
+pdf2image==1.17.0
+unidecode==1.4.0
+requests==2.33.1
+rq==2.8.0
+redis==7.4.0

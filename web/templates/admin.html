@@ -877,7 +877,7 @@
                 </button>
                 <div class="dropdown-menu drop-down" id="user-dropdown" style="right:0;min-width:200px">
                     <div class="dropdown-label">Compte</div>
-                    <button class="dropdown-item" onclick="document.querySelector('[data-tab=\'tab-admins\']').click();document.getElementById('settings').scrollIntoView({behavior:'smooth'})">
+                    <button class="dropdown-item" id="go-to-settings-btn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                         </svg>
@@ -932,7 +932,7 @@
                 <div class="hero-title">Tableau de bord {{ app_name }}</div>
                 <div class="hero-sub">État du diaporama en temps réel</div>
                 <div class="hero-stats">
-                    <div class="hero-stat" onclick="scrollToSection('media')">
+                    <div class="hero-stat" data-section="media">
                         <div class="hero-stat-icon purple">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <rect x="3" y="3" width="18" height="18" rx="2"/>
@@ -944,7 +944,7 @@
                         <div class="hero-stat-lbl">Médias en ligne</div>
                         <div class="hero-link">Voir la médiathèque <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>
                     </div>
-                    <div class="hero-stat" onclick="scrollToSection('media', 'active')">
+                    <div class="hero-stat" data-section="media" data-filter="active">
                         <div class="hero-stat-icon green">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="9 11 12 14 22 4"/>
@@ -955,7 +955,7 @@
                         <div class="hero-stat-lbl">Médias actifs</div>
                         <div class="hero-link">Filtrer les actifs <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>
                     </div>
-                    <div class="hero-stat" onclick="scrollToSection('media')">
+                    <div class="hero-stat" data-section="media">
                         <div class="hero-stat-icon blue">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <ellipse cx="12" cy="5" rx="9" ry="3"/>
@@ -967,7 +967,7 @@
                         <div class="hero-stat-lbl">Espace utilisé</div>
                         <div class="hero-link">Gérer les fichiers <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>
                     </div>
-                    <div class="hero-stat" onclick="scrollToSection('section-queue')">
+                    <div class="hero-stat" data-section="section-queue">
                         <div class="hero-stat-icon orange">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
@@ -1277,7 +1277,7 @@
                                 <div style="font-size:.73rem;font-weight:700;color:var(--text-2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.07em">Logo par défaut</div>
                                 <form action="/admin/logo/reset" method="post">
                                     <button type="submit" class="btn secondary sm"
-                                            onclick="return confirm('Remettre le logo SVG par défaut ?')">
+                                            data-confirm="Remettre le logo SVG par défaut ?">
                                         Réinitialiser le logo
                                     </button>
                                 </form>
@@ -1301,7 +1301,7 @@
                                 </div>
                                 {% if u != current_user and users|length > 1 %}
                                 <form action="/admin/users/delete/{{ u }}" method="post"
-                                      onsubmit="return confirm('Supprimer l\'administrateur « {{ u }} » ?')">
+                                      data-confirm="Supprimer l'administrateur « {{ u }} » ?">
                                     <button class="btn sm danger">Supprimer</button>
                                 </form>
                                 {% endif %}
@@ -1345,7 +1345,7 @@
     <video id="modal-video" controls style="display:none"></video>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce() }}">
 /* ─── Navigation from the dashboard ─── */
 function scrollToSection(id, filter) {
     const target = document.getElementById(id);
@@ -1696,7 +1696,7 @@ async function refreshQueue() {
                     <td style="font-weight:600">${j.filename}</td>
                     <td>${statusIcon[j.status]||''} ${statusLabel[j.status]||j.status}</td>
                     <td style="color:var(--text-3)">${j.added.slice(0,16).replace('T',' ')}</td>
-                    <td>${j.status==='pending'?`<button class="btn sm danger" onclick="cancelJob('${j.id}')">Annuler</button>`:''}</td>
+                    <td>${j.status==='pending'?`<button class="btn sm danger js-cancel-job" data-job-id="${j.id}">Annuler</button>`:''}</td>
                 </tr>`).join('') + '</tbody></table>';
         } else { active.innerHTML = ''; }
 
@@ -1711,7 +1711,7 @@ async function refreshQueue() {
                         ?`<span style="color:var(--green)">${j.before} Mo → ${j.after} Mo <strong>(÷${j.ratio})</strong></span>`
                         :`<span style="color:var(--red)">${j.message||'Erreur'}</span>`}</td>
                     <td style="color:var(--text-3)">${(j.finished||'').slice(0,16).replace('T',' ')}</td>
-                    <td><button onclick="cancelJob('${j.id}')" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:1rem;padding:0" title="Retirer de l'historique">✕</button></td>
+                    <td><button class="js-cancel-job" data-job-id="${j.id}" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:1rem;padding:0" title="Retirer de l'historique">✕</button></td>
                 </tr>`).join('') + '</tbody></table>';
         } else { recent.innerHTML = ''; }
     } catch {}
@@ -1865,6 +1865,36 @@ document.getElementById('upload-form').addEventListener('submit', function(e) {
     if (!checkFileSizes(filesToUpload)) { e.preventDefault(); return; }
     e.preventDefault();
     submitDashboardUpload(filesToUpload);
+});
+
+/* ─── Event handler migration (CSP nonce) ─── */
+document.getElementById('go-to-settings-btn')?.addEventListener('click', () => {
+    document.querySelector('[data-tab=\'tab-admins\']').click();
+    document.getElementById('settings').scrollIntoView({behavior:'smooth'});
+});
+document.querySelectorAll('.hero-stat[data-section]').forEach(el => {
+    el.addEventListener('click', () => {
+        scrollToSection(el.dataset.section, el.dataset.filter);
+    });
+});
+document.querySelectorAll('[data-confirm]').forEach(el => {
+    if (el.tagName === 'FORM') {
+        el.addEventListener('submit', function(e) {
+            if (!confirm(this.dataset.confirm)) e.preventDefault();
+        });
+    } else if (el.tagName === 'BUTTON' && el.type === 'submit') {
+        el.addEventListener('click', function(e) {
+            if (!confirm(this.dataset.confirm)) e.preventDefault();
+        });
+    }
+});
+document.getElementById('queue-active')?.addEventListener('click', e => {
+    const btn = e.target.closest('.js-cancel-job');
+    if (btn) cancelJob(btn.dataset.jobId);
+});
+document.getElementById('queue-recent')?.addEventListener('click', e => {
+    const btn = e.target.closest('.js-cancel-job');
+    if (btn) cancelJob(btn.dataset.jobId);
 });
 </script>
 </body>

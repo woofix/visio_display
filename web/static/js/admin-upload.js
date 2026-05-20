@@ -620,7 +620,7 @@ async function refreshQueue() {
                             ${progressBar}
                         </div>
                         <span class="job-status ${j.status}">${isPending ? JS_PENDING : JS_PROCESSING}</span>
-                        ${isPending ? `<button class="btn sm danger" onclick="cancelJob('${j.id}')">${JS_CANCEL_BTN}</button>` : ''}
+                        ${isPending ? `<button class="btn sm danger js-cancel-job" data-job-id="${j.id}">${JS_CANCEL_BTN}</button>` : ''}
                     </div>`;
                 }).join('');
             } else {
@@ -650,7 +650,7 @@ async function refreshQueue() {
                             <div class="job-meta">${result} — ${(j.finished||'').slice(0,16).replace('T',' ')}</div>
                         </div>
                         <span class="job-status ${j.status}">${isDone ? JS_DONE : JS_ERROR}</span>
-                        <button onclick="cancelJob('${j.id}')" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:1rem;padding:4px;" title="✕">✕</button>
+                        <button class="js-cancel-job" data-job-id="${j.id}" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:1rem;padding:4px;" title="✕">✕</button>
                     </div>`;
                 }).join('');
             } else {
@@ -698,6 +698,15 @@ document.getElementById('btn-clear-recent')?.addEventListener('click', async () 
     refreshQueue();
 });
 
-refreshQueue();
-setInterval(refreshQueue, 5000);
+    refreshQueue();
+    setInterval(refreshQueue, 5000);
+
+    document.getElementById('active-jobs')?.addEventListener('click', e => {
+        const btn = e.target.closest('.js-cancel-job');
+        if (btn) cancelJob(btn.dataset.jobId);
+    });
+    document.getElementById('recent-jobs')?.addEventListener('click', e => {
+        const btn = e.target.closest('.js-cancel-job');
+        if (btn) cancelJob(btn.dataset.jobId);
+    });
 }

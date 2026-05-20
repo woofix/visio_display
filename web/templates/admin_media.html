@@ -793,7 +793,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script id="admin-media-config" type="application/json">{{ {
+<script nonce="{{ csp_nonce() }}" id="admin-media-config" type="application/json">{{ {
     'currentScreen': current_screen,
     'currentScreenLabel': current_screen_label,
     'confirmCompress': t('js_confirm_compress'),
@@ -837,5 +837,5 @@
     'displayApiToken': display_api_token,
     'screenTokenParam': screen_token_query_param
 }|tojson }}</script>
-<script src="{{ url_for('static', filename='js/admin-media.js', v=static_version) }}"></script>
+<script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/admin-media.js', v=static_version) }}"></script>
 {% endblock %}

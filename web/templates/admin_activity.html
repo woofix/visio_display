@@ -611,11 +611,11 @@
             <div class="activity-filters">
                 <div class="filter-card">
                     <label for="filter-search">{{ t('activity_filter_search_label') }}</label>
-                    <input type="text" id="filter-search" placeholder="{{ t('activity_search_placeholder') }}" oninput="applyFilters()">
+                    <input type="text" id="filter-search" placeholder="{{ t('activity_search_placeholder') }}">
                 </div>
                 <div class="filter-card">
                     <label for="filter-user">{{ t('activity_filter_user_label') }}</label>
-                    <select id="filter-user" onchange="applyFilters()">
+                    <select id="filter-user">
                         <option value="">{{ t('activity_filter_all_users') }}</option>
                         {% for u in users %}
                         <option value="{{ u }}">{{ u }}</option>
@@ -624,7 +624,7 @@
                 </div>
                 <div class="filter-card">
                     <label for="filter-action">{{ t('activity_filter_action_label') }}</label>
-                    <select id="filter-action" onchange="applyFilters()">
+                    <select id="filter-action">
                         <option value="">{{ t('activity_filter_all_actions') }}</option>
                         <option value="upload">{{ t('activity_action_upload') }}</option>
                         <option value="delete">{{ t('activity_action_delete') }}</option>
@@ -638,15 +638,15 @@
                 </div>
                 <div class="filter-card">
                     <label for="filter-date-from">{{ t('activity_filter_from_label') }}</label>
-                    <input type="date" id="filter-date-from" onchange="applyFilters()">
+                    <input type="date" id="filter-date-from">
                 </div>
                 <div class="filter-card">
                     <label for="filter-date-to">{{ t('activity_filter_to_label') }}</label>
-                    <input type="date" id="filter-date-to" onchange="applyFilters()">
+                    <input type="date" id="filter-date-to">
                 </div>
                 <div class="filter-card">
                     <label for="filter-sort">{{ t('activity_sort_label') }}</label>
-                    <select id="filter-sort" onchange="applyFilters()">
+                    <select id="filter-sort">
                         <option value="date_desc">{{ t('activity_sort_date_desc') }}</option>
                         <option value="date_asc">{{ t('activity_sort_date_asc') }}</option>
                         <option value="user_asc">{{ t('activity_sort_user_asc') }}</option>
@@ -658,7 +658,7 @@
             </div>
             <div class="filter-actions">
                 <div class="filter-hint" id="log-count"></div>
-                <button type="button" class="btn secondary sm" onclick="resetActivityFilters()">{{ t('activity_reset_filters') }}</button>
+                <button type="button" class="btn secondary sm" id="reset-activity-filters">{{ t('activity_reset_filters') }}</button>
             </div>
         </div>
 
@@ -730,6 +730,15 @@
 {% endblock %}
 
 {% block scripts %}
-<script id="admin-activity-config" type="application/json">{{ {'visibleCountSuffix': t('activity_visible_count_suffix')}|tojson }}</script>
-<script src="{{ url_for('static', filename='js/admin-activity.js', v=static_version) }}"></script>
+<script nonce="{{ csp_nonce() }}" id="admin-activity-config" type="application/json">{{ {'visibleCountSuffix': t('activity_visible_count_suffix')}|tojson }}</script>
+<script nonce="{{ csp_nonce() }}">
+document.getElementById('filter-search')?.addEventListener('input', applyFilters);
+document.getElementById('filter-user')?.addEventListener('change', applyFilters);
+document.getElementById('filter-action')?.addEventListener('change', applyFilters);
+document.getElementById('filter-date-from')?.addEventListener('change', applyFilters);
+document.getElementById('filter-date-to')?.addEventListener('change', applyFilters);
+document.getElementById('filter-sort')?.addEventListener('change', applyFilters);
+document.getElementById('reset-activity-filters')?.addEventListener('click', resetActivityFilters);
+</script>
+<script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/admin-activity.js', v=static_version) }}"></script>
 {% endblock %}

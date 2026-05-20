@@ -1141,7 +1141,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
             <div style="display:flex;gap:8px;align-items:center">
                 <input type="text" id="meteo-search-input" placeholder="{{ t('settings_meteo_city_ph') }}"
                        style="flex:1;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:.85rem;background:var(--surface);color:var(--text)">
-                <button type="button" id="meteo-search-btn" class="btn sm secondary" onclick="searchMeteoCity()">
+                <button type="button" id="meteo-search-btn" class="btn sm secondary">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                     {{ t('settings_meteo_search_btn') }}
                 </button>
@@ -1207,13 +1207,13 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
             <div class="lang-grid" style="margin-bottom:20px">
 
                 <label class="lang-card {% if lang == 'fr' %}selected{% endif %}">
-                    <input type="radio" name="language" value="fr" {% if lang == 'fr' %}checked{% endif %} onchange="this.closest('form').querySelectorAll('.lang-card').forEach(c=>c.classList.remove('selected'));this.closest('.lang-card').classList.add('selected')">
+                    <input type="radio" name="language" value="fr" {% if lang == 'fr' %}checked{% endif %} class="js-lang-radio">
                     <span class="lang-flag">🇫🇷</span>
                     <span class="lang-name">{{ t('language_fr') }}</span>
                 </label>
 
                 <label class="lang-card {% if lang == 'en' %}selected{% endif %}">
-                    <input type="radio" name="language" value="en" {% if lang == 'en' %}checked{% endif %} onchange="this.closest('form').querySelectorAll('.lang-card').forEach(c=>c.classList.remove('selected'));this.closest('.lang-card').classList.add('selected')">
+                    <input type="radio" name="language" value="en" {% if lang == 'en' %}checked{% endif %} class="js-lang-radio">
                     <span class="lang-flag">🇬🇧</span>
                     <span class="lang-name">{{ t('language_en') }}</span>
                 </label>
@@ -1346,7 +1346,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                             </div>
                             <div style="display:flex;gap:8px;align-items:center">
                                 <button type="submit" class="btn success sm">{{ t('superadmin_save_perms') }}</button>
-                                <button type="button" class="btn secondary sm" onclick="toggleAll(this)">{{ t('superadmin_check_all') }}</button>
+                                <button type="button" class="btn secondary sm js-toggle-all">{{ t('superadmin_check_all') }}</button>
                             </div>
                         </form>
                         {% endif %}
@@ -1381,7 +1381,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
 
                     {% if not entry.superadmin %}
                     <div class="reset-pass-section">
-                        <button type="button" class="reset-pass-toggle" onclick="toggleResetForm(this)">
+                        <button type="button" class="reset-pass-toggle js-toggle-reset-form">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                             {{ t('superadmin_reset_password') }}
                         </button>
@@ -1513,7 +1513,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                     <form method="post" action="/admin/features/toggle" data-feature="{{ key }}">
                         <input type="hidden" name="feature" value="{{ key }}">
                         <label class="toggle-switch" title="{{ t('features_toggle') }} {{ t(name_key) }}">
-                            <input type="checkbox" {% if enabled %}checked{% endif %} onchange="this.closest('form').submit()">
+                            <input type="checkbox" class="js-feature-toggle" {% if enabled %}checked{% endif %}>
                             <span class="toggle-slider"></span>
                         </label>
                     </form>
@@ -1528,7 +1528,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
 {% endblock %}
 
 {% block scripts %}
-<script id="admin-settings-config" type="application/json">{{ {
+<script nonce="{{ csp_nonce() }}" id="admin-settings-config" type="application/json">{{ {
     'displayApiToken': display_api_token,
     'screenTokenParam': screen_token_query_param,
     'remoteCopyEnabled': true if backup_remote.get('enabled') and backup_remote.get('url') else false,
@@ -1589,5 +1589,35 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
         'geocodeError': t('settings_geocode_error')
     }
 }|tojson }}</script>
-<script src="{{ url_for('static', filename='js/admin-settings.js', v=static_version) }}"></script>
+<script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/admin-settings.js', v=static_version) }}"></script>
+<script nonce="{{ csp_nonce() }}">
+document.getElementById('meteo-search-btn')?.addEventListener('click', searchMeteoCity);
+document.querySelectorAll('.js-lang-radio').forEach(el => {
+  el.addEventListener('change', function() {
+    const form = this.closest('form');
+    form.querySelectorAll('.lang-card').forEach(c => c.classList.remove('selected'));
+    this.closest('.lang-card').classList.add('selected');
+  });
+});
+document.querySelectorAll('.js-toggle-all').forEach(el => {
+  el.addEventListener('click', function() {
+    const form = this.closest('form');
+    const boxes = form.querySelectorAll('input[type=checkbox]');
+    const allChecked = Array.from(boxes).every(b => b.checked);
+    boxes.forEach(b => b.checked = !allChecked);
+    this.textContent = allChecked ? '{{ t("superadmin_check_all") }}' : '{{ t("superadmin_uncheck_all") }}';
+  });
+});
+document.querySelectorAll('.js-toggle-reset-form').forEach(el => {
+  el.addEventListener('click', function() {
+    const section = this.closest('.reset-pass-section');
+    const form = section.querySelector('.reset-pass-form');
+    const isVisible = form.style.display !== 'none';
+    form.style.display = isVisible ? 'none' : 'flex';
+  });
+});
+document.querySelectorAll('.js-feature-toggle').forEach(el => {
+  el.addEventListener('change', function() { this.closest('form').submit(); });
+});
+</script>
 {% endblock %}

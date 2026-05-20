@@ -652,7 +652,7 @@ def register_public_routes(app):
     @app.route("/")
     def index():
         if not screen_token_is_valid(request):
-            return "", 403
+            return render_template("access_denied.html"), 403
         cfg = load_config()
         screen = request.args.get("screen", "").strip().lower()
         halo_color = get_screen_halo_color(screen, cfg)

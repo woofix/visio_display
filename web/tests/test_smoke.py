@@ -2064,6 +2064,8 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(blocked.get_json()["error"], "screen_token_required")
         self.assertEqual(allowed.status_code, 200)
         self.assertEqual(blocked_page.status_code, 403)
+        self.assertIn(b"Visio Display", blocked_page.data)
+        self.assertIn("Accès réservé".encode("utf-8"), blocked_page.data)
         self.assertEqual(allowed_page.status_code, 200)
 
     def test_static_data_requires_screen_token_but_other_static_assets_remain_public(self):

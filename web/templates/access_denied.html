@@ -1,0 +1,54 @@
+<!-- GNU General Public License v3.0 (GPL-3.0) - Copyright (c) 2026 Eric TOMAS (Woofix) -->
+<!DOCTYPE html>
+<html lang="{{ lang | default('fr') }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accès réservé - Visio Display</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/access-denied.css', v=static_version) }}">
+</head>
+<body>
+    <main class="access-page" aria-labelledby="access-title">
+        <section class="access-hero">
+            <div class="access-copy">
+                <p class="access-brand">Visio Display</p>
+                <h1 id="access-title">Accès réservé</h1>
+                <p class="access-message">Signal privé. Merci de repasser par l’entrée officielle.</p>
+            </div>
+
+            <div class="display-gif" aria-hidden="true">
+                <div class="signal-lines signal-lines-left">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+                <div class="display-character">
+                    <div class="display-top-light"></div>
+                    <div class="display-screen">
+                        <div class="curtain curtain-left"></div>
+                        <div class="curtain curtain-right"></div>
+                        <div class="screen-face">
+                            <span class="eye eye-left"></span>
+                            <span class="eye eye-right"></span>
+                            <span class="mouth"></span>
+                        </div>
+                        <div class="lock">
+                            <span class="lock-loop"></span>
+                            <span class="lock-body"></span>
+                        </div>
+                    </div>
+                    <div class="display-arm display-arm-left"></div>
+                    <div class="display-arm display-arm-right"></div>
+                    <div class="display-stand"></div>
+                    <div class="display-base"></div>
+                </div>
+                <div class="signal-lines signal-lines-right">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

@@ -44,13 +44,14 @@
         media:    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`,
         campaign: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7V3m8 4V3"/><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 11h18"/></svg>`,
         config:   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
+        wiki:     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>`,
         activity: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`,
         user:     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
     };
 
     function renderResults(data, q) {
         const total = (data.pages||[]).length + (data.media||[]).length + (data.campaigns||[]).length
-                    + (data.config||[]).length + (data.activity||[]).length + (data.users||[]).length;
+                    + (data.wiki||[]).length + (data.config||[]).length + (data.activity||[]).length + (data.users||[]).length;
         if (!total) {
             dropdown.innerHTML = `<div class="tsd-empty">${escHtml(text('searchNoResults', 'No results for "{query}"', { query: q }))}</div>`;
             dropdown.classList.add('open');
@@ -80,6 +81,20 @@
                     <div class="tsd-item-body">
                         <div class="tsd-item-name">${escHtml(item.filename)}</div>
                         <div class="tsd-item-meta">${escHtml((item.ext||'').toUpperCase())}${item.disabled ? ' · ' + escHtml(text('searchDisabled', 'disabled')) : ''}</div>
+                    </div>
+                </a>`;
+            });
+            html += '</div>';
+        }
+
+        if (data.wiki && data.wiki.length) {
+            html += `<div class="tsd-section"><div class="tsd-label">${ICONS.wiki}${escHtml(text('searchWiki', 'Wiki'))}</div>`;
+            data.wiki.forEach(item => {
+                html += `<a class="tsd-item" href="${escHtml(item.url)}">
+                    <div class="tsd-item-icon">${ICONS.wiki}</div>
+                    <div class="tsd-item-body">
+                        <div class="tsd-item-name">${escHtml(item.title)}</div>
+                        <div class="tsd-item-meta">${escHtml(item.desc)}</div>
                     </div>
                 </a>`;
             });

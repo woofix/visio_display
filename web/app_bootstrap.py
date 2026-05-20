@@ -64,6 +64,12 @@ CLIENT_HEARTBEAT_EXTRA_COLUMNS = {
     "last_error": "VARCHAR(512) NOT NULL DEFAULT ''",
 }
 
+SEARCH_INDEX_EXTRA_COLUMNS = {
+    "source_id": "VARCHAR(160) NOT NULL DEFAULT ''",
+    "content": "TEXT",
+    "meta": "TEXT",
+}
+
 SCHEMA_MIGRATIONS = (
     {
         "table": "client_heartbeats",
@@ -74,6 +80,10 @@ SCHEMA_MIGRATIONS = (
         "columns": {
             "must_change_password": "BOOLEAN NOT NULL DEFAULT false",
         },
+    },
+    {
+        "table": "search_index",
+        "columns": SEARCH_INDEX_EXTRA_COLUMNS,
     },
 )
 

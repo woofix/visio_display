@@ -14,6 +14,7 @@ from constants import PRIVATE_DATA_DIR
 from services.media_svc import strip_html
 
 NAMEDAY_CACHE_FILE = os.path.join(PRIVATE_DATA_DIR, "ephemeris_namedays.json")
+NAMEDAY_RETRY_SECONDS = 3600
 
 
 def normalize_text(value):
@@ -68,6 +69,13 @@ def nameday_cache_checked_at_ts(target_date):
     with contextlib.suppress(ValueError):
         return datetime.fromisoformat(raw_value.replace("Z", "+00:00")).timestamp()
     return 0
+
+
+def nameday_cache_is_fresh(target_date):
+    checked_at = nameday_cache_checked_at_ts(target_date)
+    if checked_at <= 0:
+        return False
+    return datetime.now(timezone.utc).timestamp() - checked_at < NAMEDAY_RETRY_SECONDS
 
 
 def displayable_saint_name(raw_name):
@@ -144,6 +152,17 @@ def update_cached_nameday(target_date, name, source):
     save_nameday_cache(cache)
 
 
+def update_nameday_checked_at(target_date, status="checked"):
+    cache = load_nameday_cache()
+    entry = cache.get(nameday_key(target_date), {})
+    if not isinstance(entry, dict):
+        entry = {"name": str(entry or "").strip()}
+    entry["checked_at"] = datetime.now(timezone.utc).isoformat()
+    entry["status"] = status
+    cache[nameday_key(target_date)] = entry
+    save_nameday_cache(cache)
+
+
 def fetch_nameday_from_abalin(target_date):
     response = requests.get(
         "https://nameday.abalin.net/api/V2/date",
@@ -177,20 +196,29 @@ def fetch_nameday_from_fetedujour(target_date):
 
 def get_nameday_for_date(target_date, fetchers=None):
     cached = cached_nameday(target_date)
+    if nameday_cache_is_fresh(target_date):
+        return cached
     fetchers = fetchers or (
         ("nameday.abalin.net", fetch_nameday_from_abalin),
         ("fetedujour.fr", fetch_nameday_from_fetedujour),
     )
+    checked = False
     for source, fetcher in fetchers:
         try:
             online_name = fetcher(target_date)
+            checked = True
         except Exception as exc:
+            checked = True
             print(f"[NAMEDAY ERROR] {source}: {exc}")
             continue
         if online_name:
             if online_name != cached:
                 update_cached_nameday(target_date, online_name, source)
+            else:
+                update_nameday_checked_at(target_date, "ok")
             return online_name
+    if checked:
+        update_nameday_checked_at(target_date, "unavailable")
     return cached
 
 

@@ -17,6 +17,16 @@ _SUFFIXES = (
     'eurs', 'eur', 'aux', 'eux', 'ers', 'er', 'es', 's', 'x',
 )
 
+_STOP_WORDS = {
+    'a', 'au', 'aux', 'avec', 'ce', 'ces', 'cet', 'cette', 'dans', 'de', 'des',
+    'du', 'elle', 'elles', 'en', 'et', 'il', 'ils', 'la', 'le', 'les', 'leur',
+    'leurs', 'lui', 'mais', 'ne', 'nos', 'notre', 'nous', 'ou', 'par', 'pas',
+    'pour', 'que', 'qui', 'sa', 'se', 'ses', 'son', 'sur', 'un', 'une', 'vos',
+    'votre', 'vous',
+    'an', 'and', 'are', 'as', 'at', 'be', 'by', 'for', 'from', 'in', 'is', 'it',
+    'of', 'on', 'or', 'the', 'to', 'with',
+}
+
 
 def normalize(text):
     """Lowercase, remove accents, collapse punctuation to spaces."""
@@ -52,16 +62,20 @@ def _field_match(tokens, qstems):
     return 0.0
 
 
+def _query_terms(query):
+    norm = normalize(query)
+    return [w for w in norm.split() if len(w) >= 2 and w not in _STOP_WORDS]
+
+
 def parse_query(query):
     """
     Normalize the query and return a list of stem-frozensets, one per word.
-    Words shorter than 2 characters are ignored.
+    Words shorter than 2 characters and common stop words are ignored.
     """
-    norm = normalize(query)
-    return [_stems(w) for w in norm.split() if len(w) >= 2]
+    return [_stems(w) for w in _query_terms(query)]
 
 
-def score_item(item, groups):
+def score_item(item, groups, phrase=''):
     """
     Score a result item dict against pre-parsed query stem groups.
 
@@ -86,6 +100,10 @@ def score_item(item, groups):
     # Bonus when every query word matched somewhere in the item
     if len(matched_groups) == len(groups):
         total *= 1.25
+    if len(groups) > 1 and phrase:
+        for field, weight in _WEIGHTS.items():
+            if phrase in normalize(item.get(field) or ''):
+                total += weight * len(groups)
     return total
 
 
@@ -96,10 +114,12 @@ def rank_items(items, query, min_score=0.5):
     Items below min_score are excluded. Items with the same score keep their
     original relative order (stable sort).
     """
-    groups = parse_query(query)
+    terms = _query_terms(query)
+    groups = [_stems(w) for w in terms]
     if not groups:
-        return list(items)
-    scored = [(score_item(item, groups), item) for item in items]
+        return []
+    phrase = ' '.join(terms)
+    scored = [(score_item(item, groups, phrase), item) for item in items]
     scored = [(s, it) for s, it in scored if s >= min_score]
     scored.sort(key=lambda x: -x[0])
     return [it for _, it in scored]

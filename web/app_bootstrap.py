@@ -602,7 +602,7 @@ def register_template_context(app):
         if session.get("user") and request.path.startswith("/admin"):
             from services.version_svc import get_version_status
 
-            admin_update_status = get_version_status(allow_remote=False)
+            admin_update_status = get_version_status(allow_remote=not app.config.get("TESTING", False))
 
         current_user_must_change_password = False
         if username:

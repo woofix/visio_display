@@ -388,6 +388,23 @@ class AppSmokeTests(unittest.TestCase):
         self.assertIn("Mise à jour Visio-Display disponible".encode("utf-8"), response.data)
         self.assertIn(b"1.1.0", response.data)
 
+    def test_admin_update_alert_refreshes_remote_status_outside_tests(self):
+        self._login()
+        self.app.config["TESTING"] = False
+        with patch("services.version_svc.get_version_status", return_value={
+            "status": "update_available",
+            "status_label": "Update available",
+            "status_tone": "warning",
+            "local_version": "1.0.0",
+            "remote_version": "1.1.0",
+            "fetch_error": "",
+        }) as get_version_status:
+            response = self.client.get("/admin")
+
+        self.assertEqual(response.status_code, 200)
+        get_version_status.assert_any_call(allow_remote=True)
+        self.assertIn("Mise à jour Visio-Display disponible".encode("utf-8"), response.data)
+
     def test_theme_update_persists_for_logged_user(self):
         with self.client.session_transaction() as session:
             session["user"] = "admin"

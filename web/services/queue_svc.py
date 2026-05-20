@@ -247,6 +247,28 @@ def _reencode_with_progress(src, dst, compress, job_id):
         return False
 
 
+def _preserve_generated_menu_video_lock(cfg, old_name, new_name):
+    generated = cfg.get('generated_menus', {})
+    if not isinstance(generated, dict) or old_name not in generated:
+        return
+
+    from services.menu_svc import MENU_VIDEO_DURATION_SECONDS
+
+    metadata = dict(generated.pop(old_name) or {})
+    metadata['duration_locked'] = True
+    metadata['duration'] = MENU_VIDEO_DURATION_SECONDS
+    generated[new_name] = metadata
+    cfg['generated_menus'] = generated
+    cfg.setdefault('durations', {})[new_name] = MENU_VIDEO_DURATION_SECONDS
+    if old_name != new_name:
+        cfg['durations'].pop(old_name, None)
+    for screen_cfg in cfg.get('screens', {}).values():
+        if not isinstance(screen_cfg, dict):
+            continue
+        screen_cfg.get('durations', {}).pop(old_name, None)
+        screen_cfg.get('durations', {}).pop(new_name, None)
+
+
 # ── RQ tasks ────────────────────────────────────────────────────────────────
 
 def _rq_upload_encode(job_id, src_tmp, dest, final_name):
@@ -393,6 +415,7 @@ def _rq_compress_job(encode_job_id):
                         screen_cfg['durations'][new_name] = screen_cfg['durations'].pop(job['filename'])
                     if job['filename'] in screen_cfg.get('schedules', {}):
                         screen_cfg['schedules'][new_name] = screen_cfg['schedules'].pop(job['filename'])
+            _preserve_generated_menu_video_lock(cfg, job['filename'], new_name)
             disabled = cfg.get('disabled', [])
             if new_name in disabled:
                 disabled.remove(new_name)

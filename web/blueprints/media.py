@@ -155,7 +155,8 @@ def admin_media():
         files, unassigned = _assigned_media_for_screen(all_media, scfg)
         view_cfg     = {'disabled': scfg.get('disabled', []),
                         'disabled_groups': scfg.get('disabled_groups', []),
-                        'durations': scfg.get('durations', {})}
+                        'durations': scfg.get('durations', {}),
+                        'generated_menus': cfg.get('generated_menus', {})}
         schedules    = scfg.get('schedules', {})
     else:
         if not has_screen_access(''):

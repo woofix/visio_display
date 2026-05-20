@@ -624,6 +624,7 @@
                 <tbody>
                     <tr><td><span class="perm-badge">upload</span></td><td>{{ t('wiki_perm_upload') }}</td></tr>
                     <tr><td><span class="perm-badge">announcements</span></td><td>{{ t('perm_announcements') }}</td></tr>
+                    <tr><td><span class="perm-badge">menus</span></td><td>{{ t('perm_menus') }}</td></tr>
                     <tr><td><span class="perm-badge">delete</span></td><td>{{ t('wiki_perm_delete') }}</td></tr>
                     <tr><td><span class="perm-badge">reorder</span></td><td>{{ t('wiki_perm_reorder') }}</td></tr>
                     <tr><td><span class="perm-badge">toggle</span></td><td>{{ t('wiki_perm_toggle') }}</td></tr>
@@ -631,6 +632,7 @@
                     <tr><td><span class="perm-badge">compress</span></td><td>{{ t('wiki_perm_compress') }}</td></tr>
                     <tr><td><span class="perm-badge">logo</span></td><td>{{ t('wiki_perm_logo') }}</td></tr>
                     <tr><td><span class="perm-badge">schedule</span></td><td>{{ t('wiki_perm_schedule') }}</td></tr>
+                    <tr><td><span class="perm-badge">cleanup</span></td><td>{{ t('perm_cleanup') }}</td></tr>
                 </tbody>
             </table>
             <h3>{{ tx('wiki_s12_difference_title', 'Rôles et limites') }}</h3>
@@ -978,6 +980,55 @@
             <pre><code>web/static/assets/lucide/
 web/static/assets/tabler/outline/
 web/static/assets/tabler/filled/</code></pre>
+        </section>
+
+        <section class="wiki-section {% if wiki_section == 's24' %}active{% endif %}" id="s24">
+            <div class="wiki-section-header">
+                <h2>{{ t('wiki_s24_title') }}</h2>
+            </div>
+            <p>{{ t('wiki_s24_desc') }}</p>
+            <div class="wiki-callout">
+                <strong>{{ t('wiki_perm_required') }}</strong>
+                <span class="perm-badge">menus</span>
+            </div>
+            <h3>{{ t('wiki_s24_create_title') }}</h3>
+            <ol class="wiki-steps">
+                <li>{{ t('wiki_s24_create1') }}</li>
+                <li>{{ t('wiki_s24_create2') }}</li>
+                <li>{{ t('wiki_s24_create3') }}</li>
+                <li>{{ t('wiki_s24_create4') }}</li>
+            </ol>
+            <h3>{{ t('wiki_s24_modes_title') }}</h3>
+            <ul>
+                <li>{{ t('wiki_s24_mode_day') }}</li>
+                <li>{{ t('wiki_s24_mode_week') }}</li>
+                <li>{{ t('wiki_s24_images') }}</li>
+                <li>{{ t('wiki_s24_duration') }}</li>
+                <li>{{ t('wiki_s24_queue') }}</li>
+            </ul>
+        </section>
+
+        <section class="wiki-section {% if wiki_section == 's25' %}active{% endif %}" id="s25">
+            <div class="wiki-section-header">
+                <h2>{{ t('wiki_s25_title') }}</h2>
+            </div>
+            <p>{{ t('wiki_s25_desc') }}</p>
+            <div class="wiki-callout">
+                <strong>{{ t('wiki_perm_required') }}</strong>
+                <span class="perm-badge">cleanup</span>
+                <br>{{ t('wiki_s25_access') }}
+            </div>
+            <h3>{{ t('wiki_s25_categories_title') }}</h3>
+            <ul>
+                <li>{{ t('wiki_s25_expired') }}</li>
+                <li>{{ t('wiki_s25_unused') }}</li>
+                <li>{{ t('wiki_s25_duplicates') }}</li>
+                <li>{{ t('wiki_s25_large') }}</li>
+                <li>{{ t('wiki_s25_disabled') }}</li>
+            </ul>
+            <div class="wiki-callout warning">
+                <strong>{{ t('wiki_tip') }}</strong> {{ t('wiki_s25_warning') }}
+            </div>
         </section>
 
     </div><!-- .wiki-body -->

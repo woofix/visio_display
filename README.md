@@ -112,6 +112,14 @@ Visio-Display s'exécute comme une stack self-hosted Docker Compose :
 - Export PNG 1920×1080 vers la médiathèque, avec durée d'affichage et écrans ciblés
 - Bibliothèques d'icônes locales Lucide et Tabler chargées dynamiquement
 
+**Créateur de menus**
+- Création rapide de menus 16:9 depuis des champs entrée, plat et dessert
+- Mode menu du jour ou menu de la semaine, avec génération d'un média par jour renseigné
+- Analyse des plats, détection de mots-clés et suggestions d'images locales ou externes
+- Durée verrouillée à 15 secondes pour un rendu vidéo stable
+- Ajout aux écrans sélectionnés avec date et horaires de diffusion optionnels
+- Génération placée dans la file d'encodage, puis ajout automatique à la médiathèque
+
 **Interface d'administration**
 - Importation par glisser-déposer avec barre de progression animée (shimmer) et prévisualisation
 - Animation d'upload professionnelle : spinner rotatif, pourcentage en temps réel et overlay animé pendant l'envoi
@@ -124,6 +132,7 @@ Visio-Display s'exécute comme une stack self-hosted Docker Compose :
 - Assignation des médias aux écrans nommés par bouton — l'item devient immédiatement actif sur l'écran cible
 - Encodage vidéo asynchrone à l'import — barre de progression en temps réel
 - File de compression vidéo nocturne (fenêtre 20h–6h) — progression visible, forçable par le super-admin
+- Nettoyage intelligent des médias périmés, inutilisés, doublons, lourds ou désactivés depuis longtemps
 - Statistiques d'utilisation du disque
 - Visionneuse plein écran au clic
 - Nom de l'application personnalisable
@@ -152,7 +161,7 @@ Visio-Display s'exécute comme une stack self-hosted Docker Compose :
 - Les rôles système ne peuvent pas être supprimés
 
 **Gestion des fonctionnalités**
-- Activer ou désactiver 12 modules depuis `Paramètres → Fonctionnalités` (super-admin uniquement) : importation de médias, annonces, vidéos, suppression, compression, éphéméride, campagnes, plages de diffusion, groupes, multi-écrans, alerte prioritaire, journal d'activité
+- Activer ou désactiver 13 modules depuis `Paramètres → Fonctionnalités` (super-admin uniquement) : importation de médias, annonces, menus, vidéos, suppression, compression, éphéméride, campagnes, plages de diffusion, groupes, multi-écrans, alerte prioritaire, journal d'activité
 - Un module désactivé masque entièrement les menus, boutons et endpoints concernés pour tous les utilisateurs
 
 **À propos**
@@ -461,6 +470,8 @@ L'interface conserve automatiquement uniquement les **5 sauvegardes les plus ré
 | Permission    | Action autorisée                                                         |
 |---------------|--------------------------------------------------------------------------|
 | `upload`      | Importer des médias                                                      |
+| `announcements` | Créer des annonces graphiques 16:9                                    |
+| `menus`       | Créer des menus 16:9                                                     |
 | `delete`      | Supprimer des médias                                                      |
 | `reorder`     | Réordonner les médias                                                    |
 | `toggle`      | Activer / désactiver des médias, assigner aux écrans                     |
@@ -468,6 +479,7 @@ L'interface conserve automatiquement uniquement les **5 sauvegardes les plus ré
 | `compress`    | Mettre des vidéos en file de compression                                 |
 | `logo`        | Changer ou réinitialiser le logo                                         |
 | `schedule`    | Programmer l'affichage des médias (horaires / dates)                     |
+| `cleanup`     | Accéder au nettoyage intelligent de la médiathèque                       |
 
 ### Restrictions d'écrans par utilisateur
 
@@ -500,7 +512,29 @@ Pour retirer un média de l'écran courant, cliquer sur **« Retirer de l'écran
 
 À l'import, les vidéos non conformes (hors H.264/MP4) sont **encodées en arrière-plan** : la page répond immédiatement et affiche une barre de progression par fichier. Un bouton « Voir les médias » apparaît une fois l'encodage terminé.
 
-Une fois l'encodage initial effectué, la vidéo est ajoutée en file de compression nocturne (20h–6h) pour réduction de taille. La progression de cette étape est visible sur la page `/admin/queue`.
+Une fois l'encodage initial effectué, la vidéo est ajoutée en file de compression nocturne (20h–6h) pour réduction de taille. Des variantes 1080p et 4K sont générées uniquement quand la source le permet, sans agrandissement artificiel. La progression de cette étape est visible sur la page `/admin/queue`.
+
+### Créateur de menus
+
+Le créateur de menus est disponible depuis `/admin/menus` pour les utilisateurs ayant la permission `menus`.
+
+- Mode **Menu du jour** : génère un média 16:9 pour une date donnée, avec horaires optionnels.
+- Mode **Menu semaine** : génère un média par jour renseigné, en appliquant les dates correspondantes.
+- Les champs **Entrée**, **Plat** et **Dessert** structurent le rendu automatiquement.
+- Le bouton **Analyser les plats** détecte les mots-clés et propose des images locales ou externes.
+- Les menus sont des vidéos de 15 secondes ajoutées à la file d'encodage, puis assignées aux écrans sélectionnés.
+
+### Nettoyage intelligent
+
+Le nettoyage intelligent est disponible depuis `Paramètres > Nettoyage médias` pour les utilisateurs ayant la permission `cleanup`.
+
+- Médias périmés : fichiers dont une date de fin de diffusion est déjà passée.
+- Médias non utilisés : fichiers absents des écrans, campagnes actives, listes globales et plages planifiées.
+- Doublons exacts : fichiers avec le même poids et le même hash SHA-256.
+- Vidéos lourdes : vidéos au-dessus du seuil de 250 Mo.
+- Désactivés depuis longtemps : médias désactivés et inchangés depuis au moins 90 jours.
+
+Aucune suppression automatique n'est lancée : chaque suppression reste manuelle et doit être vérifiée.
 
 ### Éditeur d'annonces — architecture développeur
 
@@ -542,6 +576,7 @@ Visio-Display/
     │   ├── ephemeris.py         # Carte éphéméride
     │   ├── guards.py            # Helpers de contrôle d'accès
     │   ├── media.py             # Médiathèque
+    │   ├── menus.py             # Créateur de menus 16:9
     │   ├── queue.py             # File d'encodage
     │   ├── roles.py             # Gestion des rôles RBAC
     │   ├── screens.py           # Gestion des écrans
@@ -562,6 +597,8 @@ Visio-Display/
     │   ├── icon_svc.py          # Index des SVG locaux Lucide/Tabler pour l'éditeur
     │   ├── i18n.py              # Internationalisation (flash messages, traductions)
     │   ├── media_svc.py         # Opérations sur les fichiers médias
+    │   ├── media_cleanup_svc.py # Analyse du nettoyage intelligent
+    │   ├── menu_svc.py          # Génération des menus 16:9
     │   ├── queue_svc.py         # File d'encodage + tâches RQ
     │   ├── rbac_svc.py          # CRUD rôles et attribution aux utilisateurs
     │   ├── schedule_svc.py      # Logique de planification horaire/dates
@@ -583,7 +620,9 @@ Visio-Display/
         ├── admin_announcements.html # Éditeur graphique d'annonces 16:9
         ├── admin_dashboard.html # Vue d'ensemble + espace disque
         ├── admin_campaigns.html # Campagnes temporaires
+        ├── admin_media_cleanup.html # Nettoyage intelligent de la médiathèque
         ├── admin_media.html     # Médiathèque + réorganisation + écrans
+        ├── admin_menus.html     # Créateur de menus 16:9
         ├── admin_programming.html # Plages de diffusion (calendrier hebdomadaire)
         ├── admin_queue.html     # File d'encodage + progression
         ├── admin_roles.html     # Gestion des rôles RBAC
@@ -963,6 +1002,14 @@ Visio-Display runs as a self-hosted Docker Compose stack:
 - Export the final 1920×1080 PNG to the media library, with display duration and target screens
 - Local Lucide and Tabler icon libraries loaded dynamically
 
+**Menu creator**
+- Quickly create 16:9 menus from starter, main and dessert fields
+- Daily menu or weekly menu mode, with one media item generated per completed day
+- Dish analysis, keyword detection and local or external image suggestions
+- Duration locked to 15 seconds for stable video output
+- Assignment to selected screens with optional display date and time window
+- Generation queued in the encoding queue, then automatically added to the media library
+
 **Admin interface**
 - Drag-and-drop file import with animated (shimmer) progress bar and preview
 - Professional upload animation: rotating spinner, real-time percentage counter and animated overlay during transfer
@@ -975,6 +1022,7 @@ Visio-Display runs as a self-hosted Docker Compose stack:
 - Media assignment to named screens via button — item is immediately active on the target screen
 - Asynchronous video encoding on upload — real-time per-file progress bar
 - Overnight video compression queue (window: 8 PM–6 AM) — progress visible, force-startable by super-admin
+- Smart cleanup for expired, unused, duplicate, oversized or long-disabled media
 - Disk usage statistics
 - Fullscreen media viewer on click
 - Customizable application name
@@ -1003,7 +1051,7 @@ Visio-Display runs as a self-hosted Docker Compose stack:
 - System roles cannot be deleted
 
 **Feature management**
-- Enable or disable 12 modules from `Settings → Features` (super-admin only): media import, announcements, videos, deletion, compression, ephemeris, campaigns, scheduling, groups, multi-screen, priority alert, activity log
+- Enable or disable 13 modules from `Settings → Features` (super-admin only): media import, announcements, menus, videos, deletion, compression, ephemeris, campaigns, scheduling, groups, multi-screen, priority alert, activity log
 - A disabled module completely hides its menus, buttons and endpoints for all users
 
 **About**
@@ -1242,6 +1290,8 @@ If there is only one super-admin account, you can omit `--user <super-admin-name
 | Permission    | Allowed action                                                        |
 |---------------|-----------------------------------------------------------------------|
 | `upload`      | Import media files                                                    |
+| `announcements` | Create 16:9 graphic announcements                                  |
+| `menus`       | Create 16:9 menus                                                     |
 | `delete`      | Delete media files                                                    |
 | `reorder`     | Reorder media items                                                   |
 | `toggle`      | Enable / disable media items, assign to screens                       |
@@ -1249,6 +1299,7 @@ If there is only one super-admin account, you can omit `--user <super-admin-name
 | `compress`    | Queue videos for compression                                          |
 | `logo`        | Change or reset the application logo                                  |
 | `schedule`    | Schedule media display by time of day and/or date range               |
+| `cleanup`     | Access smart media cleanup                                            |
 
 ### Per-screen access restrictions
 
@@ -1281,7 +1332,29 @@ To remove a media item from the current screen, click **"Remove from screen"** i
 
 On upload, non-conformant videos (not H.264/MP4) are **encoded in the background**: the page responds immediately and shows a per-file progress bar. A "View media" button appears once encoding is complete.
 
-After initial encoding, the video is queued for overnight compression (8 PM–6 AM) to reduce file size. The progress of that step is visible on `/admin/queue`.
+After initial encoding, the video is queued for overnight compression (8 PM–6 AM) to reduce file size. 1080p and 4K variants are generated only when the source allows it, without artificial upscaling. The progress of that step is visible on `/admin/queue`.
+
+### Menu creator
+
+The menu creator is available from `/admin/menus` for users with the `menus` permission.
+
+- **Daily menu** mode generates one 16:9 media item for a chosen date, with optional time limits.
+- **Weekly menu** mode generates one media item per completed day and applies the matching dates.
+- **Starter**, **Main** and **Dessert** fields structure the output automatically.
+- **Analyze dishes** detects keywords and suggests local or external images.
+- Menus are 15-second videos added to the encoding queue, then assigned to the selected screens.
+
+### Smart cleanup
+
+Smart cleanup is available from `Settings > Media cleanup` for users with the `cleanup` permission.
+
+- Expired media: files whose display end date has already passed.
+- Unused media: files absent from screens, active campaigns, global lists and scheduled slots.
+- Exact duplicates: files with the same size and the same SHA-256 hash.
+- Large videos: videos above the 250 MB threshold.
+- Long-disabled media: media disabled and unchanged for at least 90 days.
+
+No automatic deletion is started: every deletion remains manual and must be reviewed.
 
 ### Announcement editor — developer architecture
 
@@ -1323,6 +1396,7 @@ Visio-Display/
     │   ├── ephemeris.py         # Ephemeris card
     │   ├── guards.py            # Access control helpers
     │   ├── media.py             # Media library
+    │   ├── menus.py             # 16:9 menu creator
     │   ├── queue.py             # Encoding queue
     │   ├── roles.py             # RBAC role management
     │   ├── screens.py           # Screen management
@@ -1343,6 +1417,8 @@ Visio-Display/
     │   ├── icon_svc.py          # Local Lucide/Tabler SVG index for the editor
     │   ├── i18n.py              # Internationalisation (flash messages, translations)
     │   ├── media_svc.py         # Media file operations
+    │   ├── media_cleanup_svc.py # Smart cleanup analysis
+    │   ├── menu_svc.py          # 16:9 menu generation
     │   ├── queue_svc.py         # Encoding queue + RQ tasks
     │   ├── rbac_svc.py          # Role CRUD and user assignment
     │   ├── schedule_svc.py      # Time/date scheduling logic
@@ -1364,7 +1440,9 @@ Visio-Display/
         ├── admin_announcements.html # 16:9 graphical announcement editor
         ├── admin_dashboard.html # Overview + disk usage
         ├── admin_campaigns.html # Temporary campaigns
+        ├── admin_media_cleanup.html # Smart media cleanup
         ├── admin_media.html     # Media library + reordering + screens
+        ├── admin_menus.html     # 16:9 menu creator
         ├── admin_programming.html # Scheduling (weekly calendar view)
         ├── admin_queue.html     # Encoding queue + progress bars
         ├── admin_roles.html     # RBAC role management

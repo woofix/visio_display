@@ -37,6 +37,8 @@ Visio-Display is a **digital signage** application that automatically rotates im
 21. [Server Version (Super Admin)](#21-server-version-super-admin)
 22. [About](#22-about)
 23. [Built-in Announcement Editor](#23-built-in-announcement-editor)
+24. [Menu Creator](#24-menu-creator)
+25. [Smart Cleanup](#25-smart-cleanup)
 
 ---
 
@@ -513,6 +515,8 @@ The priority alert immediately displays a banner message on the display screen w
 | Permission | Authorized actions |
 |---|---|
 | `upload` | Upload media |
+| `announcements` | Create 16:9 graphic announcements |
+| `menus` | Create 16:9 menus |
 | `delete` | Delete media |
 | `reorder` | Change media order |
 | `toggle` | Enable/disable media and groups, assign to a screen |
@@ -520,6 +524,7 @@ The priority alert immediately displays a banner message on the display screen w
 | `compress` | Queue encoding, cancel a task |
 | `logo` | Change or reset the application logo |
 | `schedule` | Define time and date schedules |
+| `cleanup` | Access smart media cleanup |
 
 ### Roles and Limits
 
@@ -788,7 +793,9 @@ This page enables or disables whole application modules. A disabled module hides
 | **Media upload** | Uploading image and PDF files, and videos when the Videos module is active |
 | **Videos** | Video upload, previews, display, and encoding. Disabling it hides all existing videos |
 | **Media deletion** | Permanent deletion of files from the media library |
-| **Video compression** | Encoding queue and compression of videos limited to 1080p |
+| **Announcements** | Built-in 16:9 graphic announcement editor |
+| **Menus** | Daily or weekly 16:9 menu generation |
+| **Video compression** | Encoding queue and compression with 1080p and 4K variants when the source allows it |
 | **Almanac** | Generation and display of the daily almanac card |
 | **Campaigns** | Creation and management of temporary campaigns |
 | **Broadcast windows** | Time and date schedule configuration per media item |
@@ -913,6 +920,40 @@ web/static/assets/tabler/filled/
 
 ---
 
+## 24. Menu Creator
+
+Open **Menus** from the navigation menu.
+
+The menu creator turns starter, main and dessert fields into display-ready 16:9 menu media.
+
+- **Daily menu** creates one media item for a selected date, with optional time limits.
+- **Weekly menu** creates one media item per completed day and applies the matching date.
+- **Analyze dishes** detects keywords and suggests images from local media or the configured external image bank.
+- Menu videos are locked to **15 seconds** for predictable playback.
+- Created menus are added to the encoding queue, then inserted into the media library with the selected screens and schedule.
+
+> **Required permission:** `menus`
+
+---
+
+## 25. Smart Cleanup
+
+Open **Settings > Media cleanup**.
+
+Smart cleanup flags media that may deserve review before deletion:
+
+- **Expired media**: a display end date has already passed.
+- **Unused media**: absent from screens, active campaigns, global lists and scheduled slots.
+- **Exact duplicates**: same size and same SHA-256 hash.
+- **Large videos**: above the 250 MB threshold.
+- **Long-disabled media**: disabled and unchanged for at least 90 days.
+
+No automatic deletion is started. Every deletion remains manual and irreversible.
+
+> **Required permission:** `cleanup`
+
+---
+
 *Documentation generated for Visio-Display — Digital signage application.*
 
 ---
@@ -950,6 +991,8 @@ Visio-Display est une application d'**affichage dynamique** (digital signage) qu
 21. [Version (super-admin)](#21-version-super-admin)
 22. [À propos](#22-à-propos)
 23. [Éditeur d'annonces intégré](#23-éditeur-dannonces-intégré)
+24. [Créateur de menus](#24-créateur-de-menus)
+25. [Nettoyage intelligent](#25-nettoyage-intelligent)
 
 ---
 
@@ -1421,6 +1464,8 @@ L'alerte prioritaire permet de diffuser **immédiatement** un message en banniè
 | Permission | Actions autorisées |
 |---|---|
 | `upload` | Importer des médias |
+| `announcements` | Créer des annonces graphiques 16:9 |
+| `menus` | Créer des menus 16:9 |
 | `delete` | Supprimer des médias |
 | `reorder` | Modifier l'ordre des médias |
 | `toggle` | Activer/désactiver des médias et des groupes, assigner à un écran |
@@ -1428,6 +1473,7 @@ L'alerte prioritaire permet de diffuser **immédiatement** un message en banniè
 | `compress` | Mettre en file d'encodage, annuler une tâche |
 | `logo` | Changer ou réinitialiser le logo de l'application |
 | `schedule` | Définir des planifications horaires et de dates |
+| `cleanup` | Accéder au nettoyage intelligent de la médiathèque |
 
 ### Rôles et limites
 
@@ -1697,7 +1743,9 @@ Cette page permet d'activer ou de désactiver des modules entiers de l'applicati
 | **Importation de médias** | Upload de fichiers images et PDF (et vidéos si le module Vidéos est actif) |
 | **Vidéos** | Upload, aperçus, affichage et encodage de vidéos — désactiver masque toutes les vidéos existantes |
 | **Suppression de médias** | Suppression définitive de fichiers de la médiathèque |
-| **Compression vidéo** | File d'encodage et compression des vidéos limitées au 1080p |
+| **Annonces** | Éditeur graphique intégré pour créer des annonces 16:9 |
+| **Menus** | Génération de menus 16:9 du jour ou de la semaine |
+| **Compression vidéo** | File d'encodage et compression avec variantes 1080p et 4K quand la source le permet |
 | **Éphéméride** | Génération et affichage de la carte éphéméride quotidienne |
 | **Campagnes** | Création et gestion des campagnes temporaires |
 | **Plage de diffusion** | Configuration des plages horaires et dates de diffusion par média |
@@ -1819,6 +1867,40 @@ web/static/assets/lucide/
 web/static/assets/tabler/outline/
 web/static/assets/tabler/filled/
 ```
+
+---
+
+## 24. Créateur de menus
+
+Accessible depuis **Menus** dans le menu de navigation.
+
+Le créateur de menus transforme des champs entrée, plat et dessert en médias 16:9 prêts à diffuser.
+
+- **Menu du jour** crée un média pour une date sélectionnée, avec horaires optionnels.
+- **Menu semaine** crée un média par jour renseigné et applique la date correspondante.
+- **Analyser les plats** détecte les mots-clés et propose des images issues de la médiathèque locale ou de la banque externe configurée.
+- Les vidéos Menus sont verrouillées à **15 secondes** pour une diffusion prévisible.
+- Les menus créés sont ajoutés à la file d'encodage, puis insérés dans la médiathèque avec les écrans et la programmation sélectionnés.
+
+> **Permission requise :** `menus`
+
+---
+
+## 25. Nettoyage intelligent
+
+Accessible depuis **Paramètres > Nettoyage médias**.
+
+Le nettoyage intelligent signale les médias qui méritent une vérification avant suppression :
+
+- **Médias périmés** : une date de fin de diffusion est déjà passée.
+- **Médias non utilisés** : absents des écrans, campagnes actives, listes globales et plages planifiées.
+- **Doublons exacts** : même poids et même hash SHA-256.
+- **Vidéos lourdes** : au-dessus du seuil de 250 Mo.
+- **Désactivés depuis longtemps** : médias désactivés et inchangés depuis au moins 90 jours.
+
+Aucune suppression automatique n'est lancée. Chaque suppression reste manuelle et irréversible.
+
+> **Permission requise :** `cleanup`
 
 ---
 

@@ -632,6 +632,46 @@ class AppSmokeTests(unittest.TestCase):
         self.assertNotIn("/admin/settings/nettoyage-medias", page_urls)
         self.assertIn("/admin/settings/nettoyage-medias", restricted_urls)
 
+    def test_search_ignores_common_articles(self):
+        with self.client.session_transaction() as session:
+            session["user"] = "admin"
+
+        response = self.client.get("/api/search?q=le")
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+
+        self.assertEqual(payload["pages"], [])
+        self.assertEqual(payload["wiki"], [])
+        self.assertEqual(payload["media"], [])
+        self.assertEqual(payload["campaigns"], [])
+        self.assertEqual(payload["config"], [])
+        self.assertEqual(payload["activity"], [])
+
+    def test_search_finds_full_wiki_content(self):
+        with self.client.session_transaction() as session:
+            session["user"] = "admin"
+
+        response = self.client.get("/api/search?q=cellulaire")
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        wiki_urls = {item["url"] for item in payload["wiki"]}
+
+        self.assertIn("/admin/wiki/s18", wiki_urls)
+
+    def test_search_license_targets_about_and_specific_wiki_section(self):
+        with self.client.session_transaction() as session:
+            session["user"] = "admin"
+
+        response = self.client.get("/api/search?q=licence")
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        page_urls = {item["url"] for item in payload["pages"]}
+        wiki_urls = {item["url"] for item in payload["wiki"]}
+
+        self.assertIn("/admin/about", page_urls)
+        self.assertIn("/admin/wiki/s22", wiki_urls)
+        self.assertNotIn("/admin/wiki", page_urls)
+
     def test_cleanup_permission_can_be_granted_and_revoked(self):
         with self.app.app_context():
             from services.users_svc import create_user
@@ -1785,6 +1825,8 @@ class AppSmokeTests(unittest.TestCase):
         with self.app.app_context():
             from services import ephemeris_svc
 
+            ephemeris_svc.nameday_svc.save_nameday_cache({})
+
             class FakeResponse:
                 def __init__(self, payload):
                     self.payload = payload
@@ -1829,6 +1871,18 @@ class AppSmokeTests(unittest.TestCase):
                 name = ephemeris_svc.get_nameday_for_date(target_date)
 
         self.assertEqual(name, "Eric")
+
+    def test_nameday_failures_are_throttled_for_one_hour(self):
+        with self.app.app_context():
+            from services import ephemeris_svc
+
+            target_date = date(2026, 5, 20)
+
+            with patch.object(ephemeris_svc.requests, "get", side_effect=RuntimeError("offline")) as mocked_get:
+                self.assertEqual(ephemeris_svc.get_nameday_for_date(target_date), "")
+                self.assertEqual(ephemeris_svc.get_nameday_for_date(target_date), "")
+
+        self.assertEqual(mocked_get.call_count, 2)
 
     def test_ephemeris_existing_file_is_stale_when_nameday_cache_is_newer(self):
         with self.app.app_context():

@@ -159,10 +159,13 @@ class SearchIndex(db.Model):
     id          = db.Column(db.Integer,     primary_key=True, autoincrement=True)
     category    = db.Column(db.String(16),  nullable=False, index=True)
     lang        = db.Column(db.String(8),   nullable=False, index=True)
+    source_id   = db.Column(db.String(160), nullable=False, default='', index=True)
     title       = db.Column(db.String(256), nullable=False)
     url         = db.Column(db.String(512), nullable=False)
     description = db.Column(db.Text,        nullable=True)
     keywords    = db.Column(db.Text,        nullable=True)
+    content     = db.Column(db.Text,        nullable=True)
+    meta        = db.Column(db.Text,        nullable=True)
 
 
 class ClientHeartbeat(db.Model):

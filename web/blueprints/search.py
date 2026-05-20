@@ -1,18 +1,19 @@
 # Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 import re
+import json
 
 from flask import Blueprint, jsonify, render_template, request, session
 
 from blueprints.guards import admin_guard
-from db import ActivityLog, SearchIndex, db
-from services.campaign_svc import get_campaigns
+from db import SearchIndex
 from services.config_svc import load_config
 from services.i18n import get_language
-from services.media_svc import get_all_media, get_media_url, is_media_disabled
-from services.search_engine_svc import normalize, parse_query, rank_items
+from services.media_svc import get_media_url
+from services.search_engine_svc import rank_items
+from services.search_index_svc import refresh_dynamic_search_index
 from services.settings_sections import superadmin_nav_prefixes
-from services.users_svc import is_superadmin, load_users, has_permission
+from services.users_svc import is_superadmin, has_permission
 
 bp = Blueprint('search', __name__)
 
@@ -90,197 +91,79 @@ def _search_index(query, lang, category):
     Load all rows for (category, lang), score in Python with the ranking engine.
     This avoids the imprecision of SQL ILIKE and adds accent/stem tolerance.
     """
-    rows = (
-        SearchIndex.query
-        .filter(SearchIndex.category == category, SearchIndex.lang == lang)
-        .all()
-    )
+    row_query = SearchIndex.query.filter(SearchIndex.category == category)
+    if category in {'page', 'wiki'}:
+        row_query = row_query.filter(SearchIndex.lang == lang)
+    else:
+        row_query = row_query.filter(SearchIndex.lang == 'all')
+    rows = row_query.all()
     items = [
         {
             'title':       r.title,
             'description': r.description or '',
             'keywords':    r.keywords or '',
+            'content':     r.content or '',
             'url':         _canonical_url(r.url),
             'desc':        r.description or '',
+            'source_id':   r.source_id or '',
+            'meta':        r.meta or '{}',
         }
         for r in rows
     ]
     ranked = rank_items(items, query)
-    return [{'title': it['title'], 'url': it['url'], 'desc': it['desc']}
-            for it in ranked[:MAX_PER_CATEGORY]]
+    return [_format_index_item(it, category) for it in ranked[:MAX_PER_CATEGORY]]
 
 
-def _media_keywords(filename):
-    """Split filename stem on separators to improve token matching."""
-    stem = filename.rsplit('.', 1)[0] if '.' in filename else filename
-    return ' '.join(re.split(r'[_\-\s\.]+', stem))
+def _parse_meta(raw_meta):
+    try:
+        value = json.loads(raw_meta or '{}')
+    except (TypeError, ValueError):
+        return {}
+    return value if isinstance(value, dict) else {}
 
 
-def _search_media(query, cfg):
-    items = []
-    for filename in get_all_media(cfg):
-        ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
-        items.append({
-            'title':       filename,
-            'keywords':    _media_keywords(filename) + ' ' + ext,
-            'description': '',
-            # display fields — passed through untouched
-            'filename':    filename,
-            'ext':         ext,
-            'disabled':    is_media_disabled(filename, cfg),
-            'thumb_url':   get_media_url(filename, context='admin'),
-        })
-    ranked = rank_items(items, query)
-    return ranked[:MAX_PER_CATEGORY]
-
-
-def _campaign_item(campaign):
-    return {
-        'title':       campaign.get('name', ''),
-        'description': f"{campaign.get('start_date', '')} {campaign.get('end_date', '')}".strip(),
-        'keywords':    ' '.join(filter(None, [
-            campaign.get('created_by', ''),
-            ' '.join(campaign.get('screens', [])),
-            ' '.join(campaign.get('groups', [])),
-            ' '.join(campaign.get('media', [])),
-        ])),
-        # display fields
-        'id':          campaign['id'],
-        'name':        campaign.get('name', ''),
-        'enabled':     campaign.get('enabled', False),
-        'archived':    campaign.get('archived', False),
-        'start_date':  campaign.get('start_date', ''),
-        'end_date':    campaign.get('end_date', ''),
-    }
-
-
-def _search_campaigns(query, cfg):
-    items = [_campaign_item(c) for c in get_campaigns(cfg)]
-    ranked = rank_items(items, query)
-    return [
-        {
-            'id':         it['id'],
-            'name':       it['name'],
-            'enabled':    it['enabled'],
-            'archived':   it['archived'],
-            'start_date': it['start_date'],
-            'end_date':   it['end_date'],
+def _format_index_item(item, category):
+    meta = _parse_meta(item.get('meta'))
+    if category == 'media':
+        filename = meta.get('filename') or item.get('title', '')
+        ext = meta.get('ext') or (filename.rsplit('.', 1)[-1].lower() if '.' in filename else '')
+        return {
+            'filename': filename,
+            'ext': ext,
+            'disabled': bool(meta.get('disabled')),
+            'thumb_url': get_media_url(filename, context='admin') if filename else '',
         }
-        for it in ranked[:MAX_PER_CATEGORY]
-    ]
-
-
-def _search_activity(query):
-    """
-    Pre-filter in DB using normalized query words (broad ILIKE), then
-    score and rank results in Python for precision.
-    """
-    groups = parse_query(query)
-    if not groups:
-        return []
-
-    # Build one ILIKE condition per query word (OR across words, AND across fields)
-    conditions = []
-    for qsg in groups:
-        word_conds = []
-        for stem in qsg:
-            pat = f'%{stem}%'
-            word_conds.extend([
-                ActivityLog.username.ilike(pat),
-                ActivityLog.action.ilike(pat),
-                ActivityLog.filename.ilike(pat),
-                ActivityLog.details.ilike(pat),
-            ])
-        conditions.append(db.or_(*word_conds))
-
-    logs = (
-        ActivityLog.query
-        .filter(db.and_(*conditions))
-        .order_by(ActivityLog.timestamp.desc())
-        .limit(MAX_PER_CATEGORY * 5)
-        .all()
-    )
-
-    items = [
-        {
-            'title':       log.action,
-            'description': f"{log.username} {log.filename or ''}".strip(),
-            'keywords':    log.details or '',
-            '_log':        log.to_dict(),
+    if category == 'campaigns':
+        return {
+            'id': meta.get('id') or item.get('source_id', '').removeprefix('campaign:'),
+            'name': meta.get('name') or item.get('title', ''),
+            'enabled': bool(meta.get('enabled')),
+            'archived': bool(meta.get('archived')),
+            'start_date': meta.get('start_date') or '',
+            'end_date': meta.get('end_date') or '',
         }
-        for log in logs
-    ]
-    ranked = rank_items(items, query)
-    return [it['_log'] for it in ranked[:MAX_PER_CATEGORY]]
-
-
-def _config_items(cfg):
-    items = []
-    for screen_name in cfg.get('screens', {}).keys():
-        items.append({
-            'title':       screen_name,
-            'description': "Display screen",
-            'keywords':    'screen display monitor kiosk',
-            'type':        'screen',
-            'url':         '/admin/settings/gestion-ecrans',
-            'desc':        "Display screen",
-        })
-    groups_seen = set()
-    for groups in cfg.get('groups', {}).values():
-        for group in (groups if isinstance(groups, list) else []):
-            if group and group not in groups_seen:
-                groups_seen.add(group)
-                items.append({
-                    'title':       group,
-                    'description': 'Media group',
-                    'keywords':    'group tag media organise',
-                    'type':        'group',
-                    'url':         '/admin/media',
-                    'desc':        'Media group',
-                })
-    app_name = cfg.get('app_name', '')
-    if app_name:
-        items.append({
-            'title':       app_name,
-            'description': "Application name",
-            'keywords':    'application name configuration',
-            'type':        'app',
-            'url':         '/admin/settings/application',
-            'desc':        "Application name",
-        })
-    return items
-
-
-def _search_config(query, cfg):
-    items = _config_items(cfg)
-    ranked = rank_items(items, query)
-    return [
-        {'type': it['type'], 'title': it['title'], 'url': it['url'], 'desc': it['desc']}
-        for it in ranked[:MAX_PER_CATEGORY]
-    ]
-
-
-def _search_users(query):
-    items = []
-    for username, info in load_users().items():
-        items.append({
-            'title':       username,
-            'description': 'super-admin' if info.get('superadmin') else 'administrateur',
-            'keywords':    'utilisateur compte admin',
-            '_username':   username,
-            '_superadmin': info.get('superadmin', False),
-        })
-    ranked = rank_items(items, query)
-    return [
-        {'username': it['_username'], 'superadmin': it['_superadmin']}
-        for it in ranked[:MAX_PER_CATEGORY]
-    ]
+    if category == 'config':
+        return {
+            'type': meta.get('type') or '',
+            'title': item.get('title', ''),
+            'url': item.get('url', ''),
+            'desc': item.get('desc', ''),
+        }
+    if category == 'users':
+        return {
+            'username': meta.get('username') or item.get('title', ''),
+            'superadmin': bool(meta.get('superadmin')),
+        }
+    if category == 'activity':
+        return meta
+    return {'title': item['title'], 'url': item['url'], 'desc': item['desc']}
 
 
 def _run_search(query, cfg, lang='fr', superadmin=False, has_perm_fn=None):
     if has_perm_fn is None:
         has_perm_fn = lambda p: True
 
+    refresh_dynamic_search_index(cfg)
     all_pages = _search_index(query, lang, 'page')
     from services.config_svc import is_feature_enabled
     accessible_pages, restricted_pages = _split_restricted(
@@ -293,17 +176,17 @@ def _run_search(query, cfg, lang='fr', superadmin=False, has_perm_fn=None):
     results = {
         'pages':      accessible_pages,
         'wiki':       _search_index(query, lang, 'wiki'),
-        'media':      _search_media(query, cfg),
-        'campaigns':  _search_campaigns(query, cfg),
+        'media':      _search_index(query, lang, 'media'),
+        'campaigns':  _search_index(query, lang, 'campaigns'),
         'config':     [
-            item for item in _search_config(query, cfg)
+            item for item in _search_index(query, lang, 'config')
             if _is_url_available(item.get('url', ''), superadmin=superadmin, feature_enabled_fn=is_feature_enabled)
         ],
-        'activity':   _search_activity(query),
+        'activity':   _search_index(query, lang, 'activity'),
         'restricted': restricted_pages,
     }
     if superadmin:
-        results['users'] = _search_users(query)
+        results['users'] = _search_index(query, lang, 'users')
     return results
 
 

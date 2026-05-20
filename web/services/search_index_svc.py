@@ -1,8 +1,11 @@
 # Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
+import json
 import logging
+import re
 
-from db import SearchIndex, db
+from db import ActivityLog, SearchIndex, db
+from translations import TRANSLATIONS
 
 LOGGER = logging.getLogger(__name__)
 
@@ -35,6 +38,12 @@ _PAGES_FR = [
         'url': '/admin/announcements',
         'description': 'Créer des annonces graphiques 16:9 et les exporter en PNG',
         'keywords': 'annonces éditeur affiche poster canvas texte formes images icônes png export médiathèque',
+    },
+    {
+        'title': 'Menus',
+        'url': '/admin/menus',
+        'description': 'Créer des menus 16:9 avec images suggérées et programmation',
+        'keywords': 'menus cantine repas entrée plat dessert semaine jour images suggestions pexels génération file encodage',
     },
     {
         'title': 'Campagnes',
@@ -326,6 +335,20 @@ _WIKI_FR = [
         'description': 'Créer des annonces 16:9 avec calques, outils graphiques et export PNG',
         'keywords': 'annonces éditeur canvas calques texte formes lignes images icônes png export snap grille lucide tabler',
     },
+    {
+        'section': 's24',
+        'title': 'Menus',
+        'url': '/admin/wiki/s24',
+        'description': 'Créer des menus 16:9 du jour ou de la semaine',
+        'keywords': 'menus cantine repas entrée plat dessert semaine jour images suggestions durée 15 secondes file encodage',
+    },
+    {
+        'section': 's25',
+        'title': 'Nettoyage intelligent',
+        'url': '/admin/wiki/s25',
+        'description': 'Comprendre les médias périmés, inutilisés, doublons, lourds ou désactivés',
+        'keywords': 'nettoyage médias périmés inutilisés doublons vidéos lourdes désactivés suppression maintenance',
+    },
 ]
 
 _PAGES_EN = [
@@ -352,6 +375,12 @@ _PAGES_EN = [
         'url': '/admin/announcements',
         'description': 'Create 16:9 graphic announcements and export them as PNG',
         'keywords': 'announcements editor poster canvas text shapes images icons png export media library',
+    },
+    {
+        'title': 'Menus',
+        'url': '/admin/menus',
+        'description': 'Create 16:9 menus with suggested images and scheduling',
+        'keywords': 'menus cafeteria meal starter main dessert weekly daily images suggestions pexels generation encoding queue',
     },
     {
         'title': 'Campaigns',
@@ -643,6 +672,20 @@ _WIKI_EN = [
         'description': 'Create 16:9 announcements with layers, graphic tools and PNG export',
         'keywords': 'announcements editor canvas layers text shapes lines images icons png export snap grid lucide tabler',
     },
+    {
+        'section': 's24',
+        'title': 'Menus',
+        'url': '/admin/wiki/s24',
+        'description': 'Create daily or weekly 16:9 menus',
+        'keywords': 'menus cafeteria meal starter main dessert weekly daily images suggestions duration 15 seconds encoding queue',
+    },
+    {
+        'section': 's25',
+        'title': 'Smart cleanup',
+        'url': '/admin/wiki/s25',
+        'description': 'Understand expired, unused, duplicate, oversized or disabled media',
+        'keywords': 'cleanup media expired unused duplicates large videos disabled delete maintenance',
+    },
 ]
 
 _SEED = {
@@ -650,31 +693,297 @@ _SEED = {
     'en': {'pages': _PAGES_EN, 'wiki': _WIKI_EN},
 }
 
+_PAGE_TRANSLATION_PREFIXES = {
+    '/admin': ('dashboard_', 'nav_dashboard'),
+    '/admin/media': ('media_', 'nav_media', 'display_'),
+    '/admin/settings/nettoyage-medias': ('cleanup_', 'media_cleanup_', 'nav_media_cleanup'),
+    '/admin/announcements': ('announcements_', 'nav_announcements'),
+    '/admin/menus': ('menus_', 'menu_', 'nav_menus'),
+    '/admin/campaigns': ('campaigns_', 'campaign_', 'nav_campaigns'),
+    '/admin/programming': ('programming_', 'schedule_', 'nav_programming'),
+    '/admin/upload': ('upload_', 'nav_upload'),
+    '/admin/activity': ('activity_', 'nav_activity'),
+    '/admin/settings': ('settings_', 'nav_settings'),
+    '/admin/settings/logo': ('settings_logo_', 'logo_', 'nav_settings_logo'),
+    '/admin/settings/theme': ('settings_theme_', 'theme_', 'nav_settings_theme'),
+    '/admin/settings/language': ('settings_language_', 'language_', 'nav_settings_language'),
+    '/admin/settings/comptes-permissions': ('settings_accounts_', 'accounts_', 'admins_', 'roles_', 'permissions_', 'nav_settings_accounts'),
+    '/admin/roles': ('roles_', 'permissions_', 'nav_roles'),
+    '/admin/settings/gestion-ecrans': ('settings_screens_', 'screens_', 'client_', 'install_', 'nav_settings_screens'),
+    '/admin/settings/alerte-prioritaire': ('priority_alert_', 'alert_', 'nav_priority_alert'),
+    '/admin/settings/sauvegardes': ('backup_', 'backups_', 'nav_backups'),
+    '/admin/settings/meteo': ('settings_meteo_', 'meteo_', 'ephemeris_', 'nav_meteo'),
+    '/admin/settings/fonctionnalites': ('feature_', 'features_', 'nav_features'),
+    '/admin/settings/installation': ('install_', 'client_', 'deploy_', 'nav_installation'),
+    '/admin/settings/mot-de-passe': ('password_', 'settings_password_', 'nav_password'),
+    '/admin/wiki': ('wiki_hero_', 'help_', 'nav_wiki'),
+    '/admin/version': ('version_', 'update_', 'nav_version'),
+    '/admin/about': ('about_', 'license_', 'licence_', 'nav_about'),
+}
+
+_DYNAMIC_CATEGORIES = ('media', 'campaigns', 'config', 'users', 'activity')
+_ACTIVITY_INDEX_LIMIT = 250
+
+
+def _translation_values(lang):
+    values = TRANSLATIONS.get(lang) or TRANSLATIONS.get('fr') or {}
+    return values if isinstance(values, dict) else {}
+
+
+def _translation_text(lang, prefixes):
+    values = _translation_values(lang)
+    parts = []
+    for key, value in values.items():
+        if any(key == prefix or key.startswith(prefix) for prefix in prefixes):
+            parts.append(str(value))
+    return ' '.join(parts)
+
+
+def _wiki_content(lang, section):
+    section_num = str(section).lstrip('s')
+    prefixes = (
+        f'wiki_s{section_num}_',
+        f'wiki_s{section_num}',
+        'wiki_col_',
+        'wiki_perm_',
+        'perm_',
+    )
+    return _translation_text(lang, prefixes)
+
+
+def _page_content(lang, page):
+    prefixes = _PAGE_TRANSLATION_PREFIXES.get(page.get('url'), ())
+    return _translation_text(lang, prefixes)
+
+
+def _json_meta(value):
+    return json.dumps(value or {}, ensure_ascii=False, sort_keys=True)
+
+
+def _search_row(category, lang, source_id, title, url, description='', keywords='', content='', meta=None):
+    return SearchIndex(
+        category=category,
+        lang=lang,
+        source_id=source_id,
+        title=title,
+        url=url,
+        description=description or '',
+        keywords=keywords or '',
+        content=content or '',
+        meta=_json_meta(meta),
+    )
+
+
+def _media_keywords(filename):
+    stem = filename.rsplit('.', 1)[0] if '.' in filename else filename
+    return ' '.join(re.split(r'[_\-\s\.]+', stem))
+
+
+def _build_static_rows():
+    rows = []
+    for lang, content in _SEED.items():
+        for page in content['pages']:
+            rows.append(_search_row(
+                'page',
+                lang,
+                f"page:{page['url']}",
+                page['title'],
+                page['url'],
+                page.get('description', ''),
+                page.get('keywords', ''),
+                _page_content(lang, page),
+            ))
+        for section in content['wiki']:
+            rows.append(_search_row(
+                'wiki',
+                lang,
+                f"wiki:{section['section']}",
+                section['title'],
+                section['url'],
+                section.get('description', ''),
+                section.get('keywords', ''),
+                _wiki_content(lang, section['section']),
+            ))
+    return rows
+
+
+def _build_media_rows(cfg):
+    from services.media_svc import get_all_media, get_media_groups, is_media_disabled
+
+    rows = []
+    for filename in get_all_media(cfg):
+        ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+        groups = get_media_groups(filename, cfg)
+        content = ' '.join(filter(None, [
+            _media_keywords(filename),
+            ext,
+            ' '.join(groups),
+        ]))
+        rows.append(_search_row(
+            'media',
+            'all',
+            f'media:{filename}',
+            filename,
+            '/admin/media',
+            ext.upper() if ext else '',
+            content,
+            content,
+            {
+                'filename': filename,
+                'ext': ext,
+                'disabled': is_media_disabled(filename, cfg),
+            },
+        ))
+    return rows
+
+
+def _build_campaign_rows(cfg):
+    from services.campaign_svc import get_campaigns
+
+    rows = []
+    for campaign in get_campaigns(cfg):
+        campaign_id = str(campaign.get('id', ''))
+        name = campaign.get('name', '')
+        content = ' '.join(filter(None, [
+            campaign.get('created_by', ''),
+            campaign.get('start_date', ''),
+            campaign.get('end_date', ''),
+            ' '.join(campaign.get('screens', [])),
+            ' '.join(campaign.get('groups', [])),
+            ' '.join(campaign.get('media', [])),
+            'archivée' if campaign.get('archived') else '',
+            'active' if campaign.get('enabled') else 'inactive',
+        ]))
+        rows.append(_search_row(
+            'campaigns',
+            'all',
+            f'campaign:{campaign_id}',
+            name,
+            f'/admin/campaigns?campaign={campaign_id}',
+            f"{campaign.get('start_date', '')} {campaign.get('end_date', '')}".strip(),
+            content,
+            content,
+            {
+                'id': campaign_id,
+                'name': name,
+                'enabled': campaign.get('enabled', False),
+                'archived': campaign.get('archived', False),
+                'start_date': campaign.get('start_date', ''),
+                'end_date': campaign.get('end_date', ''),
+            },
+        ))
+    return rows
+
+
+def _build_config_rows(cfg):
+    rows = []
+    for screen_name, screen_cfg in cfg.get('screens', {}).items():
+        content = ' '.join(filter(None, [
+            screen_name,
+            'écran display monitor kiosk téléviseur client affichage',
+            screen_cfg.get('name', '') if isinstance(screen_cfg, dict) else '',
+        ]))
+        rows.append(_search_row(
+            'config', 'all', f'config:screen:{screen_name}', screen_name,
+            '/admin/settings/gestion-ecrans', 'Écran connecté', content, content,
+            {'type': 'screen'},
+        ))
+
+    groups_seen = set()
+    for groups in cfg.get('groups', {}).values():
+        for group in (groups if isinstance(groups, list) else []):
+            if group and group not in groups_seen:
+                groups_seen.add(group)
+                rows.append(_search_row(
+                    'config', 'all', f'config:group:{group}', group,
+                    '/admin/media', 'Groupe de médias', 'groupe tag médias organiser',
+                    'groupe tag médias organiser ' + group,
+                    {'type': 'group'},
+                ))
+
+    app_name = cfg.get('app_name', '')
+    if app_name:
+        rows.append(_search_row(
+            'config', 'all', 'config:app_name', app_name,
+            '/admin/settings/application', "Nom de l'application",
+            'application nom configuration', app_name,
+            {'type': 'app'},
+        ))
+    return rows
+
+
+def _build_user_rows():
+    from services.users_svc import load_users
+
+    rows = []
+    for username, info in load_users().items():
+        superadmin = bool(info.get('superadmin'))
+        desc = 'super-admin' if superadmin else 'administrateur'
+        rows.append(_search_row(
+            'users', 'all', f'user:{username}', username,
+            '/admin/settings/comptes-permissions', desc,
+            'utilisateur compte admin permissions droits rôle role',
+            f'{username} {desc} utilisateur compte admin permissions droits rôle role',
+            {'username': username, 'superadmin': superadmin},
+        ))
+    return rows
+
+
+def _build_activity_rows():
+    rows = []
+    logs = (
+        ActivityLog.query
+        .order_by(ActivityLog.timestamp.desc())
+        .limit(_ACTIVITY_INDEX_LIMIT)
+        .all()
+    )
+    for log in logs:
+        data = log.to_dict()
+        content = ' '.join(filter(None, [
+            log.action,
+            log.username,
+            log.filename,
+            log.details,
+        ]))
+        rows.append(_search_row(
+            'activity', 'all', f'activity:{log.id}', log.action,
+            '/admin/activity', f"{log.username} {log.filename or ''}".strip(),
+            log.details or '', content, data,
+        ))
+    return rows
+
+
+def _build_dynamic_rows(cfg=None):
+    if cfg is None:
+        from services.config_svc import load_config
+        cfg = load_config()
+    return (
+        _build_media_rows(cfg)
+        + _build_campaign_rows(cfg)
+        + _build_config_rows(cfg)
+        + _build_user_rows()
+        + _build_activity_rows()
+    )
+
+
+def refresh_dynamic_search_index(cfg=None):
+    try:
+        SearchIndex.query.filter(SearchIndex.category.in_(_DYNAMIC_CATEGORIES)).delete(synchronize_session=False)
+        rows = _build_dynamic_rows(cfg)
+        if rows:
+            db.session.bulk_save_objects(rows)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        LOGGER.exception('Failed to refresh dynamic search index')
+
 
 def reseed_search_index():
     try:
         SearchIndex.query.delete()
-        rows = []
-        for lang, content in _SEED.items():
-            for page in content['pages']:
-                rows.append(SearchIndex(
-                    category='page',
-                    lang=lang,
-                    title=page['title'],
-                    url=page['url'],
-                    description=page.get('description', ''),
-                    keywords=page.get('keywords', ''),
-                ))
-            for section in content['wiki']:
-                rows.append(SearchIndex(
-                    category='wiki',
-                    lang=lang,
-                    title=section['title'],
-                    url=section['url'],
-                    description=section.get('description', ''),
-                    keywords=section.get('keywords', ''),
-                ))
-        db.session.bulk_save_objects(rows)
+        rows = _build_static_rows() + _build_dynamic_rows()
+        if rows:
+            db.session.bulk_save_objects(rows)
         db.session.commit()
     except Exception:
         db.session.rollback()

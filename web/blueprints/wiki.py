@@ -18,7 +18,7 @@ def wiki_page():
 def wiki_section_page(section='s1'):
     redir = admin_guard()
     if redir: return redir
-    if section not in {f's{i}' for i in range(1, 24)}:
+    if section not in {f's{i}' for i in range(1, 26)}:
         section = 's1'
     cfg = load_config()
     return render_template('admin_wiki.html',

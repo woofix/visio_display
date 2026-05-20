@@ -31,7 +31,8 @@ from services.schedule_svc import parse_iso_date, parse_time_to_minutes
 
 MENU_SIZE = (1920, 1080)
 MENU_VIDEO_DURATION_SECONDS = 15
-MEDIA_FFMPEG_TIMEOUT_SECONDS = 120
+MENU_VIDEO_FPS = 30
+MEDIA_FFMPEG_TIMEOUT_SECONDS = 300
 MENU_SECTIONS = (
     ("starter", "Entrée"),
     ("main", "Plat"),
@@ -695,7 +696,7 @@ def render_menu_animation(title, text=None, *, sections=None, image_choices=None
         return False
 
     total_seconds = _animation_duration_seconds(duration)
-    fps = 8
+    fps = MENU_VIDEO_FPS
     section_count = min(3, len(grouped_sections))
     total_frames = total_seconds * fps
 
@@ -729,7 +730,7 @@ def render_menu_animation(title, text=None, *, sections=None, image_choices=None
                     "-c:v", "libx264",
                     "-preset", "medium",
                     "-movflags", "+faststart",
-                    "-r", "24",
+                    "-r", str(fps),
                     destination,
                 ],
                 capture_output=True,

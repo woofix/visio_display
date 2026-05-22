@@ -166,6 +166,7 @@ class ImageSuggestionServiceTests(unittest.TestCase):
         self.assertIn("menu-image-choice", html)
         self.assertIn("menu-preview-zoom", html)
         self.assertIn("first.local_url || imageUrl || first.external_url", html)
+        self.assertNotIn("\n    }\n    }\n    async function loadSuggestions", html)
         self.assertNotIn("loadSuggestions();", html)
         self.assertNotIn(">salade composée</textarea>", html)
         self.assertNotIn(">steak frites", html)

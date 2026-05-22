@@ -205,6 +205,18 @@ button.chip { font:inherit; cursor:pointer; }
 }
 .icon-browser { display:none; margin-top:10px; border-top:1px solid var(--studio-line); padding-top:12px; }
 .icon-browser.active { display:block; }
+.qr-panel { display:none; margin-top:10px; border-top:1px solid var(--studio-line); padding-top:12px; }
+.qr-panel.active { display:block; }
+.qr-type-fields[hidden] { display:none !important; }
+.qr-preview {
+    min-height:180px; display:grid; place-items:center; border:1px dashed var(--border); border-radius:10px;
+    background:var(--surface-alt); color:var(--text-3); text-align:center; padding:10px; font-size:.74rem; font-weight:800;
+}
+.qr-preview img { width:min(190px, 100%); height:auto; max-height:210px; object-fit:contain; border-radius:6px; }
+.qr-preview.error { color:#b91c1c; border-color:color-mix(in srgb, #dc2626 38%, var(--border)); background:color-mix(in srgb, #dc2626 8%, var(--surface)); }
+.qr-style-row { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.qr-check { display:flex !important; align-items:center; gap:8px; color:var(--text-2) !important; font-size:.74rem !important; font-weight:850; }
+.qr-check input { width:auto; min-height:0; }
 .icon-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; max-height:270px; overflow:auto; }
 .icon-card { border:1px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text); padding:9px 10px; font:inherit; font-size:.78rem; font-weight:800; cursor:pointer; text-align:left; display:grid; place-items:center; min-height:48px; }
 .icon-card:hover { border-color:var(--primary); background:var(--primary-bg); }
@@ -294,6 +306,7 @@ button.chip { font:inherit; cursor:pointer; }
                     <button class="tool-btn" type="button" data-add="text" data-tooltip="{{ t('announcements_tool_text') }}" aria-label="{{ t('announcements_tool_text') }}"><svg viewBox="0 0 24 24"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg></button>
                     <button class="tool-btn" type="button" data-add="image" id="image-tool" data-tooltip="{{ t('announcements_tool_image') }}" aria-label="{{ t('announcements_tool_image') }}" aria-expanded="false"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="m4 16 4-4 4 4 2-2 6 5"/></svg></button>
                     <button class="tool-btn library-toggle" type="button" data-add="icon" id="icon-tool" data-tooltip="{{ t('announcements_tool_icon_library') }}" aria-label="{{ t('announcements_tool_icon') }}" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1L12 16.9l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z"/></svg></button>
+                    <button class="tool-btn library-toggle" type="button" data-add="qr" id="qr-tool" data-tooltip="{{ t('announcements_tool_qr') }}" aria-label="{{ t('announcements_tool_qr') }}" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z"/><path d="M14 14h2v2h-2zM18 14h2v2h-2zM14 18h2v2h-2zM18 18h2v2h-2z"/></svg></button>
                 </div>
                 <div class="tool-group">
                     <button class="tool-btn" type="button" data-add="rect" data-tooltip="{{ t('announcements_tool_rect') }}" aria-label="{{ t('announcements_tool_rect') }}"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/></svg></button>
@@ -605,6 +618,90 @@ button.chip { font:inherit; cursor:pointer; }
                 <div class="icon-grid" id="icon-grid"></div>
                 <button type="button" class="btn secondary" id="icon-more">{{ t('announcements_icon_more') }}</button>
             </div>
+
+            <div class="qr-panel" id="qr-panel">
+                <section class="inspector-section">
+                    <div class="inspector-title">{{ t('announcements_qr_title') }}</div>
+                    <div class="inspector-body">
+                        <div class="announcement-field">
+                            <label for="qr-type">{{ t('announcements_qr_type') }}</label>
+                            <select id="qr-type">
+                                <option value="url">URL</option>
+                                <option value="wifi">Wi-Fi</option>
+                                <option value="phone">{{ t('announcements_qr_type_phone') }}</option>
+                                <option value="sms">SMS</option>
+                                <option value="vcard">{{ t('announcements_qr_type_vcard') }}</option>
+                                <option value="maps">Google Maps</option>
+                                <option value="whatsapp">WhatsApp</option>
+                                <option value="text">{{ t('announcements_qr_type_text') }}</option>
+                                <option value="youtube">YouTube</option>
+                                <option value="pdf">PDF</option>
+                            </select>
+                        </div>
+                        <div class="qr-type-fields" data-qr-fields="url pdf youtube">
+                            <div class="announcement-field"><label for="qr-url">{{ t('announcements_qr_url') }}</label><input id="qr-url" type="text" inputmode="url" placeholder="https://example.com"></div>
+                        </div>
+                        <div class="qr-type-fields" data-qr-fields="wifi" hidden>
+                            <div class="announcement-field"><label for="qr-ssid">{{ t('announcements_qr_wifi_ssid') }}</label><input id="qr-ssid" type="text" autocomplete="off"></div>
+                            <div class="announcement-field"><label for="qr-password">{{ t('announcements_qr_wifi_password') }}</label><input id="qr-password" type="text" autocomplete="off"></div>
+                            <div class="mini-row">
+                                <div class="announcement-field">
+                                    <label for="qr-security">{{ t('announcements_qr_wifi_security') }}</label>
+                                    <select id="qr-security">
+                                        <option value="wpa">WPA/WPA2</option>
+                                        <option value="wpa3">WPA3</option>
+                                        <option value="wep">WEP</option>
+                                        <option value="none">{{ t('announcements_qr_wifi_none') }}</option>
+                                    </select>
+                                </div>
+                                <div class="announcement-field">
+                                    <label class="qr-check"><input id="qr-hidden" type="checkbox"> {{ t('announcements_qr_wifi_hidden') }}</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="qr-type-fields" data-qr-fields="phone sms whatsapp" hidden>
+                            <div class="announcement-field"><label for="qr-phone">{{ t('announcements_qr_phone') }}</label><input id="qr-phone" type="tel" placeholder="+33600000000"></div>
+                        </div>
+                        <div class="qr-type-fields" data-qr-fields="sms whatsapp" hidden>
+                            <div class="announcement-field"><label for="qr-message">{{ t('announcements_qr_message') }}</label><textarea id="qr-message"></textarea></div>
+                        </div>
+                        <div class="qr-type-fields" data-qr-fields="vcard" hidden>
+                            <div class="announcement-field"><label for="qr-name">{{ t('announcements_qr_contact_name') }}</label><input id="qr-name" type="text"></div>
+                            <div class="announcement-field"><label for="qr-email">{{ t('announcements_qr_contact_email') }}</label><input id="qr-email" type="email"></div>
+                            <div class="announcement-field"><label for="qr-organization">{{ t('announcements_qr_contact_org') }}</label><input id="qr-organization" type="text"></div>
+                        </div>
+                        <div class="qr-type-fields" data-qr-fields="maps" hidden>
+                            <div class="announcement-field"><label for="qr-query">{{ t('announcements_qr_maps_query') }}</label><input id="qr-query" type="text"></div>
+                        </div>
+                        <div class="qr-type-fields" data-qr-fields="text" hidden>
+                            <div class="announcement-field"><label for="qr-text">{{ t('announcements_qr_text') }}</label><textarea id="qr-text"></textarea></div>
+                        </div>
+                        <div class="qr-style-row">
+                            <div class="announcement-field"><label for="qr-size">{{ t('announcements_qr_size') }}</label><input id="qr-size" type="number" min="160" max="1600" step="20" value="640"></div>
+                            <div class="announcement-field"><label for="qr-margin">{{ t('announcements_qr_margin') }}</label><input id="qr-margin" type="number" min="0" max="8" value="4"></div>
+                            <div class="announcement-field"><label for="qr-foreground">{{ t('announcements_qr_color') }}</label><input id="qr-foreground" type="color" value="#111827"></div>
+                            <div class="announcement-field"><label for="qr-background">{{ t('announcements_qr_bg') }}</label><input id="qr-background" type="color" value="#ffffff"></div>
+                        </div>
+                        <div class="announcement-field">
+                            <label class="qr-check"><input id="qr-transparent" type="checkbox"> {{ t('announcements_qr_transparent') }}</label>
+                        </div>
+                        <div class="announcement-field">
+                            <label for="qr-logo">{{ t('announcements_qr_logo') }}</label>
+                            <select id="qr-logo">
+                                <option value="">-</option>
+                                {% for filename in media_choices %}
+                                <option value="{{ filename }}" data-preview="{{ media_preview_map.get(filename, '') }}" data-original="{{ media_original_map.get(filename, '') }}">{{ filename }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="qr-preview" id="qr-preview">{{ t('announcements_qr_preview_empty') }}</div>
+                        <div class="announcement-actions image-actions">
+                            <button type="button" class="btn secondary" id="qr-download">{{ t('announcements_qr_download') }}</button>
+                            <button type="button" class="btn secondary" id="qr-add">{{ t('announcements_qr_add') }}</button>
+                        </div>
+                    </div>
+                </section>
+            </div>
         </aside>
     </div>
 </form>
@@ -663,6 +760,11 @@ button.chip { font:inherit; cursor:pointer; }
         toolLine: {{ t('announcements_tool_line')|tojson }},
         sampleFooter: {{ t('announcements_sample_footer')|tojson }},
         genericLayer: {{ t('announcements_tab_layers')|tojson }},
+        qrPreviewEmpty: {{ t('announcements_qr_preview_empty')|tojson }},
+        qrPreviewLoading: {{ t('announcements_qr_preview_loading')|tojson }},
+        qrAddError: {{ t('announcements_qr_error')|tojson }},
+        qrLayer: {{ t('announcements_qr_layer')|tojson }},
+        qrDownloadName: {{ t('announcements_qr_download_name')|tojson }},
     };
     const clamp = (n,min,max) => Math.max(min, Math.min(max, Number(n) || 0));
     const esc = v => String(v || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'":'&#39;'}[c]));
@@ -763,6 +865,7 @@ button.chip { font:inherit; cursor:pointer; }
     function setToolPanel(panel) {
         const showImage = panel === 'image';
         const showIcons = panel === 'icons';
+        const showQr = panel === 'qr';
         qs('#background-panel').hidden = !showImage;
         qs('#background-stack').classList.toggle('expanded', showImage);
         qs('#image-tool')?.classList.toggle('active', showImage);
@@ -770,6 +873,9 @@ button.chip { font:inherit; cursor:pointer; }
         qs('#icon-browser').classList.toggle('active', showIcons);
         qs('#icon-tool').classList.toggle('active', showIcons);
         qs('#icon-tool').setAttribute('aria-expanded', showIcons ? 'true' : 'false');
+        qs('#qr-panel').classList.toggle('active', showQr);
+        qs('#qr-tool').classList.toggle('active', showQr);
+        qs('#qr-tool').setAttribute('aria-expanded', showQr ? 'true' : 'false');
     }
     function openBackgroundPanel() {
         selected = null;
@@ -1206,6 +1312,21 @@ button.chip { font:inherit; cursor:pointer; }
         if (!select.value || !src) return null;
         return {src, media:imageMedia('media', select.value), name:select.value};
     }
+    function addMediaChoice(filename, previewUrl, originalUrl) {
+        if (!filename) return;
+        mediaPreviews[filename] = previewUrl || mediaPreviews[filename] || originalUrl || '';
+        mediaOriginals[filename] = originalUrl || mediaOriginals[filename] || previewUrl || '';
+        ['#layer-media', '#prop-image-media', '#background-media', '#qr-logo'].forEach(selector => {
+            const select = qs(selector);
+            if (!select || Array.from(select.options).some(option => option.value === filename)) return;
+            const option = document.createElement('option');
+            option.value = filename;
+            option.textContent = filename;
+            option.dataset.preview = mediaPreviews[filename] || '';
+            option.dataset.original = mediaOriginals[filename] || '';
+            select.appendChild(option);
+        });
+    }
     qs('#layer-upload-btn').addEventListener('click', () => qs('#layer-upload').click());
     qs('#layer-upload').addEventListener('change', e => {
         addUploadedImages(e.target.files);
@@ -1252,7 +1373,7 @@ button.chip { font:inherit; cursor:pointer; }
 
     qsa('[data-add]').forEach(btn => btn.addEventListener('click', async () => {
         const type = btn.dataset.add;
-        if (type !== 'image' && type !== 'icon') setToolPanel('');
+        if (type !== 'image' && type !== 'icon' && type !== 'qr') setToolPanel('');
         if (type === 'text') addElement({name:labels.layerNewText, type:'text', text:labels.layerNewText, w:520, h:110, fontSize:64, fontFamily:"'DejaVu Sans', Arial, sans-serif"});
         if (type === 'rect') addElement({name:labels.toolRect, type:'rect', w:360, h:180, color:primaryColor(), opacity:.9});
         if (type === 'circle') addElement({name:labels.toolCircle, type:'circle', w:220, h:220, color:accentColor(), opacity:.9});
@@ -1263,7 +1384,131 @@ button.chip { font:inherit; cursor:pointer; }
             setToolPanel(willOpen ? 'icons' : '');
             if (willOpen && !qs('#icon-grid').children.length) loadIcons(true);
         }
+        if (type === 'qr') {
+            const willOpen = !qs('#qr-panel').classList.contains('active');
+            setToolPanel(willOpen ? 'qr' : '');
+            if (willOpen) updateQrPreview();
+        }
     }));
+
+    let qrPreviewDataUrl = '';
+    let qrPreviewTimer = null;
+    function updateQrFields() {
+        const type = qs('#qr-type').value;
+        qsa('[data-qr-fields]').forEach(group => {
+            const types = String(group.dataset.qrFields || '').split(/\s+/);
+            group.hidden = !types.includes(type);
+        });
+        const noPassword = type === 'wifi' && qs('#qr-security').value === 'none';
+        qs('#qr-password').disabled = noPassword;
+        if (noPassword) qs('#qr-password').value = '';
+    }
+    function collectQrData(save=false) {
+        return {
+            save,
+            type:qs('#qr-type').value,
+            url:qs('#qr-url').value,
+            ssid:qs('#qr-ssid').value,
+            password:qs('#qr-password').value,
+            security:qs('#qr-security').value,
+            hidden:qs('#qr-hidden').checked,
+            phone:qs('#qr-phone').value,
+            message:qs('#qr-message').value,
+            name:qs('#qr-name').value,
+            email:qs('#qr-email').value,
+            organization:qs('#qr-organization').value,
+            query:qs('#qr-query').value,
+            text:qs('#qr-text').value,
+            size:Number(qs('#qr-size').value || 640),
+            margin:Number(qs('#qr-margin').value || 4),
+            foreground:qs('#qr-foreground').value,
+            background:qs('#qr-background').value,
+            transparent:qs('#qr-transparent').checked,
+            logo_filename:qs('#qr-logo').value,
+        };
+    }
+    function hasQrMinimumData() {
+        const type = qs('#qr-type').value;
+        if (['url', 'pdf', 'youtube'].includes(type)) return Boolean(qs('#qr-url').value.trim());
+        if (type === 'wifi') {
+            return Boolean(qs('#qr-ssid').value.trim()) && (qs('#qr-security').value === 'none' || Boolean(qs('#qr-password').value.trim()));
+        }
+        if (['phone', 'sms', 'whatsapp'].includes(type)) return Boolean(qs('#qr-phone').value.trim());
+        if (type === 'vcard') return Boolean(qs('#qr-name').value.trim());
+        if (type === 'maps') return Boolean(qs('#qr-query').value.trim());
+        if (type === 'text') return Boolean(qs('#qr-text').value.trim());
+        return false;
+    }
+    async function requestQr(save=false) {
+        const response = await fetch('/admin/announcements/qr-code', {
+            method:'POST',
+            headers:{
+                'Content-Type':'application/json',
+                'X-CSRF-Token':qs('input[name="_csrf_token"]').value,
+            },
+            body:JSON.stringify(collectQrData(save)),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.ok) throw new Error(data.error || labels.qrAddError);
+        return data;
+    }
+    async function updateQrPreview() {
+        updateQrFields();
+        const preview = qs('#qr-preview');
+        preview.classList.remove('error');
+        if (!hasQrMinimumData()) {
+            qrPreviewDataUrl = '';
+            preview.textContent = labels.qrPreviewEmpty;
+            return;
+        }
+        preview.textContent = labels.qrPreviewLoading;
+        try {
+            const data = await requestQr(false);
+            qrPreviewDataUrl = data.data_url || '';
+            preview.innerHTML = qrPreviewDataUrl ? `<img src="${esc(qrPreviewDataUrl)}" alt="">` : esc(labels.qrPreviewEmpty);
+        } catch (error) {
+            qrPreviewDataUrl = '';
+            preview.textContent = error.message || labels.qrAddError;
+            preview.classList.add('error');
+        }
+    }
+    function scheduleQrPreview() {
+        clearTimeout(qrPreviewTimer);
+        qrPreviewTimer = setTimeout(updateQrPreview, 250);
+    }
+    qsa('#qr-panel input,#qr-panel textarea,#qr-panel select').forEach(input => {
+        input.addEventListener('input', scheduleQrPreview);
+        input.addEventListener('change', scheduleQrPreview);
+    });
+    qs('#qr-type').addEventListener('change', () => {
+        updateQrFields();
+        scheduleQrPreview();
+    });
+    qs('#qr-download').addEventListener('click', async () => {
+        if (!qrPreviewDataUrl) await updateQrPreview();
+        if (!qrPreviewDataUrl) return;
+        const link = document.createElement('a');
+        link.href = qrPreviewDataUrl;
+        link.download = labels.qrDownloadName;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+    });
+    qs('#qr-add').addEventListener('click', async () => {
+        try {
+            const data = await requestQr(true);
+            addMediaChoice(data.filename, data.preview_url, data.original_url);
+            addImageLayer({
+                src:data.original_url || data.preview_url || data.data_url,
+                media:imageMedia('media', data.filename),
+                name:data.filename || labels.qrLayer,
+            });
+            qrPreviewDataUrl = data.data_url || qrPreviewDataUrl;
+        } catch (error) {
+            if (window.appUI?.alert) await window.appUI.alert(error.message || labels.qrAddError, {tone:'error'});
+            else alert(error.message || labels.qrAddError);
+        }
+    });
 
     async function loadIcons(reset=false) {
         if (iconLoading) return; iconLoading = true;

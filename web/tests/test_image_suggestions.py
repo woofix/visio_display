@@ -172,6 +172,28 @@ class ImageSuggestionServiceTests(unittest.TestCase):
         self.assertNotIn(">steak frites", html)
         self.assertNotIn(">dessert du jour</textarea>", html)
 
+    def test_announcement_editor_has_qr_tool(self):
+        template = Path(__file__).resolve().parents[1] / "templates" / "admin_announcements.html"
+        html = template.read_text(encoding="utf-8")
+
+        self.assertIn('id="qr-tool"', html)
+        self.assertIn('id="qr-panel"', html)
+        self.assertIn('/admin/announcements/qr-code', html)
+        self.assertIn('value="wpa3"', html)
+
+    def test_wifi_qr_payload_escapes_special_characters_and_keeps_wpa3_mobile_compatible(self):
+        from services.qr_svc import build_qr_payload
+
+        payload = build_qr_payload({
+            "type": "wifi",
+            "ssid": 'Mon:Wifi;Invite"',
+            "password": r"pa\ss;word,42",
+            "security": "wpa3",
+            "hidden": True,
+        })
+
+        self.assertEqual(payload, r"WIFI:T:WPA;S:Mon\:Wifi\;Invite\";P:pa\\ss\;word\,42;H:true;;")
+
     def test_announcement_pexels_results_can_open_large_preview(self):
         template = Path(__file__).resolve().parents[1] / "templates" / "admin_announcements.html"
         html = template.read_text(encoding="utf-8")

@@ -1000,6 +1000,30 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"announcement-form", response.data)
 
+    def test_announcements_page_does_not_duplicate_named_default_screen(self):
+        with self.app.app_context():
+            from services.config_svc import save_config
+
+            save_config({
+                "default_screen_name": "Client1",
+                "screens": {
+                    "client1": {},
+                    "client2": {},
+                },
+            })
+
+        with self.client.session_transaction() as session:
+            session["user"] = "admin"
+
+        response = self.client.get("/admin/announcements")
+        html = response.get_data(as_text=True)
+        screen_list_start = html.find('<div class="announcement-screen-list">')
+        screen_list = html[screen_list_start:html.find("</div>", screen_list_start)]
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(screen_list.count("Client1"), 1)
+        self.assertIn("client2", screen_list)
+
     def test_announcements_feature_can_be_disabled(self):
         with self.app.app_context():
             from services.config_svc import save_config

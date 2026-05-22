@@ -2,6 +2,7 @@
 
 import html
 import json
+import logging
 import os
 import re
 import subprocess
@@ -62,6 +63,7 @@ _DISK_USAGE_CACHE = None
 _DISK_USAGE_CACHE_EXPIRES_AT = 0.0
 _DISK_USAGE_CACHE_TTL_SECONDS = 10
 _DISK_USAGE_CACHE_LOCK = threading.Lock()
+logger = logging.getLogger(__name__)
 
 
 def strip_html(text):
@@ -722,9 +724,13 @@ def build_media_preview_map(files, context='admin', *, generate_missing=False):
 
 def is_safe_svg_file(path):
     try:
-        with open(path, encoding='utf-8', errors='ignore') as handle:
+        with open(path, encoding='utf-8') as handle:
             content = handle.read(200_000)
+    except UnicodeDecodeError as exc:
+        logger.warning("Rejected SVG with invalid UTF-8 encoding: %s (%s)", path, exc)
+        return False
     except OSError:
+        logger.warning("Unable to read SVG for validation: %s", path, exc_info=True)
         return False
     lowered = content.lower()
     forbidden = ('<script', 'javascript:', 'onload=', 'onerror=', '<foreignobject')

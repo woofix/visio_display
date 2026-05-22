@@ -1,6 +1,8 @@
 # Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 x-visio-container-env: &visio-container-env
+  LANG: C.UTF-8
+  LC_ALL: C.UTF-8
   REDIS_URL: redis://redis:6379
   # Internal container mount points. The host directories come strictly from
   # MEDIA_DIR and PRIVATE_DIR in .env through the volume mappings below.
@@ -90,6 +92,8 @@ services:
       target: updater
     env_file: .env
     environment:
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
       REDIS_URL: redis://redis:6379
       MEDIA_DIR: /app/static/data
       PRIVATE_DIR: /app/data

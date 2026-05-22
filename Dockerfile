@@ -3,6 +3,9 @@
 
 FROM python:3.13-slim AS app
 
+ENV LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8
+
 # System dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
         poppler-utils ffmpeg git curl ca-certificates openssh-client sshpass postgresql-client smbclient \

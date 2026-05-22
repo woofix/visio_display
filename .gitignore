@@ -34,6 +34,7 @@ web/.venv/
 *.jpg
 *.jpeg
 *.png
+!web/static/images/access-denied-mission-control.png
 *.avif
 *.webm
 *.mov

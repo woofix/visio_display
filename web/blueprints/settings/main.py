@@ -4,6 +4,7 @@ from datetime import date
 
 from flask import render_template, request, session
 
+from app_bootstrap import measure_perf_step
 from blueprints.guards import admin_guard
 from constants import (
     ALL_FEATURES,
@@ -27,7 +28,8 @@ from services.config_svc import (
 from services.ephemeris_svc import get_school_zone
 from services.i18n import _t
 from services.media_svc import get_logo_path
-from services.rbac_svc import get_all_roles, get_effective_permissions_for_user, get_user_roles
+from db import RolePermission, UserRole
+from services.rbac_svc import get_all_roles
 from services.settings_sections import (
     is_superadmin_settings_tab,
     normalize_settings_tab,
@@ -60,11 +62,50 @@ def _settings_topbar_subtitle(active_tab, is_sa):
     return subtitles.get(active_tab, _t('settings_topbar_sub'))
 
 
+def _build_user_role_maps(users):
+    roles = get_all_roles()
+    role_by_id = {role.id: role for role in roles}
+    role_permissions = {role.id: set() for role in roles}
+    role_ids = list(role_by_id)
+    if role_ids:
+        for row in RolePermission.query.filter(RolePermission.role_id.in_(role_ids)).all():
+            role_permissions.setdefault(row.role_id, set()).add(row.permission)
+
+    user_roles = {username: [] for username in users.keys()}
+    user_role_permissions = {username: set() for username in users.keys()}
+    if users:
+        rows = UserRole.query.filter(UserRole.username.in_(list(users.keys()))).all()
+        for row in rows:
+            role = role_by_id.get(row.role_id)
+            if role is None:
+                continue
+            user_roles.setdefault(row.username, []).append(role.display_name)
+            user_role_permissions.setdefault(row.username, set()).update(role_permissions.get(row.role_id, set()))
+
+    return (
+        roles,
+        user_roles,
+        {username: sorted(perms) for username, perms in user_role_permissions.items()},
+    )
+
+
 def _build_settings_context(tab='logo', install_defaults=None, install_result=None,
                             client_control_defaults=None, client_control_result=None):
-    cfg = load_config()
+    active_tab = normalize_settings_tab(tab)
+    with measure_perf_step('settings.load_config'):
+        cfg = load_config()
     client_watchdog = cfg.get('client_watchdog', {})
-    is_sa = is_superadmin()
+    with measure_perf_step('settings.is_superadmin'):
+        is_sa = is_superadmin()
+    if is_superadmin_settings_tab(active_tab) and not is_sa:
+        active_tab = 'logo'
+
+    needs_accounts = is_sa and active_tab in {'administration', 'accounts', 'add-account'}
+    needs_screens = is_sa and active_tab in {'administration', 'accounts', 'screens'}
+    needs_backups = is_sa and active_tab == 'sauvegardes'
+    needs_installation = is_sa and active_tab == 'installation'
+    needs_roles = is_sa and active_tab in {'administration', 'accounts', 'add-account'}
+
     backup_remote = cfg.get('backup_remote', {}) if is_sa else {}
     backup_remote_defaults = {
         'enabled': bool(backup_remote.get('enabled')),
@@ -72,18 +113,20 @@ def _build_settings_context(tab='logo', install_defaults=None, install_result=No
         'username': str(backup_remote.get('username', '') or ''),
         'password': '',
     }
-    backup_schedule = get_backup_schedule(cfg) if is_sa else {}
+    with measure_perf_step('settings.backup_schedule'):
+        backup_schedule = get_backup_schedule(cfg) if needs_backups else {}
     backup_retention = {
         'max_versions': backup_retention_limit(cfg),
-    } if is_sa else {}
-    users = load_users()
+    } if needs_backups else {'max_versions': backup_retention_limit(cfg)}
+    with measure_perf_step('settings.load_users'):
+        users = load_users() if (needs_accounts or active_tab in {'theme', 'language', 'password'}) else {}
     if is_sa:
         for entry in users.values():
             if isinstance(entry, dict) and isinstance(entry.get('screens'), list):
                 entry['screens'] = [normalize_screen_key(screen, cfg) for screen in entry['screens']]
     default_screen_key = get_default_screen_key(cfg)
     default_screen_label = get_default_screen_name(cfg) or _t('media_screen_default')
-    all_screens = get_screen_keys(cfg) if is_sa else []
+    all_screens = get_screen_keys(cfg) if needs_screens else []
     screen_labels = {
         screen_name: (default_screen_label if screen_name == default_screen_key else screen_name)
         for screen_name in all_screens
@@ -112,17 +155,22 @@ def _build_settings_context(tab='logo', install_defaults=None, install_result=No
     }
     screen_names = list(cfg.get('screens', {}).keys())
     manageable_screens = screen_names if is_sa else [name for name in screen_names if has_screen_access(name)]
-    active_tab = normalize_settings_tab(tab)
-    if is_superadmin_settings_tab(active_tab) and not is_sa:
-        active_tab = 'logo'
     effective_permissions_map = {}
     role_permissions_map = {}
-    if is_sa:
+    all_roles = []
+    user_roles_map = {}
+    if needs_roles:
+        with measure_perf_step('settings.role_maps'):
+            all_roles, user_roles_map, role_permissions_map = _build_user_role_maps(users)
         for account_name, account_entry in users.items():
             direct_permissions = set(account_entry.get('permissions', [])) if isinstance(account_entry, dict) else set()
-            role_permissions = set(get_effective_permissions_for_user(account_name))
+            role_permissions = set(role_permissions_map.get(account_name, []))
             role_permissions_map[account_name] = sorted(role_permissions)
             effective_permissions_map[account_name] = sorted(direct_permissions | role_permissions)
+    with measure_perf_step('settings.known_clients'):
+        known_clients = list_known_clients() if needs_installation else []
+    with measure_perf_step('settings.list_backups'):
+        available_backups = list_backups() if needs_backups else []
     return dict(
         cfg=cfg,
         users=users,
@@ -163,14 +211,14 @@ def _build_settings_context(tab='logo', install_defaults=None, install_result=No
                 client_watchdog.get('consecutive_failures_before_reboot', 1) or 1
             ),
         },
-        known_clients=list_known_clients() if is_sa else [],
-        available_backups=list_backups() if is_sa else [],
+        known_clients=known_clients,
+        available_backups=available_backups,
         all_permissions=[(k, _t(lbl_key)) for k, lbl_key in ALL_PERMISSIONS] if is_sa else [],
         all_screens=all_screens,
         screen_labels=screen_labels,
         default_screen_key=default_screen_key,
-        all_roles=get_all_roles() if is_sa else [],
-        user_roles_map={u: [r.display_name for r in get_user_roles(u)] for u in users.keys()} if is_sa else {},
+        all_roles=all_roles,
+        user_roles_map=user_roles_map,
         user_effective_permissions_map=effective_permissions_map,
         user_role_permissions_map=role_permissions_map,
         manageable_screens=manageable_screens,

@@ -216,6 +216,69 @@ setInterval(() => {
 }, 45000);
 }
 
+/* ── Admin debug footer ── */
+(function() {
+    const target = document.getElementById('admin-load-time');
+    if (!target || !window.performance) return;
+
+    const fmt = value => {
+        const ms = Math.max(0, Math.round(Number(value) || 0));
+        return ms >= 1000 ? `${(ms / 1000).toFixed(2)} s` : `${ms} ms`;
+    };
+
+    const getTiming = (nav, name) => {
+        const entry = (nav?.serverTiming || []).find(item => item.name === name);
+        return entry ? entry.duration : 0;
+    };
+
+    const getSqlCount = (nav) => {
+        const sql = (nav?.serverTiming || []).find(item => item.name === 'sql');
+        const match = String(sql?.description || '').match(/(\d+)/);
+        return match ? match[1] : '0';
+    };
+
+    const setField = (name, value) => {
+        const el = target.querySelector(`[data-debug-field="${name}"]`);
+        if (el) el.textContent = value;
+    };
+
+    const render = () => {
+        const nav = performance.getEntriesByType('navigation')[0];
+        const backend = getTiming(nav, 'app');
+        const sqlTime = getTiming(nav, 'sql');
+        const template = getTiming(nav, 'template');
+        const sqlCount = getSqlCount(nav);
+        const route = target.dataset.route || target.dataset.path || window.location.pathname;
+        const url = target.dataset.url || `${window.location.pathname}${window.location.search}`;
+        const renderedAt = target.dataset.renderedAt || new Date().toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+        });
+        const status = Number(nav?.responseStatus || 0);
+        const stepEntries = (nav?.serverTiming || [])
+            .filter(item => !['app', 'sql', 'template'].includes(item.name))
+            .map(item => `${item.name} ${fmt(item.duration)}`);
+
+        setField('route', route || '-');
+        setField('backend', fmt(backend));
+        setField('sql-time', fmt(sqlTime));
+        setField('sql-count', sqlCount);
+        setField('template', fmt(template));
+        setField('rendered-at', renderedAt);
+        setField('url', url || '-');
+        setField('status', status ? String(status) : 'indisponible');
+        setField('steps', stepEntries.length ? stepEntries.join(' · ') : '-');
+        target.title = 'Mesures issues de Server-Timing et Navigation Timing pour identifier les pages admin lentes';
+    };
+
+    if (document.readyState === 'complete') {
+        render();
+    } else {
+        window.addEventListener('load', render, { once: true });
+    }
+})();
+
 /* ── Messages & confirmations ── */
 (function() {
     const uiText = window.ADMIN_LAYOUT_CONFIG?.uiText || {};

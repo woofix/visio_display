@@ -5,7 +5,7 @@ import logging
 import os
 import re
 
-from flask import session
+from flask import g, has_request_context, session
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from db import User, db
@@ -253,15 +253,32 @@ def init_users():
 
 
 def is_admin():
-    return get_user(session.get('user')) is not None
+    username = session.get('user')
+    if not username:
+        return False
+    if has_request_context() and getattr(g, 'current_user_model', None) is not None:
+        return True
+    user = get_user(username)
+    if has_request_context():
+        g.current_user_model = user
+    return user is not None
 
 
 def is_superadmin():
     username = session.get('user')
     if not username:
         return False
-    u = db.session.get(User, username)
-    return u is not None and u.superadmin
+    if has_request_context() and hasattr(g, 'current_user_is_superadmin_cached'):
+        return bool(g.current_user_is_superadmin_cached)
+    u = getattr(g, 'current_user_model', None) if has_request_context() else None
+    if u is None:
+        u = db.session.get(User, username)
+        if has_request_context():
+            g.current_user_model = u
+    is_sa = u is not None and u.superadmin
+    if has_request_context():
+        g.current_user_is_superadmin_cached = is_sa
+    return is_sa
 
 
 def has_permission(perm):
@@ -270,13 +287,21 @@ def has_permission(perm):
     username = session.get('user')
     if not username:
         return False
-    u = db.session.get(User, username)
+    u = getattr(g, 'current_user_model', None) if has_request_context() else None
+    if u is None:
+        u = db.session.get(User, username)
+        if has_request_context():
+            g.current_user_model = u
     if u is None:
         return False
-    if perm in _json_list(u.permissions):
-        return True
+    if has_request_context() and hasattr(g, 'current_user_effective_permissions'):
+        return perm in g.current_user_effective_permissions
     from services.rbac_svc import get_effective_permissions_for_user
-    return perm in get_effective_permissions_for_user(username)
+    direct_permissions = set(_json_list(u.permissions))
+    effective_permissions = direct_permissions | set(get_effective_permissions_for_user(username))
+    if has_request_context():
+        g.current_user_effective_permissions = effective_permissions
+    return perm in effective_permissions
 
 
 def has_screen_access(screen_name):

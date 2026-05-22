@@ -3,6 +3,8 @@
 import json
 import re
 
+from flask import g, has_request_context
+
 import constants as C
 from db import AppConfig, db
 
@@ -378,14 +380,19 @@ def normalize_config(cfg):
 
 
 def load_config():
+    if has_request_context() and hasattr(g, 'app_config_cache'):
+        return g.app_config_cache
     row = db.session.get(AppConfig, 1)
     if row is None:
-        return _default_config()
-    try:
-        cfg = json.loads(row.data)
-    except json.JSONDecodeError:
-        return _default_config()
-    return normalize_config(cfg)
+        cfg = _default_config()
+    else:
+        try:
+            cfg = normalize_config(json.loads(row.data))
+        except json.JSONDecodeError:
+            cfg = _default_config()
+    if has_request_context():
+        g.app_config_cache = cfg
+    return cfg
 
 
 def is_feature_enabled(feature_name):
@@ -405,6 +412,8 @@ def get_screen_halo_color(screen_name="", cfg=None):
 
 def save_config(cfg):
     normalized = normalize_config(cfg)
+    if has_request_context() and hasattr(g, 'app_config_cache'):
+        delattr(g, 'app_config_cache')
     row = db.session.get(AppConfig, 1)
     current_revision = 0
     if row is not None:

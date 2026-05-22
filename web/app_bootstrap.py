@@ -6,10 +6,14 @@ import secrets
 import shutil
 import subprocess
 import time
-from datetime import timedelta
+from contextlib import contextmanager
+from datetime import datetime, timedelta
+from functools import lru_cache
 
-from flask import abort, g, jsonify, redirect, render_template, request, send_from_directory, session, url_for
-from sqlalchemy import inspect, text
+from flask import abort, g, has_request_context, jsonify, redirect, render_template, request, send_from_directory, session, url_for
+from flask import before_render_template, template_rendered
+from jinja2 import FileSystemBytecodeCache
+from sqlalchemy import event, inspect, text
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 import constants as C
@@ -49,6 +53,7 @@ from translations import TRANSLATIONS
 LOGGER = logging.getLogger(__name__)
 _LAST_GENERATED_MENU_CLEANUP = 0.0
 GENERATED_MENU_CLEANUP_INTERVAL_SECONDS = 900
+_SQL_PROFILING_ATTACHED = False
 
 
 CLIENT_HEARTBEAT_EXTRA_COLUMNS = {
@@ -108,6 +113,37 @@ def env_int(name, default):
 def env_csv(name):
     raw = os.environ.get(name, "")
     return [item.strip() for item in raw.split(",") if item.strip()]
+
+
+def perf_debug_enabled():
+    return env_flag("ADMIN_PERF_DEBUG", False)
+
+
+def admin_debug_visible():
+    return bool(request.path.startswith("/admin") and session.get("user") and is_superadmin())
+
+
+def record_perf_step(name, elapsed_ms):
+    if not has_request_context():
+        return
+    timings = getattr(g, "perf_step_timings", None)
+    if timings is None:
+        timings = []
+        g.perf_step_timings = timings
+    timings.append((str(name), max(0.0, float(elapsed_ms))))
+
+
+@contextmanager
+def measure_perf_step(name):
+    started = time.perf_counter()
+    try:
+        yield
+    finally:
+        record_perf_step(name, (time.perf_counter() - started) * 1000)
+
+
+def _server_timing_token(name):
+    return "".join(ch if ch.isalnum() or ch in "_-" else "_" for ch in str(name))[:40] or "step"
 
 
 def migrate_legacy_storage():
@@ -328,6 +364,9 @@ def configure_app(app, *, max_batch_upload_size):
     app.config["SQLALCHEMY_DATABASE_URI"] = require_database_url()
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"pool_pre_ping": True}
+    jinja_cache_dir = os.path.join(C.PRIVATE_DATA_DIR, "jinja-cache")
+    os.makedirs(jinja_cache_dir, exist_ok=True)
+    app.jinja_env.bytecode_cache = FileSystemBytecodeCache(jinja_cache_dir, pattern="%s.cache")
 
 
 def configure_proxy(app):
@@ -354,6 +393,75 @@ def initialize_database(app):
         init_users()
         init_rbac()
         harden_private_storage_permissions()
+        attach_sql_profiling(app)
+
+
+def attach_sql_profiling(app):
+    global _SQL_PROFILING_ATTACHED
+    if _SQL_PROFILING_ATTACHED:
+        return
+    _SQL_PROFILING_ATTACHED = True
+    slow_sql_ms = env_int("SLOW_SQL_LOG_MS", 100)
+
+    @event.listens_for(db.engine, "before_cursor_execute")
+    def before_cursor_execute(_conn, _cursor, _statement, _parameters, context, _executemany):
+        context._visio_query_started_at = time.perf_counter()
+
+    @event.listens_for(db.engine, "after_cursor_execute")
+    def after_cursor_execute(_conn, _cursor, statement, _parameters, context, _executemany):
+        started_at = getattr(context, "_visio_query_started_at", None)
+        elapsed_ms = 0.0
+        if started_at is not None:
+            elapsed_ms = max(0.0, (time.perf_counter() - started_at) * 1000)
+        if not has_request_context() or not getattr(g, "request_started_at", None):
+            return
+
+        g.sql_query_count = getattr(g, "sql_query_count", 0) + 1
+        g.sql_total_ms = getattr(g, "sql_total_ms", 0.0) + elapsed_ms
+        g.sql_max_ms = max(getattr(g, "sql_max_ms", 0.0), elapsed_ms)
+
+        if elapsed_ms >= slow_sql_ms:
+            compact_sql = " ".join(str(statement or "").split())
+            LOGGER.warning(
+                "Slow SQL %.1fms %s %s: %s",
+                elapsed_ms,
+                request.method,
+                request.path,
+                compact_sql[:1200],
+            )
+
+
+def warm_admin_template_cache(app):
+    for template_name in (
+        "admin_settings_accounts.html",
+        "admin_layout.html",
+    ):
+        try:
+            app.jinja_env.get_template(template_name)
+        except Exception:
+            LOGGER.debug("Unable to warm template cache for %s", template_name, exc_info=True)
+
+    @before_render_template.connect_via(app)
+    def before_template_rendered(_sender, template, context, **_extra):
+        g.template_render_started_at = time.perf_counter()
+        g.template_name = template.name if template is not None else ""
+        g.template_context_keys = len(context or {})
+
+    @template_rendered.connect_via(app)
+    def after_template_rendered(_sender, template, context, **_extra):
+        started_at = getattr(g, "template_render_started_at", None)
+        if started_at is None:
+            return
+        elapsed_ms = max(0.0, (time.perf_counter() - started_at) * 1000)
+        g.template_render_ms = elapsed_ms
+        if perf_debug_enabled() or elapsed_ms >= env_int("SLOW_TEMPLATE_LOG_MS", 250):
+            LOGGER.info(
+                "Template render %.1fms %s keys=%s path=%s",
+                elapsed_ms,
+                template.name if template is not None else "-",
+                len(context or {}),
+                request.path,
+            )
 
 
 def schedule_initial_ephemeris_refresh():
@@ -415,6 +523,11 @@ def register_request_hooks(app):
     def start_request_timer():
         g.request_started_at = time.perf_counter()
         g.csp_nonce = secrets.token_urlsafe(16)
+        g.sql_query_count = 0
+        g.sql_total_ms = 0.0
+        g.sql_max_ms = 0.0
+        g.template_render_ms = 0.0
+        g.perf_step_timings = []
         return None
 
     @app.before_request
@@ -458,16 +571,54 @@ def register_request_hooks(app):
         started_at = getattr(g, "request_started_at", None)
         if started_at is not None:
             elapsed_ms = max(0.0, (time.perf_counter() - started_at) * 1000)
-            response.headers["Server-Timing"] = f"app;dur={elapsed_ms:.1f}"
+            server_timings = [f"app;dur={elapsed_ms:.1f}"]
+            template_ms = getattr(g, "template_render_ms", 0.0)
+            server_timings.append(f"template;dur={template_ms:.1f}")
+            response.headers["X-Template-Time-ms"] = f"{template_ms:.1f}"
+            sql_count = getattr(g, "sql_query_count", 0)
+            sql_total_ms = getattr(g, "sql_total_ms", 0.0)
+            server_timings.append(f"sql;dur={sql_total_ms:.1f};desc=\"{sql_count} queries\"")
+            response.headers["X-SQL-Query-Count"] = str(sql_count)
+            response.headers["X-SQL-Time-ms"] = f"{sql_total_ms:.1f}"
+            response.headers["X-SQL-Max-ms"] = f"{getattr(g, 'sql_max_ms', 0.0):.1f}"
+            for step_name, step_ms in getattr(g, "perf_step_timings", []):
+                server_timings.append(f"{_server_timing_token(step_name)};dur={step_ms:.1f}")
+            response.headers["Server-Timing"] = ", ".join(server_timings)
             response.headers["X-Response-Time-ms"] = f"{elapsed_ms:.1f}"
-            if elapsed_ms >= env_int("SLOW_REQUEST_LOG_MS", 1000):
+            response_size = response.calculate_content_length()
+            steps = ", ".join(f"{name}={ms:.1f}ms" for name, ms in getattr(g, "perf_step_timings", [])) or "-"
+            username = session.get("user") or "-"
+            role = "anonymous"
+            if username != "-":
+                role = "superadmin" if getattr(g, "current_user_is_superadmin_cached", False) else "admin"
+            if request.path.startswith("/admin"):
                 LOGGER.warning(
-                    "Slow request %.1fms %s %s -> %s (%s bytes)",
+                    "ADMIN request route=%s method=%s url=%s status=%s total=%.1fms sql_count=%s sql_time=%.1fms template=%.1fms user=%s role=%s response_size=%s steps=%s",
+                    request.endpoint or "-",
+                    request.method,
+                    request.full_path.rstrip("?"),
+                    response.status_code,
+                    elapsed_ms,
+                    sql_count,
+                    sql_total_ms,
+                    template_ms,
+                    username,
+                    role,
+                    response_size if response_size is not None else "-",
+                    steps,
+                )
+            elif perf_debug_enabled() or elapsed_ms >= env_int("SLOW_REQUEST_LOG_MS", 1000):
+                LOGGER.warning(
+                    "Request profile %.1fms %s %s -> %s (%s bytes), sql=%s/%.1fms, template=%.1fms, steps=%s",
                     elapsed_ms,
                     request.method,
                     request.path,
                     response.status_code,
-                    response.calculate_content_length() or "-",
+                    response_size or "-",
+                    sql_count,
+                    sql_total_ms,
+                    template_ms,
+                    steps,
                 )
 
         nonce = getattr(g, 'csp_nonce', '')
@@ -551,6 +702,7 @@ def register_error_handlers(app, *, max_file_upload_size, max_batch_upload_size)
 
 
 def register_template_context(app):
+    @lru_cache(maxsize=1)
     def _static_cache_version():
         from services.version_svc import _read_local_version
 
@@ -614,7 +766,7 @@ def register_template_context(app):
         if session.get("user") and request.path.startswith("/admin"):
             from services.version_svc import get_version_status
 
-            admin_update_status = get_version_status(allow_remote=not app.config.get("TESTING", False))
+            admin_update_status = get_version_status(allow_remote=False)
 
         current_user_must_change_password = False
         if username:
@@ -632,6 +784,11 @@ def register_template_context(app):
             admin_update_status=admin_update_status,
             current_user_is_superadmin=current_user_is_superadmin,
             current_user_must_change_password=current_user_must_change_password,
+            admin_perf_debug=perf_debug_enabled(),
+            admin_debug_visible=admin_debug_visible(),
+            admin_debug_endpoint=request.endpoint or "",
+            admin_debug_url=request.full_path.rstrip("?"),
+            admin_rendered_at=datetime.now().strftime("%H:%M:%S"),
             has_permission=has_permission,
             is_feature_enabled=is_feature_enabled,
             settings_nav_groups=settings_nav_groups(

@@ -15,6 +15,7 @@ from app_bootstrap import (
     register_request_hooks,
     register_template_context,
     schedule_initial_ephemeris_refresh,
+    warm_admin_template_cache,
 )
 from services.queue_svc import start_encoder_thread
 from services.backup_scheduler_svc import start_backup_scheduler_thread
@@ -40,6 +41,7 @@ def create_app(start_scheduler=True, test_config=None):
         max_batch_upload_size=MAX_BATCH_UPLOAD_SIZE,
     )
     register_template_context(app)
+    warm_admin_template_cache(app)
     register_public_routes(app)
 
     if start_scheduler:

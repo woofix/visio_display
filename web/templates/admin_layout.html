@@ -379,6 +379,28 @@
         <a href="https://github.com/woofix/visio_display/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">GNU GPL v3.0</a>
         <span>·</span>
         <a href="{{ repository_url }}" target="_blank" rel="noopener noreferrer">{{ t('footer_repository_link') }}</a>
+        {% if admin_debug_visible %}
+        <section class="admin-debug-panel" id="admin-debug-panel" aria-label="Debug performance admin">
+            <div class="admin-debug-panel-title">Debug admin</div>
+            <dl class="admin-debug-grid"
+                id="admin-load-time"
+                data-route="{{ admin_debug_endpoint }}"
+                data-path="{{ request.path }}"
+                data-url="{{ admin_debug_url }}"
+                data-rendered-at="{{ admin_rendered_at }}"
+                aria-live="polite">
+                <div><dt>Route Flask</dt><dd data-debug-field="route">{{ admin_debug_endpoint }}</dd></div>
+                <div><dt>Backend total</dt><dd data-debug-field="backend">-</dd></div>
+                <div><dt>SQL total</dt><dd data-debug-field="sql-time">-</dd></div>
+                <div><dt>Requêtes SQL</dt><dd data-debug-field="sql-count">-</dd></div>
+                <div><dt>Rendu Jinja</dt><dd data-debug-field="template">-</dd></div>
+                <div><dt>Heure rendu</dt><dd data-debug-field="rendered-at">{{ admin_rendered_at }}</dd></div>
+                <div><dt>URL appelée</dt><dd data-debug-field="url">{{ admin_debug_url }}</dd></div>
+                <div><dt>Statut HTTP</dt><dd data-debug-field="status">-</dd></div>
+                <div class="admin-debug-wide"><dt>Étapes mesurées</dt><dd data-debug-field="steps">-</dd></div>
+            </dl>
+        </section>
+        {% endif %}
     </footer>
 </div>
 

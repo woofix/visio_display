@@ -3,6 +3,46 @@ const adminSettingsConfig = adminSettingsConfigEl ? JSON.parse(adminSettingsConf
 const adminSettingsI18n = adminSettingsConfig.i18n || {};
 
 (function() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('perf') === '1') {
+        localStorage.setItem('visioPerfDebug', '1');
+    } else if (params.get('perf') === '0') {
+        localStorage.removeItem('visioPerfDebug');
+    }
+    if (localStorage.getItem('visioPerfDebug') !== '1') return;
+
+    const logPerf = () => {
+        const nav = performance.getEntriesByType('navigation')[0];
+        if (nav) {
+            console.info('[admin-perf] navigation', {
+                total: Math.round(nav.duration),
+                ttfb: Math.round(nav.responseStart - nav.requestStart),
+                domContentLoaded: Math.round(nav.domContentLoadedEventEnd),
+                load: Math.round(nav.loadEventEnd),
+                transfer: nav.transferSize || 0,
+            });
+        }
+        const slowResources = performance.getEntriesByType('resource')
+            .filter(entry => entry.duration >= 100 || entry.transferSize >= 50000)
+            .map(entry => ({
+                name: entry.name.replace(window.location.origin, ''),
+                type: entry.initiatorType,
+                duration: Math.round(entry.duration),
+                transfer: entry.transferSize || 0,
+                decoded: entry.decodedBodySize || 0,
+            }))
+            .sort((a, b) => b.duration - a.duration);
+        console.info('[admin-perf] slow resources', slowResources);
+    };
+
+    if (document.readyState === 'complete') {
+        logPerf();
+    } else {
+        window.addEventListener('load', logPerf, { once: true });
+    }
+})();
+
+(function() {
     const sel = document.getElementById('install-screen-url-select');
     const serverUrlInput = document.getElementById('install-server-url');
     const screenNameInput = document.getElementById('install-screen-name');

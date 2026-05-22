@@ -152,7 +152,7 @@ Visio-Display s'exécute comme une stack self-hosted Docker Compose :
 **Wiki intégré**
 - Page d'aide accessible depuis l'interface d'administration (`/admin/wiki`)
 - Documentation interactive couvrant toutes les fonctionnalités, disponible sans quitter l'application
-- Version Markdown fournie dans `USER_GUIDE.md` pour la documentation du projet
+- Version Markdown fournie dans `USER_GUIDE.md`, à utiliser comme contenu du wiki GitHub et à garder alignée avec l'aide intégrée
 
 **Gestion des rôles (RBAC)**
 - Créer des rôles personnalisés (identifiant, nom affiché, description, permissions) depuis `/admin/roles`
@@ -1042,7 +1042,7 @@ Visio-Display runs as a self-hosted Docker Compose stack:
 **Built-in wiki**
 - Help page accessible from the admin interface (`/admin/wiki`)
 - Interactive documentation covering all features, available without leaving the application
-- Markdown project guide available in `USER_GUIDE.md`
+- Markdown project guide available in `USER_GUIDE.md`, intended for the GitHub Wiki and kept aligned with the built-in help
 
 **Role management (RBAC)**
 - Create custom roles (identifier, display name, description, permissions) from `/admin/roles`

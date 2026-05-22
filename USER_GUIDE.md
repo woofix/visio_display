@@ -10,6 +10,8 @@
 
 Visio-Display is a **digital signage** application that automatically rotates images, videos, and a weather/almanac card on one or more screens. It is managed from any browser through a web administration interface.
 
+This Markdown guide is intended to be published as the GitHub Wiki content and kept aligned with the built-in help page available at `/admin/wiki`.
+
 ---
 
 ## Table of Contents
@@ -963,6 +965,8 @@ No automatic deletion is started. Every deletion remains manual and irreversible
 ### Guide utilisateur — Visio-Display
 
 Visio-Display est une application d'**affichage dynamique** (digital signage) qui fait défiler automatiquement des images, vidéos et une carte météo/éphéméride sur un ou plusieurs écrans. Elle se pilote depuis n'importe quel navigateur via une interface d'administration web.
+
+Ce guide Markdown est destiné à être publié comme contenu du wiki GitHub et à rester aligné avec l'aide intégrée accessible depuis `/admin/wiki`.
 
 ---
 

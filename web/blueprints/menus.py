@@ -3,7 +3,7 @@
 from flask import Blueprint, jsonify, redirect, render_template, request, send_file, session, url_for
 
 from blueprints.guards import admin_guard, feature_guard
-from services.config_svc import get_default_screen_name, load_config
+from services.config_svc import get_default_screen_name, get_screen_keys, load_config, normalize_screen_key
 from services.i18n import _flash, _t
 from services.image_suggestions_svc import cached_image_path
 from services.menu_svc import (
@@ -24,10 +24,18 @@ def _has_menu_permission():
 
 
 def _screen_choices(cfg):
+    default_key = normalize_screen_key("", cfg)
+    default_label = get_default_screen_name(cfg) or _t("announcements_default_screen_label")
     screens = []
-    if has_screen_access(""):
-        screens.append({"value": "__default__", "label": get_default_screen_name(cfg) or _t("announcements_default_screen_label")})
-    screens.extend({"value": screen, "label": screen} for screen in cfg.get("screens", {}) if has_screen_access(screen))
+    seen = set()
+    for screen in get_screen_keys(cfg):
+        if screen in seen or not has_screen_access(screen):
+            continue
+        seen.add(screen)
+        screens.append({
+            "value": "__default__" if screen == default_key else screen,
+            "label": default_label if screen == default_key else screen,
+        })
     return screens
 
 

@@ -51,6 +51,7 @@ class AppSmokeTests(unittest.TestCase):
             "CLIENT_HEARTBEAT_TOKEN",
             "DISPLAY_API_TOKEN",
             "TRUST_PROXY_COUNT",
+            "VISIO_ENABLE_METEO",
         )}
         os.environ["PRIVATE_DIR"] = os.path.join(self.temp_dir.name, "private")
         os.environ["MEDIA_DIR"] = os.path.join(self.temp_dir.name, "media")
@@ -61,6 +62,7 @@ class AppSmokeTests(unittest.TestCase):
         os.environ["CLIENT_HEARTBEAT_TOKEN"] = "heartbeat-secret"
         os.environ["DISPLAY_API_TOKEN"] = "screen-secret"
         os.environ.pop("TRUST_PROXY_COUNT", None)
+        os.environ.pop("VISIO_ENABLE_METEO", None)
 
         redis_module = types.ModuleType("redis")
 
@@ -2034,6 +2036,67 @@ class AppSmokeTests(unittest.TestCase):
             with Image.open(path) as image:
                 self.assertEqual(image.size, (1920, 1080))
 
+    def test_meteo_uses_short_timeout_and_last_known_cache(self):
+        with self.app.app_context():
+            from services import ephemeris_svc
+            from services.config_svc import save_config
+
+            save_config({
+                "meteo_ville": "Paris",
+                "meteo_lat": 48.8566,
+                "meteo_lng": 2.3522,
+                "meteo_tz": "Europe/Paris",
+            })
+
+            class FakeWeatherResponse:
+                def raise_for_status(self):
+                    return None
+
+                def json(self):
+                    return {
+                        "current": {
+                            "temperature_2m": 21,
+                            "apparent_temperature": 20,
+                            "weather_code": 0,
+                            "wind_speed_10m": 9,
+                            "precipitation": 0.2,
+                        }
+                    }
+
+            with patch.object(ephemeris_svc.requests, "get", return_value=FakeWeatherResponse()) as request_get:
+                result = ephemeris_svc.get_meteo()
+
+            self.assertEqual(result["temp"], "21°C")
+            self.assertEqual(request_get.call_args.kwargs["timeout"], 1.5)
+
+            ephemeris_svc._EPHEMERIS_DATA_CACHE.clear()
+            with patch.object(ephemeris_svc.requests, "get", side_effect=TimeoutError("offline")):
+                fallback = ephemeris_svc.get_meteo()
+
+            self.assertEqual(fallback["temp"], "21°C")
+            self.assertEqual(fallback["condition"], result["condition"])
+
+    def test_meteo_can_be_disabled_by_environment(self):
+        with self.app.app_context():
+            from services import ephemeris_svc
+            from services.config_svc import save_config
+
+            save_config({
+                "meteo_ville": "Paris",
+                "meteo_lat": 48.8566,
+                "meteo_lng": 2.3522,
+                "meteo_tz": "Europe/Paris",
+            })
+            os.environ["VISIO_ENABLE_METEO"] = "false"
+            ephemeris_svc._EPHEMERIS_DATA_CACHE.clear()
+
+            with patch.object(ephemeris_svc.requests, "get") as request_get:
+                result = ephemeris_svc.get_meteo()
+
+            request_get.assert_not_called()
+            self.assertEqual(result["code"], -1)
+            self.assertIn("--", result["temp"])
+
     def test_app_startup_schedules_initial_ephemeris_refresh(self):
         with (
             patch("app.start_encoder_thread"),
@@ -2125,7 +2188,7 @@ class AppSmokeTests(unittest.TestCase):
         with self.client.session_transaction() as session:
             token = session["_csrf_token"]
 
-        with patch("blueprints.ephemeris.generate_ephemeride_image") as generate:
+        with patch("blueprints.ephemeris.ensure_ephemeride_image_async") as generate:
             response = self.client.post(
                 "/regen_ephemeride",
                 data={"_csrf_token": token},

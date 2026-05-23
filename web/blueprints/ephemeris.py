@@ -6,7 +6,7 @@ from flask import Blueprint, jsonify, redirect, request, session, url_for
 
 from services.activity_svc import log_config_change
 from services.config_svc import load_config, save_config
-from services.ephemeris_svc import generate_ephemeride_image
+from services.ephemeris_svc import ensure_ephemeride_image_async
 from services.i18n import _flash
 from blueprints.guards import feature_guard_json, superadmin_guard, superadmin_guard_json
 
@@ -19,7 +19,7 @@ def regen_ephemeride():
     if g: return g
     g = feature_guard_json('ephemeris')
     if g: return g
-    generate_ephemeride_image(force=True)
+    ensure_ephemeride_image_async(force=True)
     log_config_change(session.get('user'), 'ephemeris regenerated')
     if 'application/json' not in request.headers.get('Accept', ''):
         _flash('flash_ephemeris_regenerated', 'success')
@@ -46,7 +46,7 @@ def add_event():
     cfg.setdefault("events", []).append({"label": label, "date": date_str})
     save_config(cfg)
     log_config_change(session.get('user'), f'event added:{label} ({date_str})')
-    generate_ephemeride_image(force=True)
+    ensure_ephemeride_image_async(force=True)
     _flash('flash_event_added', 'success', label=label)
     return redirect('/admin/settings/meteo')
 
@@ -63,6 +63,6 @@ def delete_event(idx):
         cfg["events"] = events
         save_config(cfg)
         log_config_change(session.get('user'), f'event deleted:{removed["label"]} ({removed["date"]})')
-        generate_ephemeride_image(force=True)
+        ensure_ephemeride_image_async(force=True)
         _flash('flash_event_deleted', 'success', label=removed['label'])
     return redirect('/admin/settings/meteo')

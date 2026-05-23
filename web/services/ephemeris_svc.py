@@ -2,6 +2,7 @@
 
 import contextlib
 import json
+import logging
 import math
 import os
 import threading
@@ -21,6 +22,8 @@ from services.i18n import _t, get_language
 from services.media_svc import strip_html
 from translations import JOURS_BY_LANG, MOIS_BY_LANG, WMO_CODES_BY_LANG
 
+LOGGER = logging.getLogger(__name__)
+
 _EPHEMERIS_LOCK = threading.Lock()
 _EPHEMERIS_ASYNC_LOCK = threading.Lock()
 _EPHEMERIS_ASYNC_RUNNING = False
@@ -31,6 +34,10 @@ _EPHEMERIS_CURRENT_CACHE = {}
 _EPHEMERIS_CURRENT_CACHE_TTL_SECONDS = 15
 _EPHEMERIS_CACHE_LOCK = threading.Lock()
 _EPHEMERIS_CACHE_MISS = object()
+_METEO_REQUEST_TIMEOUT_SECONDS = 1.5
+_METEO_CACHE_TTL_SECONDS = 15 * 60
+_METEO_LAST_KNOWN_CACHE = {}
+_METEO_ERROR_LOGGED_KEYS = set()
 
 
 def _ephemeris_cache_get(cache, key):
@@ -47,6 +54,44 @@ def _ephemeris_cache_set(cache, key, value, ttl):
         cache[key] = (time.monotonic() + ttl, deepcopy(value))
         while len(cache) > _EPHEMERIS_DATA_CACHE_MAX_ENTRIES:
             cache.pop(next(iter(cache)))
+
+
+def meteo_enabled():
+    value = os.environ.get("VISIO_ENABLE_METEO")
+    if value is None:
+        return True
+    return value.strip().lower() not in {"0", "false", "no", "off"}
+
+
+def _unavailable_weather(lang):
+    return {
+        "temp": "--°C",
+        "ressenti": "--°C",
+        "condition": _t('ephemeris_weather_unknown', lang).upper(),
+        "vent": "-- km/h",
+        "precip": "-- mm",
+        "code": -1,
+    }
+
+
+def _weather_last_known_get(cache_key):
+    with _EPHEMERIS_CACHE_LOCK:
+        value = _METEO_LAST_KNOWN_CACHE.get(cache_key)
+        return deepcopy(value) if value is not None else None
+
+
+def _weather_last_known_set(cache_key, value):
+    with _EPHEMERIS_CACHE_LOCK:
+        _METEO_LAST_KNOWN_CACHE[cache_key] = deepcopy(value)
+        _METEO_ERROR_LOGGED_KEYS.discard(cache_key)
+
+
+def _log_weather_error_once(cache_key, exc):
+    with _EPHEMERIS_CACHE_LOCK:
+        if cache_key in _METEO_ERROR_LOGGED_KEYS:
+            return
+        _METEO_ERROR_LOGGED_KEYS.add(cache_key)
+    LOGGER.warning("Open-Meteo unavailable, using cached/unavailable weather: %s", exc)
 
 
 def _configured_zoneinfo(cfg=None):
@@ -543,8 +588,8 @@ def ensure_ephemeride_image_async(force=False):
                     generate_ephemeride_image(force=force)
             else:
                 generate_ephemeride_image(force=force)
-        except Exception as exc:
-            print(f"[EPHEMERIS ASYNC ERROR] {exc}")
+        except Exception:
+            LOGGER.exception("Unable to refresh ephemeris in background")
         finally:
             with _EPHEMERIS_ASYNC_LOCK:
                 _EPHEMERIS_ASYNC_RUNNING = False
@@ -713,6 +758,10 @@ def get_meteo(cfg=None):
     cached = _ephemeris_cache_get(_EPHEMERIS_DATA_CACHE, cache_key)
     if cached is not _EPHEMERIS_CACHE_MISS:
         return cached
+    if not meteo_enabled():
+        result = _unavailable_weather(lang)
+        _ephemeris_cache_set(_EPHEMERIS_DATA_CACHE, cache_key, result, _METEO_CACHE_TTL_SECONDS)
+        return result
     wmo  = WMO_CODES_BY_LANG.get(lang, WMO_CODES_BY_LANG['fr'])
     try:
         r = requests.get(
@@ -722,7 +771,7 @@ def get_meteo(cfg=None):
                 "current": "temperature_2m,apparent_temperature,weather_code,wind_speed_10m,precipitation",
                 "wind_speed_unit": "kmh", "timezone": tz_name
             },
-            timeout=5
+            timeout=_METEO_REQUEST_TIMEOUT_SECONDS
         )
         r.raise_for_status()
         current   = r.json()["current"]
@@ -740,13 +789,12 @@ def get_meteo(cfg=None):
             "precip":    f"{precip:.1f} mm",
             "code":      code,
         }
-        _ephemeris_cache_set(_EPHEMERIS_DATA_CACHE, cache_key, result, _EPHEMERIS_DATA_CACHE_TTL_SECONDS)
+        _weather_last_known_set(cache_key, result)
+        _ephemeris_cache_set(_EPHEMERIS_DATA_CACHE, cache_key, result, _METEO_CACHE_TTL_SECONDS)
         return result
     except Exception as e:
-        print("[METEO ERROR]", e)
-        result = {"temp": "--°C", "ressenti": "--°C",
-                  "condition": _t('ephemeris_weather_unknown', lang).upper(),
-                  "vent": "-- km/h", "precip": "-- mm", "code": -1}
+        _log_weather_error_once(cache_key, e)
+        result = _weather_last_known_get(cache_key) or _unavailable_weather(lang)
         _ephemeris_cache_set(_EPHEMERIS_DATA_CACHE, cache_key, result, _EPHEMERIS_DATA_CACHE_TTL_SECONDS)
         return result
 

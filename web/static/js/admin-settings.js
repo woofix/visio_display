@@ -815,13 +815,21 @@ async function searchMeteoCity() {
     if (!query) return;
 
     const btn = document.getElementById('meteo-search-btn');
+    if (adminSettingsConfig.meteoEnabled === false) {
+        results.innerHTML = `<div style="padding:10px 14px;font-size:.82rem;color:var(--text-3)">${escapeMeteoHtml(adminSettingsI18n.geocodeError || 'Weather is disabled.')}</div>`;
+        results.style.display = 'block';
+        return;
+    }
     btn.disabled = true;
     results.style.display = 'none';
     results.innerHTML = '';
 
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 1500);
     try {
         const resp = await fetch(
-            `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=8&format=json`
+            `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=8&format=json`,
+            { signal: controller.signal }
         );
         const data = await resp.json();
         const list = data.results || [];
@@ -866,6 +874,7 @@ async function searchMeteoCity() {
         results.innerHTML = `<div style="padding:10px 14px;font-size:.82rem;color:var(--red)">${escapeMeteoHtml(adminSettingsI18n.geocodeError || 'Error connecting to the geocoding API.')}</div>`;
         results.style.display = 'block';
     } finally {
+        window.clearTimeout(timeout);
         btn.disabled = false;
     }
 }

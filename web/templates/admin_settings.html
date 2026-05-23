@@ -1531,6 +1531,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
 <script nonce="{{ csp_nonce() }}" id="admin-settings-config" type="application/json">{{ {
     'displayApiToken': display_api_token,
     'screenTokenParam': screen_token_query_param,
+    'meteoEnabled': meteo_enabled,
     'remoteCopyEnabled': true if backup_remote.get('enabled') and backup_remote.get('url') else false,
     'backupRetentionMaxVersions': backup_retention.max_versions or 5,
     'i18n': {

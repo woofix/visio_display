@@ -63,9 +63,8 @@ def set_meteo_location():
     cfg['school_zone'] = school_zone
     save_config(cfg)
     log_config_change(session.get('user'), f'weather:{ville} ({lat_f},{lng_f}) tz={tz} zone={school_zone}')
-    # Regenerate the ephemeris with the new location
-    from services.ephemeris_svc import generate_ephemeride_image
-    generate_ephemeride_image(force=True)
+    from services.ephemeris_svc import ensure_ephemeride_image_async
+    ensure_ephemeride_image_async(force=True)
     _flash('flash_meteo_updated', 'success', ville=ville)
     return redirect(settings_section_url('meteo'))
 

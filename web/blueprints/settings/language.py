@@ -22,7 +22,7 @@ def set_language():
     if username:
         update_user_language(username, lang)
         log_config_change(username, f'langue:{lang}')
-        from services.ephemeris_svc import generate_ephemeride_image
-        generate_ephemeride_image(force=True)
+        from services.ephemeris_svc import ensure_ephemeride_image_async
+        ensure_ephemeride_image_async(force=True)
     _flash('flash_language_updated', 'success')
     return redirect(settings_section_url('language'))

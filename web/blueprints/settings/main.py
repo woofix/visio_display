@@ -25,7 +25,7 @@ from services.config_svc import (
     load_config,
     normalize_screen_key,
 )
-from services.ephemeris_svc import get_school_zone
+from services.ephemeris_svc import get_school_zone, meteo_enabled
 from services.i18n import _t
 from services.media_svc import get_logo_path
 from db import RolePermission, UserRole
@@ -184,6 +184,7 @@ def _build_settings_context(tab='logo', install_defaults=None, install_result=No
         theme=user_theme,
         settings_topbar_subtitle=_settings_topbar_subtitle(active_tab, is_sa),
         can_ephemeris=is_sa,
+        meteo_enabled=meteo_enabled(),
         meteo_location=meteo_location,
         school_zones=SCHOOL_ZONES,
         install_defaults=install_defaults or {

@@ -404,7 +404,7 @@ class AppSmokeTests(unittest.TestCase):
             response = self.client.get("/admin")
 
         self.assertEqual(response.status_code, 200)
-        get_version_status.assert_any_call(allow_remote=True)
+        get_version_status.assert_any_call(allow_remote=False)
         self.assertIn("Mise à jour Visio-Display disponible".encode("utf-8"), response.data)
 
     def test_theme_update_persists_for_logged_user(self):

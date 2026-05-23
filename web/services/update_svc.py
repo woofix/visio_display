@@ -1,10 +1,12 @@
 # Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 import json
+import logging
 import os
 import shlex
 import shutil
 import subprocess
+import threading
 import time
 import urllib.parse
 import urllib.request
@@ -15,8 +17,81 @@ from services.i18n import _t
 from services.version_svc import _compare_versions
 
 
+LOGGER = logging.getLogger(__name__)
 SERVICE_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_REPO_CWD = os.path.normpath(os.path.join(SERVICE_DIR, "..", ".."))
+EXTERNAL_STATUS_TIMEOUT_SECONDS = 1.5
+UPDATE_STATUS_CACHE_TTL_SECONDS = 45
+UPDATE_STATUS_FAILURE_CACHE_TTL_SECONDS = 30
+_UPDATE_STATUS_CACHE = {}
+_UPDATE_STATUS_CACHE_LOCK = threading.Lock()
+_HTTP_OUT_ERROR_LOGGED = set()
+
+
+def _current_route():
+    try:
+        from flask import has_request_context, request
+    except ImportError:
+        return "-"
+    if has_request_context():
+        return request.path
+    return "-"
+
+
+def _cache_key(fetch_remote, allow_dirty):
+    return (_repo_dir(), bool(fetch_remote), bool(allow_dirty), _update_branch())
+
+
+def _status_cache_get(key):
+    now = time.monotonic()
+    with _UPDATE_STATUS_CACHE_LOCK:
+        entry = _UPDATE_STATUS_CACHE.get(key)
+        if entry and now < entry[0]:
+            return json.loads(json.dumps(entry[1]))
+    return None
+
+
+def _status_cache_set(key, status, ttl=UPDATE_STATUS_CACHE_TTL_SECONDS):
+    with _UPDATE_STATUS_CACHE_LOCK:
+        _UPDATE_STATUS_CACHE[key] = (time.monotonic() + ttl, json.loads(json.dumps(status)))
+
+
+def _log_http_out_start(route, url, timeout):
+    LOGGER.info("[HTTP OUT] route=%s url=%s timeout=%s", route, url, timeout)
+
+
+def _log_http_out_done(route, url, timeout, duration_ms):
+    LOGGER.info("[HTTP OUT] route=%s url=%s timeout=%s duration_ms=%.1f", route, url, timeout, duration_ms)
+
+
+def _log_http_out_error_once(route, url, duration_ms):
+    key = (route, url)
+    with _UPDATE_STATUS_CACHE_LOCK:
+        if key in _HTTP_OUT_ERROR_LOGGED:
+            return
+        _HTTP_OUT_ERROR_LOGGED.add(key)
+    LOGGER.warning("[HTTP OUT ERROR] route=%s url=%s duration_ms=%.1f", route, url, duration_ms)
+
+
+def _build_unavailable(reason, checks, extra=None):
+    payload = _build_incompatible(reason, checks, extra)
+    payload.update({
+        "status": "unavailable",
+        "status_label": _t("known_clients_unavailable"),
+        "status_tone": "warning",
+        "compatible": False,
+        "can_apply": False,
+        "can_restart": False,
+        "reason": reason,
+    })
+    return payload
+
+
+def _external_status_failed(reason, checks, status_context, cache_key):
+    status = _build_unavailable(reason, checks, status_context)
+    _status_cache_set(cache_key, status, UPDATE_STATUS_FAILURE_CACHE_TTL_SECONDS)
+    return status
+
 
 
 def _running_as_updater():
@@ -574,9 +649,32 @@ def _build_incompatible(reason, checks, extra=None):
 
 
 def get_update_status(*, fetch_remote=False, allow_dirty=False):
+    status_cache_key = _cache_key(fetch_remote, allow_dirty)
+    if fetch_remote:
+        cached_status = _status_cache_get(status_cache_key)
+        if cached_status is not None:
+            return cached_status
+
     if _delegate_to_updater():
-        payload = updater_client.get_json("/status", params={"fetch": "1" if fetch_remote else "0"}, timeout=80 if fetch_remote else 20)
+        route = _current_route()
+        url = f"{updater_client._base_url()}/status"
+        timeout = EXTERNAL_STATUS_TIMEOUT_SECONDS if fetch_remote else 20
+        started = time.perf_counter()
+        _log_http_out_start(route, url, timeout)
+        try:
+            payload = updater_client.get_json("/status", params={"fetch": "1" if fetch_remote else "0"}, timeout=timeout)
+        except Exception as exc:
+            duration_ms = (time.perf_counter() - started) * 1000
+            _log_http_out_error_once(route, url, duration_ms)
+            status = _build_unavailable(str(exc) or _t("version_status_check_failed"), [], {"repo_dir": _repo_dir()})
+            if fetch_remote:
+                _status_cache_set(status_cache_key, status, UPDATE_STATUS_FAILURE_CACHE_TTL_SECONDS)
+            return status
+        duration_ms = (time.perf_counter() - started) * 1000
+        _log_http_out_done(route, url, timeout, duration_ms)
         status = payload.get("status") or {}
+        if fetch_remote:
+            _status_cache_set(status_cache_key, status)
         return status
 
     repo_dir = _repo_dir()
@@ -653,14 +751,23 @@ def get_update_status(*, fetch_remote=False, allow_dirty=False):
     add_check("docker_compose", _t("version_check_docker_compose"), True, " ".join(os.path.basename(part) for part in compose_cmd))
 
     if fetch_remote:
-        fetch = _git(["fetch", remote_name, "--tags", "--prune"], timeout=60)
+        route = _current_route()
+        url = remote_url.stdout.strip()
+        timeout = EXTERNAL_STATUS_TIMEOUT_SECONDS
+        started = time.perf_counter()
+        _log_http_out_start(route, url, timeout)
+        fetch = _git(["fetch", remote_name, "--tags", "--prune"], timeout=timeout)
+        duration_ms = (time.perf_counter() - started) * 1000
         if not fetch.ok:
+            _log_http_out_error_once(route, url, duration_ms)
             add_check("git_fetch", _t("version_check_git_fetch"), False, fetch.stderr or fetch.stdout)
-            return _build_incompatible(
+            return _external_status_failed(
                 _t("version_reason_fetch_failed"),
                 checks,
                 status_context,
+                status_cache_key,
             )
+        _log_http_out_done(route, url, timeout, duration_ms)
         add_check("git_fetch", _t("version_check_git_fetch"), True, fetch.stdout or _t("version_check_refs_updated"))
 
     remote_ref = ""
@@ -739,7 +846,7 @@ def get_update_status(*, fetch_remote=False, allow_dirty=False):
             can_apply = False
             reason = _t("version_reason_diverged")
 
-    return {
+    result = {
         "status": status_name,
         "status_label": status_label,
         "status_tone": status_tone,
@@ -765,6 +872,9 @@ def get_update_status(*, fetch_remote=False, allow_dirty=False):
         "compose_command": " ".join(compose_cmd),
         "update_script": update_script_label,
     }
+    if fetch_remote:
+        _status_cache_set(status_cache_key, result)
+    return result
 
 
 def _stream_command(command, *, cwd, env=None, progress_callback=None):

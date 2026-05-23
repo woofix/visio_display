@@ -26,6 +26,8 @@ class UpdateServiceTests(unittest.TestCase):
         os.environ.pop("VISIO_UPDATER_ROLE", None)
         os.environ.pop("UPDATER_API_URL", None)
         os.environ.pop("UPDATER_API_TOKEN", None)
+        update_svc._UPDATE_STATUS_CACHE.clear()
+        update_svc._HTTP_OUT_ERROR_LOGGED.clear()
         self.compose_patch = patch.object(update_svc, "_docker_compose_command", return_value=(["docker", "compose"], ""))
         self.compose_patch.start()
 
@@ -37,6 +39,8 @@ class UpdateServiceTests(unittest.TestCase):
             else:
                 os.environ[key] = value
         self.temp_dir.cleanup()
+        update_svc._UPDATE_STATUS_CACHE.clear()
+        update_svc._HTTP_OUT_ERROR_LOGGED.clear()
 
     def _git(self, repo, *args):
         subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True, text=True)
@@ -166,6 +170,43 @@ class UpdateServiceTests(unittest.TestCase):
         self.assertEqual(status["local_version"], "1.0.0")
         self.assertEqual(status["remote_version"], "1.1.0")
         self.assertNotEqual(status["local_commit"], status["remote_commit"])
+
+    def test_fetch_remote_uses_short_timeout_and_unavailable_on_failure(self):
+        self._init_repo()
+        original_git = update_svc._git
+        seen = {}
+
+        def fake_git(command, *, timeout=12):
+            if command[:1] == ["fetch"]:
+                seen["timeout"] = timeout
+                return update_svc.CommandResult(False, stderr="Commande trop longue", returncode=124)
+            return original_git(command, timeout=timeout)
+
+        with patch.object(update_svc, "_git", side_effect=fake_git):
+            status = update_svc.get_update_status(fetch_remote=True)
+
+        self.assertEqual(seen["timeout"], 1.5)
+        self.assertEqual(status["status"], "unavailable")
+        self.assertFalse(status["can_apply"])
+
+    def test_fetch_remote_failure_status_is_cached(self):
+        self._init_repo()
+        original_git = update_svc._git
+        calls = {"fetch": 0}
+
+        def fake_git(command, *, timeout=12):
+            if command[:1] == ["fetch"]:
+                calls["fetch"] += 1
+                return update_svc.CommandResult(False, stderr="offline", returncode=1)
+            return original_git(command, timeout=timeout)
+
+        with patch.object(update_svc, "_git", side_effect=fake_git):
+            first = update_svc.get_update_status(fetch_remote=True)
+            second = update_svc.get_update_status(fetch_remote=True)
+
+        self.assertEqual(first["status"], "unavailable")
+        self.assertEqual(second["status"], "unavailable")
+        self.assertEqual(calls["fetch"], 1)
 
     def test_same_version_remote_ahead_is_update_available(self):
         self._init_repo()

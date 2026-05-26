@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -181,6 +182,22 @@ def _run(command, *, cwd=None, timeout=12):
 
 def _git(command, *, timeout=12):
     return _run(["git", *command], timeout=timeout)
+
+
+def _safe_git_remote_name(remote_name):
+    value = str(remote_name or "").strip()
+    if not value or value.startswith("-"):
+        return ""
+    if not re.fullmatch(r"[A-Za-z0-9._/-]+", value):
+        return ""
+    return value
+
+
+def _fetch_remote_refs(remote_name, *, timeout):
+    safe_remote = _safe_git_remote_name(remote_name)
+    if not safe_remote:
+        return CommandResult(False, stderr="Nom de remote Git invalide", returncode=2)
+    return _git(["fetch", safe_remote], timeout=timeout)
 
 
 def _first_line(value):
@@ -693,7 +710,10 @@ def get_update_status(*, fetch_remote=False, allow_dirty=False):
         return _build_incompatible(_t("version_reason_no_git_dir"), checks)
     add_check("git_dir", _t("version_check_git_dir"), True)
 
-    remote_name = os.environ.get("VISIO_UPDATE_REMOTE", "origin").strip() or "origin"
+    remote_name = _safe_git_remote_name(os.environ.get("VISIO_UPDATE_REMOTE", "origin").strip() or "origin")
+    if not remote_name:
+        add_check("remote", _t("version_check_remote"), False, "remote Git invalide")
+        return _build_incompatible(_t("version_reason_no_remote"), checks)
     remote_url = _git(["remote", "get-url", remote_name])
     if not remote_url.ok or not remote_url.stdout.strip():
         add_check("remote", _t("version_check_remote"), False, remote_url.stderr or f"remote {remote_name} introuvable")
@@ -756,7 +776,7 @@ def get_update_status(*, fetch_remote=False, allow_dirty=False):
         timeout = EXTERNAL_STATUS_TIMEOUT_SECONDS
         started = time.perf_counter()
         _log_http_out_start(route, url, timeout)
-        fetch = _git(["fetch", remote_name, "--tags", "--prune"], timeout=timeout)
+        fetch = _fetch_remote_refs(remote_name, timeout=timeout)
         duration_ms = (time.perf_counter() - started) * 1000
         if not fetch.ok:
             _log_http_out_error_once(route, url, duration_ms)

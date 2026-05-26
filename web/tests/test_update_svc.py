@@ -178,6 +178,7 @@ class UpdateServiceTests(unittest.TestCase):
 
         def fake_git(command, *, timeout=12):
             if command[:1] == ["fetch"]:
+                seen["command"] = command
                 seen["timeout"] = timeout
                 return update_svc.CommandResult(False, stderr="Commande trop longue", returncode=124)
             return original_git(command, timeout=timeout)
@@ -185,9 +186,35 @@ class UpdateServiceTests(unittest.TestCase):
         with patch.object(update_svc, "_git", side_effect=fake_git):
             status = update_svc.get_update_status(fetch_remote=True)
 
+        self.assertEqual(seen["command"], ["fetch", "origin"])
         self.assertEqual(seen["timeout"], 1.5)
         self.assertEqual(status["status"], "unavailable")
         self.assertFalse(status["can_apply"])
+
+    def test_fetch_remote_updates_origin_main_with_simple_fetch(self):
+        self._init_repo()
+        self._advance_remote()
+
+        status = update_svc.get_update_status(fetch_remote=True)
+
+        self.assertEqual(status["status"], "update_available")
+        self.assertEqual(status["remote_ref"], "origin/main")
+        self.assertEqual(status["remote_version"], "1.1.0")
+
+    def test_fetch_remote_rejects_unsafe_remote_name(self):
+        self._init_repo()
+
+        with patch.dict(os.environ, {"VISIO_UPDATE_REMOTE": "--upload-pack=sh"}, clear=False):
+            status = update_svc.get_update_status(fetch_remote=True)
+
+        self.assertEqual(status["status"], "incompatible")
+        self.assertFalse(status["compatible"])
+
+        with patch.object(update_svc, "_git") as git:
+            result = update_svc._fetch_remote_refs("--upload-pack=sh", timeout=1.5)
+
+        self.assertFalse(result.ok)
+        git.assert_not_called()
 
     def test_fetch_remote_failure_status_is_cached(self):
         self._init_repo()

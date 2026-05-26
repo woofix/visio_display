@@ -433,6 +433,19 @@ class AppSmokeTests(unittest.TestCase):
                 for entry in logs
             ))
 
+    def test_superadmin_settings_subpages_use_logged_user_theme(self):
+        with self.app.app_context():
+            from services.users_svc import update_user_theme
+
+            self.assertTrue(update_user_theme("admin", "sombre"))
+
+        self._login()
+        for path in ("/admin/settings/sauvegardes", "/admin/settings/installation"):
+            response = self.client.get(path)
+
+            self.assertEqual(response.status_code, 200)
+            self.assertIn('data-theme="sombre"', response.get_data(as_text=True))
+
     def test_superadmin_can_reset_user_password(self):
         with self.app.app_context():
             from services.users_svc import create_user

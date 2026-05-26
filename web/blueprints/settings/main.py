@@ -36,7 +36,7 @@ from services.settings_sections import (
     settings_section_template,
     settings_section_url,
 )
-from services.users_svc import has_screen_access, is_superadmin, load_users
+from services.users_svc import get_user, has_screen_access, is_superadmin, load_users
 
 from . import bp
 
@@ -143,7 +143,11 @@ def _build_settings_context(tab='logo', install_defaults=None, install_result=No
         events.append({**ev, "delta": delta})
     username = session.get('user')
     entry = users.get(username, {})
-    user_theme = entry.get('theme', 'violet') if isinstance(entry, dict) else 'violet'
+    if isinstance(entry, dict) and entry:
+        user_theme = entry.get('theme', 'violet')
+    else:
+        current_user = get_user(username)
+        user_theme = getattr(current_user, 'theme', None) or 'violet'
     meteo_location = {
         "ville": cfg.get("meteo_ville", DEFAULT_METEO_VILLE),
         "lat": cfg.get("meteo_lat", LAT),

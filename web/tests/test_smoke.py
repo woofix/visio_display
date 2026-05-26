@@ -2473,6 +2473,20 @@ class AppSmokeTests(unittest.TestCase):
         self.assertTrue(previews["clip.mp4"].startswith("/static/data/video_posters/clip__mp4__thumb.jpg?v="))
         self.assertTrue(previews["poster.jpg"].startswith("/static/data/variants/poster__jpg__thumb.jpg?v="))
 
+    def test_ephemeris_media_preview_uses_original_image(self):
+        with self.app.app_context():
+            from constants import UPLOAD_FOLDER
+            from services import media_svc
+
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            filename = "ephemeride_2026-05-26_10h.jpg"
+            with open(os.path.join(UPLOAD_FOLDER, filename), "wb") as handle:
+                handle.write(b"ephemeris")
+
+            previews = media_svc.build_media_preview_map([filename])
+
+        self.assertTrue(previews[filename].startswith(f"/static/data/original/{filename}?v="))
+
     def test_admin_media_does_not_generate_missing_previews_for_video_thumbnails(self):
         with self.app.app_context():
             from constants import UPLOAD_FOLDER

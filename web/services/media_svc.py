@@ -749,6 +749,8 @@ def _pick_video_poster_profile(context='admin', bounds=None):
 
 def get_media_url(filename, *, context='admin', bounds=None, allow_original=False, generate_missing=False):
     try:
+        if filename.startswith('ephemeride_'):
+            return get_original_media_url(filename)
         media_type = get_media_type(filename)
         if media_type == 'image':
             profile_name = _pick_image_profile(context=context, bounds=bounds)

@@ -38,6 +38,26 @@ _METEO_REQUEST_TIMEOUT_SECONDS = 1.5
 _METEO_CACHE_TTL_SECONDS = 15 * 60
 _METEO_LAST_KNOWN_CACHE = {}
 _METEO_ERROR_LOGGED_KEYS = set()
+_METNO_USER_AGENT = os.environ.get(
+    "VISIO_METNO_USER_AGENT",
+    "VisioDisplay/1.9 github.com/woofix/visio_display",
+)
+_METNO_SYMBOL_CONDITIONS = {
+    "clearsky": (0, "Ciel clair"),
+    "fair": (1, "Peu nuageux"),
+    "partlycloudy": (2, "Partiellement nuageux"),
+    "cloudy": (3, "Nuageux"),
+    "fog": (45, "Brouillard"),
+    "rainshowers": (80, "Averses"),
+    "rain": (61, "Pluie"),
+    "heavyrain": (65, "Forte pluie"),
+    "sleetshowers": (85, "Averses de neige fondue"),
+    "sleet": (85, "Neige fondue"),
+    "snowshowers": (71, "Averses de neige"),
+    "snow": (71, "Neige"),
+    "heavysnow": (75, "Forte neige"),
+    "thunderstorm": (95, "Orage"),
+}
 
 
 def _ephemeris_cache_get(cache, key):
@@ -91,7 +111,98 @@ def _log_weather_error_once(cache_key, exc):
         if cache_key in _METEO_ERROR_LOGGED_KEYS:
             return
         _METEO_ERROR_LOGGED_KEYS.add(cache_key)
-    LOGGER.warning("Open-Meteo unavailable, using cached/unavailable weather: %s", exc)
+    LOGGER.warning("Weather providers unavailable, using cached/unavailable weather: %s", exc)
+
+
+def _format_temperature(value):
+    try:
+        return f"{float(value):.0f}°C"
+    except (TypeError, ValueError):
+        return "--°C"
+
+
+def _format_wind_kmh(value):
+    try:
+        return f"{float(value):.0f} km/h"
+    except (TypeError, ValueError):
+        return "-- km/h"
+
+
+def _format_precip(value):
+    try:
+        return f"{float(value):.1f} mm"
+    except (TypeError, ValueError):
+        return "-- mm"
+
+
+def _metno_symbol_info(symbol_code, lang):
+    symbol = str(symbol_code or "").lower().split("_", 1)[0]
+    for prefix, info in _METNO_SYMBOL_CONDITIONS.items():
+        if symbol.startswith(prefix):
+            code, condition = info
+            return code, condition.upper()
+    return -1, _t('ephemeris_weather_unknown', lang).upper()
+
+
+def _weather_from_open_meteo(lat, lng, tz_name, lang):
+    wmo = WMO_CODES_BY_LANG.get(lang, WMO_CODES_BY_LANG['fr'])
+    r = requests.get(
+        "https://api.open-meteo.com/v1/forecast",
+        params={
+            "latitude": lat, "longitude": lng,
+            "current": "temperature_2m,apparent_temperature,weather_code,wind_speed_10m,precipitation",
+            "wind_speed_unit": "kmh", "timezone": tz_name
+        },
+        timeout=_METEO_REQUEST_TIMEOUT_SECONDS
+    )
+    r.raise_for_status()
+    current = r.json()["current"]
+    temp = current.get("temperature_2m", "--")
+    temp_res = current.get("apparent_temperature", "--")
+    code = current.get("weather_code", current.get("weathercode", -1))
+    vent = current.get("wind_speed_10m", current.get("windspeed_10m", "--"))
+    precip = current.get("precipitation", 0)
+    condition = wmo.get(code, _t('ephemeris_weather_unknown', lang))
+    return {
+        "temp": _format_temperature(temp),
+        "ressenti": _format_temperature(temp_res),
+        "condition": condition.upper(),
+        "vent": _format_wind_kmh(vent),
+        "precip": _format_precip(precip),
+        "code": code,
+    }
+
+
+def _weather_from_metno(lat, lng, lang):
+    r = requests.get(
+        "https://api.met.no/weatherapi/locationforecast/2.0/compact",
+        params={"lat": lat, "lon": lng},
+        headers={"User-Agent": _METNO_USER_AGENT},
+        timeout=_METEO_REQUEST_TIMEOUT_SECONDS,
+    )
+    r.raise_for_status()
+    timeseries = r.json().get("properties", {}).get("timeseries", [])
+    if not timeseries:
+        raise ValueError("MET Norway response has no timeseries")
+    data = timeseries[0].get("data", {})
+    instant = data.get("instant", {}).get("details", {})
+    next_hour = data.get("next_1_hours", {})
+    summary = next_hour.get("summary", {})
+    details = next_hour.get("details", {})
+
+    temp = instant.get("air_temperature")
+    wind_ms = instant.get("wind_speed")
+    wind_kmh = float(wind_ms) * 3.6 if wind_ms is not None else None
+    precip = details.get("precipitation_amount", 0)
+    code, condition = _metno_symbol_info(summary.get("symbol_code"), lang)
+    return {
+        "temp": _format_temperature(temp),
+        "ressenti": _format_temperature(temp),
+        "condition": condition,
+        "vent": _format_wind_kmh(wind_kmh),
+        "precip": _format_precip(precip),
+        "code": code,
+    }
 
 
 def _configured_zoneinfo(cfg=None):
@@ -762,33 +873,15 @@ def get_meteo(cfg=None):
         result = _unavailable_weather(lang)
         _ephemeris_cache_set(_EPHEMERIS_DATA_CACHE, cache_key, result, _METEO_CACHE_TTL_SECONDS)
         return result
-    wmo  = WMO_CODES_BY_LANG.get(lang, WMO_CODES_BY_LANG['fr'])
     try:
-        r = requests.get(
-            "https://api.open-meteo.com/v1/forecast",
-            params={
-                "latitude": lat, "longitude": lng,
-                "current": "temperature_2m,apparent_temperature,weather_code,wind_speed_10m,precipitation",
-                "wind_speed_unit": "kmh", "timezone": tz_name
-            },
-            timeout=_METEO_REQUEST_TIMEOUT_SECONDS
-        )
-        r.raise_for_status()
-        current   = r.json()["current"]
-        temp      = current.get("temperature_2m", "--")
-        temp_res  = current.get("apparent_temperature", "--")
-        code      = current.get("weather_code", current.get("weathercode", -1))
-        vent      = current.get("wind_speed_10m", current.get("windspeed_10m", "--"))
-        precip    = current.get("precipitation", 0)
-        condition = wmo.get(code, _t('ephemeris_weather_unknown', lang))
-        result = {
-            "temp":      f"{temp:.0f}°C",
-            "ressenti":  f"{temp_res:.0f}°C",
-            "condition": condition.upper(),
-            "vent":      f"{vent:.0f} km/h",
-            "precip":    f"{precip:.1f} mm",
-            "code":      code,
-        }
+        result = _weather_from_open_meteo(lat, lng, tz_name, lang)
+        _weather_last_known_set(cache_key, result)
+        _ephemeris_cache_set(_EPHEMERIS_DATA_CACHE, cache_key, result, _METEO_CACHE_TTL_SECONDS)
+        return result
+    except Exception as open_meteo_error:
+        LOGGER.warning("Open-Meteo unavailable, trying MET Norway: %s", open_meteo_error)
+    try:
+        result = _weather_from_metno(lat, lng, lang)
         _weather_last_known_set(cache_key, result)
         _ephemeris_cache_set(_EPHEMERIS_DATA_CACHE, cache_key, result, _METEO_CACHE_TTL_SECONDS)
         return result

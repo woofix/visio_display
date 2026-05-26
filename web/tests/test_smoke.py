@@ -2117,6 +2117,59 @@ class AppSmokeTests(unittest.TestCase):
             self.assertEqual(fallback["temp"], "21°C")
             self.assertEqual(fallback["condition"], result["condition"])
 
+    def test_meteo_falls_back_to_met_norway(self):
+        with self.app.app_context():
+            from services import ephemeris_svc
+            from services.config_svc import save_config
+
+            save_config({
+                "meteo_ville": "Paris",
+                "meteo_lat": 48.8566,
+                "meteo_lng": 2.3522,
+                "meteo_tz": "Europe/Paris",
+            })
+            ephemeris_svc._EPHEMERIS_DATA_CACHE.clear()
+
+            class FakeMetNoResponse:
+                def raise_for_status(self):
+                    return None
+
+                def json(self):
+                    return {
+                        "properties": {
+                            "timeseries": [{
+                                "data": {
+                                    "instant": {
+                                        "details": {
+                                            "air_temperature": 18.4,
+                                            "wind_speed": 4.2,
+                                        }
+                                    },
+                                    "next_1_hours": {
+                                        "summary": {"symbol_code": "rain"},
+                                        "details": {"precipitation_amount": 0.6},
+                                    },
+                                }
+                            }]
+                        }
+                    }
+
+            with patch.object(
+                ephemeris_svc.requests,
+                "get",
+                side_effect=[TimeoutError("open-meteo offline"), FakeMetNoResponse()],
+            ) as request_get:
+                result = ephemeris_svc.get_meteo()
+
+            self.assertEqual(result["temp"], "18°C")
+            self.assertEqual(result["ressenti"], "18°C")
+            self.assertEqual(result["condition"], "PLUIE")
+            self.assertEqual(result["vent"], "15 km/h")
+            self.assertEqual(result["precip"], "0.6 mm")
+            self.assertEqual(result["code"], 61)
+            self.assertEqual(request_get.call_count, 2)
+            self.assertIn("User-Agent", request_get.call_args.kwargs["headers"])
+
     def test_meteo_can_be_disabled_by_environment(self):
         with self.app.app_context():
             from services import ephemeris_svc

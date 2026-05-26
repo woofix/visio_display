@@ -52,9 +52,14 @@ def admin_announcements_page():
 
     cfg = load_config()
     media_choices = image_media_choices()
-    media_preview_map = build_media_preview_map(media_choices, context="campaign", generate_missing=True)
+    media_preview_map = build_media_preview_map(
+        media_choices,
+        context="campaign",
+        generate_missing=False,
+        placeholder_url="",
+    )
     media_original_map = {
-        filename: get_media_url(filename, context="preview", allow_original=True, generate_missing=True)
+        filename: get_media_url(filename, context="preview", allow_original=True, generate_missing=False)
         for filename in media_choices
     }
     users = load_users()

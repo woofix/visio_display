@@ -834,8 +834,10 @@ class AppSmokeTests(unittest.TestCase):
             session["_csrf_token"] = "upload-token"
             token = session["_csrf_token"]
 
-        with patch("services.upload_svc.get_video_duration_seconds", return_value=None), \
-             patch("services.upload_svc.enqueue_compress_job", return_value="job-123") as enqueue_job:
+        media_module = import_module("blueprints.media")
+        with patch("services.upload_svc.get_video_duration_seconds", return_value=None) as video_probe, \
+             patch("services.upload_svc.enqueue_compress_job", return_value="job-123") as enqueue_job, \
+             patch.object(media_module, "enqueue_media_prepare_job", return_value="prepare-123") as enqueue_prepare:
             response = self.client.post(
                 "/upload",
                 data={"file": (BytesIO(b"fake-video"), "clip.mp4"), "_csrf_token": token},
@@ -846,7 +848,9 @@ class AppSmokeTests(unittest.TestCase):
         payload = response.get_json()
         self.assertTrue(payload["ok"])
         self.assertEqual(payload["queued_files"], ["clip.mp4"])
+        video_probe.assert_not_called()
         enqueue_job.assert_called_once()
+        enqueue_prepare.assert_called_once_with("clip.mp4")
 
         with self.app.app_context():
             from constants import UPLOAD_FOLDER
@@ -856,7 +860,7 @@ class AppSmokeTests(unittest.TestCase):
             cfg = load_config()
             self.assertIn("clip.mp4", cfg.get("disabled", []))
 
-    def test_image_upload_is_saved_and_renditions_are_generated(self):
+    def test_image_upload_is_saved_and_media_preparation_is_queued(self):
         from PIL import Image
 
         with self.app.app_context():
@@ -873,11 +877,15 @@ class AppSmokeTests(unittest.TestCase):
             session["_csrf_token"] = "upload-token"
             token = session["_csrf_token"]
 
-        response = self.client.post(
-            "/upload",
-            data={"file": (payload, "photo.jpg"), "_csrf_token": token},
-            content_type="multipart/form-data",
-        )
+        media_module = import_module("blueprints.media")
+        with patch("services.upload_svc.validate_image_dimensions") as validate_dimensions, \
+             patch("services.upload_svc.is_valid_uploaded_image") as validate_image, \
+             patch.object(media_module, "enqueue_media_prepare_job", return_value="prepare-123") as enqueue_prepare:
+            response = self.client.post(
+                "/upload",
+                data={"file": (payload, "photo.jpg"), "_csrf_token": token},
+                content_type="multipart/form-data",
+            )
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json()["redirect"], "/admin/media")
@@ -888,8 +896,11 @@ class AppSmokeTests(unittest.TestCase):
             from services.media_svc import get_existing_image_rendition_url
 
             self.assertTrue(os.path.exists(os.path.join(UPLOAD_FOLDER, "photo.jpg")))
-            self.assertIsNotNone(get_existing_image_rendition_url("photo.jpg", "thumb"))
+            self.assertIsNone(get_existing_image_rendition_url("photo.jpg", "thumb"))
             self.assertNotIn("photo.jpg", load_config().get("order", []))
+        validate_dimensions.assert_not_called()
+        validate_image.assert_not_called()
+        enqueue_prepare.assert_called_once_with("photo.jpg")
 
         hidden = self.client.get("/api/images", headers={"X-Screen-Token": "screen-secret"})
         self.assertEqual(hidden.status_code, 200)
@@ -912,6 +923,23 @@ class AppSmokeTests(unittest.TestCase):
 
         visible = self.client.get("/api/images", headers={"X-Screen-Token": "screen-secret"})
         self.assertEqual([item["name"] for item in visible.get_json()], ["photo.jpg"])
+
+    def test_media_prepare_worker_generates_renditions_and_sidecar_metadata(self):
+        from PIL import Image
+
+        with self.app.app_context():
+            from constants import UPLOAD_FOLDER
+            from services import media_prepare_svc
+            from services.media_svc import get_existing_image_rendition_url, get_media_metadata_sidecar_path
+
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            Image.new("RGB", (24, 16), "blue").save(os.path.join(UPLOAD_FOLDER, "photo.jpg"), "JPEG")
+
+            ok = media_prepare_svc._rq_prepare_media("photo.jpg")
+
+            self.assertTrue(ok)
+            self.assertIsNotNone(get_existing_image_rendition_url("photo.jpg", "thumb"))
+            self.assertTrue(os.path.exists(get_media_metadata_sidecar_path("photo.jpg")))
 
     def test_upload_validation_rejects_oversized_image_dimensions(self):
         from PIL import Image
@@ -2432,7 +2460,7 @@ class AppSmokeTests(unittest.TestCase):
         self.assertTrue(previews["clip.mp4"].startswith("/static/data/video_posters/clip__mp4__thumb.jpg?v="))
         self.assertTrue(previews["poster.jpg"].startswith("/static/data/variants/poster__jpg__thumb.jpg?v="))
 
-    def test_admin_media_generates_missing_previews_for_video_thumbnails(self):
+    def test_admin_media_does_not_generate_missing_previews_for_video_thumbnails(self):
         with self.app.app_context():
             from constants import UPLOAD_FOLDER
 
@@ -2459,7 +2487,47 @@ class AppSmokeTests(unittest.TestCase):
             response = self.client.get("/admin/media")
 
         self.assertEqual(response.status_code, 200)
-        build_metadata.assert_called_once_with(["clip.mp4"], preview_contexts=("admin", "preview"), generate_missing=True)
+        build_metadata.assert_called_once_with(
+            ["clip.mp4"],
+            preview_contexts=("admin", "preview"),
+            generate_missing=False,
+            include_dimensions=False,
+        )
+
+    def test_lightweight_file_info_does_not_probe_dimensions(self):
+        with self.app.app_context():
+            from constants import UPLOAD_FOLDER
+            from services import media_svc
+
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            with open(os.path.join(UPLOAD_FOLDER, "clip.mp4"), "wb") as handle:
+                handle.write(b"video")
+
+            with patch.object(media_svc, "get_video_dimensions") as dimensions:
+                info = media_svc.get_file_info("clip.mp4", include_dimensions=False)
+
+        self.assertEqual(info["type"], "video")
+        self.assertEqual(info["dims"], "video")
+        dimensions.assert_not_called()
+
+    def test_lightweight_metadata_uses_prepared_sidecar_without_probe(self):
+        from PIL import Image
+
+        with self.app.app_context():
+            from constants import UPLOAD_FOLDER
+            from services import media_svc
+
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            Image.new("RGB", (24, 16), "blue").save(os.path.join(UPLOAD_FOLDER, "photo.jpg"), "JPEG")
+            self.assertTrue(media_svc.prepare_media_derivatives("photo.jpg"))
+            media_svc.clear_media_metadata_cache()
+
+            with patch.object(media_svc, "get_image_dimensions") as dimensions:
+                metadata = media_svc.get_media_metadata("photo.jpg", include_dimensions=False)
+
+        self.assertEqual(metadata["dimensions"], {"width": 24, "height": 16})
+        self.assertEqual(metadata["dims"], "24x16")
+        dimensions.assert_not_called()
 
     def test_video_renditions_are_limited_to_profiles_supported_by_source_resolution(self):
         from services import media_svc

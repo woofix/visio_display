@@ -226,7 +226,8 @@ def validate_video_duration(path):
         )
 
 
-def save_pdf_upload(file, filename, planned_filenames, username):
+def save_pdf_upload(file, filename, planned_filenames, username, *, prepare_media_func=None):
+    prepare_media_func = prepare_media_func or generate_standard_renditions
     from pdf2image import convert_from_path
 
     dest = os.path.join(UPLOAD_FOLDER, filename)
@@ -248,7 +249,7 @@ def save_pdf_upload(file, filename, planned_filenames, username):
             page_filename = f"{stem}_page_{i+1}.jpg"
             img_path = os.path.join(UPLOAD_FOLDER, page_filename)
             img.save(img_path, "JPEG", quality=95)
-            generate_standard_renditions(page_filename)
+            prepare_media_func(page_filename)
             planned_filenames.add(page_filename)
         log_activity(username, "upload", filename=filename, details="pdf→jpg")
     finally:
@@ -269,33 +270,56 @@ def _video_resolution_warnings(filename):
     return []
 
 
-def save_video_upload(file, filename, queued_video_files, upload_warnings, username):
+def save_video_upload(
+    file,
+    filename,
+    queued_video_files,
+    upload_warnings,
+    username,
+    *,
+    enqueue_compress_func=None,
+    prepare_media_func=None,
+    probe_video=True,
+):
     dest = os.path.join(UPLOAD_FOLDER, filename)
     file.save(dest)
-    validate_video_duration(dest)
-    upload_warnings.extend(_video_resolution_warnings(filename))
+    enqueue_compress_func = enqueue_compress_func or enqueue_compress_job
+    if probe_video:
+        validate_video_duration(dest)
+        upload_warnings.extend(_video_resolution_warnings(filename))
     cfg = load_config()
     disabled = cfg.setdefault("disabled", [])
     if filename not in disabled:
         disabled.append(filename)
     save_config(cfg)
-    enqueue_compress_job(filename)
+    enqueue_compress_func(filename)
+    if prepare_media_func is not None:
+        prepare_media_func(filename)
     queued_video_files.append(filename)
     log_activity(username, "upload", filename=filename, details="queued for nightly encoding")
 
 
-def save_image_upload(file, filename, username):
+def save_image_upload(
+    file,
+    filename,
+    username,
+    *,
+    prepare_media_func=None,
+    validate_image=True,
+):
     dest = os.path.join(UPLOAD_FOLDER, filename)
     file.save(dest)
-    try:
-        validate_image_dimensions(dest)
-    except UploadValidationError:
-        os.remove(dest)
-        raise
-    if not is_valid_uploaded_image(dest):
-        os.remove(dest)
-        raise UploadValidationError("invalid image file")
-    generate_standard_renditions(filename)
+    prepare_media_func = prepare_media_func or generate_standard_renditions
+    if validate_image:
+        try:
+            validate_image_dimensions(dest)
+        except UploadValidationError:
+            os.remove(dest)
+            raise
+        if not is_valid_uploaded_image(dest):
+            os.remove(dest)
+            raise UploadValidationError("invalid image file")
+    prepare_media_func(filename)
     log_activity(username, "upload", filename=filename)
 
 
@@ -303,10 +327,21 @@ def _json_error(payload, status_code):
     return jsonify(payload), status_code
 
 
-def handle_media_upload(files, form_data, username):
+def handle_media_upload(
+    files,
+    form_data,
+    username,
+    *,
+    prepare_media_func=None,
+    enqueue_compress_func=None,
+    probe_video=True,
+    validate_image=True,
+):
     if not files:
         _flash("flash_no_file", "error")
         return redirect(url_for("admin.admin_page"))
+    prepare_media_func = prepare_media_func or generate_standard_renditions
+    enqueue_compress_func = enqueue_compress_func or enqueue_compress_job
 
     conflict_strategy = normalize_conflict_strategy(form_data.get("conflict_strategy"))
     rename_map = load_rename_map(form_data)
@@ -371,11 +406,26 @@ def handle_media_upload(files, form_data, username):
 
         try:
             if ext == ".pdf":
-                save_pdf_upload(file, filename, planned_filenames, username)
+                save_pdf_upload(file, filename, planned_filenames, username, prepare_media_func=prepare_media_func)
             elif ext in VIDEO_EXTS:
-                save_video_upload(file, filename, queued_video_files, upload_warnings, username)
+                save_video_upload(
+                    file,
+                    filename,
+                    queued_video_files,
+                    upload_warnings,
+                    username,
+                    enqueue_compress_func=enqueue_compress_func,
+                    prepare_media_func=prepare_media_func,
+                    probe_video=probe_video,
+                )
             else:
-                save_image_upload(file, filename, username)
+                save_image_upload(
+                    file,
+                    filename,
+                    username,
+                    prepare_media_func=prepare_media_func,
+                    validate_image=validate_image,
+                )
         except UploadValidationError as exc:
             prepare_overwrite_target(filename)
             return _json_error(exc.payload, exc.status_code)

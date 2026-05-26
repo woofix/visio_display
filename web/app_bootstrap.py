@@ -46,7 +46,7 @@ from services.display_token_svc import (
 from services.i18n import _flash, _trans, get_language
 from services.rbac_svc import init_rbac
 from services.settings_sections import is_settings_nav_path, settings_nav_groups
-from services.users_svc import get_user, has_permission, init_users, is_admin, is_superadmin, load_users
+from services.users_svc import get_user, has_permission, init_users, is_admin, is_superadmin
 from translations import TRANSLATIONS
 
 
@@ -540,7 +540,8 @@ def register_request_hooks(app):
         try:
             from services.menu_svc import cleanup_expired_generated_menus
 
-            cleanup_expired_generated_menus()
+            with measure_perf_step('before.cleanup_expired_menus'):
+                cleanup_expired_generated_menus()
         except Exception:
             LOGGER.exception("Unable to clean expired generated menus")
         return None
@@ -742,8 +743,23 @@ def register_template_context(app):
 
     @app.context_processor
     def inject_globals():
-        lang = get_language()
-        trans = _trans(lang)
+        context_started = time.perf_counter()
+        username = session.get("user")
+        current_user = None
+        is_admin_page = request.path.startswith("/admin")
+        needs_cfg = is_admin_page or request.path == "/"
+
+        with measure_perf_step('context.language'):
+            if username:
+                current_user = get_user(username)
+                if current_user is not None:
+                    g.current_user_model = current_user
+                lang = getattr(current_user, "language", None) or session.get('login_language')
+                if lang not in TRANSLATIONS:
+                    lang = 'fr'
+            else:
+                lang = get_language()
+            trans = _trans(lang)
 
         def t(key, **kwargs):
             value = trans.get(key, TRANSLATIONS["fr"].get(key, key))
@@ -754,30 +770,52 @@ def register_template_context(app):
                     LOGGER.debug("Unable to format translation key: %s", key, exc_info=True)
             return value
 
-        users = load_users()
-        username = session.get("user")
-        entry = users.get(username, {})
-        user_theme = entry.get("theme", "violet") if isinstance(entry, dict) else "violet"
-        cfg = load_config()
-        default_screen_name = get_default_screen_name(cfg) or t("media_screen_default")
-        translated_permissions = [(key, t(label_key)) for key, label_key in ALL_PERMISSIONS]
-        static_version = _static_cache_version()
+        user_theme = getattr(current_user, "theme", None) or "violet"
+        cfg = {}
+        if needs_cfg:
+            with measure_perf_step('context.load_config'):
+                cfg = load_config()
+        default_screen_name = (
+            (get_default_screen_name(cfg) or t("media_screen_default"))
+            if needs_cfg else
+            t("media_screen_default")
+        )
+        translated_permissions = []
+        with measure_perf_step('context.static_version'):
+            static_version = _static_cache_version()
         admin_update_status = None
-        if session.get("user") and request.path.startswith("/admin"):
+        if username and is_admin_page:
             from services.version_svc import get_version_status
 
-            admin_update_status = get_version_status(allow_remote=False)
+            with measure_perf_step('context.update_status'):
+                admin_update_status = get_version_status(allow_remote=False)
 
         current_user_must_change_password = False
         if username:
-            _u = get_user(username)
-            current_user_must_change_password = bool(_u and _u.must_change_password)
+            with measure_perf_step('context.current_user'):
+                current_user_must_change_password = bool(current_user and current_user.must_change_password)
 
-        current_user_is_superadmin = is_superadmin()
-        current_user_permissions = [key for key, _label_key in ALL_PERMISSIONS if has_permission(key)]
+        current_user_is_superadmin = False
+        current_user_permissions = []
+        nav_groups = []
+        with measure_perf_step('context.permissions'):
+            if is_admin_page and username:
+                current_user_is_superadmin = is_superadmin()
+                current_user_permissions = [key for key, _label_key in ALL_PERMISSIONS if has_permission(key)]
+                translated_permissions = [(key, t(label_key)) for key, label_key in ALL_PERMISSIONS]
 
         def get_csp_nonce():
             return getattr(g, 'csp_nonce', '')
+
+        if is_admin_page:
+            settings_nav_started = time.perf_counter()
+            nav_groups = settings_nav_groups(
+                request.path,
+                superadmin=current_user_is_superadmin,
+                permissions=current_user_permissions,
+            )
+            record_perf_step('context.settings_nav', (time.perf_counter() - settings_nav_started) * 1000)
+        record_perf_step('context.total', (time.perf_counter() - context_started) * 1000)
 
         return dict(
             csp_nonce=get_csp_nonce,
@@ -791,11 +829,7 @@ def register_template_context(app):
             admin_rendered_at=datetime.now().strftime("%H:%M:%S"),
             has_permission=has_permission,
             is_feature_enabled=is_feature_enabled,
-            settings_nav_groups=settings_nav_groups(
-                request.path,
-                superadmin=current_user_is_superadmin,
-                permissions=current_user_permissions,
-            ),
+            settings_nav_groups=nav_groups,
             settings_nav_open=is_settings_nav_path(request.path),
             theme=user_theme,
             app_name=cfg.get("app_name", "Helios"),

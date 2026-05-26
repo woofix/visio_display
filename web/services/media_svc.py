@@ -64,6 +64,58 @@ _DISK_USAGE_CACHE_EXPIRES_AT = 0.0
 _DISK_USAGE_CACHE_TTL_SECONDS = 10
 _DISK_USAGE_CACHE_LOCK = threading.Lock()
 logger = logging.getLogger(__name__)
+MEDIA_METADATA_SIDECAR_VERSION = 1
+
+
+def get_media_metadata_sidecar_path(filename):
+    return os.path.join(UPLOAD_FOLDER, f'{filename}.media-meta.json')
+
+
+def _load_media_metadata_sidecar(filename, stat_result=None):
+    try:
+        with open(get_media_metadata_sidecar_path(filename), encoding='utf-8') as handle:
+            payload = json.load(handle)
+    except (OSError, TypeError, ValueError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    if payload.get('version') != MEDIA_METADATA_SIDECAR_VERSION:
+        return None
+    if stat_result is not None and (
+        payload.get('size_bytes') != stat_result.st_size
+        or payload.get('mtime_ns') != stat_result.st_mtime_ns
+    ):
+        return None
+    return payload
+
+
+def _write_media_metadata_sidecar(filename, metadata):
+    path = get_media_metadata_sidecar_path(filename)
+    payload = {
+        'version': MEDIA_METADATA_SIDECAR_VERSION,
+        'filename': filename,
+        'type': metadata.get('type', 'unknown'),
+        'size_bytes': metadata.get('size_bytes', 0),
+        'mtime_ns': metadata.get('mtime_ns', 0),
+        'dimensions': dict(metadata.get('dimensions') or {}),
+        'dims': metadata.get('dims', '--'),
+        'prepared_at': datetime.now().isoformat(timespec='seconds'),
+    }
+    with open(path, 'w', encoding='utf-8') as handle:
+        json.dump(payload, handle, ensure_ascii=False, sort_keys=True)
+
+
+def _record_perf_step(name, started_at, *, min_ms=0.0):
+    elapsed_ms = max(0.0, (time.perf_counter() - started_at) * 1000)
+    if elapsed_ms < min_ms:
+        return elapsed_ms
+    try:
+        from app_bootstrap import record_perf_step
+
+        record_perf_step(name, elapsed_ms)
+    except Exception:
+        pass
+    return elapsed_ms
 
 
 def strip_html(text):
@@ -303,6 +355,14 @@ def delete_video_variants(filename):
                 pass
 
 
+def delete_media_metadata(filename):
+    try:
+        os.remove(get_media_metadata_sidecar_path(filename))
+    except OSError:
+        pass
+    clear_media_metadata_cache()
+
+
 def _fit_and_pad_thumbnail(img):
     frame = ImageOps.exif_transpose(img).convert('RGB')
     frame.thumbnail(THUMB_SIZE, Image.Resampling.LANCZOS)
@@ -319,6 +379,7 @@ def _thumbnail_to_fit(img, width, height):
 
 
 def generate_image_thumbnail(source_path, filename):
+    started = time.perf_counter()
     os.makedirs(VIDEO_THUMB_FOLDER, exist_ok=True)
     thumb_path = get_thumbnail_path(filename)
     try:
@@ -327,9 +388,12 @@ def generate_image_thumbnail(source_path, filename):
         return thumb_path
     except Exception:
         return None
+    finally:
+        _record_perf_step('media.generate_image_thumb', started)
 
 
 def generate_image_rendition(source_path, filename, profile_name):
+    started = time.perf_counter()
     profile = IMAGE_RENDITION_PROFILES.get(profile_name)
     if not profile:
         return None
@@ -347,9 +411,12 @@ def generate_image_rendition(source_path, filename, profile_name):
         return rendition_path
     except Exception:
         return None
+    finally:
+        _record_perf_step(f'media.generate_image_{profile_name}', started)
 
 
 def generate_image_variant(source_path, filename, width, height):
+    started = time.perf_counter()
     bounds = _normalize_variant_bounds(width, height)
     if not bounds:
         return None
@@ -364,9 +431,12 @@ def generate_image_variant(source_path, filename, width, height):
         return variant_path
     except Exception:
         return None
+    finally:
+        _record_perf_step('media.generate_image_variant', started)
 
 
 def generate_video_thumbnail(source_path, filename):
+    started = time.perf_counter()
     os.makedirs(VIDEO_THUMB_FOLDER, exist_ok=True)
     thumb_path = get_thumbnail_path(filename)
     try:
@@ -381,9 +451,12 @@ def generate_video_thumbnail(source_path, filename):
         return thumb_path
     except Exception:
         return None
+    finally:
+        _record_perf_step('media.generate_video_thumb', started)
 
 
 def generate_video_poster(source_path, filename, profile_name):
+    started = time.perf_counter()
     profile = VIDEO_POSTER_PROFILES.get(profile_name)
     if not profile:
         return None
@@ -406,9 +479,12 @@ def generate_video_poster(source_path, filename, profile_name):
         return poster_path
     except Exception:
         return None
+    finally:
+        _record_perf_step(f'media.generate_video_poster_{profile_name}', started)
 
 
 def generate_video_variant(source_path, filename, profile_name):
+    started = time.perf_counter()
     profile = VIDEO_RENDITION_PROFILES.get(profile_name)
     if not profile:
         return None
@@ -438,6 +514,8 @@ def generate_video_variant(source_path, filename, profile_name):
         return variant_path
     except Exception:
         return None
+    finally:
+        _record_perf_step(f'media.generate_video_{profile_name}', started)
 
 
 def ensure_image_thumbnail(filename):
@@ -523,22 +601,26 @@ def ensure_video_variant(filename, profile_name):
 
 
 def get_image_dimensions(filename):
+    started = time.perf_counter()
     source_path = os.path.join(UPLOAD_FOLDER, filename)
-    if not os.path.exists(source_path):
-        return 0, 0
     try:
+        if not os.path.exists(source_path):
+            return 0, 0
         with Image.open(source_path) as img:
             img = ImageOps.exif_transpose(img)
             return _normalize_dimension(img.width), _normalize_dimension(img.height)
     except Exception:
         return 0, 0
+    finally:
+        _record_perf_step('media.image_dimensions', started, min_ms=2.0)
 
 
 def get_video_dimensions(filename):
+    started = time.perf_counter()
     source_path = os.path.join(UPLOAD_FOLDER, filename)
-    if not os.path.exists(source_path):
-        return 0, 0
     try:
+        if not os.path.exists(source_path):
+            return 0, 0
         result = subprocess.run([
             'ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_streams', source_path
         ], capture_output=True, text=True, check=True, timeout=MEDIA_PROBE_TIMEOUT_SECONDS)
@@ -552,6 +634,8 @@ def get_video_dimensions(filename):
             )
     except Exception:
         return 0, 0
+    finally:
+        _record_perf_step('media.ffprobe_dimensions', started)
     return 0, 0
 
 
@@ -688,7 +772,7 @@ def get_media_url(filename, *, context='admin', bounds=None, allow_original=Fals
                 if poster_url:
                     return poster_url
                 legacy_thumb = ensure_video_thumbnail(filename) if generate_missing else get_existing_thumbnail_url(filename)
-                return legacy_thumb or ('/static/images/logo.svg' if not allow_original else get_original_media_url(filename))
+                return legacy_thumb or (get_original_media_url(filename) if allow_original else None)
             video_profile = _pick_video_profile(context=context, bounds=bounds)
             # Video transcoding is intentionally left to the background worker.
             # HTTP requests should never block on generating a missing rendition.
@@ -703,23 +787,28 @@ def get_media_url(filename, *, context='admin', bounds=None, allow_original=Fals
     except Exception:
         if get_media_type(filename) == 'video':
             legacy_thumb = ensure_video_thumbnail(filename) if generate_missing else get_existing_thumbnail_url(filename)
-            return legacy_thumb or ('/static/images/logo.svg' if not allow_original else get_original_media_url(filename))
+            return legacy_thumb or (get_original_media_url(filename) if allow_original else None)
         if get_media_type(filename) == 'image':
             legacy_thumb = ensure_image_thumbnail(filename) if generate_missing else get_existing_thumbnail_url(filename)
             return legacy_thumb or (get_original_media_url(filename) if allow_original else None)
         return get_original_media_url(filename) if allow_original else None
 
 
-def build_media_preview_map(files, context='admin', *, generate_missing=False):
-    metadata = build_media_metadata_map(
-        files,
-        preview_contexts=(context,),
-        generate_missing=generate_missing,
-    )
-    return {
-        filename: metadata.get(filename, {}).get('preview_urls', {}).get(context) or '/static/images/logo.svg'
-        for filename in files
-    }
+def build_media_preview_map(files, context='admin', *, generate_missing=False, placeholder_url='/static/images/logo.svg'):
+    started = time.perf_counter()
+    try:
+        metadata = build_media_metadata_map(
+            files,
+            preview_contexts=(context,),
+            generate_missing=generate_missing,
+            include_dimensions=False,
+        )
+        return {
+            filename: metadata.get(filename, {}).get('preview_urls', {}).get(context) or placeholder_url
+            for filename in files
+        }
+    finally:
+        _record_perf_step(f'media.preview_map.{context}.{len(files)}', started)
 
 
 def is_safe_svg_file(path):
@@ -770,19 +859,23 @@ def _scan_all_media(cfg):
 
 
 def get_all_media(cfg=None):
-    cfg = cfg or load_config()
-    cache_key = (_all_media_config_signature(cfg), make_media_revision())
-    with _ALL_MEDIA_CACHE_LOCK:
-        cached = _ALL_MEDIA_CACHE.get(cache_key)
-        if cached is not None:
-            return list(cached)
+    started = time.perf_counter()
+    try:
+        cfg = cfg or load_config()
+        cache_key = (_all_media_config_signature(cfg), make_media_revision())
+        with _ALL_MEDIA_CACHE_LOCK:
+            cached = _ALL_MEDIA_CACHE.get(cache_key)
+            if cached is not None:
+                return list(cached)
 
-    files = _scan_all_media(cfg)
-    with _ALL_MEDIA_CACHE_LOCK:
-        _ALL_MEDIA_CACHE[cache_key] = tuple(files)
-        while len(_ALL_MEDIA_CACHE) > _ALL_MEDIA_CACHE_MAX_ENTRIES:
-            _ALL_MEDIA_CACHE.pop(next(iter(_ALL_MEDIA_CACHE)))
-    return list(files)
+        files = _scan_all_media(cfg)
+        with _ALL_MEDIA_CACHE_LOCK:
+            _ALL_MEDIA_CACHE[cache_key] = tuple(files)
+            while len(_ALL_MEDIA_CACHE) > _ALL_MEDIA_CACHE_MAX_ENTRIES:
+                _ALL_MEDIA_CACHE.pop(next(iter(_ALL_MEDIA_CACHE)))
+        return list(files)
+    finally:
+        _record_perf_step('media.get_all_media', started)
 
 
 def normalize_group_name(name):
@@ -981,13 +1074,14 @@ def _size_label(size_bytes, media_type='unknown'):
     return f"{round(size_bytes / 1024)} Ko"
 
 
-def _metadata_cache_key(filename, stat_result, preview_contexts, generate_missing):
+def _metadata_cache_key(filename, stat_result, preview_contexts, generate_missing, include_dimensions):
     return (
         filename,
         stat_result.st_size,
         stat_result.st_mtime_ns,
         tuple(preview_contexts),
         bool(generate_missing),
+        bool(include_dimensions),
         make_media_revision(),
     )
 
@@ -999,14 +1093,20 @@ def _metadata_snapshot(metadata):
     return snapshot
 
 
-def _build_media_metadata(filename, stat_result, preview_contexts, generate_missing):
+def _build_media_metadata(filename, stat_result, preview_contexts, generate_missing, include_dimensions):
     media_type = get_media_type(filename)
     width = 0
     height = 0
-    if media_type == 'image':
-        width, height = get_image_dimensions(filename)
-    elif media_type == 'video':
-        width, height = get_video_dimensions(filename)
+    sidecar = _load_media_metadata_sidecar(filename, stat_result)
+    dimensions = sidecar.get('dimensions') if sidecar else None
+    if isinstance(dimensions, dict):
+        width = _normalize_dimension(dimensions.get('width'))
+        height = _normalize_dimension(dimensions.get('height'))
+    if include_dimensions and (not width or not height):
+        if media_type == 'image':
+            width, height = get_image_dimensions(filename)
+        elif media_type == 'video':
+            width, height = get_video_dimensions(filename)
 
     dims_label = f'{width}x{height}' if width and height else media_type if media_type != 'unknown' else '--'
     preview_urls = {}
@@ -1016,7 +1116,7 @@ def _build_media_metadata(filename, stat_result, preview_contexts, generate_miss
             context=context,
             allow_original=context in ('preview', 'display'),
             generate_missing=generate_missing,
-        ) or '/static/images/logo.svg'
+        )
     original_url = get_original_media_url(filename)
     if original_url:
         preview_urls['original'] = original_url
@@ -1037,7 +1137,7 @@ def _build_media_metadata(filename, stat_result, preview_contexts, generate_miss
     }
 
 
-def get_media_metadata(filename, *, preview_contexts=('admin',), generate_missing=False):
+def get_media_metadata(filename, *, preview_contexts=('admin',), generate_missing=False, include_dimensions=True):
     path = os.path.join(UPLOAD_FOLDER, filename)
     try:
         stat_result = os.stat(path)
@@ -1058,13 +1158,13 @@ def get_media_metadata(filename, *, preview_contexts=('admin',), generate_missin
         }
 
     preview_contexts = tuple(dict.fromkeys(str(context) for context in preview_contexts if context))
-    cache_key = _metadata_cache_key(filename, stat_result, preview_contexts, generate_missing)
+    cache_key = _metadata_cache_key(filename, stat_result, preview_contexts, generate_missing, include_dimensions)
     with _MEDIA_METADATA_CACHE_LOCK:
         cached = _MEDIA_METADATA_CACHE.get(cache_key)
         if cached is not None:
             return _metadata_snapshot(cached)
 
-    metadata = _build_media_metadata(filename, stat_result, preview_contexts, generate_missing)
+    metadata = _build_media_metadata(filename, stat_result, preview_contexts, generate_missing, include_dimensions)
     with _MEDIA_METADATA_CACHE_LOCK:
         _MEDIA_METADATA_CACHE[cache_key] = _metadata_snapshot(metadata)
         while len(_MEDIA_METADATA_CACHE) > _MEDIA_METADATA_CACHE_MAX_ENTRIES:
@@ -1072,15 +1172,20 @@ def get_media_metadata(filename, *, preview_contexts=('admin',), generate_missin
     return _metadata_snapshot(metadata)
 
 
-def build_media_metadata_map(files, *, preview_contexts=('admin',), generate_missing=False):
-    return {
-        filename: get_media_metadata(
-            filename,
-            preview_contexts=preview_contexts,
-            generate_missing=generate_missing,
-        )
-        for filename in files
-    }
+def build_media_metadata_map(files, *, preview_contexts=('admin',), generate_missing=False, include_dimensions=True):
+    started = time.perf_counter()
+    try:
+        return {
+            filename: get_media_metadata(
+                filename,
+                preview_contexts=preview_contexts,
+                generate_missing=generate_missing,
+                include_dimensions=include_dimensions,
+            )
+            for filename in files
+        }
+    finally:
+        _record_perf_step(f'media.metadata_map.{len(files)}', started)
 
 
 def clear_media_metadata_cache():
@@ -1088,15 +1193,48 @@ def clear_media_metadata_cache():
         _MEDIA_METADATA_CACHE.clear()
 
 
+def prepare_media_derivatives(filename):
+    started = time.perf_counter()
+    metadata = None
+    try:
+        if not os.path.exists(os.path.join(UPLOAD_FOLDER, filename)):
+            logger.warning("Media preparation skipped, file missing: %s", filename)
+            return False
+        generate_standard_renditions(filename)
+        clear_media_metadata_cache()
+        metadata = get_media_metadata(
+            filename,
+            preview_contexts=('admin', 'campaign', 'preview'),
+            generate_missing=False,
+            include_dimensions=True,
+        )
+        _write_media_metadata_sidecar(filename, metadata)
+        logger.info("Media preparation completed: %s", filename)
+        return True
+    except Exception:
+        logger.exception("Media preparation failed: %s", filename)
+        return False
+    finally:
+        if metadata is not None:
+            clear_media_metadata_cache()
+        _record_perf_step('media.prepare_derivatives', started)
+
+
 def get_file_info(filename, *, include_dimensions=True):
+    started = time.perf_counter()
     path = os.path.join(UPLOAD_FOLDER, filename)
-    if not os.path.exists(path):
-        return {"size": "--", "dims": "--", "type": "unknown"}
-    metadata = get_media_metadata(filename, preview_contexts=())
-    if not include_dimensions:
-        dims = metadata['type'] if metadata['type'] != 'unknown' else '--'
-        return {"size": metadata["size"], "dims": dims, "type": metadata["type"]}
-    return {"size": metadata["size"], "dims": metadata["dims"], "type": metadata["type"]}
+    try:
+        if not os.path.exists(path):
+            return {"size": "--", "dims": "--", "type": "unknown"}
+        if not include_dimensions:
+            media_type = get_media_type(filename)
+            stat_result = os.stat(path)
+            dims = media_type if media_type != 'unknown' else '--'
+            return {"size": _size_label(stat_result.st_size, media_type), "dims": dims, "type": media_type}
+        metadata = get_media_metadata(filename, preview_contexts=())
+        return {"size": metadata["size"], "dims": metadata["dims"], "type": metadata["type"]}
+    finally:
+        _record_perf_step('media.get_file_info', started, min_ms=2.0)
 
 
 def is_h264_mp4(path):

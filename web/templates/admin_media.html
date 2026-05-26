@@ -74,6 +74,8 @@
 .file-card.disabled.has-dropdown-open { opacity:1; }
 .file-card .thumb       { width:100%;height:138px;object-fit:cover;display:block;cursor:pointer; }
 .file-card .thumb-video { width:100%;height:138px;object-fit:cover;display:block;cursor:pointer;background:#0d0920; }
+.preview-pending { width:100%;height:138px;display:flex;align-items:center;justify-content:center;text-align:center;padding:12px;border-radius:var(--radius) var(--radius) 0 0;background:var(--surface-alt);color:var(--text-3);font-size:.78rem;font-weight:700; }
+.file-grid.list-view .preview-pending { width:72px;height:52px;flex-shrink:0;border-radius:8px 0 0 8px;font-size:.62rem;padding:6px; }
 .file-card .thumb:hover, .file-card .thumb-video:hover { filter:brightness(1.07); }
 .file-card.disabled .thumb,
 .file-card.disabled .thumb-video { cursor:not-allowed; pointer-events:none;opacity:.45;filter:grayscale(.2); }
@@ -591,6 +593,9 @@
          data-schedule="{{ sched | tojson | e }}">
         <span class="badge-scheduled">{{ t('badge_scheduled') }}</span>
         <span class="badge-group-disabled">{{ t('media_group_disabled_badge') }}</span>
+        {% if preview_pending.get(file) %}
+        <div class="preview-pending">{{ t('media_preview_pending') }}</div>
+        {% else %}
         {% if info.type == 'video' %}
         <span class="badge-video">{{ t('badge_video') }}</span>
         <img class="thumb-video" src="{{ preview_urls[file] }}" alt="{{ file }}" loading="lazy" decoding="async" fetchpriority="low"
@@ -600,6 +605,7 @@
         <img class="thumb" src="{{ preview_urls[file] }}" alt="{{ file }}" loading="lazy" decoding="async" fetchpriority="low"
              data-src="{{ preview_media_urls[file] }}" data-type="image"
              data-preview-disabled="{{ 'true' if disabled_map.get(file, false) else 'false' }}">
+        {% endif %}
         {% endif %}
         <span class="badge-disabled">{{ t('badge_disabled') }}</span>
         <div class="card-body">
@@ -707,6 +713,9 @@
     {% for file in unassigned %}
     {% set info = infos[file] %}
     <div class="file-card unassigned" data-file="{{ file }}" data-type="{{ info.type }}">
+        {% if preview_pending.get(file) %}
+        <div class="preview-pending">{{ t('media_preview_pending') }}</div>
+        {% else %}
         {% if info.type == 'video' %}
         <span class="badge-video">{{ t('badge_video') }}</span>
         <img class="thumb-video" src="{{ preview_urls[file] }}" alt="{{ file }}" loading="lazy" decoding="async" fetchpriority="low"
@@ -714,6 +723,7 @@
         {% else %}
         <img class="thumb" src="{{ preview_urls[file] }}" alt="{{ file }}" loading="lazy" decoding="async" fetchpriority="low"
              data-src="{{ preview_media_urls[file] }}" data-type="image">
+        {% endif %}
         {% endif %}
         <div class="card-body">
             <div class="fname" title="{{ file }}">{{ file }}</div>

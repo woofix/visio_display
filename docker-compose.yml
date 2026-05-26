@@ -49,6 +49,7 @@ services:
     environment:
       <<: *visio-container-env
       UPDATER_API_URL: http://updater:8090
+      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-2}
       UPDATER_API_TOKEN: ${UPDATER_API_TOKEN:?UPDATER_API_TOKEN absent. Lancez scripts/security_bootstrap.sh update . ou renseignez .env.}
     volumes:
       - ${VISIO_HOST_ROOT:-.}:/opt/visio-display

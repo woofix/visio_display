@@ -23,6 +23,7 @@
 .cleanup-table tr:last-child td { border-bottom:0; }
 .cleanup-media { display:flex;align-items:center;gap:10px;min-width:0; }
 .cleanup-thumb { width:52px;height:36px;object-fit:cover;border-radius:6px;background:var(--surface-alt);border:1px solid var(--border);flex:0 0 auto; }
+.cleanup-preview-pending { width:52px;height:36px;display:flex;align-items:center;justify-content:center;text-align:center;border-radius:6px;background:var(--surface-alt);border:1px solid var(--border);color:var(--text-3);font-size:.55rem;font-weight:700;line-height:1.15;flex:0 0 auto; }
 .cleanup-name { min-width:0; }
 .cleanup-name strong { display:block;color:var(--text);font-size:.81rem;font-weight:700;overflow-wrap:anywhere; }
 .cleanup-name span { display:block;margin-top:3px;color:var(--text-3);font-size:.72rem;line-height:1.4; }
@@ -59,7 +60,11 @@
 <tr>
     <td>
         <div class="cleanup-media">
+            {% if preview_urls.get(item.filename) %}
             <img class="cleanup-thumb" src="{{ preview_urls.get(item.filename, '/static/images/logo.svg') }}" alt="">
+            {% else %}
+            <div class="cleanup-preview-pending">{{ t('media_preview_pending') }}</div>
+            {% endif %}
             <div class="cleanup-name">
                 <strong>{{ item.filename }}</strong>
                 <span>{{ item.type }} · {{ item.size_label }} · {{ t('cleanup_age_days', n=item.age_days) }}</span>

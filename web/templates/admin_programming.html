@@ -92,6 +92,7 @@
 .media-vignette-item.hidden { display:none; }
 .media-vignette-thumb-wrap { position:relative; width:100%; aspect-ratio:16/9; background:#0b1220; overflow:hidden; }
 .media-vignette-thumb { width:100%; height:100%; object-fit:cover; display:block; }
+.media-vignette-pending { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center; padding:8px; color:rgba(255,255,255,.72); font-size:.64rem; font-weight:700; }
 .media-vignette-thumb:not([src]) { visibility:hidden; }
 .media-vignette-overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(124,58,237,.72); color:#fff; opacity:0; transition:opacity .15s; }
 .media-vignette-item.selected .media-vignette-overlay { opacity:1; }
@@ -437,7 +438,11 @@
                         {% for media in media_items %}
                         <div class="media-vignette-item" data-filename="{{ media.filename }}" data-name="{{ media.filename|lower }}" tabindex="0" role="option" aria-selected="false">
                             <div class="media-vignette-thumb-wrap">
+                                {% if media.preview_url %}
                                 <img class="media-vignette-thumb" data-src="{{ media.preview_url }}" alt="{{ media.filename }}" loading="lazy" decoding="async" fetchpriority="low">
+                                {% else %}
+                                <div class="media-vignette-pending">{{ t('media_preview_pending') }}</div>
+                                {% endif %}
                                 <div class="media-vignette-overlay">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width:20px;height:20px"><polyline points="20 6 9 17 4 12"/></svg>
                                 </div>

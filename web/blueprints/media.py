@@ -23,6 +23,7 @@ from services.media_svc import (
     collect_group_states, is_media_disabled, normalize_group_name,
     cleanup_orphan_group_metadata,
     delete_image_variants, delete_media_thumbnail, delete_video_variants,
+    delete_media_metadata,
     build_media_metadata_map,
     build_media_preview_map,
 )
@@ -30,6 +31,7 @@ from services.media_cleanup_svc import analyze_media_cleanup
 from services.playlist_cache_svc import bump_media_revision
 from services.queue_svc import load_queue, save_queue
 from services.upload_svc import handle_media_upload
+from services.media_prepare_svc import enqueue_media_prepare_job
 from services.i18n import _flash, _t
 from services.activity_svc import log_activity
 from services.schedule_svc import (
@@ -135,7 +137,12 @@ def admin_media():
     cfg       = load_config()
     screen    = normalize_screen_key(request.args.get('screen', ''), cfg)
     all_media = get_all_media()
-    media_metadata = build_media_metadata_map(all_media, preview_contexts=('admin', 'preview'), generate_missing=True)
+    media_metadata = build_media_metadata_map(
+        all_media,
+        preview_contexts=('admin', 'preview'),
+        generate_missing=False,
+        include_dimensions=False,
+    )
     infos     = media_metadata
     q         = load_queue()
     queued    = {j['filename'] for j in q if j['status'] in ('pending', 'processing')}
@@ -168,9 +175,10 @@ def admin_media():
 
     media_groups = {f: get_media_groups(f, cfg) for f in all_media}
     preview_urls = {
-        filename: media_metadata[filename].get('preview_urls', {}).get('admin') or '/static/images/logo.svg'
+        filename: media_metadata[filename].get('preview_urls', {}).get('admin')
         for filename in all_media
     }
+    preview_pending = {filename: not bool(preview_urls.get(filename)) for filename in all_media}
     preview_media_urls = {
         filename: (
             media_metadata[filename].get('preview_urls', {}).get('preview')
@@ -197,6 +205,7 @@ def admin_media():
         has_default_screen=False,
         media_groups=media_groups, group_states=group_states, disabled_map=disabled_map,
         preview_urls=preview_urls, preview_media_urls=preview_media_urls,
+        preview_pending=preview_pending,
         users=list(users.keys()), current_user=session.get('user'),
         logo_path=get_logo_path(), can_toggle=has_permission('toggle'),
         can_schedule=has_permission('schedule'),
@@ -232,7 +241,12 @@ def admin_media_cleanup_page():
                 cleanup_files.update(file_item["filename"] for file_item in group.get("files", []))
             continue
         cleanup_files.update(item["filename"] for item in items)
-    preview_urls = build_media_preview_map(sorted(cleanup_files, key=str.casefold), context='admin', generate_missing=True)
+    preview_urls = build_media_preview_map(
+        sorted(cleanup_files, key=str.casefold),
+        context='admin',
+        generate_missing=False,
+        placeholder_url=None,
+    )
     return render_template(
         'admin_media_cleanup.html',
         cleanup=cleanup,
@@ -257,7 +271,12 @@ def admin_programming_page():
     cfg = load_config()
     users = load_users()
     files = get_all_media()
-    media_infos = build_media_metadata_map(files, preview_contexts=('campaign',), generate_missing=True)
+    media_infos = build_media_metadata_map(
+        files,
+        preview_contexts=('campaign',),
+        generate_missing=False,
+        include_dimensions=False,
+    )
     allowed_screens = [screen for screen in cfg.get('screens', {}) if has_screen_access(screen)]
     default_screen_name = get_default_screen_name(cfg) or _t('media_screen_default')
 
@@ -353,6 +372,7 @@ def delete_file(filename):
         delete_media_thumbnail(filename)
         delete_image_variants(filename)
         delete_video_variants(filename)
+        delete_media_metadata(filename)
         log_activity(session.get('user'), 'delete', filename=filename)
         cfg = load_config()
         cfg["order"]    = [f for f in cfg.get("order", [])    if f != filename]
@@ -388,7 +408,14 @@ def upload_file():
     if not has_permission('upload'):
         _flash('flash_no_perm_upload', 'error')
         return redirect(url_for('media.admin_upload_page'))
-    return handle_media_upload(request.files.getlist('file'), request.form, session.get('user'))
+    return handle_media_upload(
+        request.files.getlist('file'),
+        request.form,
+        session.get('user'),
+        prepare_media_func=enqueue_media_prepare_job,
+        probe_video=False,
+        validate_image=False,
+    )
 
 
 @bp.route('/toggle/<filename>', methods=['POST'])

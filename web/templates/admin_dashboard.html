@@ -167,11 +167,11 @@
 {% set cpu_pct = server_stats.cpu_percent if server_stats and server_stats.cpu_percent is not none else none %}
 {% set memory_pct = server_stats.memory_percent if server_stats and server_stats.memory_percent is not none else none %}
 <!-- Hero stats -->
-<div class="hero">
+<div class="hero glass-panel">
     <div class="hero-title">{{ app_name }} — {{ t('digital_slideshow') }}</div>
     <div class="hero-sub">{{ t('dashboard_updated') }}</div>
     <div class="hero-grid">
-        <a class="hero-stat" href="/admin/media">
+        <a class="hero-stat glass-card" href="/admin/media">
             <div class="hero-stat-icon purple">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
             </div>
@@ -179,7 +179,7 @@
             <div class="hero-stat-lbl">{{ t('stat_media_online') }}</div>
             <div class="hero-stat-link">{{ t('stat_see_media') }} <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>
         </a>
-        <a class="hero-stat" href="/admin/media?filter=active">
+        <a class="hero-stat glass-card" href="/admin/media?filter=active">
             <div class="hero-stat-icon green">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
             </div>
@@ -187,7 +187,7 @@
             <div class="hero-stat-lbl">{{ t('stat_active_media') }}</div>
             <div class="hero-stat-link">{{ t('stat_filter_active') }} <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>
         </a>
-        <a class="hero-stat" href="/admin/media">
+        <a class="hero-stat glass-card" href="/admin/media">
             <div class="hero-stat-icon blue">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
             </div>
@@ -196,7 +196,7 @@
             <div class="hero-stat-link">{{ t('stat_manage_files') }} <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>
         </a>
         {% if is_feature_enabled('videos') and is_feature_enabled('compress') %}
-        <a class="hero-stat" href="/admin/queue">
+        <a class="hero-stat glass-card" href="/admin/queue">
             <div class="hero-stat-icon orange">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
             </div>
@@ -205,7 +205,7 @@
             <div class="hero-stat-link">{{ t('stat_queue') }} <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>
         </a>
         {% endif %}
-        <div class="hero-stat metric">
+        <div class="hero-stat metric glass-card">
             <div class="hero-stat-icon cyan">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="6" width="16" height="12" rx="2"/><path d="M9 10h6"/><path d="M9 14h4"/><path d="M7 2v4"/><path d="M17 2v4"/><path d="M7 18v4"/><path d="M17 18v4"/></svg>
             </div>
@@ -221,7 +221,7 @@
             <div class="hero-stat-bar"><div class="hero-stat-fill" style="width:0%"></div></div>
             {% endif %}
         </div>
-        <div class="hero-stat metric">
+        <div class="hero-stat metric glass-card">
             <div class="hero-stat-icon green">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8h12"/><path d="M6 12h12"/><path d="M6 16h12"/><rect x="3" y="5" width="18" height="14" rx="2"/></svg>
             </div>
@@ -242,7 +242,7 @@
 
 {% if is_feature_enabled('priority_alert') %}
 {% set priority_alert_message = priority_alert.message | default('') | trim %}
-<div class="priority-alert-card{% if not priority_alert_message %} inactive{% endif %}">
+<div class="priority-alert-card glass-panel{% if not priority_alert_message %} inactive{% endif %}">
     <div class="priority-alert-main">
         <div class="priority-alert-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -303,7 +303,7 @@
 {% endif %}
 
 <!-- Disk bar -->
-<div class="disk-card">
+<div class="disk-card glass-card">
     <div class="disk-header">
         <span class="disk-label">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
@@ -321,7 +321,7 @@
 <!-- Quick access -->
 <div class="quick-grid">
     {% if has_permission('upload') and is_feature_enabled('upload') %}
-    <a class="quick-card" href="/admin/upload">
+    <a class="quick-card glass-card" href="/admin/upload">
         <div class="quick-card-icon purple">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         </div>
@@ -330,7 +330,7 @@
         <div class="quick-card-arrow">{{ t('quick_access') }} <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:12px;height:12px"><polyline points="9 18 15 12 9 6"/></svg></div>
     </a>
     {% endif %}
-    <a class="quick-card" href="/admin/media">
+    <a class="quick-card glass-card" href="/admin/media">
         <div class="quick-card-icon green">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
         </div>
@@ -339,7 +339,7 @@
         <div class="quick-card-arrow">{{ t('quick_access') }} <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:12px;height:12px"><polyline points="9 18 15 12 9 6"/></svg></div>
     </a>
     {% if is_feature_enabled('videos') and is_feature_enabled('compress') %}
-    <a class="quick-card" href="/admin/queue">
+    <a class="quick-card glass-card" href="/admin/queue">
         <div class="quick-card-icon blue">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
         </div>
@@ -348,7 +348,7 @@
         <div class="quick-card-arrow">{{ t('quick_access') }} <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:12px;height:12px"><polyline points="9 18 15 12 9 6"/></svg></div>
     </a>
     {% endif %}
-    <div class="quick-card">
+    <div class="quick-card glass-card">
         <div class="quick-card-icon orange">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
         </div>
@@ -370,7 +370,7 @@
 </div>
 
 {% if active_campaigns %}
-<div class="campaign-strip">
+<div class="campaign-strip glass-panel">
     <div class="campaign-strip-head">
         <div>
             <div class="campaign-strip-title">{{ t('dashboard_campaigns_title') }}</div>

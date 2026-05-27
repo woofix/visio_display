@@ -1,0 +1,482 @@
+/* GNU General Public License v3.0 (GPL-3.0) - Copyright (c) 2026 Eric TOMAS (Woofix) */
+/* Liquid Glass admin theme layer */
+
+:root {
+    --glass-bg: rgba(255, 255, 255, .38);
+    --glass-bg-soft: rgba(255, 255, 255, .24);
+    --glass-bg-strong: rgba(255, 255, 255, .62);
+    --glass-bg-solid: color-mix(in srgb, var(--surface) 88%, transparent);
+    --glass-tint: color-mix(in srgb, var(--primary) 10%, transparent);
+    --glass-border: rgba(255, 255, 255, .82);
+    --glass-border-strong: color-mix(in srgb, var(--primary-light) 48%, rgba(255, 255, 255, .88));
+    --glass-stroke: color-mix(in srgb, var(--border) 44%, rgba(255, 255, 255, .82));
+    --glass-highlight: rgba(255, 255, 255, .96);
+    --glass-highlight-soft: rgba(255, 255, 255, .58);
+    --glass-shadow: 0 24px 70px rgba(15, 23, 42, .16), 0 8px 24px rgba(15, 23, 42, .09);
+    --glass-shadow-sm: 0 14px 38px rgba(15, 23, 42, .12), 0 3px 12px rgba(15, 23, 42, .07);
+    --glass-shadow-lg: 0 38px 110px rgba(15, 23, 42, .24), 0 14px 44px rgba(15, 23, 42, .14);
+    --glass-blur: 30px;
+    --glass-blur-soft: 18px;
+    --glass-saturate: 1.35;
+    --glass-radius: 22px;
+    --glass-radius-sm: 14px;
+    --glass-focus: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
+    --glass-control-bg: color-mix(in srgb, var(--surface) 56%, transparent);
+    --glass-control-bg-hover: color-mix(in srgb, var(--surface) 86%, var(--primary-bg) 14%);
+    --glass-table-head: color-mix(in srgb, var(--glass-bg-strong) 78%, var(--primary-bg) 22%);
+    --glass-table-row-hover: color-mix(in srgb, var(--primary-bg) 34%, transparent);
+    --dialog-backdrop-bg: color-mix(in srgb, var(--sidebar-bg) 32%, transparent);
+    --dialog-backdrop-blur: 10px;
+    --dialog-panel-bg: var(--glass-bg-strong);
+    --dialog-panel-border: var(--glass-border-strong);
+    --dialog-panel-shadow: var(--glass-shadow-lg);
+    --dialog-header-bg: color-mix(in srgb, var(--glass-bg-strong) 82%, var(--primary-bg) 18%);
+    --dialog-actions-bg: color-mix(in srgb, var(--glass-bg) 72%, var(--surface-alt) 28%);
+    --topbar-bg: color-mix(in srgb, var(--glass-bg-strong) 86%, transparent);
+}
+
+[data-theme="bleu"] {
+    --glass-tint: rgba(37, 99, 235, .10);
+    --glass-border-strong: color-mix(in srgb, var(--primary-light) 30%, rgba(255, 255, 255, .72));
+}
+
+[data-theme="sombre"] {
+    --glass-bg: rgba(17, 24, 39, .42);
+    --glass-bg-soft: rgba(17, 24, 39, .26);
+    --glass-bg-strong: rgba(15, 23, 42, .66);
+    --glass-bg-solid: color-mix(in srgb, var(--surface) 84%, transparent);
+    --glass-tint: rgba(34, 211, 238, .10);
+    --glass-border: rgba(148, 163, 184, .36);
+    --glass-border-strong: color-mix(in srgb, var(--primary-light) 42%, rgba(148, 163, 184, .34));
+    --glass-stroke: color-mix(in srgb, var(--border) 58%, rgba(255, 255, 255, .18));
+    --glass-highlight: rgba(255, 255, 255, .26);
+    --glass-highlight-soft: rgba(255, 255, 255, .14);
+    --glass-shadow: 0 24px 70px rgba(0, 0, 0, .48), 0 8px 24px rgba(0, 0, 0, .32);
+    --glass-shadow-sm: 0 16px 44px rgba(0, 0, 0, .38), 0 4px 14px rgba(0, 0, 0, .24);
+    --glass-shadow-lg: 0 44px 120px rgba(0, 0, 0, .62), 0 16px 48px rgba(0, 0, 0, .42);
+    --glass-control-bg: color-mix(in srgb, var(--surface) 50%, transparent);
+    --glass-control-bg-hover: color-mix(in srgb, var(--surface-alt) 74%, var(--primary-bg) 26%);
+    --glass-table-head: color-mix(in srgb, var(--glass-bg-strong) 82%, var(--primary-bg) 18%);
+    --glass-table-row-hover: color-mix(in srgb, var(--primary-bg) 42%, transparent);
+    --topbar-bg: color-mix(in srgb, var(--glass-bg-strong) 90%, transparent);
+}
+
+body {
+    background:
+        radial-gradient(circle at 8% 12%, color-mix(in srgb, var(--primary-light) 34%, transparent), transparent 28%),
+        radial-gradient(circle at 88% 2%, color-mix(in srgb, var(--blue) 28%, transparent), transparent 26%),
+        radial-gradient(circle at 58% 92%, color-mix(in srgb, var(--primary) 18%, transparent), transparent 30%),
+        linear-gradient(145deg, color-mix(in srgb, var(--bg) 74%, white 26%) 0%, var(--bg-strong) 48%, var(--bg) 100%);
+    background-attachment: fixed;
+}
+
+[data-theme="sombre"] body {
+    background:
+        radial-gradient(circle at 8% 12%, color-mix(in srgb, var(--primary-light) 24%, transparent), transparent 30%),
+        radial-gradient(circle at 88% 2%, color-mix(in srgb, var(--blue) 22%, transparent), transparent 28%),
+        radial-gradient(circle at 58% 92%, color-mix(in srgb, var(--primary) 18%, transparent), transparent 32%),
+        linear-gradient(145deg, color-mix(in srgb, var(--bg-strong) 68%, #020617 32%) 0%, var(--bg) 100%);
+}
+
+.glass-card,
+.glass-panel,
+.glass-nav,
+.glass-modal,
+.glass-table {
+    background:
+        radial-gradient(circle at 18% 0%, var(--glass-highlight), transparent 18%),
+        linear-gradient(145deg, var(--glass-highlight-soft), transparent 36%),
+        linear-gradient(180deg, var(--glass-bg-strong), var(--glass-bg));
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow-sm);
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+}
+
+.glass-card {
+    border-radius: var(--glass-radius);
+}
+
+.glass-panel,
+.glass-modal {
+    border-radius: calc(var(--glass-radius) + 2px);
+    box-shadow: var(--glass-shadow);
+}
+
+.glass-nav {
+    border-radius: var(--glass-radius-sm);
+}
+
+.glass-table {
+    border-radius: var(--glass-radius);
+    overflow: hidden;
+}
+
+.glass-button {
+    background:
+        linear-gradient(145deg, color-mix(in srgb, var(--primary-light) 22%, transparent), transparent 48%),
+        linear-gradient(180deg, color-mix(in srgb, var(--primary) 92%, white 8%), color-mix(in srgb, var(--primary-dark) 82%, var(--primary) 18%));
+    border: 1px solid color-mix(in srgb, var(--primary-light) 55%, var(--primary));
+    box-shadow: 0 10px 24px color-mix(in srgb, var(--primary) 18%, transparent), inset 0 1px 0 rgba(255, 255, 255, .28);
+}
+
+.glass-button:hover {
+    box-shadow: 0 14px 30px color-mix(in srgb, var(--primary) 22%, transparent), inset 0 1px 0 rgba(255, 255, 255, .34);
+}
+
+.glass-input {
+    background: var(--glass-control-bg);
+    border-color: var(--glass-stroke);
+    box-shadow: inset 0 1px 0 var(--glass-highlight-soft);
+    backdrop-filter: blur(var(--glass-blur-soft));
+    -webkit-backdrop-filter: blur(var(--glass-blur-soft));
+}
+
+.glass-elevated {
+    box-shadow: var(--glass-shadow-lg);
+}
+
+.sidebar {
+    background:
+        linear-gradient(180deg, color-mix(in srgb, var(--sidebar-bg) 82%, transparent), color-mix(in srgb, var(--sidebar-bg) 94%, black 6%)),
+        color-mix(in srgb, var(--sidebar-bg) 86%, transparent);
+    border-right-color: color-mix(in srgb, var(--sidebar-border) 70%, var(--glass-border) 30%);
+    box-shadow: 18px 0 52px rgba(15, 23, 42, .20);
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+}
+
+.sidebar-brand,
+.sidebar-status,
+.sidebar-footer {
+    border-color: color-mix(in srgb, var(--sidebar-border) 72%, var(--glass-border) 28%);
+}
+
+.brand-icon,
+.user-avatar,
+.user-menu-btn .avatar {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .32), 0 12px 28px color-mix(in srgb, var(--primary) 24%, transparent);
+}
+
+.nav-item {
+    border: 1px solid transparent;
+}
+
+.nav-item:hover,
+.nav-item.active {
+    border-color: color-mix(in srgb, var(--glass-border) 28%, transparent);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08);
+}
+
+.nav-item.active {
+    background:
+        linear-gradient(135deg, color-mix(in srgb, var(--nav-active-bg) 88%, var(--glass-highlight-soft)), var(--nav-active-bg));
+}
+
+.topbar,
+.page-header,
+.card,
+.panel-card,
+.aside-card,
+.summary-card,
+.disk-card,
+.quick-card,
+.campaign-strip,
+.priority-alert-card,
+.table-wrap,
+.search-box,
+.filter-card input,
+.filter-card select,
+.filter-card textarea,
+.filter-select,
+.user-menu-btn,
+.dropdown-menu,
+.topbar-search-dropdown,
+.topbar-update-popover,
+.theme-dialog {
+    background:
+        radial-gradient(circle at 14% 0%, var(--glass-highlight), transparent 18%),
+        linear-gradient(145deg, var(--glass-highlight-soft), transparent 34%),
+        linear-gradient(180deg, var(--glass-bg-strong), var(--glass-bg));
+    border-color: var(--glass-stroke);
+    box-shadow: var(--glass-shadow-sm);
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+}
+
+.topbar {
+    border-bottom-color: var(--glass-stroke);
+    box-shadow: 0 10px 30px rgba(15, 23, 42, .08);
+}
+
+.page-header,
+.card,
+.panel-card,
+.aside-card,
+.summary-card,
+.disk-card,
+.quick-card,
+.campaign-strip,
+.priority-alert-card {
+    border-radius: var(--glass-radius);
+}
+
+.page-header,
+.card,
+.panel-card,
+.aside-card {
+    box-shadow: var(--glass-shadow);
+}
+
+.topbar,
+.page-header,
+.card,
+.panel-card,
+.aside-card,
+.summary-card,
+.disk-card,
+.quick-card,
+.campaign-strip,
+.priority-alert-card,
+.table-wrap,
+.theme-dialog {
+    position: relative;
+}
+
+.topbar::before,
+.page-header::before,
+.card::before,
+.panel-card::before,
+.aside-card::before,
+.summary-card::before,
+.disk-card::before,
+.quick-card::before,
+.campaign-strip::before,
+.priority-alert-card::before,
+.table-wrap::before,
+.theme-dialog::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+        linear-gradient(120deg, rgba(255, 255, 255, .58), transparent 28%),
+        linear-gradient(300deg, transparent 68%, color-mix(in srgb, var(--primary-light) 18%, transparent));
+    opacity: .76;
+    mix-blend-mode: screen;
+}
+
+[data-theme="sombre"] .topbar::before,
+[data-theme="sombre"] .page-header::before,
+[data-theme="sombre"] .card::before,
+[data-theme="sombre"] .panel-card::before,
+[data-theme="sombre"] .aside-card::before,
+[data-theme="sombre"] .summary-card::before,
+[data-theme="sombre"] .disk-card::before,
+[data-theme="sombre"] .quick-card::before,
+[data-theme="sombre"] .campaign-strip::before,
+[data-theme="sombre"] .priority-alert-card::before,
+[data-theme="sombre"] .table-wrap::before,
+[data-theme="sombre"] .theme-dialog::before {
+    opacity: .34;
+}
+
+.topbar-icon,
+.btn-icon,
+.theme-dialog-close,
+.topbar-update-bell {
+    background:
+        linear-gradient(145deg, var(--glass-highlight-soft), transparent 42%),
+        var(--glass-control-bg);
+    border-color: var(--glass-stroke);
+    box-shadow: inset 0 1px 0 var(--glass-highlight-soft);
+}
+
+.topbar-icon {
+    color: var(--primary);
+}
+
+.btn,
+.quick-card-screen-btn {
+    border: 1px solid color-mix(in srgb, var(--primary-light) 54%, var(--primary));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .24), 0 10px 24px color-mix(in srgb, var(--primary) 16%, transparent);
+}
+
+.btn.secondary,
+.btn.ghost,
+.btn-icon,
+.user-menu-btn,
+.topbar-search-input,
+.form-group input,
+.form-group select,
+.form-group textarea,
+.search-box,
+.filter-card input,
+.filter-card select,
+.filter-card textarea,
+.filter-select {
+    background: var(--glass-control-bg);
+    border-color: var(--glass-stroke);
+    box-shadow: inset 0 1px 0 var(--glass-highlight-soft);
+}
+
+.btn.secondary:hover,
+.btn.ghost:hover,
+.btn-icon:hover,
+.user-menu-btn:hover {
+    background: var(--glass-control-bg-hover);
+    border-color: var(--glass-border-strong);
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus,
+.topbar-search-input:focus,
+.topbar-search-input:not(:placeholder-shown),
+.search-box:focus-within,
+.filter-select:focus,
+.filter-card input:focus,
+.filter-card select:focus,
+.filter-card textarea:focus {
+    border-color: var(--glass-border-strong);
+    box-shadow: var(--glass-focus), inset 0 1px 0 var(--glass-highlight-soft);
+    background: color-mix(in srgb, var(--glass-control-bg-hover) 92%, var(--surface) 8%);
+}
+
+.table-wrap {
+    border-radius: var(--glass-radius);
+}
+
+.list-table th {
+    background: var(--glass-table-head);
+    color: var(--text-2);
+}
+
+.list-table td,
+.list-table th {
+    border-bottom-color: var(--glass-stroke);
+}
+
+.list-table tbody tr:hover {
+    background: var(--glass-table-row-hover);
+}
+
+.theme-dialog {
+    border-radius: calc(var(--glass-radius) + 2px);
+    box-shadow: var(--glass-shadow-lg);
+}
+
+.theme-dialog-header,
+.theme-dialog-actions {
+    border-color: var(--glass-stroke);
+}
+
+.dropdown-item:hover,
+.tsd-item:hover,
+.tsd-item.focused {
+    background: var(--glass-control-bg-hover);
+}
+
+.hero.glass-panel {
+    background:
+        radial-gradient(circle at 92% 8%, rgba(255, 255, 255, .20), transparent 22%),
+        linear-gradient(145deg, color-mix(in srgb, var(--primary-light) 20%, transparent), transparent 38%),
+        var(--hero-gradient);
+    border: 1px solid color-mix(in srgb, var(--primary-light) 30%, rgba(255, 255, 255, .18));
+    box-shadow: var(--glass-shadow-lg);
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+}
+
+.hero.glass-panel::before,
+.hero.glass-panel::after {
+    display: none;
+}
+
+.hero-stat.glass-card {
+    background:
+        linear-gradient(145deg, rgba(255, 255, 255, .18), transparent 42%),
+        rgba(255, 255, 255, .09);
+    border-color: rgba(255, 255, 255, .16);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16), 0 10px 28px rgba(0, 0, 0, .10);
+    backdrop-filter: blur(var(--glass-blur-soft)) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-blur-soft)) saturate(var(--glass-saturate));
+}
+
+.hero-stat.glass-card:hover {
+    background:
+        linear-gradient(145deg, rgba(255, 255, 255, .24), transparent 42%),
+        rgba(255, 255, 255, .13);
+}
+
+.disk-card.glass-card .disk-bar,
+.hero-stat.glass-card .hero-stat-bar {
+    background: color-mix(in srgb, var(--sidebar-bg) 18%, rgba(255, 255, 255, .22));
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, .12);
+}
+
+.quick-card.glass-card,
+.campaign-strip.glass-panel {
+    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+
+.quick-card.glass-card:hover {
+    border-color: var(--glass-border-strong);
+    box-shadow: var(--glass-shadow);
+}
+
+.priority-alert-card.glass-panel {
+    background:
+        radial-gradient(circle at 94% 0%, rgba(245, 158, 11, .18), transparent 30%),
+        linear-gradient(145deg, var(--glass-highlight-soft), transparent 34%),
+        linear-gradient(180deg, var(--glass-bg-strong), var(--glass-bg));
+}
+
+.priority-alert-card.glass-panel.inactive {
+    background:
+        linear-gradient(145deg, var(--glass-highlight-soft), transparent 34%),
+        linear-gradient(180deg, var(--glass-bg-strong), var(--glass-bg));
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass-card,
+    .glass-panel,
+    .glass-nav,
+    .glass-modal,
+    .glass-table,
+    .topbar,
+    .page-header,
+    .card,
+    .panel-card,
+    .aside-card,
+    .summary-card,
+    .disk-card,
+    .quick-card,
+    .campaign-strip,
+    .priority-alert-card,
+    .table-wrap,
+    .theme-dialog {
+        background: var(--glass-bg-solid);
+    }
+}
+
+@media (max-width: 640px) {
+    :root {
+        --glass-blur: 16px;
+        --glass-radius: 18px;
+    }
+
+    .page-header,
+    .card,
+    .panel-card,
+    .aside-card,
+    .summary-card,
+    .disk-card,
+    .quick-card,
+    .campaign-strip,
+    .priority-alert-card,
+    .table-wrap {
+        border-radius: var(--glass-radius);
+    }
+}

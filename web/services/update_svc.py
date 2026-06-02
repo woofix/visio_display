@@ -21,9 +21,10 @@ from services.version_svc import _compare_versions
 LOGGER = logging.getLogger(__name__)
 SERVICE_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_REPO_CWD = os.path.normpath(os.path.join(SERVICE_DIR, "..", ".."))
-EXTERNAL_STATUS_TIMEOUT_SECONDS = 1.5
+REMOTE_FETCH_TIMEOUT_SECONDS = 30
 UPDATE_STATUS_CACHE_TTL_SECONDS = 45
 UPDATE_STATUS_FAILURE_CACHE_TTL_SECONDS = 30
+PUBLIC_UPDATER_UNAVAILABLE_MESSAGE = "Service de mise à jour temporairement indisponible. Réessayez plus tard."
 _UPDATE_STATUS_CACHE = {}
 _UPDATE_STATUS_CACHE_LOCK = threading.Lock()
 _HTTP_OUT_ERROR_LOGGED = set()
@@ -65,13 +66,23 @@ def _log_http_out_done(route, url, timeout, duration_ms):
     LOGGER.info("[HTTP OUT] route=%s url=%s timeout=%s duration_ms=%.1f", route, url, timeout, duration_ms)
 
 
-def _log_http_out_error_once(route, url, duration_ms):
+def _log_http_out_error_once(route, url, duration_ms, detail=""):
     key = (route, url)
     with _UPDATE_STATUS_CACHE_LOCK:
         if key in _HTTP_OUT_ERROR_LOGGED:
             return
         _HTTP_OUT_ERROR_LOGGED.add(key)
-    LOGGER.warning("[HTTP OUT ERROR] route=%s url=%s duration_ms=%.1f", route, url, duration_ms)
+    LOGGER.warning("[HTTP OUT ERROR] route=%s url=%s duration_ms=%.1f detail=%s", route, url, duration_ms, detail)
+
+
+def _log_command_failure(context, result):
+    LOGGER.warning(
+        "[UPDATE COMMAND FAILED] context=%s returncode=%s stdout=%r stderr=%r",
+        context,
+        result.returncode,
+        result.stdout,
+        result.stderr,
+    )
 
 
 def _build_unavailable(reason, checks, extra=None):
@@ -675,15 +686,15 @@ def get_update_status(*, fetch_remote=False, allow_dirty=False):
     if _delegate_to_updater():
         route = _current_route()
         url = f"{updater_client._base_url()}/status"
-        timeout = EXTERNAL_STATUS_TIMEOUT_SECONDS if fetch_remote else 20
+        timeout = REMOTE_FETCH_TIMEOUT_SECONDS + 5 if fetch_remote else 20
         started = time.perf_counter()
         _log_http_out_start(route, url, timeout)
         try:
             payload = updater_client.get_json("/status", params={"fetch": "1" if fetch_remote else "0"}, timeout=timeout)
         except Exception as exc:
             duration_ms = (time.perf_counter() - started) * 1000
-            _log_http_out_error_once(route, url, duration_ms)
-            status = _build_unavailable(str(exc) or _t("version_status_check_failed"), [], {"repo_dir": _repo_dir()})
+            _log_http_out_error_once(route, url, duration_ms, repr(exc))
+            status = _build_unavailable(PUBLIC_UPDATER_UNAVAILABLE_MESSAGE, [], {"repo_dir": _repo_dir()})
             if fetch_remote:
                 _status_cache_set(status_cache_key, status, UPDATE_STATUS_FAILURE_CACHE_TTL_SECONDS)
             return status
@@ -773,16 +784,17 @@ def get_update_status(*, fetch_remote=False, allow_dirty=False):
     if fetch_remote:
         route = _current_route()
         url = remote_url.stdout.strip()
-        timeout = EXTERNAL_STATUS_TIMEOUT_SECONDS
+        timeout = REMOTE_FETCH_TIMEOUT_SECONDS
         started = time.perf_counter()
         _log_http_out_start(route, url, timeout)
         fetch = _fetch_remote_refs(remote_name, timeout=timeout)
         duration_ms = (time.perf_counter() - started) * 1000
         if not fetch.ok:
-            _log_http_out_error_once(route, url, duration_ms)
-            add_check("git_fetch", _t("version_check_git_fetch"), False, fetch.stderr or fetch.stdout)
+            _log_http_out_error_once(route, url, duration_ms, fetch.stderr or fetch.stdout)
+            _log_command_failure("git fetch remote refs", fetch)
+            add_check("git_fetch", _t("version_check_git_fetch"), False, PUBLIC_UPDATER_UNAVAILABLE_MESSAGE)
             return _external_status_failed(
-                _t("version_reason_fetch_failed"),
+                PUBLIC_UPDATER_UNAVAILABLE_MESSAGE,
                 checks,
                 status_context,
                 status_cache_key,

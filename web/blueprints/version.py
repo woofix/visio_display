@@ -1,6 +1,7 @@
 # Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 import json
+import logging
 import queue
 import threading
 
@@ -11,10 +12,16 @@ from services.activity_svc import log_config_change
 from services.config_svc import load_config
 from services.media_svc import get_logo_path
 from services.i18n import _t
-from services.update_svc import apply_update_and_restart, get_update_status, runtime_readiness_status
+from services.update_svc import (
+    PUBLIC_UPDATER_UNAVAILABLE_MESSAGE,
+    apply_update_and_restart,
+    get_update_status,
+    runtime_readiness_status,
+)
 
 
 bp = Blueprint("version", __name__)
+LOGGER = logging.getLogger(__name__)
 
 
 @bp.route("/admin/version")
@@ -37,7 +44,21 @@ def update_status():
     redir = superadmin_guard()
     if redir:
         return jsonify({"ok": False, "error": "forbidden"}), 403
-    return jsonify({"ok": True, "status": get_update_status(fetch_remote=request.args.get("fetch") == "1")})
+    try:
+        status = get_update_status(fetch_remote=request.args.get("fetch") == "1")
+    except Exception:
+        LOGGER.exception("Version status endpoint failed")
+        status = {
+            "status": "unavailable",
+            "status_label": _t("known_clients_unavailable"),
+            "status_tone": "warning",
+            "compatible": False,
+            "can_apply": False,
+            "can_restart": False,
+            "reason": PUBLIC_UPDATER_UNAVAILABLE_MESSAGE,
+            "checks": [],
+        }
+    return jsonify({"ok": True, "status": status})
 
 
 @bp.route("/admin/version/update/runtime-status")
@@ -75,8 +96,9 @@ def _stream_operation(operation, *, activity_message, start_message):
                 result = operation(progress_callback=progress, lock_token=None)
                 log_config_change(username, activity_message)
             emit("done", status=result)
-        except Exception as exc:
-            emit("error", message=str(exc) or exc.__class__.__name__)
+        except Exception:
+            LOGGER.exception("Version streamed operation failed")
+            emit("error", message=PUBLIC_UPDATER_UNAVAILABLE_MESSAGE)
         finally:
             done.set()
 

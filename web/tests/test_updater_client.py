@@ -34,6 +34,17 @@ class UpdaterClientTests(unittest.TestCase):
         self.assertEqual(headers["Authorization"], "Bearer secret-token")
         self.assertEqual(payload["status"]["status"], "up_to_date")
 
+    def test_get_json_hides_network_exception_details(self):
+        with patch.object(
+            updater_client.requests,
+            "get",
+            side_effect=updater_client.requests.ConnectionError("HTTPConnectionPool timeout"),
+        ):
+            with self.assertRaises(updater_client.UpdaterClientError) as raised:
+                updater_client.get_json("/status")
+
+        self.assertEqual(str(raised.exception), updater_client.PUBLIC_UPDATER_UNAVAILABLE_MESSAGE)
+
     def test_stream_operation_rejects_error_event(self):
         response = Mock(status_code=200)
         response.__enter__ = Mock(return_value=response)

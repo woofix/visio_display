@@ -39,6 +39,17 @@ class UpdaterServerTests(unittest.TestCase):
         status.assert_called_once_with(fetch_remote=True)
         self.assertEqual(response.get_json()["status"]["status"], "up_to_date")
 
+    def test_status_route_returns_controlled_json_on_failure(self):
+        with patch.object(updater_server.update_svc, "get_update_status", side_effect=RuntimeError("git exploded")):
+            response = self.app.get("/status?fetch=1", headers=self._headers())
+
+        payload = response.get_json()
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["status"]["status"], "unavailable")
+        self.assertEqual(payload["status"]["reason"], updater_server.update_svc.PUBLIC_UPDATER_UNAVAILABLE_MESSAGE)
+        self.assertNotIn("git exploded", str(payload))
+
     def test_unknown_command_route_does_not_exist(self):
         response = self.app.post("/command", headers=self._headers(), json={"command": "docker ps"})
         self.assertEqual(response.status_code, 404)

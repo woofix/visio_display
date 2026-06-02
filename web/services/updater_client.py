@@ -1,6 +1,7 @@
 # Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 import json
+import logging
 import os
 
 import requests
@@ -9,6 +10,8 @@ import requests
 DEFAULT_TIMEOUT_SECONDS = 20
 STREAM_TIMEOUT_SECONDS = 3600
 DEFAULT_DOCKER_UPDATER_URL = "http://updater:8090"
+PUBLIC_UPDATER_UNAVAILABLE_MESSAGE = "Service de mise à jour temporairement indisponible. Réessayez plus tard."
+LOGGER = logging.getLogger(__name__)
 
 
 class UpdaterClientError(RuntimeError):
@@ -40,7 +43,7 @@ def _running_in_container():
 
 
 def _dotenv_value(key):
-    for path in ("/app/.env", os.path.join(os.getcwd(), ".env")):
+    for path in (os.path.join(os.getcwd(), ".env"), "/app/.env"):
         try:
             with open(path, "r", encoding="utf-8") as handle:
                 for raw_line in handle:
@@ -77,7 +80,8 @@ def get_json(path, *, params=None, timeout=DEFAULT_TIMEOUT_SECONDS):
     try:
         response = requests.get(_url(path), headers=_headers(), params=params or {}, timeout=timeout)
     except requests.RequestException as exc:
-        raise UpdaterClientError(f"Updater indisponible: {exc}") from exc
+        LOGGER.warning("Updater request failed path=%s timeout=%s error=%r", path, timeout, exc)
+        raise UpdaterClientError(PUBLIC_UPDATER_UNAVAILABLE_MESSAGE) from exc
     return _parse_json_response(response)
 
 
@@ -112,14 +116,17 @@ def stream_operation(path, *, progress_callback=None, payload=None, timeout=STRE
                 raise UpdaterClientError("L'updater n'a pas renvoyé de statut final.")
             return final_status
     except requests.RequestException as exc:
-        raise UpdaterClientError(f"Updater indisponible: {exc}") from exc
+        LOGGER.warning("Updater stream failed path=%s timeout=%s error=%r", path, timeout, exc)
+        raise UpdaterClientError(PUBLIC_UPDATER_UNAVAILABLE_MESSAGE) from exc
 
 
 def _parse_json_response(response):
     try:
         payload = response.json()
     except ValueError as exc:
-        raise UpdaterClientError(f"Réponse updater invalide: HTTP {response.status_code}") from exc
+        LOGGER.warning("Updater returned invalid JSON status=%s body=%r", response.status_code, getattr(response, "text", ""))
+        raise UpdaterClientError(PUBLIC_UPDATER_UNAVAILABLE_MESSAGE) from exc
     if response.status_code >= 400 or not payload.get("ok", False):
-        raise UpdaterClientError(payload.get("error") or f"Updater HTTP {response.status_code}")
+        LOGGER.warning("Updater returned error status=%s payload=%r", response.status_code, payload)
+        raise UpdaterClientError(payload.get("error") or PUBLIC_UPDATER_UNAVAILABLE_MESSAGE)
     return payload

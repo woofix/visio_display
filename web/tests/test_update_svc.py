@@ -30,8 +30,11 @@ class UpdateServiceTests(unittest.TestCase):
         update_svc._HTTP_OUT_ERROR_LOGGED.clear()
         self.compose_patch = patch.object(update_svc, "_docker_compose_command", return_value=(["docker", "compose"], ""))
         self.compose_patch.start()
+        self.container_patch = patch.object(update_svc.updater_client, "_running_in_container", return_value=False)
+        self.container_patch.start()
 
     def tearDown(self):
+        self.container_patch.stop()
         self.compose_patch.stop()
         for key, value in self._env_backup.items():
             if value is None:
@@ -171,7 +174,7 @@ class UpdateServiceTests(unittest.TestCase):
         self.assertEqual(status["remote_version"], "1.1.0")
         self.assertNotEqual(status["local_commit"], status["remote_commit"])
 
-    def test_fetch_remote_uses_short_timeout_and_unavailable_on_failure(self):
+    def test_fetch_remote_uses_production_timeout_and_unavailable_on_failure(self):
         self._init_repo()
         original_git = update_svc._git
         seen = {}
@@ -187,8 +190,10 @@ class UpdateServiceTests(unittest.TestCase):
             status = update_svc.get_update_status(fetch_remote=True)
 
         self.assertEqual(seen["command"], ["fetch", "origin"])
-        self.assertEqual(seen["timeout"], 1.5)
+        self.assertEqual(seen["timeout"], update_svc.REMOTE_FETCH_TIMEOUT_SECONDS)
         self.assertEqual(status["status"], "unavailable")
+        self.assertEqual(status["reason"], update_svc.PUBLIC_UPDATER_UNAVAILABLE_MESSAGE)
+        self.assertEqual(status["checks"][-1]["detail"], update_svc.PUBLIC_UPDATER_UNAVAILABLE_MESSAGE)
         self.assertFalse(status["can_apply"])
 
     def test_fetch_remote_updates_origin_main_with_simple_fetch(self):
@@ -211,7 +216,7 @@ class UpdateServiceTests(unittest.TestCase):
         self.assertFalse(status["compatible"])
 
         with patch.object(update_svc, "_git") as git:
-            result = update_svc._fetch_remote_refs("--upload-pack=sh", timeout=1.5)
+            result = update_svc._fetch_remote_refs("--upload-pack=sh", timeout=update_svc.REMOTE_FETCH_TIMEOUT_SECONDS)
 
         self.assertFalse(result.ok)
         git.assert_not_called()
@@ -465,6 +470,7 @@ class UpdateServiceTests(unittest.TestCase):
 
         with (
             patch.dict(os.environ, {"VISIO_UPDATER_ROLE": "1", "VISIO_HOST_PRIVATE_DIR": "/host/private"}, clear=False),
+            patch.object(update_svc.shutil, "which", return_value="/usr/bin/docker"),
             patch.object(update_svc, "_current_container_image", return_value="visio_display-updater"),
             patch.object(update_svc, "_run", return_value=update_svc.CommandResult(True)) as run,
         ):
@@ -492,7 +498,18 @@ class UpdateServiceTests(unittest.TestCase):
             status = update_svc.get_update_status(fetch_remote=True)
 
         get_json.assert_called_once()
+        self.assertEqual(get_json.call_args.kwargs["timeout"], update_svc.REMOTE_FETCH_TIMEOUT_SECONDS + 5)
         self.assertEqual(status["status"], "up_to_date")
+
+    def test_delegated_status_hides_http_exception_details(self):
+        with (
+            patch.dict(os.environ, {"UPDATER_API_URL": "http://updater:8090", "UPDATER_API_TOKEN": "token"}, clear=False),
+            patch.object(update_svc.updater_client, "get_json", side_effect=RuntimeError("HTTPConnectionPool timeout")),
+        ):
+            status = update_svc.get_update_status(fetch_remote=True)
+
+        self.assertEqual(status["status"], "unavailable")
+        self.assertEqual(status["reason"], update_svc.PUBLIC_UPDATER_UNAVAILABLE_MESSAGE)
 
     def test_delegated_restart_streams_through_updater_client(self):
         delegated = {"status": "restart_scheduled", "can_restart": False}

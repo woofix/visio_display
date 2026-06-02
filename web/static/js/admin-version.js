@@ -16,6 +16,11 @@
     const configEl = document.getElementById('admin-version-config');
     const i18n = configEl ? JSON.parse(configEl.textContent || '{}') : {};
     const msg = (key, fallback) => i18n[key] || fallback;
+    const publicUpdaterUnavailable = () => msg(
+        'updaterUnavailable',
+        'Service de mise à jour temporairement indisponible. Réessayez plus tard.'
+    );
+    const cleanUpdateError = () => publicUpdaterUnavailable();
 
     const fields = {
         local_version: document.getElementById('update-local-version'),
@@ -177,16 +182,17 @@
             });
             const payload = await response.json();
             if (!response.ok || !payload.ok) {
-                throw new Error(payload.error || msg('checkFailed', 'Unable to check.'));
+                throw new Error(cleanUpdateError(payload.error));
             }
             renderStatus(payload.status);
         } catch (error) {
-            appendLog(error?.message || msg('checkFailed', 'Unable to check.'), true);
+            const errorMessage = cleanUpdateError(error?.message);
+            appendLog(errorMessage, true);
             renderStatus({
                 status: 'error',
                 status_label: msg('errorLabel', 'Error'),
                 status_tone: 'danger',
-                reason: error?.message || msg('checkFailed', 'Unable to check.'),
+                reason: errorMessage,
                 checks: currentStatus.checks || [],
             });
         } finally {
@@ -252,10 +258,10 @@
                 },
             });
             if (!response.ok || !response.body) {
-                let errorMessage = msg('actionUnavailable', 'Action unavailable.');
+                let errorMessage = publicUpdaterUnavailable();
                 try {
                     const payload = await response.json();
-                    errorMessage = payload.error || errorMessage;
+                    errorMessage = cleanUpdateError(payload.error || errorMessage);
                 } catch {}
                 throw new Error(errorMessage);
             }
@@ -278,7 +284,7 @@
                         noteRestartProgress(payload.message || '');
                     } else if (payload.type === 'error') {
                         failed = true;
-                        appendLog(payload.message || msg('actionFailed', 'Action failed.'), true);
+                        appendLog(cleanUpdateError(payload.message), true);
                     } else if (payload.type === 'done') {
                         finalStatus = payload.status;
                         if (finalStatus && finalStatus.status === 'restart_scheduled') {
@@ -328,13 +334,14 @@
                 await continueAfterRestartInterruption();
                 return;
             }
-            appendLog(error?.message || msg('actionFailed', 'Action failed.'), true);
+            const errorMessage = cleanUpdateError(error?.message);
+            appendLog(errorMessage, true);
             renderStatus({
                 ...currentStatus,
                 status: 'error',
                 status_label: msg('errorLabel', 'Error'),
                 status_tone: 'danger',
-                reason: error?.message || msg('actionFailed', 'Action failed.'),
+                reason: errorMessage,
                 can_apply: false,
             });
             setUpdateProgress(false);

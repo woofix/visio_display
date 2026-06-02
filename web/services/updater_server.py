@@ -1,6 +1,7 @@
 # Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 import json
+import logging
 import os
 import queue
 import threading
@@ -10,6 +11,7 @@ from flask import Flask, Response, jsonify, request, stream_with_context
 from services import update_svc
 
 
+LOGGER = logging.getLogger(__name__)
 ALLOWED_OPERATIONS = frozenset({
     "status",
     "runtime-status",
@@ -45,7 +47,16 @@ def create_app():
     @app.get("/status")
     def status():
         fetch_remote = request.args.get("fetch") == "1"
-        return jsonify({"ok": True, "status": update_svc.get_update_status(fetch_remote=fetch_remote)})
+        try:
+            status_payload = update_svc.get_update_status(fetch_remote=fetch_remote)
+        except Exception as exc:
+            LOGGER.exception("Updater status check failed fetch_remote=%s", fetch_remote)
+            status_payload = update_svc._build_unavailable(
+                update_svc.PUBLIC_UPDATER_UNAVAILABLE_MESSAGE,
+                [],
+                {"repo_dir": update_svc._repo_dir()},
+            )
+        return jsonify({"ok": True, "status": status_payload})
 
     @app.get("/runtime-status")
     def runtime_status():
@@ -81,7 +92,8 @@ def _stream(operation):
             result = operation(progress_callback=progress, lock_token=None)
             emit("done", status=result)
         except Exception as exc:
-            emit("error", message=str(exc) or exc.__class__.__name__)
+            LOGGER.exception("Updater streamed operation failed operation=%s", getattr(operation, "__name__", "unknown"))
+            emit("error", message=update_svc.PUBLIC_UPDATER_UNAVAILABLE_MESSAGE)
         finally:
             done.set()
 

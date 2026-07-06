@@ -43,3 +43,6 @@ web/.venv/
 
 # Local Docker override
 docker-compose.override.yml
+
+# Claude Code local settings
+.claude/

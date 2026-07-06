@@ -161,7 +161,8 @@ def _format_index_item(item, category):
 
 def _run_search(query, cfg, lang='fr', superadmin=False, has_perm_fn=None):
     if has_perm_fn is None:
-        has_perm_fn = lambda p: True
+        def has_perm_fn(p):
+            return True
 
     refresh_dynamic_search_index(cfg)
     all_pages = _search_index(query, lang, 'page')

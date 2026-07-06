@@ -1,11 +1,11 @@
 # Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 from datetime import datetime, UTC
-from flask import Blueprint, jsonify, redirect, render_template, request, session, url_for
+from flask import Blueprint, jsonify, redirect, request, session
 
 from constants import ALL_PERMISSIONS
 from services.activity_svc import log_config_change
-from services.rbac_svc import get_all_roles, set_user_roles
+from services.rbac_svc import set_user_roles
 from services.users_svc import (
     create_user,
     delete_user_account,
@@ -13,7 +13,6 @@ from services.users_svc import (
     is_admin,
     is_valid_password,
     is_valid_username,
-    load_users,
     normalize_username,
     set_must_change_password,
     set_user_password,
@@ -23,8 +22,7 @@ from services.users_svc import (
     verify_user_password,
 )
 from services.config_svc import get_screen_keys, load_config, save_config
-from services.media_svc import get_logo_path
-from services.i18n import _flash, _t
+from services.i18n import _flash
 from blueprints.guards import superadmin_guard, feature_guard_json
 
 bp = Blueprint('users', __name__)

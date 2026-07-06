@@ -7,10 +7,10 @@ from datetime import datetime, timedelta
 from flask import Blueprint, redirect, jsonify, render_template, session
 
 from constants import UPLOAD_FOLDER, VIDEO_EXTS
-from services.activity_svc import log_activity, log_config_change
+from services.activity_svc import log_activity
 from services.users_svc import is_admin, is_superadmin
 from services.media_svc import get_logo_path
-from services.config_svc import load_config, save_config
+from services.config_svc import load_config
 from services.queue_svc import (
     load_queue, save_queue,
     _rq_compress_job, _compress_q,

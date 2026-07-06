@@ -304,7 +304,7 @@ class UpdateServiceTests(unittest.TestCase):
         self.assertEqual(status["remote_version"], "1.6.12")
 
     def test_status_targets_current_main_branch_even_when_env_targets_dev(self):
-        repo = self._init_repo()
+        self._init_repo()
         with patch.dict(os.environ, {"VISIO_UPDATE_BRANCH": "dev"}, clear=False):
             status = update_svc.get_update_status(fetch_remote=True)
 

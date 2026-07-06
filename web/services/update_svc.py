@@ -177,7 +177,7 @@ def _run(command, *, cwd=None, timeout=12):
             text=True,
             timeout=timeout,
         )
-    except FileNotFoundError as exc:
+    except FileNotFoundError:
         return CommandResult(False, stderr=f"Commande introuvable: {command[0]}", returncode=127)
     except subprocess.TimeoutExpired:
         return CommandResult(False, stderr=f"Commande trop longue: {' '.join(command)}", returncode=124)

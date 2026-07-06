@@ -2,7 +2,9 @@
 
 from flask import Blueprint
 
-from services.backup_svc import copy_backup_to_smb
+# Ré-exporté volontairement : appelé dynamiquement via sys.modules['blueprints.settings']
+# (voir blueprints/settings/backups.py) et patché par les tests.
+from services.backup_svc import copy_backup_to_smb  # noqa: F401
 
 bp = Blueprint('settings', __name__)
 

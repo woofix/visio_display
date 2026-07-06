@@ -26,7 +26,7 @@ detect_bump_kind() {
         return
     fi
 
-    if printf '%s\n' "$changed_names" | grep -Eq '^(web/db\.py|docker-compose\.yml|Dockerfile|web/requirements(-dev)?\.txt)$'; then
+    if printf '%s\n' "$staged_names" | grep -Eq '^(web/db\.py|docker-compose\.yml|Dockerfile|web/requirements(-dev)?\.txt)$'; then
         printf '%s\n' "major"
         return
     fi
@@ -71,38 +71,53 @@ IFS=.
 set -- $current_version
 IFS=' '
 
-if [ "$#" -ne 3 ]; then
-    echo "pre-commit: VERSION doit utiliser le format numérique MAJOR.MINOR.PATCH, reçu: $current_version" >&2
+if [ "$#" -ne 3 ] && [ "$#" -ne 4 ]; then
+    echo "pre-commit: VERSION doit utiliser le format numérique MAJOR.MINOR.PATCH[.BUILD], reçu: $current_version" >&2
     exit 1
 fi
 
 major="${1:-}"
 minor="${2:-}"
 patch="${3:-}"
+build="${4:-}"
 
-case "$major:$minor:$patch" in
-    *[!0123456789:]*|::*|*::|*:|:*)
-        echo "pre-commit: VERSION doit utiliser le format numérique MAJOR.MINOR.PATCH, reçu: $current_version" >&2
-        exit 1
-        ;;
-esac
+for part in "$major" "$minor" "$patch" ${build:+"$build"}; do
+    case "$part" in
+        ''|*[!0123456789]*)
+            echo "pre-commit: VERSION doit utiliser le format numérique MAJOR.MINOR.PATCH[.BUILD], reçu: $current_version" >&2
+            exit 1
+            ;;
+    esac
+done
 
 case "$BUMP_KIND" in
     major)
         major=$((major + 1))
         minor=0
         patch=0
+        [ -n "$build" ] && build=0
         ;;
     minor)
         minor=$((minor + 1))
         patch=0
+        [ -n "$build" ] && build=0
         ;;
     patch)
-        patch=$((patch + 1))
+        # Sur un schéma à 4 segments, l'incrément automatique porte sur BUILD
+        # (cohérent avec les tags 1.9.1.1 -> 1.9.1.4) ; sinon sur PATCH.
+        if [ -n "$build" ]; then
+            build=$((build + 1))
+        else
+            patch=$((patch + 1))
+        fi
         ;;
 esac
 
-new_version="$major.$minor.$patch"
+if [ -n "$build" ]; then
+    new_version="$major.$minor.$patch.$build"
+else
+    new_version="$major.$minor.$patch"
+fi
 
 echo "pre-commit: version actuelle: $current_version"
 echo "pre-commit: version proposée: $new_version"
@@ -117,10 +132,10 @@ if [ -t 0 ]; then
             final_version="$new_version"
             ;;
         e|E)
-            printf "Entrer la version voulue (MAJOR.MINOR.PATCH) : "
+            printf "Entrer la version voulue (MAJOR.MINOR.PATCH[.BUILD]) : "
             read -r manual_version
 
-            if ! printf '%s' "$manual_version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            if ! printf '%s' "$manual_version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?$'; then
                 echo "pre-commit: version invalide: $manual_version" >&2
                 exit 1
             fi

@@ -1044,16 +1044,14 @@ def generate_ephemeride_image(force=False):
     try:
         font_title = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 80)
         font_date  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",      50)
-        font_saint = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 75)
         font_desc  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",      42)
         font_sun   = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 52)
         font_label = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",      36)
-        font_meteo = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 48)
         font_mlab  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",      34)
     except Exception:
         default = ImageFont.load_default()
-        font_title = font_date = font_saint = font_desc = default
-        font_sun = font_label = font_meteo = font_mlab = default
+        font_title = font_date = font_desc = default
+        font_sun = font_label = font_mlab = default
 
     draw.rectangle([160, 195, 1760, 200], fill=(200, 180, 255))
     draw.text((960, 155), _t('ephemeris_title', lang),    fill=(220, 200, 255), font=font_title, anchor="mm")

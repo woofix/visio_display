@@ -49,7 +49,7 @@ def create_app():
         fetch_remote = request.args.get("fetch") == "1"
         try:
             status_payload = update_svc.get_update_status(fetch_remote=fetch_remote)
-        except Exception as exc:
+        except Exception:
             LOGGER.exception("Updater status check failed fetch_remote=%s", fetch_remote)
             status_payload = update_svc._build_unavailable(
                 update_svc.PUBLIC_UPDATER_UNAVAILABLE_MESSAGE,
@@ -91,7 +91,7 @@ def _stream(operation):
         try:
             result = operation(progress_callback=progress, lock_token=None)
             emit("done", status=result)
-        except Exception as exc:
+        except Exception:
             LOGGER.exception("Updater streamed operation failed operation=%s", getattr(operation, "__name__", "unknown"))
             emit("error", message=update_svc.PUBLIC_UPDATER_UNAVAILABLE_MESSAGE)
         finally:

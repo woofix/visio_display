@@ -19,7 +19,7 @@ from services.config_svc import (
 from services.users_svc import load_users, has_permission, has_screen_access, is_superadmin
 from services.media_svc import (
     get_all_media, get_logo_path,
-    clean_filename, get_media_groups,
+    get_media_groups,
     collect_group_states, is_media_disabled, normalize_group_name,
     cleanup_orphan_group_metadata,
     delete_image_variants, delete_media_thumbnail, delete_video_variants,

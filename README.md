@@ -562,7 +562,6 @@ Visio-Display/
     ├── db.py                    # Modèles SQLAlchemy (configuration, utilisateurs, rôles, jobs, journal, recherche, clients)
     ├── constants.py             # Constantes partagées
     ├── translations.py          # Traductions FR/EN
-    ├── encode_now.py            # Encodage vidéo (exécuté par le worker RQ)
     ├── pyproject.toml           # Config ruff
     ├── requirements.txt         # Dépendances de production
     ├── blueprints/              # Blueprints Flask
@@ -1382,7 +1381,6 @@ Visio-Display/
     ├── db.py                    # SQLAlchemy models (config, users, roles, jobs, activity, search, clients)
     ├── constants.py             # Shared constants
     ├── translations.py          # FR/EN translations
-    ├── encode_now.py            # Video encoding (run by the RQ worker)
     ├── pyproject.toml           # Ruff config
     ├── requirements.txt         # Production dependencies
     ├── blueprints/              # Flask blueprints

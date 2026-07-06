@@ -2,7 +2,7 @@
 
 from datetime import date
 
-from flask import Blueprint, jsonify, redirect, request, session, url_for
+from flask import Blueprint, jsonify, redirect, request, session
 
 from services.activity_svc import log_config_change
 from services.config_svc import load_config, save_config

@@ -1,4 +1,5 @@
-# Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
+# Licensed under the GNU General Public License v3.0 (GPL-3.0).
+# Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 import logging
 import os
@@ -10,7 +11,18 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta
 from functools import lru_cache
 
-from flask import abort, g, has_request_context, jsonify, redirect, render_template, request, send_from_directory, session, url_for
+from flask import (
+    abort,
+    g,
+    has_request_context,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    send_from_directory,
+    session,
+    url_for,
+)
 from flask import before_render_template, template_rendered
 from jinja2 import FileSystemBytecodeCache
 from sqlalchemy import event, inspect, text
@@ -594,7 +606,8 @@ def register_request_hooks(app):
                 role = "superadmin" if getattr(g, "current_user_is_superadmin_cached", False) else "admin"
             if request.path.startswith("/admin"):
                 LOGGER.warning(
-                    "ADMIN request route=%s method=%s url=%s status=%s total=%.1fms sql_count=%s sql_time=%.1fms template=%.1fms user=%s role=%s response_size=%s steps=%s",
+                    "ADMIN request route=%s method=%s url=%s status=%s total=%.1fms sql_count=%s "
+                    "sql_time=%.1fms template=%.1fms user=%s role=%s response_size=%s steps=%s",
                     request.endpoint or "-",
                     request.method,
                     request.full_path.rstrip("?"),

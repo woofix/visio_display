@@ -1,4 +1,5 @@
-# Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
+# Licensed under the GNU General Public License v3.0 (GPL-3.0).
+# Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 import base64
 import io
@@ -239,7 +240,9 @@ def _font(size, bold=False, family=None):
     key = _font_family_key(family)
     family_candidates = (FONT_BOLD_FAMILIES if bold else FONT_FAMILIES).get(key, ())
     candidates = family_candidates + (
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+        if bold
+        else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "/Library/Fonts/Arial Unicode.ttf",
         "/System/Library/Fonts/Supplemental/Arial Bold.ttf" if bold else "/System/Library/Fonts/Supplemental/Arial.ttf",
     )
@@ -587,7 +590,9 @@ def _render_layout_json(form, uploaded_file=None, layer_uploads=None):
             stroke = int(_num(element.get("strokeWidth"), 8, 1, 80))
             layer = Image.new("RGBA", (int(w), max(stroke * 2, int(h), 2)), (0, 0, 0, 0))
             ImageDraw.Draw(layer).line((0, layer.height / 2, w, layer.height / 2), fill=fill, width=stroke)
-            _paste_layer(background, layer, x, y - layer.height / 2, w, layer.height, _num(element.get("rotation"), 0), 1)
+            _paste_layer(
+                background, layer, x, y - layer.height / 2, w, layer.height, _num(element.get("rotation"), 0), 1
+            )
         elif kind in {"image", "icon"}:
             image = _element_image(element, layer_uploads)
             if image:
@@ -611,7 +616,9 @@ def build_background(form, uploaded_file=None):
     offset_x = form.get("background_x") or 0
     offset_y = form.get("background_y") or 0
     def fitted(image):
-        return _compose_image_in_box(image, ANNOUNCEMENT_SIZE, fit=fit, zoom=zoom, offset_x=offset_x, offset_y=offset_y).convert("RGB")
+        return _compose_image_in_box(
+            image, ANNOUNCEMENT_SIZE, fit=fit, zoom=zoom, offset_x=offset_x, offset_y=offset_y
+        ).convert("RGB")
     if mode == "upload" and uploaded_file and uploaded_file.filename:
         with Image.open(uploaded_file.stream) as image:
             return fitted(image)
@@ -714,7 +721,12 @@ def _template_layout(canvas, form):
         if external_credit:
             credit = external_credit[:120]
             bbox = draw.textbbox((0, 0), credit, font=_font(20))
-            draw.text((1888 - bbox[2], 1038), credit, font=_font(20), fill=tuple(min(255, int(ch * 0.82)) for ch in text_color))
+            draw.text(
+                (1888 - bbox[2], 1038),
+                credit,
+                font=_font(20),
+                fill=tuple(min(255, int(ch * 0.82)) for ch in text_color),
+            )
         return
     else:
         _draw_logo(canvas, app_name, text_color)
@@ -732,7 +744,12 @@ def _template_layout(canvas, form):
     if external_credit:
         credit = external_credit[:120]
         bbox = draw.textbbox((0, 0), credit, font=_font(20))
-        draw.text((1888 - bbox[2], 1038), credit, font=_font(20), fill=tuple(min(255, int(ch * 0.82)) for ch in text_color))
+        draw.text(
+            (1888 - bbox[2], 1038),
+            credit,
+            font=_font(20),
+            fill=tuple(min(255, int(ch * 0.82)) for ch in text_color),
+        )
 
 
 def create_announcement(form, uploaded_file=None, layer_uploads=None, username=None):

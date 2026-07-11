@@ -1,4 +1,5 @@
-# Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
+# Licensed under the GNU General Public License v3.0 (GPL-3.0).
+# Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 import os
 
@@ -71,7 +72,12 @@ def set_client_watchdog():
         ),
     }
     save_config(cfg)
-    log_config_change(session.get('user'), f'client watchdog updated: interval={cfg["client_watchdog"]["check_interval_seconds"]}s, grace={cfg["client_watchdog"]["grace_period_seconds"]}s, failures={cfg["client_watchdog"]["consecutive_failures_before_reboot"]}')
+    log_config_change(
+        session.get('user'),
+        f'client watchdog updated: interval={cfg["client_watchdog"]["check_interval_seconds"]}s, '
+        f'grace={cfg["client_watchdog"]["grace_period_seconds"]}s, '
+        f'failures={cfg["client_watchdog"]["consecutive_failures_before_reboot"]}',
+    )
     _flash('flash_client_watchdog_updated', 'success')
     return redirect(settings_section_url('installation'))
 

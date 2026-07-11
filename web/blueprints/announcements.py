@@ -1,4 +1,5 @@
-# Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
+# Licensed under the GNU General Public License v3.0 (GPL-3.0).
+# Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 import os
 
@@ -6,7 +7,13 @@ from flask import Blueprint, Response, jsonify, redirect, render_template, reque
 
 from blueprints.guards import admin_guard, feature_guard
 from constants import UPLOAD_FOLDER
-from services.announcement_svc import _safe_image_url, create_announcement, fetch_thumbnail_bytes, image_media_choices, pexels_search
+from services.announcement_svc import (
+    _safe_image_url,
+    create_announcement,
+    fetch_thumbnail_bytes,
+    image_media_choices,
+    pexels_search,
+)
 from services.config_svc import get_default_screen_name, get_screen_keys, load_config, normalize_screen_key
 from services.icon_svc import scan_svg_icons
 from services.i18n import _flash, _t

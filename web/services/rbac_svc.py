@@ -1,4 +1,5 @@
-# Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
+# Licensed under the GNU General Public License v3.0 (GPL-3.0).
+# Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 import re
 
@@ -55,7 +56,12 @@ def create_role(name, display_name, description=None, permissions=None):
         raise ValueError('invalid_role_name')
     if Role.query.filter_by(name=name).first():
         raise ValueError('role_exists')
-    role = Role(name=name, display_name=display_name.strip(), description=(description or '').strip() or None, is_system=False)
+    role = Role(
+        name=name,
+        display_name=display_name.strip(),
+        description=(description or '').strip() or None,
+        is_system=False,
+    )
     db.session.add(role)
     db.session.flush()
     _apply_permissions(role.id, permissions or [])

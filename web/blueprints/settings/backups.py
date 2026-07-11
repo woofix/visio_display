@@ -1,4 +1,5 @@
-# Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
+# Licensed under the GNU General Public License v3.0 (GPL-3.0).
+# Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 import json
 import queue
@@ -68,7 +69,8 @@ def save_backup_remote():
     save_config(cfg)
     log_config_change(
         session.get('user'),
-        f"backup SMB destination updated: active={'yes' if remote_settings['enabled'] else 'no'}, url={remote_settings['url'] or '-'}",
+        f"backup SMB destination updated: active={'yes' if remote_settings['enabled'] else 'no'}, "
+        f"url={remote_settings['url'] or '-'}",
     )
     _flash('flash_backup_remote_saved', 'success')
     return redirect(settings_section_url('sauvegardes'))

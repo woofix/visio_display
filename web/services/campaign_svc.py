@@ -1,4 +1,5 @@
-# Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
+# Licensed under the GNU General Public License v3.0 (GPL-3.0).
+# Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 import json
 import threading
@@ -118,7 +119,9 @@ def get_campaigns(cfg):
         for item in (cfg or {}).get("campaigns", [])
         if isinstance(item, dict)
     ]
-    campaigns.sort(key=lambda item: (item.get("archived", False), -item.get("priority", 0), item.get("name", "").casefold()))
+    campaigns.sort(
+        key=lambda item: (item.get("archived", False), -item.get("priority", 0), item.get("name", "").casefold())
+    )
     return campaigns
 
 

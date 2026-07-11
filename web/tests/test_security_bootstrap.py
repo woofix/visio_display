@@ -118,7 +118,9 @@ class SecurityBootstrapTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             install_dir = Path(tmp)
             env_file = install_dir / ".env"
-            env_file.write_text("SECRET_KEY=\nPOSTGRES_PASSWORD=visio\nDISPLAY_API_TOKEN=screen-token\n", encoding="utf-8")
+            env_file.write_text(
+                "SECRET_KEY=\nPOSTGRES_PASSWORD=visio\nDISPLAY_API_TOKEN=screen-token\n", encoding="utf-8"
+            )
 
             result = self.run_bootstrap("update", install_dir)
 

@@ -1,4 +1,5 @@
-# Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
+# Licensed under the GNU General Public License v3.0 (GPL-3.0).
+# Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 import json
 import logging
@@ -92,7 +93,9 @@ def _stream(operation):
             result = operation(progress_callback=progress, lock_token=None)
             emit("done", status=result)
         except Exception:
-            LOGGER.exception("Updater streamed operation failed operation=%s", getattr(operation, "__name__", "unknown"))
+            LOGGER.exception(
+                "Updater streamed operation failed operation=%s", getattr(operation, "__name__", "unknown")
+            )
             emit("error", message=update_svc.PUBLIC_UPDATER_UNAVAILABLE_MESSAGE)
         finally:
             done.set()

@@ -1,4 +1,5 @@
-# Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
+# Licensed under the GNU General Public License v3.0 (GPL-3.0).
+# Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 import json
 import logging
@@ -124,7 +125,9 @@ def _parse_json_response(response):
     try:
         payload = response.json()
     except ValueError as exc:
-        LOGGER.warning("Updater returned invalid JSON status=%s body=%r", response.status_code, getattr(response, "text", ""))
+        LOGGER.warning(
+            "Updater returned invalid JSON status=%s body=%r", response.status_code, getattr(response, "text", "")
+        )
         raise UpdaterClientError(PUBLIC_UPDATER_UNAVAILABLE_MESSAGE) from exc
     if response.status_code >= 400 or not payload.get("ok", False):
         LOGGER.warning("Updater returned error status=%s payload=%r", response.status_code, payload)

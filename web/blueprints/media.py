@@ -1,4 +1,5 @@
-# Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
+# Licensed under the GNU General Public License v3.0 (GPL-3.0).
+# Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 import copy
 import os
@@ -306,8 +307,12 @@ def admin_programming_page():
             'label': f'{weekday_label} {day.strftime("%d/%m")}',
         })
 
-    screen_choices = ([('', default_screen_name)] if has_screen_access('') else []) + [(screen, screen) for screen in allowed_screens]
-    filter_screen_choices = ([('__global__', default_screen_name)] if has_screen_access('') else []) + [(screen, screen) for screen in allowed_screens]
+    screen_choices = ([('', default_screen_name)] if has_screen_access('') else []) + [
+        (screen, screen) for screen in allowed_screens
+    ]
+    filter_screen_choices = ([('__global__', default_screen_name)] if has_screen_access('') else []) + [
+        (screen, screen) for screen in allowed_screens
+    ]
     group_choices = sorted({group for entry in entries for group in entry.get('groups', [])}, key=str.casefold)
 
     return render_template(

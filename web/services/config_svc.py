@@ -1,4 +1,5 @@
-# Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
+# Licensed under the GNU General Public License v3.0 (GPL-3.0).
+# Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 import json
 import re
@@ -271,7 +272,9 @@ def normalize_config(cfg):
     }
     merged["backup_schedule"]["enabled"] = bool(merged["backup_schedule"].get("enabled", False))
     merged["backup_schedule"]["copy_to_smb"] = bool(merged["backup_schedule"].get("copy_to_smb", True))
-    for key in ("time", "last_run_date", "last_started_at", "last_finished_at", "last_status", "last_message", "last_backup"):
+    for key in (
+        "time", "last_run_date", "last_started_at", "last_finished_at", "last_status", "last_message", "last_backup",
+    ):
         merged["backup_schedule"][key] = str(merged["backup_schedule"].get(key, "") or "").strip()
     stored_backup_retention = cfg.get("backup_retention", {})
     merged["backup_retention"] = {

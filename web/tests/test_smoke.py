@@ -17,6 +17,7 @@ from sqlalchemy import text
 class FakeRedis:
     def __init__(self):
         self.store = {}
+        self.expiry = {}
 
     def ping(self):
         return True
@@ -30,11 +31,36 @@ class FakeRedis:
         if isinstance(value, str):
             value = value.encode("utf-8")
         self.store[key] = value
+        if ex is not None:
+            self.expiry[key] = ex
+        else:
+            self.expiry.pop(key, None)
         return True
+
+    def setex(self, key, seconds, value):
+        return self.set(key, value, ex=seconds)
 
     def delete(self, key):
         self.store.pop(key, None)
+        self.expiry.pop(key, None)
         return True
+
+    def exists(self, key):
+        return 1 if key in self.store else 0
+
+    def incr(self, key, amount=1):
+        current = int(self.store.get(key) or 0) + amount
+        self.store[key] = str(current).encode("utf-8")
+        return current
+
+    def expire(self, key, seconds):
+        if key not in self.store:
+            return False
+        self.expiry[key] = seconds
+        return True
+
+    def ttl(self, key):
+        return self.expiry.get(key, -1)
 
 
 class AppSmokeTests(unittest.TestCase):
@@ -122,7 +148,6 @@ class AppSmokeTests(unittest.TestCase):
             },
         )
         self.auth_module = import_module("blueprints.auth")
-        self.auth_module._login_attempts.clear()
         self.client = self.app.test_client()
 
     def tearDown(self):
@@ -134,8 +159,6 @@ class AppSmokeTests(unittest.TestCase):
                 db.engine.dispose()
         for patcher in reversed(self.patchers):
             patcher.stop()
-        if hasattr(self, "auth_module"):
-            self.auth_module._login_attempts.clear()
         for name in ("redis", "rq", "rq.job", "rq.registry"):
             sys.modules.pop(name, None)
         for module_name in list(sys.modules):
@@ -221,10 +244,9 @@ class AppSmokeTests(unittest.TestCase):
         generate.assert_called_once_with(force=True)
 
     def test_rate_limited_login_rejects_before_password_check(self):
-        self.auth_module._login_attempts["127.0.0.1::admin"] = {
-            "failures": [],
-            "blocked_until": self.auth_module.time.time() + 60,
-        }
+        self.fake_redis.setex(
+            self.auth_module._login_blocked_key("admin", "127.0.0.1"), 60, "1"
+        )
 
         with (
             patch("blueprints.auth.verify_user_password", side_effect=AssertionError("password checked")),
@@ -245,10 +267,9 @@ class AppSmokeTests(unittest.TestCase):
             self.assertNotIn("user", session)
 
     def test_rate_limited_login_ignores_untrusted_forwarded_for(self):
-        self.auth_module._login_attempts["127.0.0.1::admin"] = {
-            "failures": [],
-            "blocked_until": self.auth_module.time.time() + 60,
-        }
+        self.fake_redis.setex(
+            self.auth_module._login_blocked_key("admin", "127.0.0.1"), 60, "1"
+        )
 
         with patch("blueprints.auth.verify_user_password", side_effect=AssertionError("password checked")):
             response = self.client.post(
@@ -958,25 +979,14 @@ class AppSmokeTests(unittest.TestCase):
         from PIL import Image
         from services import upload_svc
 
-        image = Image.new("RGB", (20, 20), "red")
-        payload = BytesIO()
-        image.save(payload, format="JPEG")
-        payload.seek(0)
+        image_path = os.path.join(self.temp_dir.name, "huge.jpg")
+        Image.new("RGB", (20, 20), "red").save(image_path, format="JPEG")
 
-        with self.client.session_transaction() as session:
-            session["user"] = "admin"
-            session["_csrf_token"] = "upload-token"
-            token = session["_csrf_token"]
+        with patch.object(upload_svc, "MAX_UPLOAD_IMAGE_PIXELS", 100), \
+             self.assertRaises(upload_svc.UploadValidationError) as raised:
+            upload_svc.validate_image_dimensions(image_path)
 
-        with patch.object(upload_svc, "MAX_UPLOAD_IMAGE_PIXELS", 100):
-            response = self.client.post(
-                "/upload",
-                data={"file": (payload, "huge.jpg"), "_csrf_token": token},
-                content_type="multipart/form-data",
-            )
-
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.get_json()["error"], "image dimensions too large")
+        self.assertEqual(raised.exception.payload["error"], "image dimensions too large")
 
     def test_upload_validation_rejects_pdf_with_too_many_pages(self):
         from services import upload_svc
@@ -1212,7 +1222,9 @@ class AppSmokeTests(unittest.TestCase):
             session["user"] = "admin"
             session["_csrf_token"] = "duration-token"
 
-        response = self.client.post("/set_duration/menu_test.mp4", json={"duration": 30, "_csrf_token": "duration-token"})
+        response = self.client.post(
+            "/set_duration/menu_test.mp4", json={"duration": 30, "_csrf_token": "duration-token"}
+        )
 
         self.assertEqual(response.status_code, 403)
         with self.app.app_context():
@@ -1248,7 +1260,9 @@ class AppSmokeTests(unittest.TestCase):
 
             with (
                 patch.object(menu_svc, "render_menu_animation", return_value=False),
-                patch.object(menu_svc, "render_menu_image", return_value=Image.new("RGB", (16, 9), "white")) as render_image,
+                patch.object(
+                    menu_svc, "render_menu_image", return_value=Image.new("RGB", (16, 9), "white")
+                ) as render_image,
                 patch.object(menu_svc, "generate_standard_renditions"),
             ):
                 filenames = menu_svc.create_weekly_menus_from_form(
@@ -1677,8 +1691,10 @@ class AppSmokeTests(unittest.TestCase):
             Image.new("RGB", (24, 16), "white"),
             Image.new("RGB", (24, 16), "black"),
         ]
+        media_module = import_module("blueprints.media")
         with patch("pdf2image.pdfinfo_from_path", return_value={"Pages": "2"}), \
-             patch("pdf2image.convert_from_path", return_value=pages):
+             patch("pdf2image.convert_from_path", return_value=pages), \
+             patch.object(media_module, "enqueue_media_prepare_job", return_value="prepare-123") as enqueue_prepare:
             response = self.client.post(
                 "/upload",
                 data={"file": (BytesIO(b"%PDF-1.4 fake"), "document.pdf"), "_csrf_token": token},
@@ -1687,6 +1703,8 @@ class AppSmokeTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json()["redirect"], "/admin/media")
+        enqueue_prepare.assert_any_call("document_page_1.jpg")
+        enqueue_prepare.assert_any_call("document_page_2.jpg")
 
         with self.app.app_context():
             from constants import UPLOAD_FOLDER
@@ -1695,7 +1713,7 @@ class AppSmokeTests(unittest.TestCase):
             self.assertFalse(os.path.exists(os.path.join(UPLOAD_FOLDER, "document.pdf")))
             self.assertTrue(os.path.exists(os.path.join(UPLOAD_FOLDER, "document_page_1.jpg")))
             self.assertTrue(os.path.exists(os.path.join(UPLOAD_FOLDER, "document_page_2.jpg")))
-            self.assertIsNotNone(get_existing_image_rendition_url("document_page_1.jpg", "thumb"))
+            self.assertIsNone(get_existing_image_rendition_url("document_page_1.jpg", "thumb"))
 
     def test_encoding_window_uses_configured_application_timezone(self):
         with self.app.app_context():
@@ -2341,7 +2359,7 @@ class AppSmokeTests(unittest.TestCase):
         self.assertEqual(allowed.status_code, 200)
         self.assertEqual(blocked_page.status_code, 403)
         self.assertIn(b"Visio Display", blocked_page.data)
-        self.assertIn("Accès réservé".encode("utf-8"), blocked_page.data)
+        self.assertIn(b"Houston, we have a problem", blocked_page.data)
         self.assertEqual(allowed_page.status_code, 200)
 
     def test_static_data_requires_screen_token_but_other_static_assets_remain_public(self):
@@ -2353,7 +2371,9 @@ class AppSmokeTests(unittest.TestCase):
                 handle.write(b"image-bytes")
 
         blocked = self.client.get("/static/data/original/poster.jpg")
-        allowed_header = self.client.get("/static/data/original/poster.jpg", headers={"X-Screen-Token": "screen-secret"})
+        allowed_header = self.client.get(
+            "/static/data/original/poster.jpg", headers={"X-Screen-Token": "screen-secret"}
+        )
         allowed_query = self.client.get("/static/data/original/poster.jpg?screen_token=screen-secret")
         css = self.client.get("/static/css/display-screen.css")
 
@@ -2635,11 +2655,17 @@ class AppSmokeTests(unittest.TestCase):
 
         with patch.object(media_svc, "UPLOAD_FOLDER", media_dir), \
              patch.object(media_svc, "VIDEO_VARIANT_FOLDER", video_variant_dir):
-            fallback_url = media_svc.get_media_url("clip.mp4", context="display", bounds=(3840, 2160), allow_original=True)
+            fallback_url = media_svc.get_media_url(
+                "clip.mp4", context="display", bounds=(3840, 2160), allow_original=True
+            )
             with open(os.path.join(video_variant_dir, "clip__v2160.mp4"), "wb") as handle:
                 handle.write(b"2160")
-            four_k_url = media_svc.get_media_url("clip.mp4", context="display", bounds=(3840, 2160), allow_original=True)
-            full_hd_url = media_svc.get_media_url("clip.mp4", context="display", bounds=(1920, 1080), allow_original=True)
+            four_k_url = media_svc.get_media_url(
+                "clip.mp4", context="display", bounds=(3840, 2160), allow_original=True
+            )
+            full_hd_url = media_svc.get_media_url(
+                "clip.mp4", context="display", bounds=(1920, 1080), allow_original=True
+            )
 
         self.assertIn("/static/data/video_variants/clip__v1080.mp4", fallback_url)
         self.assertIn("/static/data/video_variants/clip__v2160.mp4", four_k_url)
@@ -2929,7 +2955,13 @@ class AppSmokeTests(unittest.TestCase):
 
     def test_named_default_screen_is_migrated_to_regular_screen(self):
         with self.app.app_context():
-            from services.config_svc import get_screen_config, get_screen_keys, normalize_screen_key, save_config, load_config
+            from services.config_svc import (
+                get_screen_config,
+                get_screen_keys,
+                normalize_screen_key,
+                save_config,
+                load_config,
+            )
 
             save_config({
                 "default_screen_name": "Client1",

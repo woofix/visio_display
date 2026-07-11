@@ -1,4 +1,5 @@
-# Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
+# Licensed under the GNU General Public License v3.0 (GPL-3.0).
+# Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 import json
 import logging
@@ -319,7 +320,9 @@ def _compose_services(compose_cmd=None, project_name=""):
     compose_cmd = compose_cmd or _docker_compose_command()[0]
     if not compose_cmd:
         return []
-    result = _run([*_with_compose_project(compose_cmd, project_name), "config", "--services"], cwd=_repo_dir(), timeout=20)
+    result = _run(
+        [*_with_compose_project(compose_cmd, project_name), "config", "--services"], cwd=_repo_dir(), timeout=20
+    )
     if not result.ok:
         return []
     return [line.strip() for line in result.stdout.splitlines() if line.strip()]
@@ -329,7 +332,9 @@ def _compose_containers(compose_cmd=None, project_name=""):
     compose_cmd = compose_cmd or _docker_compose_command()[0]
     if not compose_cmd:
         return [], "Docker Compose indisponible"
-    result = _run([*_with_compose_project(compose_cmd, project_name), "ps", "--format", "json"], cwd=_repo_dir(), timeout=20)
+    result = _run(
+        [*_with_compose_project(compose_cmd, project_name), "ps", "--format", "json"], cwd=_repo_dir(), timeout=20
+    )
     if not result.ok:
         return [], result.stderr or result.stdout or "docker compose ps indisponible"
     return _parse_compose_json_lines(result.stdout), ""
@@ -389,29 +394,45 @@ def runtime_readiness_status(*, compose_cmd=None, project_name="", app_url=None)
     by_service = {_container_service_name(item): item for item in containers if _container_service_name(item)}
 
     if compose_error:
-        checks.append({"key": "containers", "label": _t("version_runtime_containers"), "ok": False, "detail": compose_error})
+        checks.append({
+            "key": "containers", "label": _t("version_runtime_containers"), "ok": False, "detail": compose_error,
+        })
     else:
         expected_services = services or ["app", "worker", "postgres", "redis"]
         missing = [service for service in expected_services if service not in by_service]
-        stopped = [service for service in expected_services if service in by_service and not _container_is_running(by_service[service])]
+        stopped = [
+            service for service in expected_services
+            if service in by_service and not _container_is_running(by_service[service])
+        ]
         if missing or stopped:
             detail_parts = []
             if missing:
                 detail_parts.append(_t("version_runtime_missing", services=", ".join(missing)))
             if stopped:
                 detail_parts.append(_t("version_runtime_stopped", services=", ".join(stopped)))
-            checks.append({"key": "containers", "label": _t("version_runtime_containers_running"), "ok": False, "detail": "; ".join(detail_parts)})
+            checks.append({
+                "key": "containers", "label": _t("version_runtime_containers_running"), "ok": False,
+                "detail": "; ".join(detail_parts),
+            })
         else:
-            checks.append({"key": "containers", "label": _t("version_runtime_containers_running"), "ok": True, "detail": ", ".join(expected_services)})
+            checks.append({
+                "key": "containers", "label": _t("version_runtime_containers_running"), "ok": True,
+                "detail": ", ".join(expected_services),
+            })
 
         unhealthy = [
             service for service in expected_services
             if service in by_service and service != "app" and not _container_health_ok(by_service[service])
         ]
         if unhealthy:
-            checks.append({"key": "healthchecks", "label": _t("version_runtime_healthchecks"), "ok": False, "detail": ", ".join(unhealthy)})
+            checks.append({
+                "key": "healthchecks", "label": _t("version_runtime_healthchecks"), "ok": False,
+                "detail": ", ".join(unhealthy),
+            })
         else:
-            checks.append({"key": "healthchecks", "label": _t("version_runtime_healthchecks"), "ok": True, "detail": "OK"})
+            checks.append({
+                "key": "healthchecks", "label": _t("version_runtime_healthchecks"), "ok": True, "detail": "OK",
+            })
 
     http_url = app_url or _app_health_url()
     http_ready, http_detail = _http_ok(http_url)
@@ -690,7 +711,9 @@ def get_update_status(*, fetch_remote=False, allow_dirty=False):
         started = time.perf_counter()
         _log_http_out_start(route, url, timeout)
         try:
-            payload = updater_client.get_json("/status", params={"fetch": "1" if fetch_remote else "0"}, timeout=timeout)
+            payload = updater_client.get_json(
+                "/status", params={"fetch": "1" if fetch_remote else "0"}, timeout=timeout
+            )
         except Exception as exc:
             duration_ms = (time.perf_counter() - started) * 1000
             _log_http_out_error_once(route, url, duration_ms, repr(exc))
@@ -752,7 +775,10 @@ def get_update_status(*, fetch_remote=False, allow_dirty=False):
 
     status = _git(["status", "--porcelain"])
     if not status.ok:
-        add_check("git_clean", _t("version_check_git_clean"), False, status.stderr or _t("version_reason_git_state_unreadable"))
+        add_check(
+            "git_clean", _t("version_check_git_clean"), False,
+            status.stderr or _t("version_reason_git_state_unreadable"),
+        )
         return _build_incompatible(_t("version_reason_git_state_unreadable"), checks, status_context)
     git_state = "dirty" if status.stdout.strip() else "clean"
     if git_state != "clean" and not allow_dirty:
@@ -779,7 +805,10 @@ def get_update_status(*, fetch_remote=False, allow_dirty=False):
     if not compose_cmd:
         add_check("docker_compose", _t("version_check_docker_compose"), False, compose_error)
         return _build_incompatible(compose_error, checks, status_context)
-    add_check("docker_compose", _t("version_check_docker_compose"), True, " ".join(os.path.basename(part) for part in compose_cmd))
+    add_check(
+        "docker_compose", _t("version_check_docker_compose"), True,
+        " ".join(os.path.basename(part) for part in compose_cmd),
+    )
 
     if fetch_remote:
         route = _current_route()

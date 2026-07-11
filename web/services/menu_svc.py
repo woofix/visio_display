@@ -1,4 +1,5 @@
-# Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
+# Licensed under the GNU General Public License v3.0 (GPL-3.0).
+# Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 import os
 import json
@@ -111,7 +112,11 @@ def flatten_menu_sections(sections):
     items = []
     for section in sections:
         for line in section.get("lines", []):
-            items.append({"section": section.get("key", "main"), "section_label": section.get("label", "Plat"), "text": line})
+            items.append({
+                "section": section.get("key", "main"),
+                "section_label": section.get("label", "Plat"),
+                "text": line,
+            })
     return items
 
 
@@ -280,7 +285,9 @@ def collect_weekly_menu_days(data):
             if value:
                 sections[key] = value
         if sections:
-            day_date = parse_iso_date(data.get(f"week_{index}_date", "") if hasattr(data, "get") else "") or week_start + timedelta(days=index)
+            day_date = parse_iso_date(
+                data.get(f"week_{index}_date", "") if hasattr(data, "get") else ""
+            ) or week_start + timedelta(days=index)
             days.append({
                 "index": index,
                 "date": day_date,
@@ -393,7 +400,9 @@ def suggest_menu_sections(sections=None, *, fallback_text=None, include_external
 
 def _font(size, bold=False):
     candidates = [
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+        if bold
+        else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "/System/Library/Fonts/Supplemental/Arial Bold.ttf" if bold else "/System/Library/Fonts/Supplemental/Arial.ttf",
     ]
     for path in candidates:
@@ -488,15 +497,26 @@ def _draw_section_dish(canvas, draw, item, box, image_choices, *, accent=(148, 1
         mask = Image.new("L", (image_box[2], image_box[3]), 0)
         ImageDraw.Draw(mask).rounded_rectangle((0, 0, image_box[2], image_box[3]), radius=32, fill=255)
         canvas.paste(thumb, (image_box[0], image_box[1]), mask)
-        draw.rounded_rectangle((image_box[0], image_box[1], image_box[0] + image_box[2], image_box[1] + image_box[3]), radius=32, outline=(15, 23, 42), width=4)
+        draw.rounded_rectangle(
+            (image_box[0], image_box[1], image_box[0] + image_box[2], image_box[1] + image_box[3]),
+            radius=32,
+            outline=(15, 23, 42),
+            width=4,
+        )
     else:
         _draw_fallback(draw, image_box, item["text"])
     text_x = x + image_size + 42
-    _draw_wrapped(draw, item["text"], text_x, y + 30, w - image_size - 62, _font(42, bold=True), (15, 23, 42), max_lines=2)
+    _draw_wrapped(
+        draw, item["text"], text_x, y + 30, w - image_size - 62, _font(42, bold=True), (15, 23, 42), max_lines=2
+    )
     keywords = ", ".join(k["keyword"] for k in item["keywords"][:3])
     if keywords:
         pill_w = min(w - image_size - 62, draw.textbbox((0, 0), keywords, font=_font(22, bold=True))[2] + 34)
-        draw.rounded_rectangle((text_x, y + h - 48, text_x + pill_w, y + h - 16), radius=16, fill=_blend_color((255, 255, 255), accent, 0.24))
+        draw.rounded_rectangle(
+            (text_x, y + h - 48, text_x + pill_w, y + h - 16),
+            radius=16,
+            fill=_blend_color((255, 255, 255), accent, 0.24),
+        )
         draw.text((text_x + 17, y + h - 44), keywords, font=_font(22, bold=True), fill=(51, 65, 85))
 
 
@@ -524,12 +544,18 @@ def _draw_food_hero(canvas, draw, item, image_choices, *, phase=0, accent=(255, 
     else:
         for y in range(MENU_SIZE[1]):
             ratio = y / max(1, MENU_SIZE[1] - 1)
-            color = _blend_color(_blend_color((255, 236, 153), accent, 0.22), _blend_color((255, 247, 237), accent, 0.52), ratio)
+            color = _blend_color(
+                _blend_color((255, 236, 153), accent, 0.22), _blend_color((255, 247, 237), accent, 0.52), ratio
+            )
             draw.line((hero_box[0], y, hero_box[2], y), fill=color)
         for radius, mix in ((380, 0.14), (270, 0.2), (160, 0.28)):
             cx = 468 + int(math.sin(phase * 0.08) * 22)
             cy = 482 + int(math.cos(phase * 0.06) * 18)
-            draw.ellipse((cx - radius, cy - radius, cx + radius, cy + radius), outline=_blend_color((255, 255, 255), accent, mix), width=24)
+            draw.ellipse(
+                (cx - radius, cy - radius, cx + radius, cy + radius),
+                outline=_blend_color((255, 255, 255), accent, mix),
+                width=24,
+            )
         _draw_fallback(draw, (382, 380, 260, 260), item["text"] if item else "Menu")
 
     overlay = Image.new("RGBA", MENU_SIZE, (0, 0, 0, 0))
@@ -548,19 +574,28 @@ def _draw_menu_item_row(draw, item, box, *, accent, active=False):
     x, y, w, h = box
     shadow = (213, 220, 231)
     draw.rounded_rectangle((x + 7, y + 9, x + w + 7, y + h + 9), radius=26, fill=shadow)
-    draw.rounded_rectangle((x, y, x + w, y + h), radius=26, fill=(255, 255, 255), outline=accent if active else (226, 232, 240), width=4 if active else 2)
+    draw.rounded_rectangle(
+        (x, y, x + w, y + h), radius=26, fill=(255, 255, 255), outline=accent if active else (226, 232, 240),
+        width=4 if active else 2,
+    )
     draw.ellipse((x + 24, y + 25, x + 76, y + 77), fill=accent)
     initial = " ".join(str(item.get("text", "?")).split())[:1].upper() or "?"
     bbox = draw.textbbox((0, 0), initial, font=_font(30, bold=True))
     draw.text((x + 50 - bbox[2] / 2, y + 35), initial, font=_font(30, bold=True), fill=(255, 255, 255))
-    _draw_wrapped(draw, item.get("text", ""), x + 98, y + 20, w - 122, _font(31, bold=True), (15, 23, 42), line_gap=2, max_lines=2)
+    _draw_wrapped(
+        draw, item.get("text", ""), x + 98, y + 20, w - 122, _font(31, bold=True), (15, 23, 42),
+        line_gap=2, max_lines=2,
+    )
 
 
 def _draw_compact_menu_section(draw, section, box, *, accent, active=False):
     x, y, w, h = box
     shadow = (213, 220, 231)
     draw.rounded_rectangle((x + 7, y + 9, x + w + 7, y + h + 9), radius=28, fill=shadow)
-    draw.rounded_rectangle((x, y, x + w, y + h), radius=28, fill=(255, 255, 255), outline=accent if active else (226, 232, 240), width=4 if active else 2)
+    draw.rounded_rectangle(
+        (x, y, x + w, y + h), radius=28, fill=(255, 255, 255), outline=accent if active else (226, 232, 240),
+        width=4 if active else 2,
+    )
     draw.rounded_rectangle((x + 22, y + 18, x + 180, y + 60), radius=21, fill=accent)
     draw.text((x + 44, y + 27), section.get("label", "Menu").upper(), font=_font(21, bold=True), fill=(255, 255, 255))
 
@@ -609,7 +644,9 @@ def _render_menu_canvas(
     date_text = " ".join(str(date_label or datetime.now().strftime("%d/%m/%Y")).split())
 
     if not sections:
-        _draw_wrapped(draw, "Ajoutez une entrée, un plat ou un dessert.", 92, 320, 1100, _font(58, bold=True), (15, 23, 42))
+        _draw_wrapped(
+            draw, "Ajoutez une entrée, un plat ou un dessert.", 92, 320, 1100, _font(58, bold=True), (15, 23, 42)
+        )
         return canvas
 
     section_count = min(3, len(sections))
@@ -688,7 +725,9 @@ def _active_animation_item_index(step, total_frames, section_count, item_count):
     return min(item_count - 1, section_step // frames_per_item)
 
 
-def render_menu_animation(title, text=None, *, sections=None, image_choices=None, destination=None, duration=None, date_label=None):
+def render_menu_animation(
+    title, text=None, *, sections=None, image_choices=None, destination=None, duration=None, date_label=None
+):
     image_choices = image_choices or {}
     menu_data = suggest_menu_sections(sections, fallback_text=text, include_external=True, cache_external=True)
     grouped_sections = [section for section in menu_data["sections"] if section["items"]]
@@ -742,13 +781,28 @@ def render_menu_animation(title, text=None, *, sections=None, image_choices=None
             return False
 
 
-def create_menu_from_text(title, text=None, *, sections=None, duration=None, schedule=None, screens=None, username=None, image_choices=None, date_label=None, filename=None):
+def create_menu_from_text(
+    title,
+    text=None,
+    *,
+    sections=None,
+    duration=None,
+    schedule=None,
+    screens=None,
+    username=None,
+    image_choices=None,
+    date_label=None,
+    filename=None,
+):
     parsed_choices = parse_menu_image_choices(image_choices)
     stem = clean_filename("menu_" + (title or "du_jour").lower()) or "menu"
     dated = datetime.now().strftime("%Y%m%d_%H%M")
     filename = os.path.basename(filename) if filename else ensure_unique_filename(UPLOAD_FOLDER, f"{stem}_{dated}.mp4")
     destination = os.path.join(UPLOAD_FOLDER, filename)
-    animated = render_menu_animation(title, text, sections=sections, image_choices=parsed_choices, destination=destination, duration=duration, date_label=date_label)
+    animated = render_menu_animation(
+        title, text, sections=sections, image_choices=parsed_choices, destination=destination,
+        duration=duration, date_label=date_label,
+    )
     if not animated:
         filename = ensure_unique_filename(UPLOAD_FOLDER, f"{stem}_{dated}.png")
         destination = os.path.join(UPLOAD_FOLDER, filename)
@@ -792,7 +846,10 @@ def create_menu_from_text(title, text=None, *, sections=None, duration=None, sch
         "duration_locked": bool(animated),
         "duration": MENU_VIDEO_DURATION_SECONDS if animated else cfg.get("durations", {}).get(filename),
         "schedule": dict(schedule or {}),
-        "screens": [normalize_screen_key("", cfg) if screen == "__default__" else normalize_screen_key(screen, cfg) for screen in selected_screens],
+        "screens": [
+            normalize_screen_key("", cfg) if screen == "__default__" else normalize_screen_key(screen, cfg)
+            for screen in selected_screens
+        ],
     }
     save_config(cfg)
     log_activity(username, "upload", filename=filename, details="menu rapide")
@@ -824,7 +881,10 @@ def _planned_menu_filename(title, date_suffix=None):
     return f"{base}_{counter}{ext}"
 
 
-def enqueue_menu_from_text(title, text=None, *, sections=None, duration=None, schedule=None, screens=None, username=None, image_choices=None, date_label=None):
+def enqueue_menu_from_text(
+    title, text=None, *, sections=None, duration=None, schedule=None, screens=None, username=None,
+    image_choices=None, date_label=None,
+):
     filename = _planned_menu_filename(title)
     enqueue_menu_generation_job(filename, {
         "title": title,
@@ -855,7 +915,10 @@ def process_queued_menu_generation(filename, payload):
     )
 
 
-def create_weekly_menus_from_form(title, form, *, duration=None, schedule=None, screens=None, username=None, image_choices=None, queue_generation=False):
+def create_weekly_menus_from_form(
+    title, form, *, duration=None, schedule=None, screens=None, username=None,
+    image_choices=None, queue_generation=False,
+):
     days = collect_weekly_menu_days(form)
     if not days:
         raise ValueError("No weekly menu day provided")

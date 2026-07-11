@@ -28,7 +28,9 @@ class UpdateServiceTests(unittest.TestCase):
         os.environ.pop("UPDATER_API_TOKEN", None)
         update_svc._UPDATE_STATUS_CACHE.clear()
         update_svc._HTTP_OUT_ERROR_LOGGED.clear()
-        self.compose_patch = patch.object(update_svc, "_docker_compose_command", return_value=(["docker", "compose"], ""))
+        self.compose_patch = patch.object(
+            update_svc, "_docker_compose_command", return_value=(["docker", "compose"], "")
+        )
         self.compose_patch.start()
         self.container_patch = patch.object(update_svc.updater_client, "_running_in_container", return_value=False)
         self.container_patch.start()
@@ -72,7 +74,9 @@ class UpdateServiceTests(unittest.TestCase):
         self._git(repo, "commit", "-m", "initial")
         if with_remote:
             remote = self.root / "remote.git"
-            subprocess.run(["git", "clone", "--bare", str(repo), str(remote)], check=True, capture_output=True, text=True)
+            subprocess.run(
+                ["git", "clone", "--bare", str(repo), str(remote)], check=True, capture_output=True, text=True
+            )
             self._git(repo, "remote", "add", "origin", str(remote))
             self._git(repo, "push", "-u", "origin", "main")
         return repo
@@ -411,7 +415,8 @@ class UpdateServiceTests(unittest.TestCase):
         repo = self.root / "repo"
         repo.mkdir()
         (repo / ".env").write_text(
-            "VISIO_HOST_ROOT=/host/repo\nMEDIA_DIR=/host/media\nPRIVATE_DIR=/host/private\nCOMPOSE_PROJECT_NAME=visio_display\n",
+            "VISIO_HOST_ROOT=/host/repo\nMEDIA_DIR=/host/media\nPRIVATE_DIR=/host/private\n"
+            "COMPOSE_PROJECT_NAME=visio_display\n",
             encoding="utf-8",
         )
         status = {
@@ -427,13 +432,18 @@ class UpdateServiceTests(unittest.TestCase):
             patch.object(update_svc, "get_update_status", return_value=status.copy()),
             patch.object(update_svc, "_docker_compose_command", return_value=(["docker", "compose"], "")),
             patch.object(update_svc, "_current_compose_project_name", return_value="visio_display"),
-            patch.object(update_svc, "_compose_services", return_value=["postgres", "redis", "updater", "app", "worker"]),
+            patch.object(
+                update_svc, "_compose_services", return_value=["postgres", "redis", "updater", "app", "worker"]
+            ),
             patch.object(update_svc, "_start_restart_helper") as helper,
         ):
             result = update_svc.restart_stack(lock_token="lock-token")
 
         helper.assert_called_once_with(
-            ["docker", "compose", "--project-name", "visio_display", "up", "-d", "--build", "--no-deps", "app", "worker"],
+            [
+                "docker", "compose", "--project-name", "visio_display", "up", "-d",
+                "--build", "--no-deps", "app", "worker",
+            ],
             repo_dir=str(repo),
             compose_cmd=["docker", "compose"],
             project_name="visio_display",
@@ -492,8 +502,12 @@ class UpdateServiceTests(unittest.TestCase):
     def test_delegated_status_uses_updater_client(self):
         remote_status = {"status": "up_to_date"}
         with (
-            patch.dict(os.environ, {"UPDATER_API_URL": "http://updater:8090", "UPDATER_API_TOKEN": "token"}, clear=False),
-            patch.object(update_svc.updater_client, "get_json", return_value={"ok": True, "status": remote_status}) as get_json,
+            patch.dict(
+                os.environ, {"UPDATER_API_URL": "http://updater:8090", "UPDATER_API_TOKEN": "token"}, clear=False
+            ),
+            patch.object(
+                update_svc.updater_client, "get_json", return_value={"ok": True, "status": remote_status}
+            ) as get_json,
         ):
             status = update_svc.get_update_status(fetch_remote=True)
 
@@ -503,7 +517,9 @@ class UpdateServiceTests(unittest.TestCase):
 
     def test_delegated_status_hides_http_exception_details(self):
         with (
-            patch.dict(os.environ, {"UPDATER_API_URL": "http://updater:8090", "UPDATER_API_TOKEN": "token"}, clear=False),
+            patch.dict(
+                os.environ, {"UPDATER_API_URL": "http://updater:8090", "UPDATER_API_TOKEN": "token"}, clear=False
+            ),
             patch.object(update_svc.updater_client, "get_json", side_effect=RuntimeError("HTTPConnectionPool timeout")),
         ):
             status = update_svc.get_update_status(fetch_remote=True)
@@ -515,7 +531,9 @@ class UpdateServiceTests(unittest.TestCase):
         delegated = {"status": "restart_scheduled", "can_restart": False}
         messages = []
         with (
-            patch.dict(os.environ, {"UPDATER_API_URL": "http://updater:8090", "UPDATER_API_TOKEN": "token"}, clear=False),
+            patch.dict(
+                os.environ, {"UPDATER_API_URL": "http://updater:8090", "UPDATER_API_TOKEN": "token"}, clear=False
+            ),
             patch.object(update_svc.updater_client, "stream_operation", return_value=delegated) as stream_operation,
         ):
             result = update_svc.restart_stack(progress_callback=messages.append, lock_token=None)
@@ -526,7 +544,9 @@ class UpdateServiceTests(unittest.TestCase):
     def test_delegated_restart_does_not_send_lock_token_to_updater(self):
         delegated = {"status": "restart_scheduled", "can_restart": False}
         with (
-            patch.dict(os.environ, {"UPDATER_API_URL": "http://updater:8090", "UPDATER_API_TOKEN": "token"}, clear=False),
+            patch.dict(
+                os.environ, {"UPDATER_API_URL": "http://updater:8090", "UPDATER_API_TOKEN": "token"}, clear=False
+            ),
             patch.object(update_svc.updater_client, "stream_operation", return_value=delegated) as stream_operation,
         ):
             result = update_svc.restart_stack(lock_token="lock-token")
@@ -542,7 +562,9 @@ class UpdateServiceTests(unittest.TestCase):
         delegated = {"status": "restart_scheduled", "can_restart": False}
         messages = []
         with (
-            patch.dict(os.environ, {"UPDATER_API_URL": "http://updater:8090", "UPDATER_API_TOKEN": "token"}, clear=False),
+            patch.dict(
+                os.environ, {"UPDATER_API_URL": "http://updater:8090", "UPDATER_API_TOKEN": "token"}, clear=False
+            ),
             patch.object(update_svc.updater_client, "stream_operation", return_value=delegated) as stream_operation,
         ):
             result = update_svc.apply_update_and_restart(progress_callback=messages.append, lock_token="lock-token")

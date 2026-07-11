@@ -1,4 +1,5 @@
-# Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
+# Licensed under the GNU General Public License v3.0 (GPL-3.0).
+# Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for
 
@@ -98,7 +99,10 @@ def purge_activity():
             _flash('flash_activity_purge_invalid', 'error')
             return redirect(url_for('activity.activity_page'))
         deleted = purge_activity_log(older_than_days=older_than_days)
-        log_config_change(session.get('user'), f'activity log purged: older than {older_than_days} days ({deleted} entries)')
+        log_config_change(
+            session.get('user'),
+            f'activity log purged: older than {older_than_days} days ({deleted} entries)',
+        )
     elif purge_scope == 'all':
         deleted = purge_activity_log()
         log_config_change(session.get('user'), f'activity log fully purged ({deleted} entries)')

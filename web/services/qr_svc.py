@@ -1,4 +1,5 @@
-# Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
+# Licensed under the GNU General Public License v3.0 (GPL-3.0).
+# Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 import base64
 import io
@@ -203,7 +204,8 @@ def image_to_data_url(image):
 def save_qr_media(image, data, *, username=None):
     qr_type = _as_text(data.get("type"), 32).lower() or "qr"
     label = _as_text(
-        data.get("ssid") or data.get("url") or data.get("phone") or data.get("query") or data.get("name") or data.get("text"),
+        data.get("ssid") or data.get("url") or data.get("phone") or data.get("query")
+        or data.get("name") or data.get("text"),
         48,
     )
     stem = clean_filename(f"qr_{qr_type}_{label}".lower()) or f"qr_{qr_type}"

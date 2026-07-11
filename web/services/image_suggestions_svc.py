@@ -1,4 +1,5 @@
-# Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
+# Licensed under the GNU General Public License v3.0 (GPL-3.0).
+# Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 import hashlib
 import ipaddress
@@ -135,7 +136,10 @@ def _local_suggestions(detected, *, limit_per_keyword=3):
                 score = 68
             if score:
                 preview = get_media_url(filename, context="campaign", generate_missing=True) or ""
-                original = get_media_url(filename, context="preview", allow_original=True, generate_missing=True) or preview
+                original = (
+                    get_media_url(filename, context="preview", allow_original=True, generate_missing=True)
+                    or preview
+                )
                 ranked.append({
                     "detected_word": keyword,
                     "score": min(100, int((score + item["score"]) / 2)),
@@ -221,7 +225,13 @@ def _safe_external_image_url(url):
         address = ipaddress.ip_address(hostname)
     except ValueError:
         return True
-    return not (address.is_private or address.is_loopback or address.is_link_local or address.is_reserved or address.is_multicast)
+    return not (
+        address.is_private
+        or address.is_loopback
+        or address.is_link_local
+        or address.is_reserved
+        or address.is_multicast
+    )
 
 
 def _external_suggestions(detected, *, text="", limit_per_keyword=4):

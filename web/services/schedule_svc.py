@@ -1,4 +1,5 @@
-# Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
+# Licensed under the GNU General Public License v3.0 (GPL-3.0).
+# Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 from collections import defaultdict
 from datetime import date, datetime, timedelta
@@ -186,7 +187,10 @@ def analyze_schedule_week(entries, week_start):
                         gaps.append({
                             "start": prev["end_minutes"],
                             "end": current["start_minutes"],
-                            "label": f'{minutes_to_hhmm(prev["end_minutes"])} - {minutes_to_hhmm(current["start_minutes"])}',
+                            "label": (
+                                f'{minutes_to_hhmm(prev["end_minutes"])} - '
+                                f'{minutes_to_hhmm(current["start_minutes"])}'
+                            ),
                         })
                     if current["end_minutes"] >= max_end:
                         prev = current

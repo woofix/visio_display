@@ -1,4 +1,5 @@
-# Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
+# Licensed under the GNU General Public License v3.0 (GPL-3.0).
+# Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 import json
 import logging
@@ -25,7 +26,10 @@ _PAGES_FR = [
         'title': 'Médiathèque',
         'url': '/admin/media',
         'description': 'Gestion des médias, activation, désactivation, planification',
-        'keywords': 'médiathèque médias images photos vidéos fichiers bibliothèque galerie désactiver planifier gestion',
+        'keywords': (
+            'médiathèque médias images photos vidéos fichiers bibliothèque galerie désactiver '
+            'planifier gestion'
+        ),
     },
     {
         'title': 'Nettoyage intelligent',
@@ -43,7 +47,10 @@ _PAGES_FR = [
         'title': 'Menus',
         'url': '/admin/menus',
         'description': 'Créer des menus 16:9 avec images suggérées et programmation',
-        'keywords': 'menus cantine repas entrée plat dessert semaine jour images suggestions pexels génération file encodage',
+        'keywords': (
+            'menus cantine repas entrée plat dessert semaine jour images suggestions pexels '
+            'génération file encodage'
+        ),
     },
     {
         'title': 'Campagnes',
@@ -103,7 +110,10 @@ _PAGES_FR = [
         'title': 'Gestion des utilisateurs',
         'url': '/admin/settings/comptes-permissions',
         'description': 'Gérer les comptes administrateurs et leurs droits',
-        'keywords': 'gestion utilisateurs comptes administrateurs permissions droits accès mot de passe compte créer supprimer',
+        'keywords': (
+            'gestion utilisateurs comptes administrateurs permissions droits accès mot de passe '
+            'compte créer supprimer'
+        ),
     },
     {
         'title': 'Rôles et permissions',
@@ -207,28 +217,39 @@ _WIKI_FR = [
         'title': 'Gérer la médiathèque',
         'url': '/admin/wiki/s5',
         'description': 'Activer, désactiver, réordonner, planifier et supprimer les médias',
-        'keywords': 'médiathèque médias gestion désactiver activer réordonner supprimer planifier durée aperçu assigner écran',
+        'keywords': (
+            'médiathèque médias gestion désactiver activer réordonner supprimer planifier '
+            'durée aperçu assigner écran'
+        ),
     },
     {
         'section': 's6',
         'title': "Planifier l'affichage d'un média",
         'url': '/admin/wiki/s6',
         'description': "Restreindre l'affichage à des plages horaires ou périodes de dates",
-        'keywords': 'planifier plage horaire date heure calendrier programmation restriction affichage diffusion créneau',
+        'keywords': (
+            'planifier plage horaire date heure calendrier programmation restriction affichage diffusion créneau'
+        ),
     },
     {
         'section': 's7',
         'title': 'Gérer plusieurs écrans',
         'url': '/admin/wiki/s7',
         'description': 'Créer et gérer des écrans nommés indépendants, installation client',
-        'keywords': 'écrans gestion plusieurs multi-écrans nommés créer supprimer kiosk raspberry installation client distant',
+        'keywords': (
+            'écrans gestion plusieurs multi-écrans nommés créer supprimer kiosk raspberry '
+            'installation client distant'
+        ),
     },
     {
         'section': 's8',
         'title': 'La carte éphéméride',
         'url': '/admin/wiki/s8',
         'description': 'Météo, saint du jour, lever/coucher du soleil et événements datés',
-        'keywords': 'éphéméride météo saint soleil lever coucher événements compte à rebours calendrier température vent',
+        'keywords': (
+            'éphéméride météo saint soleil lever coucher événements compte à rebours '
+            'calendrier température vent'
+        ),
     },
     {
         'section': 's9',
@@ -242,7 +263,10 @@ _WIKI_FR = [
         'title': 'Gestion des utilisateurs',
         'url': '/admin/wiki/s10',
         'description': 'Créer, modifier, supprimer les comptes et attribuer les permissions',
-        'keywords': 'gestion utilisateurs comptes créer supprimer permissions droits accès mot de passe réinitialiser administrateurs',
+        'keywords': (
+            'gestion utilisateurs comptes créer supprimer permissions droits accès mot de passe '
+            'réinitialiser administrateurs'
+        ),
     },
     {
         'section': 's11',
@@ -277,7 +301,9 @@ _WIKI_FR = [
         'title': "Journal d'activité",
         'url': '/admin/wiki/s15',
         'description': "Historique des actions : imports, suppressions, connexions, compressions",
-        'keywords': 'journal activité logs historique audit actions connexion import suppression compression configuration',
+        'keywords': (
+            'journal activité logs historique audit actions connexion import suppression compression configuration'
+        ),
     },
     {
         'section': 's16',
@@ -333,14 +359,20 @@ _WIKI_FR = [
         'title': "Éditeur d'annonces",
         'url': '/admin/wiki/s23',
         'description': 'Créer des annonces 16:9 avec calques, outils graphiques et export PNG',
-        'keywords': 'annonces éditeur canvas calques texte formes lignes images icônes png export snap grille lucide tabler',
+        'keywords': (
+            'annonces éditeur canvas calques texte formes lignes images icônes png export '
+            'snap grille lucide tabler'
+        ),
     },
     {
         'section': 's24',
         'title': 'Menus',
         'url': '/admin/wiki/s24',
         'description': 'Créer des menus 16:9 du jour ou de la semaine',
-        'keywords': 'menus cantine repas entrée plat dessert semaine jour images suggestions durée 15 secondes file encodage',
+        'keywords': (
+            'menus cantine repas entrée plat dessert semaine jour images suggestions durée '
+            '15 secondes file encodage'
+        ),
     },
     {
         'section': 's25',
@@ -380,7 +412,10 @@ _PAGES_EN = [
         'title': 'Menus',
         'url': '/admin/menus',
         'description': 'Create 16:9 menus with suggested images and scheduling',
-        'keywords': 'menus cafeteria meal starter main dessert weekly daily images suggestions pexels generation encoding queue',
+        'keywords': (
+            'menus cafeteria meal starter main dessert weekly daily images suggestions pexels '
+            'generation encoding queue'
+        ),
     },
     {
         'title': 'Campaigns',
@@ -670,14 +705,19 @@ _WIKI_EN = [
         'title': 'Announcement editor',
         'url': '/admin/wiki/s23',
         'description': 'Create 16:9 announcements with layers, graphic tools and PNG export',
-        'keywords': 'announcements editor canvas layers text shapes lines images icons png export snap grid lucide tabler',
+        'keywords': (
+            'announcements editor canvas layers text shapes lines images icons png export snap grid lucide tabler'
+        ),
     },
     {
         'section': 's24',
         'title': 'Menus',
         'url': '/admin/wiki/s24',
         'description': 'Create daily or weekly 16:9 menus',
-        'keywords': 'menus cafeteria meal starter main dessert weekly daily images suggestions duration 15 seconds encoding queue',
+        'keywords': (
+            'menus cafeteria meal starter main dessert weekly daily images suggestions duration '
+            '15 seconds encoding queue'
+        ),
     },
     {
         'section': 's25',
@@ -707,7 +747,9 @@ _PAGE_TRANSLATION_PREFIXES = {
     '/admin/settings/logo': ('settings_logo_', 'logo_', 'nav_settings_logo'),
     '/admin/settings/theme': ('settings_theme_', 'theme_', 'nav_settings_theme'),
     '/admin/settings/language': ('settings_language_', 'language_', 'nav_settings_language'),
-    '/admin/settings/comptes-permissions': ('settings_accounts_', 'accounts_', 'admins_', 'roles_', 'permissions_', 'nav_settings_accounts'),
+    '/admin/settings/comptes-permissions': (
+        'settings_accounts_', 'accounts_', 'admins_', 'roles_', 'permissions_', 'nav_settings_accounts',
+    ),
     '/admin/roles': ('roles_', 'permissions_', 'nav_roles'),
     '/admin/settings/gestion-ecrans': ('settings_screens_', 'screens_', 'client_', 'install_', 'nav_settings_screens'),
     '/admin/settings/alerte-prioritaire': ('priority_alert_', 'alert_', 'nav_priority_alert'),

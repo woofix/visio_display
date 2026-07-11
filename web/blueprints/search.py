@@ -1,4 +1,5 @@
-# Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
+# Licensed under the GNU General Public License v3.0 (GPL-3.0).
+# Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 import re
 import json
@@ -201,7 +202,14 @@ def admin_search_page():
     sa = is_superadmin()
     lang = get_language()
     results = _run_search(q, cfg, lang=lang, superadmin=sa, has_perm_fn=has_permission) if q else {
-        'pages': [], 'wiki': [], 'media': [], 'campaigns': [], 'config': [], 'activity': [], 'restricted': [], 'users': [],
+        'pages': [],
+        'wiki': [],
+        'media': [],
+        'campaigns': [],
+        'config': [],
+        'activity': [],
+        'restricted': [],
+        'users': [],
     }
     total = sum(len(v) for k, v in results.items() if k != 'restricted')
     return render_template(
@@ -221,7 +229,9 @@ def api_search():
         return jsonify({'error': 'unauthorized'}), 401
     q = request.args.get('q', '').strip()
     if len(q) < 2:
-        return jsonify({'pages': [], 'wiki': [], 'media': [], 'campaigns': [], 'config': [], 'activity': [], 'restricted': []})
+        return jsonify(
+            {'pages': [], 'wiki': [], 'media': [], 'campaigns': [], 'config': [], 'activity': [], 'restricted': []}
+        )
     cfg = load_config()
     sa = is_superadmin()
     lang = get_language()

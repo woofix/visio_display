@@ -1,4 +1,5 @@
-# Licensed under the GNU General Public License v3.0 (GPL-3.0). Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
+# Licensed under the GNU General Public License v3.0 (GPL-3.0).
+# Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 import html
 import json
@@ -660,7 +661,9 @@ def _eligible_video_profiles(filename):
     eligible = []
     for profile_name in DISPLAY_VIDEO_PROFILES:
         profile = VIDEO_RENDITION_PROFILES[profile_name]
-        if longest_edge >= max(profile['width'], profile['height']) and shortest_edge >= min(profile['width'], profile['height']):
+        if longest_edge >= max(profile['width'], profile['height']) and shortest_edge >= min(
+            profile['width'], profile['height']
+        ):
             eligible.append(profile_name)
     return eligible
 
@@ -761,7 +764,9 @@ def get_media_url(filename, *, context='admin', bounds=None, allow_original=Fals
             )
             if image_url:
                 return image_url
-            legacy_thumb = ensure_image_thumbnail(filename) if generate_missing else get_existing_thumbnail_url(filename)
+            legacy_thumb = (
+                ensure_image_thumbnail(filename) if generate_missing else get_existing_thumbnail_url(filename)
+            )
             return get_original_media_url(filename) if allow_original else legacy_thumb
         if media_type == 'video':
             if context in ('admin', 'campaign'):
@@ -773,7 +778,9 @@ def get_media_url(filename, *, context='admin', bounds=None, allow_original=Fals
                 )
                 if poster_url:
                     return poster_url
-                legacy_thumb = ensure_video_thumbnail(filename) if generate_missing else get_existing_thumbnail_url(filename)
+                legacy_thumb = (
+                    ensure_video_thumbnail(filename) if generate_missing else get_existing_thumbnail_url(filename)
+                )
                 return legacy_thumb or (get_original_media_url(filename) if allow_original else None)
             video_profile = _pick_video_profile(context=context, bounds=bounds)
             # Video transcoding is intentionally left to the background worker.
@@ -788,15 +795,21 @@ def get_media_url(filename, *, context='admin', bounds=None, allow_original=Fals
         return get_original_media_url(filename) if allow_original else None
     except Exception:
         if get_media_type(filename) == 'video':
-            legacy_thumb = ensure_video_thumbnail(filename) if generate_missing else get_existing_thumbnail_url(filename)
+            legacy_thumb = (
+                ensure_video_thumbnail(filename) if generate_missing else get_existing_thumbnail_url(filename)
+            )
             return legacy_thumb or (get_original_media_url(filename) if allow_original else None)
         if get_media_type(filename) == 'image':
-            legacy_thumb = ensure_image_thumbnail(filename) if generate_missing else get_existing_thumbnail_url(filename)
+            legacy_thumb = (
+                ensure_image_thumbnail(filename) if generate_missing else get_existing_thumbnail_url(filename)
+            )
             return legacy_thumb or (get_original_media_url(filename) if allow_original else None)
         return get_original_media_url(filename) if allow_original else None
 
 
-def build_media_preview_map(files, context='admin', *, generate_missing=False, placeholder_url='/static/images/logo.svg'):
+def build_media_preview_map(
+    files, context='admin', *, generate_missing=False, placeholder_url='/static/images/logo.svg'
+):
     started = time.perf_counter()
     try:
         metadata = build_media_metadata_map(

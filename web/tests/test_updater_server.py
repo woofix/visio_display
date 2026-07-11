@@ -32,7 +32,9 @@ class UpdaterServerTests(unittest.TestCase):
         self.assertNotIn("command", operations)
 
     def test_status_route_calls_fixed_service_function(self):
-        with patch.object(updater_server.update_svc, "get_update_status", return_value={"status": "up_to_date"}) as status:
+        with patch.object(
+            updater_server.update_svc, "get_update_status", return_value={"status": "up_to_date"}
+        ) as status:
             response = self.app.get("/status?fetch=1", headers=self._headers())
 
         self.assertEqual(response.status_code, 200)

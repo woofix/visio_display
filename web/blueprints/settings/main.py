@@ -102,7 +102,7 @@ def _build_settings_context(tab='logo', install_defaults=None, install_result=No
         active_tab = 'logo'
 
     needs_accounts = is_sa and active_tab in {'administration', 'accounts', 'add-account'}
-    needs_screens = is_sa and active_tab in {'administration', 'accounts', 'screens'}
+    needs_screens = is_sa and active_tab in {'administration', 'accounts', 'screens', 'installation'}
     needs_backups = is_sa and active_tab == 'sauvegardes'
     needs_installation = is_sa and active_tab == 'installation'
     needs_roles = is_sa and active_tab in {'administration', 'accounts', 'add-account'}

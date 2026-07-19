@@ -74,11 +74,17 @@ def save_backup_schedule(settings):
     time_value = str((settings or {}).get("time") or current["time"]).strip()
     if not _is_valid_hhmm(time_value):
         raise ValueError("invalid backup schedule time")
+    last_run_date = current["last_run_date"]
+    if time_value != current["time"]:
+        # A same-day time change must not stay blocked by the "already ran today" guard
+        # in _scheduler_tick(), which only ever compares dates, not times.
+        last_run_date = ""
     cfg["backup_schedule"] = {
         **current,
         "enabled": bool((settings or {}).get("enabled", False)),
         "time": time_value,
         "copy_to_smb": bool((settings or {}).get("copy_to_smb", False)),
+        "last_run_date": last_run_date,
     }
     save_config(cfg)
     return cfg["backup_schedule"]
@@ -146,7 +152,10 @@ def _scheduler_tick():
         if schedule.get("last_run_date") == today_key:
             return
 
-        lock_key = f"visio-display:backup_scheduler:{today_key}"
+        # The lock key includes the scheduled time so that changing the time intraday
+        # (see save_backup_schedule's last_run_date reset) isn't re-blocked by a stale
+        # lock from a run under the previous time slot earlier the same day.
+        lock_key = f"visio-display:backup_scheduler:{today_key}:{schedule['time']}"
         if not get_redis().set(lock_key, 1, nx=True, ex=86400):
             return
 

@@ -13,6 +13,7 @@ from services.activity_svc import log_config_change
 from services.config_svc import load_config
 from services.media_svc import get_logo_path
 from services.i18n import _t
+from services.update_log_svc import list_update_logs, read_update_log
 from services.update_svc import (
     PUBLIC_UPDATER_UNAVAILABLE_MESSAGE,
     apply_update_and_restart,
@@ -37,7 +38,20 @@ def version_page():
         current_user=session.get("user"),
         logo_path=get_logo_path(),
         update_status=get_update_status(fetch_remote=False),
+        ssh_update_logs=list_update_logs(),
     )
+
+
+@bp.route("/admin/version/update-logs/<filename>")
+def view_ssh_update_log(filename):
+    redir = superadmin_guard()
+    if redir:
+        return redir
+    try:
+        content = read_update_log(filename)
+    except FileNotFoundError:
+        return Response(_t("ssh_update_logs_missing"), status=404, mimetype="text/plain")
+    return Response(content, mimetype="text/plain")
 
 
 @bp.route("/admin/version/update/status")

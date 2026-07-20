@@ -170,6 +170,7 @@ Visio-Display s'exécute comme une stack self-hosted Docker Compose :
 **Mise à jour serveur**
 - Page `/admin/version` réservée au super-admin : vérification du dépôt Git installé et application d'une mise à jour disponible
 - Overlay bloquant pendant les opérations système : l'administration est verrouillée jusqu'à la fin de la mise à jour
+- Mises à jour lancées via `main.sh`/`dev.sh` en SSH : journal complet de chaque exécution consultable sur `/admin/version` (branche, statut, sortie brute), conservé 15 jours
 
 **Sécurité & accès**
 - Contrôle d'accès à deux niveaux : super-admin et utilisateurs limités
@@ -731,6 +732,7 @@ Visio-Display/
 | `/admin/version/update/status`            | GET     | Super-admin        | Vérifier l'état Git/Docker et la version distante    |
 | `/admin/version/update/runtime-status`    | GET     | Super-admin        | Vérifier le retour des conteneurs et de l'application |
 | `/admin/version/update/apply-stream`      | POST    | Super-admin        | Appliquer une mise à jour en flux NDJSON             |
+| `/admin/version/update-logs/<filename>`   | GET     | Super-admin        | Consulter le journal brut d'une mise à jour SSH (`main.sh`/`dev.sh`) |
 | `/admin/about`                            | GET     | Connecté           | Page À propos (version, stack, licence)              |
 
 #### Réponse de `/api/queue`
@@ -1059,6 +1061,7 @@ Visio-Display runs as a self-hosted Docker Compose stack:
 **Server update**
 - Super-admin-only `/admin/version` page: check the installed Git repository and apply an available update
 - Blocking overlay during system operations: the admin UI stays locked until the update completes
+- Updates run via `main.sh`/`dev.sh` over SSH: full log of each run viewable on `/admin/version` (branch, status, raw output), kept for 15 days
 
 **Security & access**
 - Two-level access control: super-admin and limited users
@@ -1550,6 +1553,7 @@ Visio-Display/
 | `/admin/version/update/status`            | GET     | Super-admin        | Check Git/Docker state and the remote version            |
 | `/admin/version/update/runtime-status`    | GET     | Super-admin        | Check container and application readiness after restart  |
 | `/admin/version/update/apply-stream`      | POST    | Super-admin        | Apply an update over an NDJSON stream                    |
+| `/admin/version/update-logs/<filename>`   | GET     | Super-admin        | View the raw log of an SSH update run (`main.sh`/`dev.sh`) |
 | `/admin/about`                            | GET     | Logged in          | About page (version, stack, licence)                    |
 
 #### `/api/queue` response

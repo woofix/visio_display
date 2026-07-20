@@ -1816,6 +1816,12 @@ Pendant une mise à jour, l'administration affiche un **overlay bloquant**. Il e
 - Évitez d'appliquer une mise à jour pendant un import massif ou une restauration.
 - Si la vérification échoue, contrôlez l'accès réseau du serveur, l'état Git local et la disponibilité de Docker Compose.
 
+### Journaux des mises à jour lancées en SSH
+
+En plus de la mise à jour depuis l'administration, le serveur peut être mis à jour manuellement en SSH via les scripts `main.sh` ou `dev.sh`. Chaque exécution de ces scripts est journalisée automatiquement et reste consultable, même après la déconnexion SSH.
+
+Sur la page **Paramètres → Version**, la section **Journaux des mises à jour SSH** liste les exécutions passées avec leur date, la branche mise à jour et leur statut (**Réussi** / **Échec**). Le bouton **Voir** ouvre la sortie brute complète de l'exécution (commandes Git, sortie Docker, erreurs éventuelles). Ces journaux sont conservés 15 jours puis supprimés automatiquement.
+
 ---
 
 ## 22. À propos

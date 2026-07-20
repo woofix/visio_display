@@ -108,6 +108,48 @@
             </div>
         </div>
     </section>
+
+    <section class="version-panel ssh-update-logs-panel">
+        <div class="version-panel-header">
+            <div>
+                <h2>{{ t('ssh_update_logs_title') }}</h2>
+                <p>{{ t('ssh_update_logs_desc') }}</p>
+            </div>
+        </div>
+        {% if ssh_update_logs %}
+        <table class="ssh-update-logs-table">
+            <thead>
+                <tr>
+                    <th>{{ t('ssh_update_logs_col_date') }}</th>
+                    <th>{{ t('ssh_update_logs_col_branch') }}</th>
+                    <th>{{ t('ssh_update_logs_col_status') }}</th>
+                    <th>{{ t('ssh_update_logs_col_actions') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in ssh_update_logs %}
+                <tr>
+                    <td>{{ entry.timestamp_display }}</td>
+                    <td>{{ entry.branch }}</td>
+                    <td>
+                        <span class="ssh-log-status" data-status="{{ entry.status }}">
+                            {% if entry.status == 'success' %}{{ t('ssh_update_logs_status_success') }}
+                            {% elif entry.status == 'error' %}{{ t('ssh_update_logs_status_error') }}
+                            {% else %}{{ t('ssh_update_logs_status_unknown') }}{% endif %}
+                        </span>
+                    </td>
+                    <td>
+                        <a class="btn sm" target="_blank" rel="noopener"
+                           href="/admin/version/update-logs/{{ entry.filename }}">{{ t('ssh_update_logs_view') }}</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="ssh-update-logs-empty">{{ t('ssh_update_logs_empty') }}</p>
+        {% endif %}
+    </section>
 </div>
 
 <style>
@@ -338,6 +380,45 @@
 }
 @keyframes update-spin {
     to { transform: rotate(360deg); }
+}
+.ssh-update-logs-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .86rem;
+}
+.ssh-update-logs-table th,
+.ssh-update-logs-table td {
+    padding: 10px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+.ssh-update-logs-table th {
+    color: var(--text-2);
+    font-weight: 700;
+}
+.ssh-log-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: .78rem;
+    background: var(--surface-2, color-mix(in srgb, var(--text) 8%, transparent));
+    color: var(--text-2);
+}
+.ssh-log-status[data-status="success"] {
+    background: color-mix(in srgb, var(--success-color) 16%, transparent);
+    color: var(--success-color);
+}
+.ssh-log-status[data-status="error"] {
+    background: color-mix(in srgb, var(--danger-color) 16%, transparent);
+    color: var(--danger-color);
+}
+.ssh-update-logs-empty {
+    margin: 0;
+    padding: 16px;
+    color: var(--text-2);
+    font-size: .86rem;
 }
 @media (max-width: 900px) {
     .update-details {

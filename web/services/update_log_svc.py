@@ -18,6 +18,14 @@ _STATUS_RE = re.compile(r"^STATUS=(?P<status>\w+) EXIT_CODE=(?P<code>-?\d+)\s*$"
 
 def _ensure_log_dir():
     os.makedirs(UPDATE_LOG_DIR, exist_ok=True)
+    try:
+        # main.sh/dev.sh write here as the host SSH user, while this service reads/lists
+        # from the app container, which runs as root. Whichever side creates the directory
+        # first must not lock the other out, so force it world-writable; PRIVATE_DIR itself
+        # (mode 700) already keeps other host users out.
+        os.chmod(UPDATE_LOG_DIR, 0o777)
+    except OSError:
+        pass
 
 
 def _is_allowed_log_name(filename):

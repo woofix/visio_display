@@ -6,6 +6,7 @@
 data/
 private/
 media/
+/update_logs/
 
 # Generated media / uploads
 

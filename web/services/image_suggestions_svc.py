@@ -342,7 +342,7 @@ def cache_external_image(url):
     response = requests.get(
         url,
         timeout=(2, 8),
-        headers=_external_image_headers("image/avif,image/webp,image/apng,image/*,*/*;q=0.8"),
+        headers=_external_image_headers("image/webp,image/apng,image/*,*/*;q=0.8"),
     )
     response.raise_for_status()
     if not (_safe_image_url(response.url) or _safe_external_image_url(response.url)):

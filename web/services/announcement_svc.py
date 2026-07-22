@@ -330,7 +330,7 @@ def _download_image(url):
     response = requests.get(
         url,
         timeout=12,
-        headers=_external_image_headers("image/avif,image/webp,image/apng,image/*,*/*;q=0.8"),
+        headers=_external_image_headers("image/webp,image/apng,image/*,*/*;q=0.8"),
     )
     response.raise_for_status()
     if not _safe_image_url(response.url):
@@ -365,7 +365,7 @@ def fetch_thumbnail_bytes(url, *, max_bytes=16 * 1024 * 1024):
     response = requests.get(
         url,
         timeout=(2, 5),
-        headers=_external_image_headers("image/avif,image/webp,image/apng,image/*,*/*;q=0.8"),
+        headers=_external_image_headers("image/webp,image/apng,image/*,*/*;q=0.8"),
     )
     response.raise_for_status()
     if not _safe_image_url(response.url):

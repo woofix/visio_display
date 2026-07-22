@@ -473,53 +473,6 @@ def _draw_wrapped(draw, text, x, y, width, font, fill, line_gap=8, max_lines=2):
     return y
 
 
-def _draw_section_dish(canvas, draw, item, box, image_choices, *, accent=(148, 163, 184), active=False, pulse=0.0):
-    x, y, w, h = box
-    draw.rounded_rectangle((x + 8, y + 10, x + w + 8, y + h + 10), radius=30, fill=(211, 220, 232))
-    fill = (255, 255, 255)
-    outline = accent if active else (226, 232, 240)
-    if active:
-        glow = 4 + int(pulse * 6)
-        draw.rounded_rectangle((x - glow, y - glow, x + w + glow, y + h + glow), radius=34, outline=accent, width=5)
-    draw.rounded_rectangle((x, y, x + w, y + h), radius=30, fill=fill, outline=outline, width=5 if active else 2)
-    image_size = min(176, h - 28)
-    image_box = (x + 16, y + 14, image_size, image_size)
-    chosen = _safe_choice(image_choices.get(item["text"]))
-    suggestion = chosen or next(
-        (
-            suggestion for suggestion in item["suggestions"]
-            if suggestion.get("local_path") and os.path.exists(suggestion["local_path"])
-        ),
-        None,
-    )
-    if suggestion and suggestion.get("local_path") and os.path.exists(suggestion["local_path"]):
-        thumb = _fit_image(suggestion["local_path"], (image_box[2], image_box[3]))
-        mask = Image.new("L", (image_box[2], image_box[3]), 0)
-        ImageDraw.Draw(mask).rounded_rectangle((0, 0, image_box[2], image_box[3]), radius=32, fill=255)
-        canvas.paste(thumb, (image_box[0], image_box[1]), mask)
-        draw.rounded_rectangle(
-            (image_box[0], image_box[1], image_box[0] + image_box[2], image_box[1] + image_box[3]),
-            radius=32,
-            outline=(15, 23, 42),
-            width=4,
-        )
-    else:
-        _draw_fallback(draw, image_box, item["text"])
-    text_x = x + image_size + 42
-    _draw_wrapped(
-        draw, item["text"], text_x, y + 30, w - image_size - 62, _font(42, bold=True), (15, 23, 42), max_lines=2
-    )
-    keywords = ", ".join(k["keyword"] for k in item["keywords"][:3])
-    if keywords:
-        pill_w = min(w - image_size - 62, draw.textbbox((0, 0), keywords, font=_font(22, bold=True))[2] + 34)
-        draw.rounded_rectangle(
-            (text_x, y + h - 48, text_x + pill_w, y + h - 16),
-            radius=16,
-            fill=_blend_color((255, 255, 255), accent, 0.24),
-        )
-        draw.text((text_x + 17, y + h - 44), keywords, font=_font(22, bold=True), fill=(51, 65, 85))
-
-
 def _dish_suggestion(item, image_choices):
     chosen = _safe_choice(image_choices.get(item["text"]))
     if chosen and chosen.get("local_path") and os.path.exists(chosen["local_path"]):
@@ -570,25 +523,7 @@ def _draw_food_hero(canvas, draw, item, image_choices, *, phase=0, accent=(255, 
         _draw_wrapped(draw, item["text"], 106, 820, 720, _font(50, bold=True), (15, 23, 42), line_gap=4, max_lines=2)
 
 
-def _draw_menu_item_row(draw, item, box, *, accent, active=False):
-    x, y, w, h = box
-    shadow = (213, 220, 231)
-    draw.rounded_rectangle((x + 7, y + 9, x + w + 7, y + h + 9), radius=26, fill=shadow)
-    draw.rounded_rectangle(
-        (x, y, x + w, y + h), radius=26, fill=(255, 255, 255), outline=accent if active else (226, 232, 240),
-        width=4 if active else 2,
-    )
-    draw.ellipse((x + 24, y + 25, x + 76, y + 77), fill=accent)
-    initial = " ".join(str(item.get("text", "?")).split())[:1].upper() or "?"
-    bbox = draw.textbbox((0, 0), initial, font=_font(30, bold=True))
-    draw.text((x + 50 - bbox[2] / 2, y + 35), initial, font=_font(30, bold=True), fill=(255, 255, 255))
-    _draw_wrapped(
-        draw, item.get("text", ""), x + 98, y + 20, w - 122, _font(31, bold=True), (15, 23, 42),
-        line_gap=2, max_lines=2,
-    )
-
-
-def _draw_compact_menu_section(draw, section, box, *, accent, active=False):
+def _draw_compact_menu_section(canvas, draw, section, box, image_choices, *, accent, active=False):
     x, y, w, h = box
     shadow = (213, 220, 231)
     draw.rounded_rectangle((x + 7, y + 9, x + w + 7, y + h + 9), radius=28, fill=shadow)
@@ -607,16 +542,30 @@ def _draw_compact_menu_section(draw, section, box, *, accent, active=False):
     row_top = y + 70
     row_gap = 5
     row_h = max(24, min(44, (h - 82 - row_gap * (len(items) - 1)) // len(items)))
+    thumb_size = max(18, min(row_h - 8, 40))
     for index, item in enumerate(items):
         row_y = row_top + index * (row_h + row_gap)
-        dot_y = row_y + max(5, (row_h - 15) // 2)
-        draw.ellipse((x + 30, dot_y, x + 45, dot_y + 15), fill=accent)
+        thumb_y = row_y + max(0, (row_h - thumb_size) // 2)
+        suggestion = _dish_suggestion(item, image_choices)
+        if suggestion and suggestion.get("local_path") and os.path.exists(suggestion["local_path"]):
+            thumb = _fit_image(suggestion["local_path"], (thumb_size, thumb_size))
+            mask = Image.new("L", (thumb_size, thumb_size), 0)
+            ImageDraw.Draw(mask).rounded_rectangle((0, 0, thumb_size, thumb_size), radius=8, fill=255)
+            canvas.paste(thumb, (x + 22, thumb_y), mask)
+            draw.rounded_rectangle(
+                (x + 22, thumb_y, x + 22 + thumb_size, thumb_y + thumb_size),
+                radius=8, outline=(15, 23, 42), width=2,
+            )
+        else:
+            dot_y = row_y + max(5, (row_h - 15) // 2)
+            draw.ellipse((x + 30, dot_y, x + 45, dot_y + 15), fill=accent)
+        text_x = x + 22 + thumb_size + 18
         _draw_wrapped(
             draw,
             item.get("text", ""),
-            x + 62,
+            text_x,
             row_y + max(2, (row_h - 25) // 2),
-            w - 92,
+            w - (text_x - x) - 20,
             _font(22, bold=True),
             (15, 23, 42),
             line_gap=1,
@@ -680,9 +629,11 @@ def _render_menu_canvas(
         section_y = menu_top + section_index * (section_h + section_gap)
         section_accent = SECTION_ACCENTS[section_index % len(SECTION_ACCENTS)]
         _draw_compact_menu_section(
+            canvas,
             draw,
             section,
             (panel_x + 46, section_y, 700, section_h),
+            image_choices,
             accent=section_accent,
             active=section_index == active_idx,
         )

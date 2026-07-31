@@ -13,7 +13,7 @@ x-visio-container-env: &visio-container-env
   DATABASE_URL: postgresql://visio:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD absent. Lancez scripts/security_bootstrap.sh install . ou renseignez .env.}@postgres:5432/visio
 
 x-visio-volumes: &visio-volumes
-  - ${VISIO_HOST_ROOT:-.}:/opt/visio-display
+  - ${VISIO_HOST_ROOT:-.}:/opt/visio-display:ro
   - ${VISIO_HOST_ROOT:-.}/.env:/app/.env:ro
   - ${MEDIA_DIR:?MEDIA_DIR absent. Lancez le module d'installation ou renseignez .env.}:/app/static/data
   - ${PRIVATE_DIR:?PRIVATE_DIR absent. Lancez le module d'installation ou renseignez .env.}:/app/data
@@ -52,7 +52,7 @@ services:
       GUNICORN_WORKERS: ${GUNICORN_WORKERS:-2}
       UPDATER_API_TOKEN: ${UPDATER_API_TOKEN:?UPDATER_API_TOKEN absent. Lancez scripts/security_bootstrap.sh update . ou renseignez .env.}
     volumes:
-      - ${VISIO_HOST_ROOT:-.}:/opt/visio-display
+      - ${VISIO_HOST_ROOT:-.}:/opt/visio-display:ro
       - ${VISIO_HOST_ROOT:-.}/.env:/app/.env:ro
       - ${MEDIA_DIR:?MEDIA_DIR absent. Lancez le module d'installation ou renseignez .env.}:/app/static/data
       - ${PRIVATE_DIR:?PRIVATE_DIR absent. Lancez le module d'installation ou renseignez .env.}:/app/data

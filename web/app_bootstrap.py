@@ -24,6 +24,7 @@ from flask import (
     url_for,
 )
 from flask import before_render_template, template_rendered
+from flask.sessions import SecureCookieSessionInterface
 from jinja2 import FileSystemBytecodeCache
 from sqlalchemy import event, inspect, text
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -354,6 +355,12 @@ def load_or_generate_secret_key():
     return key
 
 
+class _ProxyAwareSessionInterface(SecureCookieSessionInterface):
+    # Marks the cookie Secure on HTTPS requests even without SESSION_COOKIE_SECURE set.
+    def get_cookie_secure(self, app):
+        return bool(app.config.get("SESSION_COOKIE_SECURE")) or request.is_secure
+
+
 def configure_app(app, *, max_batch_upload_size):
     app.secret_key = os.environ.get("SECRET_KEY") or load_or_generate_secret_key()
     app.config["DISPLAY_API_TOKEN"] = require_display_api_token()
@@ -362,6 +369,7 @@ def configure_app(app, *, max_batch_upload_size):
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     app.config["SESSION_COOKIE_SECURE"] = env_flag("SESSION_COOKIE_SECURE")
+    app.session_interface = _ProxyAwareSessionInterface()
     app.config["SESSION_COOKIE_NAME"] = os.environ.get("SESSION_COOKIE_NAME", "visio_session")
     app.config["SESSION_COOKIE_PATH"] = "/"
     app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(

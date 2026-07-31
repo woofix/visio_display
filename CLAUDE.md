@@ -36,7 +36,7 @@ Note: `main.sh` and `dev.sh` are **production update scripts** (git pull + Docke
 ### Versioning pre-commit hook
 
 Each commit auto-bumps `VERSION`: patch by default; **major** when touching `web/db.py`, `Dockerfile`,
-`docker-compose.yml`, requirements files, or deleting any file. Override with
+requirements files, or deleting any file; **minor** when touching `docker-compose.yml`. Override with
 `VISIO_VERSION_BUMP=minor|major|none git commit ...`. The hook also **blocks committing media/runtime
 files** (images, videos, `web/static/data/`, etc.) — media lives outside git in `MEDIA_DIR`.
 

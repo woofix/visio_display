@@ -26,8 +26,13 @@ detect_bump_kind() {
         return
     fi
 
-    if printf '%s\n' "$staged_names" | grep -Eq '^(web/db\.py|docker-compose\.yml|Dockerfile|web/requirements(-dev)?\.txt)$'; then
+    if printf '%s\n' "$staged_names" | grep -Eq '^(web/db\.py|Dockerfile|web/requirements(-dev)?\.txt)$'; then
         printf '%s\n' "major"
+        return
+    fi
+
+    if printf '%s\n' "$staged_names" | grep -Eq '^docker-compose\.yml$'; then
+        printf '%s\n' "minor"
         return
     fi
 

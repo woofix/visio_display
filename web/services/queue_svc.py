@@ -203,6 +203,7 @@ def _reencode_with_progress(src, dst, compress, job_id):
     crf    = '28' if compress else '26'
     preset = 'veryfast' if compress else 'ultrafast'
     vf     = (
+        'fps=25,'
         'scale=1920:1080:force_original_aspect_ratio=decrease,'
         'scale=trunc(iw/2)*2:trunc(ih/2)*2'
     )
@@ -210,7 +211,7 @@ def _reencode_with_progress(src, dst, compress, job_id):
     duration_ms = _get_video_duration_ms(src)
     cmd = [
         'ffmpeg', '-i', src,
-        '-vcodec', 'libx264', '-crf', crf, '-preset', preset,
+        '-vcodec', 'libx264', '-profile:v', 'main', '-crf', crf, '-preset', preset,
         '-acodec', 'aac', '-b:a', audio,
         '-movflags', '+faststart', '-vf', vf,
         '-progress', 'pipe:1', '-nostats',

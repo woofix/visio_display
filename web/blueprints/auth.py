@@ -7,7 +7,7 @@ import os
 import secrets
 from redis import Redis
 
-from services.users_svc import load_users, normalize_username, verify_user_password
+from services.users_svc import bump_session_epoch, get_session_epoch, normalize_username, verify_user_password
 from services.media_svc import get_logo_path
 from services.i18n import _flash
 from services.activity_svc import log_activity
@@ -87,14 +87,14 @@ def login():
             log_activity(username, 'login', details=f'rate_limited ip={ip}')
             _flash('flash_login_rate_limited', 'error')
             return render_template('login.html', logo_path=get_logo_path()), 429
-        users = load_users()
-        if username in users and verify_user_password(username, password):
+        if verify_user_password(username, password):
             session.clear()
             session.permanent = True
             if login_language in {'fr', 'en'}:
                 session['login_language'] = login_language
             session['user'] = username
             session['_csrf_token'] = secrets.token_urlsafe(32)
+            session['_session_epoch'] = get_session_epoch(username)
             _clear_login_failures(username, ip)
             log_activity(username, 'login')
             from services.users_svc import get_user as _get_user
@@ -116,5 +116,6 @@ def logout():
     user = session.get('user')
     session.clear()
     if user:
+        bump_session_epoch(user)
         log_activity(user, 'logout')
     return redirect(url_for('auth.login'))

@@ -1,6 +1,7 @@
 # Licensed under the GNU General Public License v3.0 (GPL-3.0).
 # Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
+import hmac
 import json
 import logging
 import os
@@ -33,7 +34,7 @@ def create_app():
         if not token:
             return jsonify({"ok": False, "error": "UPDATER_API_TOKEN non configuré."}), 503
         auth = request.headers.get("Authorization", "")
-        if auth != f"Bearer {token}":
+        if not hmac.compare_digest(auth, f"Bearer {token}"):
             return jsonify({"ok": False, "error": "Accès updater refusé."}), 403
         return None
 

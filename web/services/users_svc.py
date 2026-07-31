@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import re
+import secrets
 
 from flask import g, has_request_context, session
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -43,12 +44,43 @@ def _legacy_password_key(username):
     return f'{LEGACY_PASSWORD_KEY_PREFIX}{normalize_username(username)}'
 
 
+def _session_epoch_key(username):
+    return f'visio-display:session-epoch:{normalize_username(username).casefold()}'
+
+
+def get_session_epoch(username):
+    try:
+        value = get_redis().get(_session_epoch_key(username))
+    except Exception:
+        LOGGER.debug("Unable to read session epoch for %s", username, exc_info=True)
+        return 0
+    try:
+        return int(value) if value is not None else 0
+    except (TypeError, ValueError):
+        return 0
+
+
+def bump_session_epoch(username):
+    try:
+        get_redis().incr(_session_epoch_key(username))
+    except Exception:
+        LOGGER.debug("Unable to bump session epoch for %s", username, exc_info=True)
+
+
+def session_epoch_is_current(username):
+    try:
+        return session.get('_session_epoch', 0) == get_session_epoch(username)
+    except Exception:
+        return True
+
+
 def set_user_password(username, password):
     user = get_user(username)
     if user is None:
         return False
     user.password_hash = generate_password_hash(password)
     db.session.commit()
+    bump_session_epoch(username)
     return True
 
 
@@ -68,12 +100,17 @@ def _delete_legacy_password_hash(username):
         LOGGER.debug("Unable to remove legacy Redis password hash for %s", username, exc_info=True)
 
 
+_DUMMY_PASSWORD_HASH = generate_password_hash(secrets.token_urlsafe(32))
+
+
 def verify_user_password(username, password):
     user = get_user(username)
     if user is None:
+        check_password_hash(_DUMMY_PASSWORD_HASH, password)
         return False
     password_hash = (user.password_hash or '').strip()
     if not password_hash or password_hash == LEGACY_PASSWORD_HASH_PLACEHOLDER:
+        check_password_hash(_DUMMY_PASSWORD_HASH, password)
         return False
     return check_password_hash(password_hash, password)
 
@@ -256,6 +293,9 @@ def init_users():
 def is_admin():
     username = session.get('user')
     if not username:
+        return False
+    if not session_epoch_is_current(username):
+        session.clear()
         return False
     if has_request_context() and getattr(g, 'current_user_model', None) is not None:
         return True

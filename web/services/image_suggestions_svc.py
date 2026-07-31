@@ -6,8 +6,9 @@ import ipaddress
 import io
 import logging
 import os
+import socket
 from datetime import datetime
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import requests
 from PIL import Image, ImageOps
@@ -214,6 +215,34 @@ def _external_detection_items(text, detected):
     return items
 
 
+def _is_public_address(address):
+    return not (
+        address.is_private
+        or address.is_loopback
+        or address.is_link_local
+        or address.is_reserved
+        or address.is_multicast
+        or address.is_unspecified
+    )
+
+
+def _hostname_resolves_publicly(hostname):
+    try:
+        infos = socket.getaddrinfo(hostname, None)
+    except (socket.gaierror, UnicodeError):
+        return False
+    if not infos:
+        return False
+    for info in infos:
+        try:
+            address = ipaddress.ip_address(info[4][0])
+        except ValueError:
+            return False
+        if not _is_public_address(address):
+            return False
+    return True
+
+
 def _safe_external_image_url(url):
     parsed = urlparse(str(url or ""))
     if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
@@ -224,14 +253,8 @@ def _safe_external_image_url(url):
     try:
         address = ipaddress.ip_address(hostname)
     except ValueError:
-        return True
-    return not (
-        address.is_private
-        or address.is_loopback
-        or address.is_link_local
-        or address.is_reserved
-        or address.is_multicast
-    )
+        return _hostname_resolves_publicly(hostname)
+    return _is_public_address(address)
 
 
 def _external_suggestions(detected, *, text="", limit_per_keyword=4):
@@ -333,20 +356,34 @@ def _prune_cache():
             break
 
 
+_REDIRECT_STATUS_CODES = {301, 302, 303, 307, 308}
+_MAX_REDIRECTS = 5
+
+
 def cache_external_image(url):
     if not (_safe_image_url(url) or _safe_external_image_url(url)):
         raise ValueError("URL externe non autorisée.")
     cached = _cached_by_url(url)
     if cached:
         return cached
-    response = requests.get(
-        url,
-        timeout=(2, 8),
-        headers=_external_image_headers("image/webp,image/apng,image/*,*/*;q=0.8"),
-    )
+    current_url = url
+    for _ in range(_MAX_REDIRECTS):
+        response = requests.get(
+            current_url,
+            timeout=(2, 8),
+            headers=_external_image_headers("image/webp,image/apng,image/*,*/*;q=0.8"),
+            allow_redirects=False,
+        )
+        if response.status_code in _REDIRECT_STATUS_CODES and response.headers.get("Location"):
+            next_url = urljoin(current_url, response.headers["Location"])
+            if not (_safe_image_url(next_url) or _safe_external_image_url(next_url)):
+                raise ValueError("Redirection externe non autorisée.")
+            current_url = next_url
+            continue
+        break
+    else:
+        raise ValueError("Trop de redirections.")
     response.raise_for_status()
-    if not (_safe_image_url(response.url) or _safe_external_image_url(response.url)):
-        raise ValueError("Redirection externe non autorisée.")
     content_type = response.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
     if content_type not in ALLOWED_CACHE_MIMES or content_type not in ALLOWED_RASTER_MIMES:
         raise ValueError("Format image non autorisé.")

@@ -22,6 +22,7 @@ from services.media_svc import (
     generate_standard_renditions,
     get_video_dimensions,
     is_valid_uploaded_image,
+    set_media_upload_attribution,
 )
 from services.playlist_cache_svc import bump_media_revision
 from services.queue_svc import enqueue_compress_job
@@ -251,6 +252,7 @@ def save_pdf_upload(file, filename, planned_filenames, username, *, prepare_medi
             img_path = os.path.join(UPLOAD_FOLDER, page_filename)
             img.save(img_path, "JPEG", quality=95)
             prepare_media_func(page_filename)
+            set_media_upload_attribution(page_filename, username)
             planned_filenames.add(page_filename)
         log_activity(username, "upload", filename=filename, details="pdf→jpg")
     finally:
@@ -296,6 +298,7 @@ def save_video_upload(
     enqueue_compress_func(filename)
     if prepare_media_func is not None:
         prepare_media_func(filename)
+    set_media_upload_attribution(filename, username)
     queued_video_files.append(filename)
     log_activity(username, "upload", filename=filename, details="queued for nightly encoding")
 
@@ -321,6 +324,7 @@ def save_image_upload(
             os.remove(dest)
             raise UploadValidationError("invalid image file")
     prepare_media_func(filename)
+    set_media_upload_attribution(filename, username)
     log_activity(username, "upload", filename=filename)
 
 

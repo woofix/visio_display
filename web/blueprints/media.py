@@ -180,6 +180,11 @@ def admin_media():
         for filename in all_media
     }
     preview_pending = {filename: not bool(preview_urls.get(filename)) for filename in all_media}
+    media_authors = {
+        filename: str(media_metadata[filename].get('uploaded_by') or '')
+        for filename in all_media
+    }
+    upload_authors = sorted({author for author in media_authors.values() if author}, key=str.casefold)
     preview_media_urls = {
         filename: (
             media_metadata[filename].get('preview_urls', {}).get('preview')
@@ -207,6 +212,7 @@ def admin_media():
         media_groups=media_groups, group_states=group_states, disabled_map=disabled_map,
         preview_urls=preview_urls, preview_media_urls=preview_media_urls,
         preview_pending=preview_pending,
+        media_authors=media_authors, upload_authors=upload_authors,
         users=list(users.keys()), current_user=session.get('user'),
         logo_path=get_logo_path(), can_toggle=has_permission('toggle'),
         can_schedule=has_permission('schedule'),

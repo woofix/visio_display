@@ -520,6 +520,13 @@
         <option value="video"    {% if request.args.get('filter') == 'video'    %}selected{% endif %}>{{ t('filter_videos') }}</option>
         {% endif %}
     </select>
+    <select class="filter-select" id="media-author-filter">
+        <option value="">{{ t('media_author_all') }}</option>
+        {% for author in upload_authors %}
+        <option value="{{ author }}">{{ author }}</option>
+        {% endfor %}
+        <option value="__unknown__">{{ t('media_author_unknown') }}</option>
+    </select>
     <div class="view-toggle">
         <button id="btn-grid" class="active">{{ t('view_grid') }}</button>
         <button id="btn-list">{{ t('view_list') }}</button>
@@ -586,6 +593,7 @@
     <div class="file-card {% if disabled_map.get(file, false) %}disabled{% endif %} {% if disabled_by_group %}group-disabled{% endif %} {% if sched %}scheduled{% endif %}"
          data-file="{{ file }}"
          data-type="{{ info.type }}"
+         data-author="{{ media_authors.get(file, '') }}"
          data-disabled="{{ 'true' if disabled_map.get(file, false) else 'false' }}"
          data-manually-disabled="{{ 'true' if file in cfg.disabled else 'false' }}"
          data-group-disabled="{{ 'true' if disabled_by_group else 'false' }}"
@@ -611,6 +619,7 @@
         <div class="card-body">
             <div class="fname" title="{{ file }}">{{ file }}</div>
             <div class="finfo">{{ info.dims }} · {{ info.size }}</div>
+            <div class="finfo">{{ t('media_added_by') }} : {{ media_authors.get(file) or t('media_author_unknown') }}</div>
             <div class="group-badges">
                 {% for group in file_groups %}
                 <span class="group-badge {% if group in cfg.disabled_groups %}disabled{% endif %}">{{ group }}</span>
@@ -712,7 +721,7 @@
 <div class="file-grid" id="unassigned-grid">
     {% for file in unassigned %}
     {% set info = infos[file] %}
-    <div class="file-card unassigned" data-file="{{ file }}" data-type="{{ info.type }}">
+    <div class="file-card unassigned" data-file="{{ file }}" data-type="{{ info.type }}" data-author="{{ media_authors.get(file, '') }}">
         {% if preview_pending.get(file) %}
         <div class="preview-pending">{{ t('media_preview_pending') }}</div>
         {% else %}

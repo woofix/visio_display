@@ -86,12 +86,18 @@ def _load_media_metadata_sidecar(filename, stat_result=None):
         payload.get('size_bytes') != stat_result.st_size
         or payload.get('mtime_ns') != stat_result.st_mtime_ns
     ):
-        return None
+        # A compressor or optimizer may replace the original after upload.
+        # Its technical metadata is then stale, but provenance remains valid.
+        payload = dict(payload)
+        payload['dimensions'] = {}
+        payload['dims'] = '--'
+        payload['_technical_stale'] = True
     return payload
 
 
-def _write_media_metadata_sidecar(filename, metadata):
+def _write_media_metadata_sidecar(filename, metadata, *, uploaded_by=None, uploaded_at=None):
     path = get_media_metadata_sidecar_path(filename)
+    existing = _load_media_metadata_sidecar(filename) or {}
     payload = {
         'version': MEDIA_METADATA_SIDECAR_VERSION,
         'filename': filename,
@@ -101,9 +107,26 @@ def _write_media_metadata_sidecar(filename, metadata):
         'dimensions': dict(metadata.get('dimensions') or {}),
         'dims': metadata.get('dims', '--'),
         'prepared_at': datetime.now().isoformat(timespec='seconds'),
+        'uploaded_by': uploaded_by if uploaded_by is not None else existing.get('uploaded_by', ''),
+        'uploaded_at': uploaded_at if uploaded_at is not None else existing.get('uploaded_at', ''),
     }
     with open(path, 'w', encoding='utf-8') as handle:
         json.dump(payload, handle, ensure_ascii=False, sort_keys=True)
+
+
+def set_media_upload_attribution(filename, username, uploaded_at=None):
+    """Persist the uploader independently from the activity-log retention policy."""
+    metadata = get_media_metadata(filename, preview_contexts=(), include_dimensions=False)
+    if metadata.get('type') == 'unknown':
+        return False
+    _write_media_metadata_sidecar(
+        filename,
+        metadata,
+        uploaded_by=str(username or 'system'),
+        uploaded_at=uploaded_at or datetime.now().isoformat(timespec='seconds'),
+    )
+    clear_media_metadata_cache()
+    return True
 
 
 def _record_perf_step(name, started_at, *, min_ms=0.0):
@@ -1090,10 +1113,16 @@ def _size_label(size_bytes, media_type='unknown'):
 
 
 def _metadata_cache_key(filename, stat_result, preview_contexts, generate_missing, include_dimensions):
+    try:
+        sidecar_stat = os.stat(get_media_metadata_sidecar_path(filename))
+        sidecar_signature = (sidecar_stat.st_size, sidecar_stat.st_mtime_ns)
+    except OSError:
+        sidecar_signature = (0, 0)
     return (
         filename,
         stat_result.st_size,
         stat_result.st_mtime_ns,
+        sidecar_signature,
         tuple(preview_contexts),
         bool(generate_missing),
         bool(include_dimensions),
@@ -1149,6 +1178,8 @@ def _build_media_metadata(filename, stat_result, preview_contexts, generate_miss
         'height': height,
         'dims': dims_label,
         'preview_urls': preview_urls,
+        'uploaded_by': str(sidecar.get('uploaded_by') or '') if sidecar else '',
+        'uploaded_at': str(sidecar.get('uploaded_at') or '') if sidecar else '',
     }
 
 

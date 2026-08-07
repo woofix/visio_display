@@ -151,13 +151,17 @@ sortMediaCards();
 function applyFilter() {
     const q   = document.getElementById('media-search').value.toLowerCase().trim();
     const fil = document.getElementById('media-filter').value;
+    const authorFilter = document.getElementById('media-author-filter')?.value || '';
     let visible = 0;
     let visibleDisabled = 0;
     document.querySelectorAll('#file-grid .file-card').forEach(card => {
         const name     = card.dataset.file.toLowerCase();
         const type     = card.dataset.type;
         const disabled = card.dataset.disabled === 'true';
+        const author = card.dataset.author || '';
         let show = name.includes(q);
+        if (show && authorFilter === '__unknown__') show = !author;
+        if (show && authorFilter && authorFilter !== '__unknown__') show = author === authorFilter;
         if (show && fil === 'active')   show = !disabled;
         if (show && fil === 'disabled') show = disabled;
         if (show && fil === 'image')    show = type === 'image';
@@ -169,7 +173,10 @@ function applyFilter() {
     document.getElementById('unassigned-grid')?.querySelectorAll('.file-card').forEach(card => {
         const name = card.dataset.file.toLowerCase();
         const type = card.dataset.type;
+        const author = card.dataset.author || '';
         let show = name.includes(q);
+        if (show && authorFilter === '__unknown__') show = !author;
+        if (show && authorFilter && authorFilter !== '__unknown__') show = author === authorFilter;
         if (show && fil === 'active')   show = false;
         if (show && fil === 'disabled') show = false;
         if (show && fil === 'image')    show = type === 'image';
@@ -183,6 +190,7 @@ function applyFilter() {
 }
 document.getElementById('media-search').addEventListener('input', applyFilter);
 document.getElementById('media-filter').addEventListener('change', applyFilter);
+document.getElementById('media-author-filter')?.addEventListener('change', applyFilter);
 
 function refreshMediaGrid() {
     sortMediaCards();

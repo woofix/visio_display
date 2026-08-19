@@ -452,7 +452,7 @@ Cette restauration remet :
 
 La copie du `.env` est incluse dans l'archive quand elle est disponible, mais elle n'est pas réécrite automatiquement depuis l'interface web.
 
-L'interface conserve automatiquement uniquement les **5 sauvegardes les plus récentes**. Lorsqu'une nouvelle archive est créée, les plus anciennes sont supprimées.
+L'interface conserve automatiquement uniquement les **5 sauvegardes les plus récentes** par défaut. Cette limite est réglable dans l'administration et s'applique aux archives locales ainsi qu'aux copies SMB. Après chaque création locale ou copie SMB réussie, les anciennes archives Visio sont supprimées de la destination concernée.
 
 ### Rôles et permissions
 
@@ -1720,7 +1720,7 @@ The super-admin can also manage backups from the web interface in `Settings > Ba
 - download the generated archive from the list
 - restore it on another running instance with `Restore now`
 
-Only the **5 most recent backups** are kept automatically in the web interface. When a new archive is created, older ones are removed.
+Only the **5 most recent backups** are kept by default. This limit is configurable in the administration interface and applies to both local archives and SMB copies. After each successful local creation or SMB copy, older Visio archives are removed from the relevant destination.
 
 ### Migration from earlier versions
 

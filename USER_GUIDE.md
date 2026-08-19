@@ -656,7 +656,7 @@ Notes:
 
 - the interface archives the application database, media, and private data;
 - a copy of `.env` is included in the archive when available;
-- only the **5 most recent backups** are kept automatically. Older backups are deleted when a new one is created.
+- the configured retention limit applies to both local backups and SMB copies. It keeps **5 versions** by default and removes older Visio archives after a successful creation or SMB copy.
 
 To restore to another already-running instance:
 
@@ -1608,7 +1608,7 @@ Le **super-admin** peut aussi faire la sauvegarde sans ligne de commande :
 
 - l’interface archive la base applicative, les médias et les données privées ;
 - une copie du `.env` est ajoutée à l’archive si elle est disponible ;
-- seules les **5 sauvegardes les plus récentes** sont conservées automatiquement ; les plus anciennes sont supprimées lors d’une nouvelle création.
+- la limite de conservation configurée s'applique aux sauvegardes locales et aux copies SMB. Elle conserve **5 versions** par défaut et supprime les anciennes archives Visio après une création ou une copie SMB réussie.
 
 Pour restaurer sur une autre instance déjà démarrée :
 

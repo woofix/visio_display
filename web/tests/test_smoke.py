@@ -3542,6 +3542,42 @@ class AppSmokeTests(unittest.TestCase):
                 remaining = [item["filename"] for item in backup_svc.list_backups()]
                 self.assertEqual(remaining, list(reversed(filenames[-3:])))
 
+    def test_backup_service_prunes_remote_smb_archives_using_configured_limit(self):
+        import subprocess
+
+        with self.app.app_context():
+            from services import backup_svc
+            from services.config_svc import load_config, save_config
+
+            cfg = load_config()
+            cfg["backup_retention"] = {"max_versions": 2}
+            save_config(cfg)
+            remote_settings = {
+                "url": "smb://nas/backups/visio",
+                "username": "",
+                "password": "",
+            }
+            listing = "\n".join([
+                "  visio-backup-20260101-000001.tar.gz A 100 Mon Jan 1 00:00:01 2026",
+                "  unrelated-file.tar.gz A 100 Mon Jan 1 00:00:02 2026",
+                "  visio-backup-20260101-000003.tar.gz A 100 Mon Jan 1 00:00:03 2026",
+                "  visio-backup-20260101-000002.tar.gz A 100 Mon Jan 1 00:00:02 2026",
+            ])
+
+            with patch("services.backup_svc.subprocess.run") as run_mock:
+                run_mock.side_effect = [
+                    subprocess.CompletedProcess(["smbclient"], 0, stdout=listing, stderr=""),
+                    subprocess.CompletedProcess(["smbclient"], 0, stdout="", stderr=""),
+                ]
+                backup_svc.prune_old_smb_backups(remote_settings)
+
+            self.assertEqual(run_mock.call_count, 2)
+            list_command = run_mock.call_args_list[0].args[0]
+            delete_command = run_mock.call_args_list[1].args[0]
+            self.assertEqual(list_command[-1], "ls visio-backup-*.tar.gz")
+            self.assertIn('del "visio-backup-20260101-000001.tar.gz"', delete_command[-1])
+            self.assertNotIn("unrelated-file.tar.gz", delete_command[-1])
+
     def test_superadmin_settings_backups_tab_renders_existing_backups(self):
         backup_dir = os.path.join(self.temp_dir.name, "private", "backups-test")
         os.makedirs(backup_dir, exist_ok=True)

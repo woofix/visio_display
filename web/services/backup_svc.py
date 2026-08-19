@@ -127,7 +127,7 @@ def _command_failure_detail(exc):
 
 def _run_command(command, *, env=None, missing_binary_message=None, failure_message=None, capture_output=False):
     try:
-        subprocess.run(
+        return subprocess.run(
             command,
             check=True,
             env=env,
@@ -497,6 +497,61 @@ def copy_backup_to_smb(source_path, backup_filename, remote_settings, progress_c
         )
 
     _emit_progress(progress_callback, f"SMB copy complete: {backup_filename}")
+    prune_old_smb_backups(remote_settings, progress_callback=progress_callback)
+
+
+def prune_old_smb_backups(remote_settings, progress_callback=None):
+    smb = _parse_smb_url((remote_settings or {}).get("url", ""))
+    username = str((remote_settings or {}).get("username", "") or smb["url_username"]).strip()
+    password = str((remote_settings or {}).get("password", "") or smb["url_password"]).strip()
+    retention_limit = backup_retention_limit()
+
+    _emit_progress(progress_callback, "Checking SMB backup retention...")
+    with tempfile.TemporaryDirectory(prefix="visio-backup-smb-prune-") as tmp_dir:
+        list_command = _build_smbclient_command(smb, username, password, tmp_dir)
+        list_command.extend(["-c", "ls visio-backup-*.tar.gz"])
+        result = _run_command(
+            list_command,
+            missing_binary_message=(
+                "System tool not found: smbclient. "
+                "Install the SMB/CIFS client in the container then retry SMB retention."
+            ),
+            failure_message=(
+                "Unable to list SMB backups for retention. "
+                "Check the smb:// link, credentials, and remote folder permissions."
+            ),
+            capture_output=True,
+        )
+
+        remote_backups = sorted(
+            set(re.findall(r"visio-backup-\d{8}-\d{6}\.tar\.gz", result.stdout or "")),
+            reverse=True,
+        )
+        expired_backups = remote_backups[retention_limit:]
+        if expired_backups:
+            delete_command = _build_smbclient_command(smb, username, password, tmp_dir)
+            delete_command.extend([
+                "-c",
+                "; ".join(f'del "{filename}"' for filename in expired_backups),
+            ])
+            _run_command(
+                delete_command,
+                missing_binary_message=(
+                    "System tool not found: smbclient. "
+                    "Install the SMB/CIFS client in the container then retry SMB retention."
+                ),
+                failure_message=(
+                    "Unable to delete old SMB backups. "
+                    "Check the remote folder delete permissions."
+                ),
+                capture_output=True,
+            )
+
+    _emit_progress(
+        progress_callback,
+        f"SMB retention complete: {len(remote_backups) - len(expired_backups)} kept, "
+        f"{len(expired_backups)} deleted.",
+    )
 
 
 def test_smb_destination(remote_settings, progress_callback=None):

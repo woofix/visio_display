@@ -616,6 +616,51 @@ class AppSmokeTests(unittest.TestCase):
         self.assertNotIn("/admin/roles", urls)
         self.assertNotIn("/admin/settings/gestion-ecrans", config_urls)
 
+    def test_priority_alert_permission_can_be_delegated_to_regular_user(self):
+        with self.app.app_context():
+            from services.users_svc import create_user
+
+            create_user("alert-operator", "operator-pass-123", permissions=["priority_alert"])
+
+        with self.client.session_transaction() as session:
+            session["user"] = "alert-operator"
+            session["_csrf_token"] = "priority-alert-token"
+
+        page = self.client.get("/admin/settings/alerte-prioritaire")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn(b'id="priority-alert-input"', page.data)
+
+        response = self.client.post(
+            "/admin/priority-alert",
+            data={
+                "message": "Evacuation immediate",
+                "_csrf_token": "priority-alert-token",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["message"], "Evacuation immediate")
+
+        with self.app.app_context():
+            from services.config_svc import load_config
+
+            self.assertEqual(load_config()["priority_alert"]["message"], "Evacuation immediate")
+
+    def test_regular_user_without_priority_alert_permission_is_denied(self):
+        with self.app.app_context():
+            from services.users_svc import create_user
+
+            create_user("no-alert-user", "operator-pass-123", permissions=[])
+
+        with self.client.session_transaction() as session:
+            session["user"] = "no-alert-user"
+            session["_csrf_token"] = "no-alert-token"
+
+        response = self.client.post(
+            "/admin/priority-alert",
+            data={"message": "Should fail", "_csrf_token": "no-alert-token"},
+        )
+        self.assertEqual(response.status_code, 403)
+
     def test_search_finds_announcements_for_allowed_users(self):
         with self.app.app_context():
             from services.users_svc import create_user

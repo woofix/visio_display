@@ -462,6 +462,7 @@ L'interface conserve automatiquement uniquement les **5 sauvegardes les plus ré
 - Peut forcer l'encodage vidéo hors de la fenêtre nocturne
 - Peut personnaliser le nom de l'application
 - Gère les comptes, permissions, écrans, sauvegardes et réglages globaux depuis les sections de **Paramètres**
+- Peut déléguer la publication et le retrait de l'alerte prioritaire à un utilisateur ou à un rôle grâce à la permission dédiée **Alerte prioritaire**
 
 **Utilisateurs réguliers**
 - Créés par le super-admin, aucune permission par défaut
@@ -1283,6 +1284,7 @@ If there is only one super-admin account, you can omit `--user <super-admin-name
 - Can force video encoding outside the overnight window
 - Can customize the application name
 - Manages accounts, permissions, screens, backups and global settings from **Settings** sections
+- Can delegate publishing and clearing the priority alert to a user or role with the dedicated **Priority alert** permission
 
 **Regular users**
 - Created by the super-admin, no permissions by default

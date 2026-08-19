@@ -1224,7 +1224,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
     </div>
     {% endif %}
 
-    {% if current_user_is_superadmin and tab in ['administration', 'priority-alert', 'accounts', 'add-account', 'screens'] %}
+    {% if (current_user_is_superadmin and tab in ['administration', 'accounts', 'add-account', 'screens']) or (tab == 'priority-alert' and has_permission('priority_alert')) %}
     <!-- ── SUPER-ADMIN ── -->
     <div id="superadmin" class="admin-section">
         <div class="admin-section-title">

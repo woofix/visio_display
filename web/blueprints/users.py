@@ -24,7 +24,7 @@ from services.users_svc import (
 )
 from services.config_svc import get_screen_keys, load_config, save_config
 from services.i18n import _flash
-from blueprints.guards import superadmin_guard, feature_guard_json
+from blueprints.guards import feature_guard_json, perm_guard, superadmin_guard
 
 bp = Blueprint('users', __name__)
 
@@ -187,7 +187,7 @@ def set_user_screens(username):
 
 @bp.route('/admin/priority-alert', methods=['POST'])
 def set_priority_alert():
-    g = superadmin_guard()
+    g = perm_guard('priority_alert')
     if g: return g
     g = feature_guard_json('priority_alert')
     if g: return g

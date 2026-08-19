@@ -973,6 +973,7 @@ TRANSLATIONS = {
         'perm_ephemeris': "Gérer les événements de l'éphéméride",
         'perm_schedule': "Programmer l'affichage des médias",
         'perm_cleanup': 'Nettoyer la médiathèque',
+        'perm_priority_alert': "Publier et retirer l'alerte prioritaire",
 
         # ── Flash messages ──
         'flash_file_too_large': 'Fichier trop volumineux : la taille maximale autorisée est de 150 Mo par fichier.',
@@ -1418,7 +1419,7 @@ TRANSLATIONS = {
         'wiki_s13_pool_desc': 'Le champ de tirage définit combien de médias du groupe sont affichés à chaque passage. 0 ou une valeur vide affiche tout le groupe ; une valeur positive limite le groupe à ce nombre de médias par cycle.',
         # §14 Priority alert
         'wiki_s14_title': 'Alerte prioritaire',
-        'wiki_s14_desc': 'La fonctionnalité d\'alerte prioritaire permet au super-admin de diffuser immédiatement un message en bannière sur l\'écran d\'affichage, sans interrompre le diaporama.',
+        'wiki_s14_desc': 'La fonctionnalité d\'alerte prioritaire permet au super-admin, ou à un utilisateur autorisé par la permission dédiée, de diffuser immédiatement un message en bannière sur l\'écran d\'affichage, sans interrompre le diaporama.',
         'wiki_s14_access': 'Accessible depuis Paramètres → Alerte prioritaire.',
         'wiki_s14_how_title': 'Comment ça fonctionne',
         'wiki_s14_how1': 'Saisissez votre message dans le champ prévu (280 caractères max.).',
@@ -2904,6 +2905,7 @@ TRANSLATIONS = {
         'perm_ephemeris': 'Manage ephemeris events',
         'perm_schedule': 'Schedule media display',
         'perm_cleanup': 'Clean up media library',
+        'perm_priority_alert': 'Publish and clear the priority alert',
 
         # ── Flash messages ──
         'flash_file_too_large': 'File too large: maximum allowed size is 150 MB per file.',
@@ -3336,7 +3338,7 @@ TRANSLATIONS = {
         'wiki_s13_pool_desc': 'The pool field defines how many media items from the group are shown per cycle. 0 or an empty value shows the whole group; a positive value limits the group to that many items per cycle.',
         # §14 Priority alert
         'wiki_s14_title': 'Priority alert',
-        'wiki_s14_desc': 'The priority alert feature lets the super-admin instantly broadcast a message as a banner on the display screen, without interrupting the slideshow.',
+        'wiki_s14_desc': 'The priority alert feature lets the super-admin, or a user granted the dedicated permission, instantly broadcast a message as a banner on the display screen without interrupting the slideshow.',
         'wiki_s14_access': 'Accessible from Settings → Priority alert.',
         'wiki_s14_how_title': 'How it works',
         'wiki_s14_how1': 'Type your message in the provided field (max. 280 characters).',

@@ -25,6 +25,7 @@ _URL_PERMISSION_MAP = [
     ('/admin/announcements', ('announcements', 'upload')),
     ('/admin/programming', ('schedule',)),
     ('/admin/settings/nettoyage-medias', ('cleanup',)),
+    ('/admin/settings/alerte-prioritaire', ('priority_alert',)),
 ]
 
 _URL_FEATURE_MAP = [
@@ -33,6 +34,7 @@ _URL_FEATURE_MAP = [
     ('/admin/campaigns', 'campaigns'),
     ('/admin/programming', 'schedule'),
     ('/admin/activity', 'activity'),
+    ('/admin/settings/alerte-prioritaire', 'priority_alert'),
 ]
 
 _URL_SUPERADMIN_PREFIXES = superadmin_nav_prefixes()

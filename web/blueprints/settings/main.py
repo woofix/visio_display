@@ -37,7 +37,7 @@ from services.settings_sections import (
     settings_section_template,
     settings_section_url,
 )
-from services.users_svc import get_user, has_screen_access, is_superadmin, load_users
+from services.users_svc import get_user, has_permission, has_screen_access, is_superadmin, load_users
 
 from . import bp
 
@@ -98,7 +98,10 @@ def _build_settings_context(tab='logo', install_defaults=None, install_result=No
     client_watchdog = cfg.get('client_watchdog', {})
     with measure_perf_step('settings.is_superadmin'):
         is_sa = is_superadmin()
+    can_manage_priority_alert = has_permission('priority_alert')
     if is_superadmin_settings_tab(active_tab) and not is_sa:
+        active_tab = 'logo'
+    if active_tab == 'priority-alert' and not can_manage_priority_alert:
         active_tab = 'logo'
 
     needs_accounts = is_sa and active_tab in {'administration', 'accounts', 'add-account'}
@@ -228,7 +231,7 @@ def _build_settings_context(tab='logo', install_defaults=None, install_result=No
         user_effective_permissions_map=effective_permissions_map,
         user_role_permissions_map=role_permissions_map,
         manageable_screens=manageable_screens,
-        priority_alert=cfg.get('priority_alert', {}) if is_sa else {},
+        priority_alert=cfg.get('priority_alert', {}) if can_manage_priority_alert else {},
         tab=active_tab,
         settings_section_url=settings_section_url,
         all_features=ALL_FEATURES if is_sa else [],

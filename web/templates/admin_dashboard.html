@@ -287,7 +287,7 @@
         <span class="priority-alert-status{% if not priority_alert_message %} inactive{% endif %}">
             {% if priority_alert_message %}{{ t('dashboard_priority_alert_status_active') }}{% else %}{{ t('dashboard_priority_alert_status_inactive') }}{% endif %}
         </span>
-        {% if current_user_is_superadmin %}
+        {% if has_permission('priority_alert') %}
         <a class="btn secondary sm" href="/admin/settings/alerte-prioritaire">{{ t('dashboard_priority_alert_edit') }}</a>
         {% if priority_alert_message %}
         <form method="post" action="/admin/priority-alert">

@@ -68,7 +68,6 @@ SUPERADMIN_SETTING_TABS = {
     "installation",
     "sauvegardes",
     "administration",
-    "priority-alert",
     "accounts",
     "add-account",
     "screens",
@@ -194,13 +193,6 @@ SETTINGS_NAV_GROUPS = (
                 "settings_active_paths": ("/admin/settings/meteo",),
             },
             {
-                "key": "priority-alert",
-                "href": "/admin/settings/alerte-prioritaire",
-                "label_key": "superadmin_priority_alert_title",
-                "icon": _ICONS["priority-alert"],
-                "settings_active_paths": ("/admin/settings/alerte-prioritaire",),
-            },
-            {
                 "key": "features",
                 "href": "/admin/settings/fonctionnalites",
                 "label_key": "nav_features",
@@ -212,6 +204,14 @@ SETTINGS_NAV_GROUPS = (
     {
         "label_key": "nav_label_system",
         "items": (
+            {
+                "key": "priority-alert",
+                "href": "/admin/settings/alerte-prioritaire",
+                "label_key": "superadmin_priority_alert_title",
+                "icon": _ICONS["priority-alert"],
+                "required_permission": "priority_alert",
+                "settings_active_paths": ("/admin/settings/alerte-prioritaire",),
+            },
             {
                 "key": "cleanup",
                 "href": "/admin/settings/nettoyage-medias",

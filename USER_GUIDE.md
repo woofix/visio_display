@@ -98,6 +98,7 @@ To sign out, select your name in the upper-right corner, then **Log out**.
 | Profile | What they can do | Limits |
 |---|---|---|
 | **Super admin** | Access the entire application, all screens, all global settings, account management, backups, client installation, system features, and priority alerts. | The super-admin account cannot be deleted from the interface, and its permissions are protected differently from regular user permissions. |
+| **User with Priority alert permission** | Publish, update, or clear the priority alert from the dashboard and the dedicated settings page. | Cannot assign this permission to other users unless they are a super admin. |
 | **User** | Access only the menus and actions matching permissions granted by the super admin. Users may also be limited to specific screens. | Cannot manage accounts, grant permissions, create/delete screens, restore the server, publish priority alerts, or modify super-admin-only settings. |
 
 ---
@@ -1054,6 +1055,7 @@ Pour vous déconnecter, cliquez sur votre nom en haut à droite puis **Déconnex
 | Profil | Ce qu'il peut faire | Limites |
 |---|---|---|
 | **Super-admin** | Accède à toute l'application, tous les écrans, tous les réglages globaux, la gestion des comptes, les sauvegardes, l'installation client, les fonctionnalités système et l'alerte prioritaire. | Son compte ne peut pas être supprimé depuis l'interface et ses permissions ne se retirent pas comme celles d'un utilisateur. |
+| **Utilisateur avec la permission Alerte prioritaire** | Peut publier, modifier ou retirer l'alerte depuis le tableau de bord et la page dédiée. | Ne peut pas attribuer cette permission à d'autres comptes sans être super-admin. |
 | **Utilisateur** | Accède uniquement aux menus et actions correspondant aux permissions attribuées par le super-admin. Il peut aussi être limité à certains écrans. | Ne peut pas gérer les comptes, accorder des permissions, créer/supprimer des écrans, restaurer le serveur, publier l'alerte prioritaire ou modifier les réglages réservés au super-admin. |
 
 ---

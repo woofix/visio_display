@@ -109,6 +109,7 @@ ALL_PERMISSIONS = [
     ("logo",           "perm_logo"),
     ("schedule",       "perm_schedule"),
     ("cleanup",        "perm_cleanup"),
+    ("priority_alert", "perm_priority_alert"),
 ]
 
 ALL_FEATURES = [

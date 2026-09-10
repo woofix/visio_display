@@ -776,6 +776,37 @@ def create_announcement(form, uploaded_file=None, layer_uploads=None, username=N
     background.convert("RGB").save(destination, "PNG", optimize=True)
     generate_standard_renditions(filename)
 
+    project_layout = json.loads(form.get("layout_json")) if form.get("layout_json") else None
+    has_upload_source = bool(
+        project_layout
+        and (
+            project_layout.get("background", {}).get("mode") == "upload"
+            or any(
+                item.get("media", {}).get("source") == "upload"
+                for item in project_layout.get("elements", [])
+                if isinstance(item, dict)
+            )
+        )
+    )
+    if has_upload_source:
+        project_layout = {
+            "size": [1920, 1080],
+            "background": {"mode": "media", "media": filename, "fit": "cover", "zoom": 1, "x": 0, "y": 0},
+            "elements": [],
+        }
+    project = {
+        "version": 1,
+        "title": title,
+        "body": str(form.get("body") or ""),
+        "date_text": str(form.get("date_text") or ""),
+        "place": str(form.get("place") or ""),
+        "duration": str(form.get("duration") or "15"),
+        "screens": [str(screen or "") for screen in form.getlist("screens")],
+        "layout": project_layout,
+    }
+    with open(announcement_project_path(filename), "w", encoding="utf-8") as handle:
+        json.dump(project, handle, ensure_ascii=False, sort_keys=True)
+
     cfg = load_config()
     duration = str(form.get("duration") or "").strip()
     if duration:
@@ -811,6 +842,46 @@ def create_announcement(form, uploaded_file=None, layer_uploads=None, username=N
         details = f"announcement; bg credit: {str(form.get('external_credit'))[:180]}"
     log_activity(username, "upload", filename=filename, details=details)
     return filename
+
+
+def announcement_project_path(filename):
+    return os.path.join(UPLOAD_FOLDER, f"{filename}.announcement.json")
+
+
+def load_announcement_project(filename):
+    """Load an editable project, or use an older flattened image as its background."""
+    filename = os.path.basename(str(filename or ""))
+    if filename not in set(image_media_choices()):
+        return None
+    try:
+        with open(announcement_project_path(filename), encoding="utf-8") as handle:
+            project = json.load(handle)
+        if isinstance(project, dict) and project.get("version") == 1:
+            return project
+    except (OSError, TypeError, ValueError):
+        pass
+    title = os.path.splitext(filename)[0].replace("_", " ")[:90]
+    return {
+        "version": 1,
+        "title": title,
+        "body": "",
+        "date_text": "",
+        "place": "",
+        "duration": "15",
+        "screens": [],
+        "layout": {
+            "size": [1920, 1080],
+            "background": {"mode": "media", "media": filename, "fit": "cover", "zoom": 1, "x": 0, "y": 0},
+            "elements": [],
+        },
+    }
+
+
+def delete_announcement_project(filename):
+    try:
+        os.remove(announcement_project_path(os.path.basename(str(filename or ""))))
+    except FileNotFoundError:
+        pass
 
 
 def pexels_search(query, limit=12, orientation="landscape", size="large"):

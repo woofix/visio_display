@@ -1681,6 +1681,7 @@ class AppSmokeTests(unittest.TestCase):
 
         with self.app.app_context():
             from constants import UPLOAD_FOLDER
+            from services.announcement_svc import announcement_project_path
             from services.config_svc import load_config
             from services.media_svc import get_existing_image_rendition_url
 
@@ -1692,6 +1693,13 @@ class AppSmokeTests(unittest.TestCase):
             self.assertTrue(os.path.exists(os.path.join(UPLOAD_FOLDER, filename)))
             self.assertEqual(cfg.get("durations", {}).get(filename), 12)
             self.assertIsNotNone(get_existing_image_rendition_url(filename, "thumb"))
+            self.assertTrue(os.path.exists(announcement_project_path(filename)))
+
+        edit_response = self.client.get(f"/admin/announcements?source={filename}")
+        self.assertEqual(edit_response.status_code, 200)
+        edit_html = edit_response.get_data(as_text=True)
+        self.assertIn("Reunion test", edit_html)
+        self.assertIn('id="reuse-announcement"', edit_html)
 
     def test_external_image_requests_use_contact_user_agent(self):
         with self.app.app_context():

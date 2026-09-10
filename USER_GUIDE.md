@@ -889,6 +889,8 @@ Open **Announcements** from the navigation menu, then create or edit an announce
 
 The integrated editor creates 16:9 graphic announcements directly in Visio-Display. The canvas sits at the center of the workspace, with a grouped creation toolbar on the left and a contextual properties panel on the right.
 
+To start from an older announcement, select it under **Reuse a previous announcement** and choose **Open as template**. The original media remains unchanged; exporting creates a new media item. Announcements created after this feature was introduced reopen with their editable layers, while older or upload-based compositions reopen as a flattened background that can be supplemented with new elements.
+
 ### Creation Tools
 
 - **Text** adds editable typography layers.
@@ -1847,6 +1849,8 @@ Ces informations sont utiles pour identifier la version installée lors d'un sig
 Accessible depuis **Annonces** dans le menu de navigation, puis via la création ou la modification d'une annonce.
 
 L'éditeur intégré permet de créer des annonces graphiques 16:9 directement dans Visio-Display. Le canvas est placé au centre du workspace, avec une barre d'outils groupée à gauche et un panneau de propriétés contextuel à droite.
+
+Pour repartir d'une ancienne annonce, sélectionnez-la dans **Reprendre une ancienne annonce**, puis choisissez **Ouvrir comme modèle**. Le média d'origine reste inchangé et l'export crée un nouveau média. Les annonces créées après l'ajout de cette fonction retrouvent leurs calques éditables ; les annonces plus anciennes ou composées avec des fichiers importés sont reprises comme fond aplati, auquel de nouveaux éléments peuvent être ajoutés.
 
 ### Outils de création
 

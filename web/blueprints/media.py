@@ -40,6 +40,7 @@ from services.schedule_svc import (
     parse_iso_date, start_of_week, week_days,
 )
 from services.campaign_svc import get_campaigns, save_campaigns_to_config, cleanup_campaigns_for_deleted_media
+from services.announcement_svc import delete_announcement_project
 from blueprints.guards import (
     admin_guard,
     perm_guard,
@@ -384,6 +385,7 @@ def delete_file(filename):
         delete_image_variants(filename)
         delete_video_variants(filename)
         delete_media_metadata(filename)
+        delete_announcement_project(filename)
         log_activity(session.get('user'), 'delete', filename=filename)
         cfg = load_config()
         cfg["order"]    = [f for f in cfg.get("order", [])    if f != filename]

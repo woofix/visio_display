@@ -110,6 +110,7 @@ Visio-Display s'exécute comme une stack self-hosted Docker Compose :
 - Système de calques compact : renommage, ordre, visibilité, verrouillage et déplacement
 - Gestion avancée des images : plusieurs images libres, remplissage d'un rectangle ou d'un cercle avec masque conservé, zoom/positionnement dans la forme et choix cover/contain/stretch pour le fond
 - Export PNG 1920×1080 vers la médiathèque, avec durée d'affichage et écrans ciblés
+- Reprise d'une annonce existante comme modèle sans écraser l'original ; les nouvelles annonces conservent leur projet éditable
 - Bibliothèques d'icônes locales Lucide et Tabler chargées dynamiquement
 
 **Créateur de menus**
@@ -1002,6 +1003,7 @@ Visio-Display runs as a self-hosted Docker Compose stack:
 - Compact layer system: rename, reorder, show/hide, lock and drag layers
 - Advanced image handling: multiple free image layers, rectangle/circle image fills with preserved masks, in-shape zoom/positioning, and cover/contain/stretch background modes
 - Export the final 1920×1080 PNG to the media library, with display duration and target screens
+- Reuse an existing announcement as a template without overwriting it; new announcements retain their editable project
 - Local Lucide and Tabler icon libraries loaded dynamically
 
 **Menu creator**

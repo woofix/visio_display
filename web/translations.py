@@ -488,6 +488,10 @@ TRANSLATIONS = {
         # ── Upload ──
         'upload_title': 'Ajouter des médias',
         'announcements_title': 'Créer une annonce',
+        'announcements_reuse_label': 'Reprendre une ancienne annonce',
+        'announcements_reuse_placeholder': 'Choisir une annonce…',
+        'announcements_reuse_action': 'Ouvrir comme modèle',
+        'announcements_reuse_help': "L’original est conservé. La reprise crée un nouveau média.",
         'announcements_topbar_sub': 'Générez une affiche 16:9 directement dans la médiathèque',
         'announcements_h1': 'Créateur d’annonces',
         'announcements_sub': 'Composez une annonce avec un fond local ou une image Pexels importée en local. Le rendu final est enregistré en PNG dans les médias.',
@@ -1573,7 +1577,7 @@ TRANSLATIONS = {
 
         # ── Wiki §23 Éditeur d'annonces ──
         'wiki_s23_title': "Éditeur d'annonces",
-        'wiki_s23_desc': "L'éditeur intégré permet de créer des annonces 16:9 directement dans Visio-Display, sans passer par un outil externe.",
+        'wiki_s23_desc': "L'éditeur intégré permet de créer des annonces 16:9 directement dans Visio-Display, puis de reprendre une annonce existante comme modèle sans écraser l'original.",
         'wiki_s23_create_title': 'Créer une annonce graphique',
         'wiki_s23_create1': "Ouvrez Annonces puis cliquez sur Nouvelle annonce.",
         'wiki_s23_create2': "Composez l'annonce dans le canvas 16:9 avec du texte, des formes, des lignes, des images ou des icônes.",
@@ -2420,6 +2424,10 @@ TRANSLATIONS = {
         # ── Upload ──
         'upload_title': 'Add Media',
         'announcements_title': 'Create Announcement',
+        'announcements_reuse_label': 'Reuse a previous announcement',
+        'announcements_reuse_placeholder': 'Choose an announcement…',
+        'announcements_reuse_action': 'Open as template',
+        'announcements_reuse_help': 'The original is preserved. Reusing it creates a new media item.',
         'announcements_topbar_sub': 'Generate a 16:9 poster directly into the media library',
         'announcements_h1': 'Announcement Builder',
         'announcements_sub': 'Compose an announcement with a local background or a Pexels image imported locally. The final render is saved as a PNG media item.',
@@ -3492,7 +3500,7 @@ TRANSLATIONS = {
 
         # ── Wiki §23 Announcement editor ──
         'wiki_s23_title': 'Announcement editor',
-        'wiki_s23_desc': 'The built-in editor lets users create 16:9 announcements directly in Visio-Display without an external design tool.',
+        'wiki_s23_desc': 'The built-in editor lets users create 16:9 announcements directly in Visio-Display and reuse an existing announcement as a template without overwriting it.',
         'wiki_s23_create_title': 'Create a graphic announcement',
         'wiki_s23_create1': 'Open Announcements, then select New announcement.',
         'wiki_s23_create2': 'Compose the announcement on the 16:9 canvas with text, shapes, lines, images or icons.',

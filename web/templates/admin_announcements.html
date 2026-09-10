@@ -371,6 +371,17 @@ button.chip { font:inherit; cursor:pointer; }
                 <div class="inspector-title">{{ t('announcements_document_title') }}</div>
                 <div class="inspector-body">
                     <div class="announcement-field">
+                        <label for="reuse-announcement">{{ t('announcements_reuse_label') }}</label>
+                        <select id="reuse-announcement">
+                            <option value="">{{ t('announcements_reuse_placeholder') }}</option>
+                            {% for filename in announcement_choices %}
+                            <option value="{{ filename }}"{% if filename == source_announcement %} selected{% endif %}>{{ filename }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="button" class="btn secondary" id="reuse-announcement-btn">{{ t('announcements_reuse_action') }}</button>
+                        <small>{{ t('announcements_reuse_help') }}</small>
+                    </div>
+                    <div class="announcement-field">
                         <label for="announcement-title">{{ t('announcements_field_title') }}</label>
                         <input id="announcement-title" name="title" maxlength="90" required value="{{ t('announcements_sample_title') }}">
                     </div>
@@ -722,6 +733,7 @@ button.chip { font:inherit; cursor:pointer; }
     const accentColor = () => themeColor('--primary-light') || primaryColor();
     const mediaPreviews = {{ media_preview_map|tojson }};
     const mediaOriginals = {{ media_original_map|tojson }};
+    const initialProject = {{ initial_project|tojson }};
     const labels = {
         noLayers: {{ t('announcements_no_layers')|tojson }},
         moveLayer: {{ t('announcements_move_layer')|tojson }},
@@ -1650,6 +1662,11 @@ button.chip { font:inherit; cursor:pointer; }
         if (!editingText && (e.key === 'Delete' || e.key === 'Backspace')) { e.preventDefault(); deleteSelected(); }
     });
 
+    qs('#reuse-announcement-btn').addEventListener('click', () => {
+        const source = qs('#reuse-announcement').value;
+        if (source) window.location.assign(`/admin/announcements?source=${encodeURIComponent(source)}`);
+    });
+
     qs('#announcement-form').addEventListener('submit', () => {
         const mode = qs('#background-mode').value;
         qs('#layout-json').value = JSON.stringify({
@@ -1669,7 +1686,36 @@ button.chip { font:inherit; cursor:pointer; }
         });
     });
 
-    defaultElements(); setBackground(); revealArtboard();
+    function loadInitialProject(project) {
+        if (!project || !project.layout) return false;
+        qs('#announcement-title').value = project.title || '';
+        qs('#announcement-body').value = project.body || '';
+        qs('#date-text').value = project.date_text || '';
+        qs('#place').value = project.place || '';
+        qs('#duration').value = project.duration || '15';
+        const layout = project.layout;
+        const background = layout.background || {};
+        qs('#background-mode').value = background.mode || 'color';
+        qs('#background-color').value = background.color || '#1e293b';
+        qs('#background-media').value = background.media || '';
+        qs('#external-url').value = background.external_url || '';
+        qs('#external-preview').value = background.external_preview || '';
+        qs('#background-fit').value = background.fit || 'cover';
+        qs('#background-zoom').value = background.zoom ?? 1;
+        qs('#background-x').value = background.x ?? 0;
+        qs('#background-y').value = background.y ?? 0;
+        (layout.elements || []).forEach(item => {
+            const restored = {...item};
+            if (restored.media?.source === 'media') restored.src = mediaUrl(restored.media.filename);
+            addElement(restored, false);
+        });
+        selected = null;
+        renderAll(); syncProps(false); pushHistory();
+        return true;
+    }
+
+    if (!loadInitialProject(initialProject)) defaultElements();
+    setBackground(); revealArtboard();
 })();
 </script>
 {% endblock %}

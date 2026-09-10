@@ -12,6 +12,7 @@ from services.announcement_svc import (
     create_announcement,
     fetch_thumbnail_bytes,
     image_media_choices,
+    load_announcement_project,
     pexels_search,
 )
 from services.config_svc import get_default_screen_name, get_screen_keys, load_config, normalize_screen_key
@@ -59,6 +60,8 @@ def admin_announcements_page():
 
     cfg = load_config()
     media_choices = image_media_choices()
+    source = str(request.args.get("source") or "").strip()
+    initial_project = load_announcement_project(source) if source else None
     media_preview_map = build_media_preview_map(
         media_choices,
         context="campaign",
@@ -81,6 +84,9 @@ def admin_announcements_page():
         media_original_map=media_original_map,
         screens=_screen_choices(cfg),
         can_upload=_has_announcements_permission(),
+        announcement_choices=[name for name in media_choices if name.lower().endswith(".png")],
+        source_announcement=source if initial_project else "",
+        initial_project=initial_project,
     )
 
 

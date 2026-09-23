@@ -1983,6 +1983,60 @@ class AppSmokeTests(unittest.TestCase):
             with patch.object(ephemeris_svc, "datetime", FixedDateTime):
                 self.assertEqual(ephemeris_svc.get_ephemeride_slot(), "2026-01-01_22h")
 
+    def test_school_holiday_compares_api_result_with_ics_calendar(self):
+        with self.app.app_context():
+            from services import ephemeris_svc
+
+            class FakeResponse:
+                def __init__(self, payload=None, text=""):
+                    self.payload = payload or {}
+                    self.text = text
+
+                def raise_for_status(self):
+                    return None
+
+                def json(self):
+                    return self.payload
+
+            api_summer = FakeResponse({
+                "results": [{
+                    "description": "Vacances d'Été",
+                    "start_date": "2027-07-02T22:00:00+00:00",
+                    "end_date": "2027-09-01T22:00:00+00:00",
+                    "zones": "Zone C",
+                    "population": "Élèves",
+                }],
+            })
+            legacy_empty = FakeResponse({"records": []})
+            ics_calendar = FakeResponse(text="""BEGIN:VCALENDAR
+BEGIN:VEVENT
+DTSTART;VALUE=DATE:20261017
+DTEND;VALUE=DATE:20261102
+SUMMARY:Vacances de la Toussaint
+END:VEVENT
+BEGIN:VEVENT
+DTSTART;VALUE=DATE:20270703
+DTEND;VALUE=DATE:20270902
+SUMMARY:Vacances d'Été
+END:VEVENT
+END:VCALENDAR
+""")
+
+            ephemeris_svc._EPHEMERIS_DATA_CACHE.clear()
+            with (
+                patch.object(ephemeris_svc, "_today_for_ephemeris", return_value=date(2026, 9, 23)),
+                patch.object(
+                    ephemeris_svc.requests,
+                    "get",
+                    side_effect=[api_summer, legacy_empty, ics_calendar],
+                ),
+            ):
+                holiday = ephemeris_svc.get_next_school_holiday({"school_zone": "C"})
+
+        self.assertEqual(holiday["delta"], 24)
+        self.assertEqual(holiday["label"], "VACANCES DE LA TOUSSAINT")
+        self.assertEqual(holiday["sub_label"], "du 17/10/2026 au 01/11/2026")
+
     def test_ephemeris_uses_nameday_instead_of_generic_nominis_celebration(self):
         with self.app.app_context():
             from services import ephemeris_svc

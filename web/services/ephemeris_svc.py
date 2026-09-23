@@ -495,15 +495,6 @@ def get_next_school_holiday(cfg=None):
                 }
                 if best is None or candidate["delta"] < best["delta"]:
                     best = candidate
-            if best is not None:
-                _ephemeris_cache_set(
-                    _EPHEMERIS_DATA_CACHE,
-                    cache_key,
-                    best,
-                    _EPHEMERIS_DATA_CACHE_TTL_SECONDS,
-                )
-                return best
-
         ics_url_map = {
             "A": "https://fr.ftp.opendatasoft.com/openscol/fr-en-calendrier-scolaire/Zone-A.ics",
             "B": "https://fr.ftp.opendatasoft.com/openscol/fr-en-calendrier-scolaire/Zone-B.ics",

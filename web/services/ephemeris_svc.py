@@ -2,6 +2,7 @@
 # Copyright (c) 2026 Eric TOMAS (Woofix). See the LICENSE file for details.
 
 import contextlib
+import fcntl
 import json
 import logging
 import math
@@ -25,7 +26,7 @@ from translations import JOURS_BY_LANG, MOIS_BY_LANG, WMO_CODES_BY_LANG
 
 LOGGER = logging.getLogger(__name__)
 
-_EPHEMERIS_LOCK = threading.Lock()
+_EPHEMERIS_LOCK = threading.RLock()
 _EPHEMERIS_ASYNC_LOCK = threading.Lock()
 _EPHEMERIS_ASYNC_RUNNING = False
 _EPHEMERIS_DATA_CACHE = {}
@@ -987,7 +988,7 @@ def draw_weather_icon(draw, cx, cy, code, size=150):
         cloud(cx, cy, int(r * 0.75), color=(155, 160, 178))
 
 
-def generate_ephemeride_image(force=False):
+def _generate_ephemeride_image(force=False):
     lang  = get_language()
     JOURS = JOURS_BY_LANG.get(lang, JOURS_BY_LANG['fr'])
     MOIS  = MOIS_BY_LANG.get(lang, MOIS_BY_LANG['fr'])
@@ -1007,7 +1008,8 @@ def generate_ephemeride_image(force=False):
             save_config(cfg)
 
         for f in os.listdir(UPLOAD_FOLDER):
-            if f.startswith("ephemeride_") and f != filename:
+            is_generated_ephemeris = f.endswith(".jpg") or f.endswith(".jpg.meta.json")
+            if f.startswith("ephemeride_") and f != filename and is_generated_ephemeris:
                 with contextlib.suppress(OSError):
                     os.remove(os.path.join(UPLOAD_FOLDER, f))
 
@@ -1258,7 +1260,7 @@ def generate_ephemeride_image(force=False):
                     )
                     draw.text((cx, y_sub), sub_label, fill=(200, 230, 255), font=sub_font, anchor="mm")
 
-    tmp_path = f"{path}.{os.getpid()}.tmp"
+    tmp_path = f"{path}.{os.getpid()}.{threading.get_ident()}.{time.time_ns()}.tmp"
     try:
         img.save(tmp_path, "JPEG", quality=95)
         os.replace(tmp_path, path)
@@ -1268,3 +1270,15 @@ def generate_ephemeride_image(force=False):
         with contextlib.suppress(OSError):
             os.unlink(tmp_path)
         raise
+
+
+def generate_ephemeride_image(force=False):
+    """Generate one ephemeris at a time across threads and Gunicorn workers."""
+    lock_path = os.path.join(UPLOAD_FOLDER, ".ephemeride-generation.lock")
+    with _EPHEMERIS_LOCK:
+        with open(lock_path, "a", encoding="utf-8") as lock_handle:
+            fcntl.flock(lock_handle.fileno(), fcntl.LOCK_EX)
+            try:
+                return _generate_ephemeride_image(force=force)
+            finally:
+                fcntl.flock(lock_handle.fileno(), fcntl.LOCK_UN)

@@ -331,6 +331,27 @@ class UpdateServiceTests(unittest.TestCase):
         self.assertEqual(status["remote_version"], "1.0.0")
         self.assertEqual(status["local_commit"], status["remote_commit"])
 
+    def test_same_commit_requires_restart_until_storage_migration_is_complete(self):
+        repo = self._init_repo()
+        migration_script = repo / "scripts" / "migrate_storage.sh"
+        migration_script.write_text("#!/usr/bin/env bash\n", encoding="utf-8")
+        self._git(repo, "add", "scripts/migrate_storage.sh")
+        self._git(repo, "commit", "-m", "add storage migration")
+        self._git(repo, "push", "origin", "main")
+
+        pending = update_svc.get_update_status(fetch_remote=True)
+
+        self.assertEqual(pending["status"], "restart_required")
+        self.assertFalse(pending["can_apply"])
+        self.assertTrue(pending["can_restart"])
+
+        marker = repo / "data" / ".storage-v1"
+        marker.parent.mkdir()
+        marker.write_text("source=test\n", encoding="utf-8")
+        complete = update_svc.get_update_status(fetch_remote=False)
+
+        self.assertEqual(complete["status"], "up_to_date")
+
     def test_compose_project_is_injected_for_restart_commands(self):
         docker_compose = update_svc._with_compose_project(["docker", "compose"], "visio_display")
         legacy_compose = update_svc._with_compose_project(["docker-compose"], "visio_display")
@@ -411,7 +432,7 @@ class UpdateServiceTests(unittest.TestCase):
         self.assertFalse(result["can_restart"])
         self.assertIn("rouvrir automatiquement", result["reason"])
 
-    def test_restart_stack_schedules_primary_services_from_updater(self):
+    def test_restart_stack_schedules_complete_stack_from_updater(self):
         repo = self.root / "repo"
         repo.mkdir()
         (repo / ".env").write_text(
@@ -432,18 +453,12 @@ class UpdateServiceTests(unittest.TestCase):
             patch.object(update_svc, "get_update_status", return_value=status.copy()),
             patch.object(update_svc, "_docker_compose_command", return_value=(["docker", "compose"], "")),
             patch.object(update_svc, "_current_compose_project_name", return_value="visio_display"),
-            patch.object(
-                update_svc, "_compose_services", return_value=["postgres", "redis", "updater", "app", "worker"]
-            ),
             patch.object(update_svc, "_start_restart_helper") as helper,
         ):
             result = update_svc.restart_stack(lock_token="lock-token")
 
         helper.assert_called_once_with(
-            [
-                "docker", "compose", "--project-name", "visio_display", "up", "-d",
-                "--build", "--no-deps", "app", "worker",
-            ],
+            ["docker", "compose", "--project-name", "visio_display", "up", "-d", "--build"],
             repo_dir=str(repo),
             compose_cmd=["docker", "compose"],
             project_name="visio_display",

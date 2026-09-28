@@ -908,6 +908,15 @@ def get_update_status(*, fetch_remote=False, allow_dirty=False):
             can_apply = False
             reason = _t("version_reason_diverged")
 
+    migration_script = os.path.join(repo_dir, "scripts", "migrate_storage.sh")
+    migration_marker = os.path.join(repo_dir, "data", ".storage-v1")
+    if status_name == "up_to_date" and os.path.isfile(migration_script) and not os.path.isfile(migration_marker):
+        status_name = "restart_required"
+        status_label = _t("version_status_restart_required")
+        status_tone = "warning"
+        can_apply = False
+        reason = _t("version_reason_storage_migration_required")
+
     result = {
         "status": status_name,
         "status_label": status_label,
@@ -1021,13 +1030,8 @@ def restart_stack(*, progress_callback=None, lock_token=None):
     project_name = _current_compose_project_name()
     compose_project_cmd = _with_compose_project(compose_cmd, project_name)
     command = [*compose_project_cmd, "up", "-d", "--build"]
-    if _running_as_updater():
-        services = _compose_services(compose_cmd, project_name)
-        primary_services = [
-            service for service in ("app", "worker")
-            if not services or service in services
-        ] or [service for service in services if service != "updater"] or ["app", "worker"]
-        command = [*compose_project_cmd, "up", "-d", "--build", "--no-deps", *primary_services]
+    # The detached helper is independent from the updater container. Recreate
+    # the complete stack so PostgreSQL and Redis receive migrated bind mounts.
     _update_step(lock_token, "restart", _t("version_restart_progress"), progress=72, timeout_seconds=900)
     if progress_callback:
         progress_callback(_t("version_restart_background"))

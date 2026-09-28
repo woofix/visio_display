@@ -77,3 +77,4 @@ def test_storage_migration_validates_database_files_inside_docker():
 
     assert 'find /target' in script
     assert 'find "$ROOT_DIR/data/.postgres.migrating"' not in script
+    assert "rm -rf /storage/.postgres.migrating /storage/.redis.migrating" in script

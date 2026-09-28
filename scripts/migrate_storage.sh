@@ -109,7 +109,9 @@ echo "Arret temporaire de Visio..."
 # shellcheck disable=SC2086
 docker stop $running_ids >/dev/null
 
-rm -rf "$ROOT_DIR/data/.postgres.migrating" "$ROOT_DIR/data/.redis.migrating"
+docker run --rm \
+  -v "$HOST_ROOT/data:/storage" \
+  redis:7-alpine sh -c 'rm -rf /storage/.postgres.migrating /storage/.redis.migrating'
 mkdir -p "$ROOT_DIR/data/.postgres.migrating" "$ROOT_DIR/data/.redis.migrating"
 
 echo "Copie de PostgreSQL dans le repertoire Visio..."

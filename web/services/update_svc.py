@@ -196,6 +196,18 @@ def _git(command, *, timeout=12):
     return _run(["git", *command], timeout=timeout)
 
 
+def _restore_repository_ownership(repo_dir=None):
+    repo_dir = repo_dir or _repo_dir()
+    git_dir = os.path.join(repo_dir, ".git")
+    if not hasattr(os, "geteuid") or os.geteuid() != 0 or not os.path.isdir(git_dir):
+        return
+    try:
+        owner = os.stat(repo_dir)
+    except OSError:
+        return
+    _run(["chown", "-R", f"{owner.st_uid}:{owner.st_gid}", git_dir], cwd=repo_dir, timeout=30)
+
+
 def _safe_git_remote_name(remote_name):
     value = str(remote_name or "").strip()
     if not value or value.startswith("-"):
@@ -209,7 +221,9 @@ def _fetch_remote_refs(remote_name, *, timeout):
     safe_remote = _safe_git_remote_name(remote_name)
     if not safe_remote:
         return CommandResult(False, stderr="Nom de remote Git invalide", returncode=2)
-    return _git(["fetch", safe_remote], timeout=timeout)
+    result = _git(["fetch", safe_remote], timeout=timeout)
+    _restore_repository_ownership()
+    return result
 
 
 def _first_line(value):
@@ -1001,6 +1015,7 @@ def apply_update(*, progress_callback=None, lock_token=None):
     if status.get("current_ref_type") == "tag" and status.get("target") and update_script.endswith("scripts/update.sh"):
         command.append(status["target"])
     _stream_command(command, cwd=repo_dir, env=env, progress_callback=progress_callback)
+    _restore_repository_ownership(repo_dir)
     if lock_token:
         _update_step(lock_token, "stop", _t("version_stop_progress"), progress=58)
     refreshed = get_update_status(fetch_remote=False)

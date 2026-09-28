@@ -124,8 +124,12 @@ docker run --rm \
   -v "$HOST_ROOT/data/.redis.migrating:/target" \
   redis:7-alpine sh -c 'cp -a /source/. /target/'
 
-test -n "$(find "$ROOT_DIR/data/.postgres.migrating" -mindepth 1 -maxdepth 1 -print -quit)"
-test -n "$(find "$ROOT_DIR/data/.redis.migrating" -mindepth 1 -maxdepth 1 -print -quit)"
+docker run --rm \
+  -v "$HOST_ROOT/data/.postgres.migrating:/target:ro" \
+  postgres:16.13-alpine sh -c 'test -n "$(find /target -mindepth 1 -maxdepth 1 -print -quit)"'
+docker run --rm \
+  -v "$HOST_ROOT/data/.redis.migrating:/target:ro" \
+  redis:7-alpine sh -c 'test -n "$(find /target -mindepth 1 -maxdepth 1 -print -quit)"'
 rm -rf "$POSTGRES_DEST" "$REDIS_DEST"
 mv "$ROOT_DIR/data/.postgres.migrating" "$POSTGRES_DEST"
 mv "$ROOT_DIR/data/.redis.migrating" "$REDIS_DEST"

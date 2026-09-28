@@ -23,7 +23,7 @@ services:
     image: redis:7-alpine
     restart: always
     volumes:
-      - redis_data:/data
+      - ${VISIO_HOST_ROOT:-.}/data/redis:/data
 
   postgres:
     image: postgres:16.13-alpine
@@ -33,7 +33,7 @@ services:
       - POSTGRES_USER=visio
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD absent. Lancez scripts/security_bootstrap.sh install . ou renseignez .env.}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ${VISIO_HOST_ROOT:-.}/data/postgres:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U visio -d visio"]
       interval: 10s
@@ -121,7 +121,3 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-
-volumes:
-  redis_data:
-  postgres_data:

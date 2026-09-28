@@ -48,6 +48,8 @@ class SecurityBootstrapTests(unittest.TestCase):
             self.assertEqual(stat.S_IMODE(env_file.stat().st_mode), 0o600)
             self.assertEqual(stat.S_IMODE(private_dir.stat().st_mode), 0o700)
             self.assertEqual(stat.S_IMODE((private_dir / "backups").stat().st_mode), 0o700)
+            self.assertTrue((install_dir / "data" / "postgres").is_dir())
+            self.assertTrue((install_dir / "data" / "redis").is_dir())
 
     def test_update_does_not_overwrite_existing_secrets(self):
         with tempfile.TemporaryDirectory() as tmp:

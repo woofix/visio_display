@@ -262,6 +262,7 @@ ensure_permissions() {
 
     media_dir="$(env_value MEDIA_DIR)"
     private_dir="$(env_value PRIVATE_DIR)"
+    storage_dir="$INSTALL_DIR/data"
 
     if [ -z "$media_dir" ]; then
         if [ "$MODE" = "check" ]; then
@@ -322,6 +323,16 @@ ensure_permissions() {
             warning "cannot apply chmod 700 to $backups_dir"
         fi
     fi
+
+    for data_dir in "$storage_dir/postgres" "$storage_dir/redis"; do
+        if [ -d "$data_dir" ]; then
+            ok "storage directory exists: $data_dir"
+        elif mkdir -p "$data_dir" 2>/dev/null; then
+            fixed "storage directory created: $data_dir"
+        else
+            error "cannot create $data_dir"
+        fi
+    done
 }
 
 ensure_env_file || true

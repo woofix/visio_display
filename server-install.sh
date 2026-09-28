@@ -296,6 +296,7 @@ if [ "$INSTALL_MODE" = "update" ]; then
     ok "$(msg repository_updated)"
 
     run_security_bootstrap update "$INSTALL_DIR"
+    bash ./scripts/migrate_storage.sh
 
     # ── Launch ───────────────────────────────────────────────────────────────
     header "$(msg starting_header)"
@@ -447,6 +448,7 @@ chmod 600 "$INSTALL_DIR/.env"
 ok "$(msg env_generated)"
 
 run_security_bootstrap install "$INSTALL_DIR"
+bash ./scripts/migrate_storage.sh
 
 # ── Launch ────────────────────────────────────────────────────────────────────
 header "$(msg starting_header)"

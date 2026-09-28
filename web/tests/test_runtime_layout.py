@@ -44,3 +44,23 @@ def test_postgres_url_uses_the_installed_driver():
 
     assert "psycopg2-binary" in requirements
     assert "postgresql+psycopg2://" in compose
+
+
+def test_database_storage_lives_below_the_visio_directory():
+    compose = (ROOT_DIR / "docker-compose.yml").read_text(encoding="utf-8")
+
+    assert "${VISIO_HOST_ROOT:-.}/data/postgres:/var/lib/postgresql/data" in compose
+    assert "${VISIO_HOST_ROOT:-.}/data/redis:/data" in compose
+    assert "postgres_data:/var/lib/postgresql/data" not in compose
+    assert "redis_data:/data" not in compose
+
+
+def test_updates_run_storage_migration_before_restart():
+    for script_name in ("main.sh", "dev.sh"):
+        script = (ROOT_DIR / script_name).read_text(encoding="utf-8")
+        migration = script.index("bash scripts/migrate_storage.sh")
+        restart = script.index("docker compose up -d --build")
+        assert migration < restart
+
+    updater = (WEB_DIR / "services" / "update_svc.py").read_text(encoding="utf-8")
+    assert '"bash scripts/migrate_storage.sh"' in updater

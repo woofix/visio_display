@@ -577,6 +577,7 @@ def _start_restart_helper(
         "sleep 2",
         f"cd {shlex.quote(repo_dir)}",
         *_compose_env_exports(repo_dir),
+        "bash scripts/migrate_storage.sh",
         f"{restart_command}",
         "status=$?",
     ]

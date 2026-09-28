@@ -30,6 +30,8 @@ if [ "${VISIO_SKIP_DOCKER_RESTART:-}" = "1" ]; then
   exit 0
 fi
 
+bash scripts/migrate_storage.sh
+
 echo "Redemarrage de Visio..."
 if docker compose version >/dev/null 2>&1; then
   docker compose up -d --build

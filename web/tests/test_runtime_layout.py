@@ -64,3 +64,9 @@ def test_updates_run_storage_migration_before_restart():
 
     updater = (WEB_DIR / "services" / "update_svc.py").read_text(encoding="utf-8")
     assert '"bash scripts/migrate_storage.sh"' in updater
+
+
+def test_storage_migration_restarts_databases_for_legacy_updaters():
+    script = (ROOT / "scripts" / "migrate_storage.sh").read_text(encoding="utf-8")
+
+    assert 'up -d postgres redis' in script

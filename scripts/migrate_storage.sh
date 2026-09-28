@@ -137,6 +137,16 @@ redis_source=$redis_volume
 backup=$backup_host
 EOF
 
+# Keep the first upgrade from an older updater safe: that updater restarted
+# only app/worker with --no-deps after running this newly downloaded script.
+# Start the migrated databases here before handing control back to it.
+echo "Redemarrage de PostgreSQL et Redis sur le nouveau stockage..."
+if docker compose version >/dev/null 2>&1; then
+  docker compose --project-name "$PROJECT_NAME" up -d postgres redis
+else
+  docker-compose --project-name "$PROJECT_NAME" up -d postgres redis
+fi
+
 rollback_needed=0
 trap - EXIT INT TERM
 echo "Migration terminee. Les anciens volumes Docker sont conserves pour le retour arriere."

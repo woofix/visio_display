@@ -10,7 +10,7 @@ x-visio-container-env: &visio-container-env
   PRIVATE_DIR: /app/data
   VISIO_GIT_ROOT: /opt/visio-display
   DISPLAY_API_TOKEN: ${DISPLAY_API_TOKEN:?DISPLAY_API_TOKEN absent. Lancez scripts/security_bootstrap.sh install . ou renseignez .env.}
-  DATABASE_URL: postgresql://visio:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD absent. Lancez scripts/security_bootstrap.sh install . ou renseignez .env.}@postgres:5432/visio
+  DATABASE_URL: postgresql+psycopg2://visio:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD absent. Lancez scripts/security_bootstrap.sh install . ou renseignez .env.}@postgres:5432/visio
 
 x-visio-volumes: &visio-volumes
   - ${VISIO_HOST_ROOT:-.}:/opt/visio-display:ro
@@ -104,7 +104,7 @@ services:
       VISIO_RESTART_HELPER_SERVICE: updater
       DISPLAY_API_TOKEN: ${DISPLAY_API_TOKEN:?DISPLAY_API_TOKEN absent. Lancez scripts/security_bootstrap.sh install . ou renseignez .env.}
       UPDATER_API_TOKEN: ${UPDATER_API_TOKEN:?UPDATER_API_TOKEN absent. Lancez scripts/security_bootstrap.sh update . ou renseignez .env.}
-      DATABASE_URL: postgresql://visio:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD absent. Lancez scripts/security_bootstrap.sh install . ou renseignez .env.}@postgres:5432/visio
+      DATABASE_URL: postgresql+psycopg2://visio:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD absent. Lancez scripts/security_bootstrap.sh install . ou renseignez .env.}@postgres:5432/visio
     volumes:
       - ${VISIO_HOST_ROOT:-.}:/opt/visio-display
       - ${VISIO_HOST_ROOT:-.}/.env:/app/.env:ro

@@ -36,3 +36,11 @@ def test_persistent_paths_are_env_source_of_truth():
     assert "${PRIVATE_DIR:?" in compose
     assert "VISIO_STATIC_MEDIA_DIR" not in compose
     assert "VISIO_DATA_DIR" not in compose
+
+
+def test_postgres_url_uses_the_installed_driver():
+    compose = (ROOT_DIR / "docker-compose.yml").read_text(encoding="utf-8")
+    requirements = (WEB_DIR / "requirements.txt").read_text(encoding="utf-8")
+
+    assert "psycopg2-binary" in requirements
+    assert "postgresql+psycopg2://" in compose

@@ -100,7 +100,7 @@ private_dir="$(resolve_path "$private_dir")"
 mkdir -p "$media_dir" "$private_dir"
 
 echo "Arret temporaire de l'application..."
-"${COMPOSE_CMD[@]}" stop app worker >/dev/null 2>&1 || true
+"${COMPOSE_CMD[@]}" stop app worker scheduler >/dev/null 2>&1 || true
 
 echo "Demarrage de PostgreSQL/Redis..."
 "${COMPOSE_CMD[@]}" pull postgres >/dev/null

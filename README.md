@@ -37,6 +37,7 @@ Visio-Display s'exécute comme une stack self-hosted Docker Compose :
 
 - **Flask / Gunicorn** sert l'administration, l'affichage public, l'API et les exports d'annonces
 - **PostgreSQL** stocke la configuration applicative, les utilisateurs, rôles, jobs, clients et journaux
+- **Planificateur dédié** : les tâches de fond tournent hors des processus web ; chaque processus web possède son propre pool PostgreSQL après le fork Gunicorn.
 - **Redis + RQ worker** exécutent les traitements asynchrones, notamment l'encodage et la compression vidéo
 - **Volumes hôte** conservent les médias publics (`MEDIA_DIR`) et les données privées (`PRIVATE_DIR`)
 - **Clients kiosque** ouvrent l'URL d'affichage sécurisée, remontent leur heartbeat et peuvent être gérés depuis l'admin
@@ -515,7 +516,7 @@ Pour retirer un média de l'écran courant, cliquer sur **« Retirer de l'écran
 
 À l'import, les vidéos non conformes (hors H.264/MP4) sont **encodées en arrière-plan** : la page répond immédiatement et affiche une barre de progression par fichier. Un bouton « Voir les médias » apparaît une fois l'encodage terminé.
 
-Une fois l'encodage initial effectué, la vidéo est ajoutée en file de compression nocturne (20h–6h) pour réduction de taille. Des variantes 1080p et 4K sont générées uniquement quand la source le permet, sans agrandissement artificiel. La progression de cette étape est visible sur la page `/admin/queue`.
+Une fois l'encodage initial effectué, la vidéo est ajoutée en file de compression nocturne (20h–6h) pour réduction de taille. Des variantes 1080p et 4K sont générées uniquement quand la source le permet, sans agrandissement artificiel. La progression de cette étape est visible sur la page `/admin/queue`. Le planificateur attend une notification lorsque la file est vide ; une vidéo ajoutée en journée programme un réveil à 20 h, sans contrôle périodique ni message répété dans les journaux. Au redémarrage, la file persistante est relue.
 
 ### Créateur de menus
 
@@ -930,6 +931,7 @@ Visio-Display runs as a self-hosted Docker Compose stack:
 
 - **Flask / Gunicorn** serves the admin UI, public display, API, and announcement exports
 - **PostgreSQL** stores application configuration, users, roles, jobs, clients, and logs
+- **Dedicated scheduler**: background tasks run outside web workers; each web worker has its own PostgreSQL pool after Gunicorn forks.
 - **Redis + RQ worker** handle asynchronous work such as video encoding and compression
 - **Host volumes** persist public media (`MEDIA_DIR`) and private runtime data (`PRIVATE_DIR`)
 - **Kiosk clients** open the secured display URL, report heartbeat status, and can be managed from the admin UI
@@ -1338,7 +1340,7 @@ To remove a media item from the current screen, click **"Remove from screen"** i
 
 On upload, non-conformant videos (not H.264/MP4) are **encoded in the background**: the page responds immediately and shows a per-file progress bar. A "View media" button appears once encoding is complete.
 
-After initial encoding, the video is queued for overnight compression (8 PM–6 AM) to reduce file size. 1080p and 4K variants are generated only when the source allows it, without artificial upscaling. The progress of that step is visible on `/admin/queue`.
+After initial encoding, the video is queued for overnight compression (8 PM–6 AM) to reduce file size. 1080p and 4K variants are generated only when the source allows it, without artificial upscaling. The progress of that step is visible on `/admin/queue`. The scheduler waits for a notification when the queue is empty; a video added during daytime schedules a wakeup at 8 PM without periodic polling or repetitive log messages. On restart, the persistent queue is read again.
 
 ### Menu creator
 
@@ -1745,3 +1747,11 @@ Visio-Display includes third-party open-source assets:
 - Pexels — Pexels License — https://www.pexels.com/license/
 
 All trademarks, icons and copyrights remain the property of their respective owners.
+
+### Inventaire des sauvegardes locales et SMB
+
+La page Sauvegardes affiche les emplacements Local et SMB pour chaque archive, y compris les archives conservées uniquement sur le partage SMB. La consultation du partage se fait en arrière-plan, avec un bouton d’actualisation et un état explicite en cas d’indisponibilité. Les actions Télécharger et Supprimer la copie locale concernent uniquement le fichier local.
+
+### Local and SMB backup inventory
+
+The Backups page shows Local and SMB locations for each archive, including files stored only on SMB. The share is checked in the background; a refresh button and an explicit unavailable state keep the page responsive. Download and Delete local copy act only on the local file.

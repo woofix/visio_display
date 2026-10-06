@@ -19,6 +19,7 @@ from services.backup_svc import (
     restore_backup_archive,
     test_smb_destination,
 )
+from services.backup_inventory_svc import get_smb_inventory, merge_backup_inventory
 from services.config_svc import load_config, save_config
 from services.backup_scheduler_svc import save_backup_schedule
 from services.i18n import _flash, _t
@@ -229,16 +230,21 @@ def list_backup_archives():
     if redir:
         return jsonify({'ok': False, 'error': 'forbidden'}), 403
 
+    cfg = load_config()
+    remote = get_smb_inventory(cfg.get('backup_remote', {}), refresh=request.args.get('refresh') == '1')
+    inventory = merge_backup_inventory(list_backups(), remote['backups'], remote['status'])
     return jsonify({
         'ok': True,
+        'smb_status': remote['status'],
         'backups': [
             {
-                'filename': item.get('filename'),
-                'size': item.get('size'),
-                'size_bytes': item.get('size_bytes'),
+                'filename': item['filename'],
+                'size_bytes': item.get('size_bytes', item.get('size', 0)),
                 'created_at_iso': item.get('created_at_iso'),
+                'local': item['local'],
+                'smb': item['smb'],
             }
-            for item in list_backups()
+            for item in inventory
         ],
     })
 

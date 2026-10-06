@@ -3,6 +3,8 @@
 
 from flask import Blueprint, render_template, session
 
+from constants import ALL_FEATURES, ALL_PERMISSIONS
+
 from blueprints.guards import admin_guard
 from services.config_svc import load_config
 from services.media_svc import get_logo_path
@@ -25,5 +27,7 @@ def wiki_section_page(section='s1'):
     return render_template('admin_wiki.html',
         cfg=cfg,
         wiki_section=section,
+        help_permissions=ALL_PERMISSIONS,
+        help_features=ALL_FEATURES,
         current_user=session.get('user'),
         logo_path=get_logo_path())

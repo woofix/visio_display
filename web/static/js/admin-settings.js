@@ -387,7 +387,6 @@ document.querySelectorAll('.theme-card input[type=radio]').forEach(radio => {
 
 (function() {
     const remoteCopyEnabled = !!adminSettingsConfig.remoteCopyEnabled;
-    const backupRetentionMaxVersions = Math.max(1, Number(adminSettingsConfig.backupRetentionMaxVersions || 5));
     const remoteForm = document.getElementById('backup-remote-form');
     const testButton = document.getElementById('backup-smb-test-btn');
     const form = document.getElementById('backup-create-form');
@@ -397,6 +396,8 @@ document.querySelectorAll('.theme-card input[type=radio]').forEach(radio => {
     const logBox = document.getElementById('backup-create-log');
     const list = document.querySelector('#sauvegardes .backup-list');
     const emptyState = document.querySelector('#sauvegardes .backup-empty');
+    const inventoryStatus = document.getElementById('backup-inventory-status');
+    const inventoryRefresh = document.getElementById('backup-inventory-refresh');
     if (!form || !button || !label || !loadingBox || !logBox) return;
 
     const escapeHtml = (value) => String(value || '')
@@ -456,13 +457,17 @@ document.querySelectorAll('.theme-card input[type=radio]').forEach(radio => {
         const createdAt = String(backup.created_at_iso || '').replace('T', ' ').slice(0, 19);
         const sizeBytes = Number(backup.size_bytes || backup.size || 0);
         const sizeMo = (sizeBytes / 1048576).toFixed(1);
+        const local = backup.local !== false;
+        const locations = [local ? 'Local' : '', backup.smb ? 'SMB' : ''].filter(Boolean);
         return `
             <div class="backup-item" data-backup-filename="${escapeHtml(backup.filename)}">
                 <div class="backup-item-main">
                     <div class="backup-item-name">${escapeHtml(backup.filename)}</div>
+                    <div class="backup-item-meta">${locations.map(location => `<span class="backup-location">${location}</span>`).join(' ')}</div>
                     <div class="backup-item-meta">${escapeHtml(createdAt)} UTC · ${escapeHtml(sizeMo)} Mo</div>
                 </div>
                 <div class="backup-item-actions">
+                    ${local ? `
                     <a class="btn sm secondary" href="/admin/settings/backups/download/${encodeURIComponent(backup.filename)}">${adminSettingsI18n.backupDownloadBtn || ''}</a>
                     ${remoteCopyEnabled ? `
                     <form method="post" action="/admin/settings/backups/copy/${encodeURIComponent(backup.filename)}" class="backup-copy-form" data-backup-filename="${escapeHtml(backup.filename)}">
@@ -472,38 +477,58 @@ document.querySelectorAll('.theme-card input[type=radio]').forEach(radio => {
                     ` : ''}
                     <form method="post" action="/admin/settings/backups/delete/${encodeURIComponent(backup.filename)}" class="backup-delete-form" data-backup-filename="${escapeHtml(backup.filename)}">
                         <input type="hidden" name="_csrf_token" value="${escapeHtml(window.CSRF_TOKEN || '')}">
-                        <button type="submit" class="btn sm danger">${adminSettingsI18n.backupDeleteBtn || ''}</button>
+                        <button type="submit" class="btn sm danger">${adminSettingsI18n.backupLocalDeleteBtn || ''}</button>
                     </form>
+                    ` : `<span class="backup-item-meta">${escapeHtml(adminSettingsI18n.backupLocalOnlyActions || '')}</span>`}
                 </div>
             </div>
         `;
     };
 
-    const trimRenderedBackups = () => {
-        if (!list) return;
-        const items = Array.from(list.querySelectorAll('.backup-item'));
-        items.slice(backupRetentionMaxVersions).forEach(item => item.remove());
-    };
-
     const replaceRenderedBackups = (backups) => {
         if (!list || !Array.isArray(backups)) return false;
-        if (emptyState) emptyState.remove();
+        if (emptyState) emptyState.hidden = backups.length > 0;
         list.innerHTML = backups.map(renderBackupItem).join('');
         return true;
     };
 
-    const refreshRenderedBackupsFromServer = async () => {
-        const response = await fetch('/admin/settings/backups/list', {
-            headers: {
-                'Accept': 'application/json',
-                'X-CSRF-Token': window.CSRF_TOKEN,
-            },
-        });
-        if (!response.ok) return false;
-        const payload = await response.json();
-        if (!payload || !Array.isArray(payload.backups)) return false;
-        return replaceRenderedBackups(payload.backups);
+    let inventoryGeneration = 0;
+    let inventoryTimer;
+    const refreshRenderedBackupsFromServer = async (force = true, generation = null) => {
+        const activeGeneration = generation ?? ++inventoryGeneration;
+        clearTimeout(inventoryTimer);
+        try {
+            const response = await fetch(`/admin/settings/backups/list${force ? '?refresh=1' : ''}`, {
+                headers: {'Accept': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN},
+                cache: 'no-store',
+            });
+            if (!response.ok) throw new Error('inventory unavailable');
+            const payload = await response.json();
+            if (activeGeneration !== inventoryGeneration) return false;
+            if (!payload || !Array.isArray(payload.backups)) throw new Error('invalid inventory');
+            const rendered = replaceRenderedBackups(payload.backups);
+            if (emptyState) emptyState.hidden = payload.backups.length > 0
+                || ['loading', 'error'].includes(payload.smb_status);
+            if (inventoryStatus) {
+                inventoryStatus.textContent = payload.smb_status === 'loading'
+                    ? adminSettingsI18n.backupInventoryLoading
+                    : payload.smb_status === 'error' ? adminSettingsI18n.backupInventoryError
+                    : payload.smb_status === 'ready' ? adminSettingsI18n.backupInventoryReady : '';
+            }
+            if (inventoryRefresh) inventoryRefresh.disabled = payload.smb_status === 'loading';
+            if (payload.smb_status === 'loading') {
+                inventoryTimer = setTimeout(() => refreshRenderedBackupsFromServer(false, activeGeneration), 1000);
+            }
+            return rendered;
+        } catch (_) {
+            if (activeGeneration !== inventoryGeneration) return false;
+            if (inventoryStatus) inventoryStatus.textContent = adminSettingsI18n.backupInventoryError || '';
+            if (inventoryRefresh) inventoryRefresh.disabled = false;
+            return false;
+        }
     };
+    inventoryRefresh?.addEventListener('click', () => refreshRenderedBackupsFromServer());
+    refreshRenderedBackupsFromServer();
 
     if (remoteForm && testButton) {
         testButton.addEventListener('click', async () => {
@@ -603,15 +628,15 @@ document.querySelectorAll('.theme-card input[type=radio]').forEach(radio => {
             }
 
             if (createdBackup && !refreshedBackups) {
-                if (emptyState) emptyState.remove();
+                if (emptyState) emptyState.hidden = true;
                 if (list) {
                     list.insertAdjacentHTML('afterbegin', renderBackupItem(createdBackup));
-                    trimRenderedBackups();
                 } else {
                     window.location.reload();
                     return;
                 }
             }
+            if (createdBackup) await refreshRenderedBackupsFromServer();
         } catch (error) {
             appendLog(error?.message || adminSettingsI18n.backupStreamError || '', true);
         } finally {
@@ -679,6 +704,7 @@ document.querySelectorAll('.theme-card input[type=radio]').forEach(radio => {
                 }
             }
 
+            if (copied) await refreshRenderedBackupsFromServer();
             if (!copied && !sawError) {
                 appendLog(adminSettingsI18n.backupCopyStreamError || '', true);
             }

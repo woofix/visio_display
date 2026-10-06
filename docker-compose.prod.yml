@@ -54,6 +54,15 @@ services:
       - ${MEDIA_DIR:?MEDIA_DIR absent. Lancez le module d'installation ou renseignez .env.}:/app/static/data
       - ${PRIVATE_DIR:?PRIVATE_DIR absent. Lancez le module d'installation ou renseignez .env.}:/app/data
 
+  scheduler:
+    <<: *visio-security
+    user: "${VISIO_RUNTIME_UID_GID:-1000:1000}"
+    read_only: true
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+    tmpfs:
+      - /tmp
+
   updater:
     <<: *visio-security
     environment:

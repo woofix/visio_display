@@ -7,6 +7,7 @@ import tempfile
 import types
 import unittest
 from io import BytesIO
+from pathlib import Path
 from datetime import date, datetime, timedelta, timezone
 from importlib import import_module
 from unittest.mock import patch
@@ -18,6 +19,9 @@ class FakeRedis:
     def __init__(self):
         self.store = {}
         self.expiry = {}
+
+    def publish(self, channel, message):
+        return 0
 
     def ping(self):
         return True
@@ -4119,6 +4123,94 @@ END:VCALENDAR
             with Image.open(rendition_path) as rendered:
                 self.assertEqual(rendered.size, (20, 40))
 
+
+    def test_backup_inventory_exposes_smb_only_archives_with_correct_locations(self):
+        from services import backup_svc
+        self._login()
+        name = "visio-backup-20261006-093802.tar.gz"
+        remote_name = "visio-backup-20261006-093522.tar.gz"
+        backup_dir = os.path.join(self.temp_dir.name, "inventory-backups")
+        os.makedirs(backup_dir)
+        with open(os.path.join(backup_dir, name), "wb") as handle:
+            handle.write(b"local")
+        remote = {'status': 'ready', 'backups': [
+            {'filename': name, 'size_bytes': 5, 'created_at_iso': '2026-10-06T09:38:02+00:00'},
+            {'filename': remote_name, 'size_bytes': 10, 'created_at_iso': '2026-10-06T09:35:22+00:00'},
+        ]}
+        with patch.object(backup_svc, 'BACKUP_DIR', backup_dir), \
+             patch('blueprints.settings.backups.get_smb_inventory', return_value=remote):
+            response = self.client.get('/admin/settings/backups/list')
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(payload['smb_status'], 'ready')
+        rows = {item['filename']: item for item in payload['backups']}
+        self.assertEqual(len(rows), 2)
+        self.assertEqual((rows[name]['local'], rows[name]['smb']), (True, True))
+        self.assertEqual((rows[remote_name]['local'], rows[remote_name]['smb']), (False, True))
+        self.assertNotIn('password', response.get_data(as_text=True))
+
+    def test_backup_inventory_rejects_anonymous_and_non_superadmin(self):
+        with patch('blueprints.settings.backups.get_smb_inventory') as remote:
+            response = self.client.get('/admin/settings/backups/list?refresh=1')
+            self.assertEqual(response.status_code, 403)
+            with self.app.app_context():
+                from services.users_svc import create_user
+                create_user('backup-reader', 'managerpass123', superadmin=False, permissions=['upload'])
+            with self.client.session_transaction() as session:
+                session['user'] = 'backup-reader'
+            response = self.client.get('/admin/settings/backups/list?refresh=1')
+            self.assertEqual(response.status_code, 403)
+            remote.assert_not_called()
+
+    def test_backup_page_empty_list_is_ready_for_async_smb_inventory(self):
+        from services import backup_svc
+        self._login()
+        backup_dir = os.path.join(self.temp_dir.name, 'empty-inventory-backups')
+        with patch.object(backup_svc, 'BACKUP_DIR', backup_dir), \
+             patch('blueprints.settings.backups.get_smb_inventory') as remote:
+            response = self.client.get('/admin/settings/sauvegardes')
+        self.assertEqual(response.status_code, 200)
+        body = response.get_data(as_text=True)
+        self.assertIn('class="backup-list"', body)
+        self.assertIn('id="backup-inventory-refresh"', body)
+        self.assertIn('id="backup-inventory-status"', body)
+        remote.assert_not_called()
+
+    def test_help_all_sections_render_in_both_languages_with_current_definitions(self):
+        import re
+        from constants import ALL_FEATURES, ALL_PERMISSIONS
+        from translations import TRANSLATIONS
+        from markupsafe import escape
+        from services.users_svc import update_user_language
+        template = Path(__file__).resolve().parents[1] / "templates" / "admin_wiki.html"
+        keys = set(re.findall(r"(?:t|tx)\('([^']+)'", template.read_text()))
+        for lang in ("fr", "en"):
+            self.assertFalse(keys - TRANSLATIONS[lang].keys())
+            with self.client.session_transaction() as session:
+                session["user"] = "admin"
+            with self.app.app_context():
+                update_user_language("admin", lang)
+            for section in range(1, 26):
+                with self.subTest(lang=lang, section=section):
+                    response = self.client.get(f"/admin/wiki/s{section}")
+                    self.assertEqual(response.status_code, 200)
+                    html = response.get_data(as_text=True)
+                    self.assertIn(f'active" id="s{section}"', html)
+                    self.assertNotIn("wiki_s16_inventory_desc", html)
+                    if section == 12:
+                        for permission, label in ALL_PERMISSIONS:
+                            self.assertIn(f'class="perm-badge">{permission}</span>', html)
+                            self.assertIn(str(escape(TRANSLATIONS[lang][label])), html)
+                    if section == 20:
+                        for _, label, _ in ALL_FEATURES:
+                            self.assertIn(str(escape(TRANSLATIONS[lang][label])), html)
+
+    def test_help_search_finds_new_smb_inventory_guidance(self):
+        with self.client.session_transaction() as session:
+            session["user"] = "admin"
+        response = self.client.get("/api/search?q=SMB")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("/admin/wiki/s16", {row["url"] for row in response.get_json()["wiki"]})
 
 if __name__ == "__main__":
     unittest.main()

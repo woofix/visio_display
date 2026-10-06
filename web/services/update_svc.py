@@ -412,7 +412,7 @@ def runtime_readiness_status(*, compose_cmd=None, project_name="", app_url=None)
             "key": "containers", "label": _t("version_runtime_containers"), "ok": False, "detail": compose_error,
         })
     else:
-        expected_services = services or ["app", "worker", "postgres", "redis"]
+        expected_services = services or ["app", "worker", "scheduler", "postgres", "redis"]
         missing = [service for service in expected_services if service not in by_service]
         stopped = [
             service for service in expected_services

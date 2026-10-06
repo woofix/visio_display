@@ -14,7 +14,7 @@ WEB_DIR = Path(__file__).resolve().parents[1]
 
 class ProcessLifecycleTests(unittest.TestCase):
     def setUp(self):
-        spec = spec_from_file_location('visio_gunicorn_config', WEB_DIR / 'gunicorn.conf.py')
+        spec = spec_from_file_location('visio_gunicorn_config', WEB_DIR / 'gunicorn_web.conf.py')
         self.config = module_from_spec(spec)
         spec.loader.exec_module(self.config)
 
@@ -58,4 +58,12 @@ class ProcessLifecycleTests(unittest.TestCase):
 
     def test_web_image_loads_pool_isolation_hooks(self):
         dockerfile = (WEB_DIR.parent / 'Dockerfile').read_text()
-        self.assertIn('--preload --config /app/gunicorn.conf.py wsgi:app', dockerfile)
+        self.assertIn('--preload --config /app/gunicorn_web.conf.py wsgi:app', dockerfile)
+
+    def test_updater_uses_gunicorn_defaults_without_web_database_hooks(self):
+        from gunicorn.app.wsgiapp import WSGIApplication
+        with patch.object(sys, 'argv', ['gunicorn', 'services.updater_server:app']), \
+             patch.dict('os.environ', {'GUNICORN_CMD_ARGS': ''}):
+            updater = WSGIApplication()
+        self.assertEqual(updater.cfg.pre_fork.__module__, 'gunicorn.config')
+        self.assertEqual(updater.cfg.post_fork.__module__, 'gunicorn.config')

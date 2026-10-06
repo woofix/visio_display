@@ -29,7 +29,7 @@ RUN chmod +x /app/docker-entrypoint.sh /app/scripts/*.sh
 EXPOSE 8080
 
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
-CMD ["sh", "-c", "exec gunicorn -w \"${GUNICORN_WORKERS:-2}\" -b 0.0.0.0:8080 --timeout 600 --preload --config /app/gunicorn.conf.py wsgi:app"]
+CMD ["sh", "-c", "exec gunicorn -w \"${GUNICORN_WORKERS:-2}\" -b 0.0.0.0:8080 --timeout 600 --preload --config /app/gunicorn_web.conf.py wsgi:app"]
 
 
 FROM app AS updater

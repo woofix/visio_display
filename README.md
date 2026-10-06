@@ -37,6 +37,7 @@ Visio-Display s'exécute comme une stack self-hosted Docker Compose :
 
 - **Flask / Gunicorn** sert l'administration, l'affichage public, l'API et les exports d'annonces
 - **PostgreSQL** stocke la configuration applicative, les utilisateurs, rôles, jobs, clients et journaux
+- **Planificateur dédié** : les tâches de fond tournent hors des processus web ; chaque processus web possède son propre pool PostgreSQL après le fork Gunicorn.
 - **Redis + RQ worker** exécutent les traitements asynchrones, notamment l'encodage et la compression vidéo
 - **Volumes hôte** conservent les médias publics (`MEDIA_DIR`) et les données privées (`PRIVATE_DIR`)
 - **Clients kiosque** ouvrent l'URL d'affichage sécurisée, remontent leur heartbeat et peuvent être gérés depuis l'admin
@@ -930,6 +931,7 @@ Visio-Display runs as a self-hosted Docker Compose stack:
 
 - **Flask / Gunicorn** serves the admin UI, public display, API, and announcement exports
 - **PostgreSQL** stores application configuration, users, roles, jobs, clients, and logs
+- **Dedicated scheduler**: background tasks run outside web workers; each web worker has its own PostgreSQL pool after Gunicorn forks.
 - **Redis + RQ worker** handle asynchronous work such as video encoding and compression
 - **Host volumes** persist public media (`MEDIA_DIR`) and private runtime data (`PRIVATE_DIR`)
 - **Kiosk clients** open the secured display URL, report heartbeat status, and can be managed from the admin UI

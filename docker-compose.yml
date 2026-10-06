@@ -87,6 +87,21 @@ services:
       redis:
         condition: service_started
 
+  scheduler:
+    build:
+      context: .
+      target: app
+    env_file: .env
+    environment: *visio-container-env
+    volumes: *visio-volumes
+    command: python -m services.scheduler_server
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
   updater:
     build:
       context: .

@@ -3,4 +3,5 @@
 
 from app import create_app
 
-app = create_app()
+# Background tasks run in the dedicated scheduler service, never before fork.
+app = create_app(start_scheduler=False)

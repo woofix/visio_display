@@ -1747,3 +1747,11 @@ Visio-Display includes third-party open-source assets:
 - Pexels — Pexels License — https://www.pexels.com/license/
 
 All trademarks, icons and copyrights remain the property of their respective owners.
+
+### Inventaire des sauvegardes locales et SMB
+
+La page Sauvegardes affiche les emplacements Local et SMB pour chaque archive, y compris les archives conservées uniquement sur le partage SMB. La consultation du partage se fait en arrière-plan, avec un bouton d’actualisation et un état explicite en cas d’indisponibilité. Les actions Télécharger et Supprimer la copie locale concernent uniquement le fichier local.
+
+### Local and SMB backup inventory
+
+The Backups page shows Local and SMB locations for each archive, including files stored only on SMB. The share is checked in the background; a refresh button and an explicit unavailable state keep the page responsive. Download and Delete local copy act only on the local file.

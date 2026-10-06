@@ -176,6 +176,7 @@
 .backup-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px; box-shadow:var(--shadow-sm); }
 .backup-card h3 { font-size:.82rem; font-weight:700; color:var(--primary); text-transform:uppercase; letter-spacing:.07em; margin-bottom:10px; }
 .backup-help { font-size:.8rem; color:var(--text-3); line-height:1.6; margin-bottom:14px; }
+.backup-location { display:inline-block; padding:2px 8px; margin-right:4px; border:1px solid var(--border); border-radius:6px; color:var(--text); font-weight:600; }
 .backup-remote-form { display:flex; flex-direction:column; gap:12px; margin-bottom:16px; }
 .backup-remote-check { display:flex; align-items:center; gap:10px; font-size:.82rem; color:var(--text); }
 .backup-remote-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px; }
@@ -969,13 +970,15 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
 
             <div class="backup-card">
                 <h3>{{ t('backup_list_title') }}</h3>
+                <button type="button" class="btn secondary sm" id="backup-inventory-refresh">{{ t('backup_inventory_refresh') }}</button>
+                <p class="backup-help" id="backup-inventory-status" aria-live="polite"></p>
                 <p class="backup-help">{{ t('backup_list_desc') }}</p>
-                {% if available_backups %}
                 <div class="backup-list">
                     {% for backup in available_backups %}
                     <div class="backup-item">
                         <div class="backup-item-main">
                             <div class="backup-item-name">{{ backup.filename }}</div>
+                            <div class="backup-item-meta"><span class="backup-location">Local</span></div>
                             <div class="backup-item-meta">
                                 {% if backup.created_at is string %}
                                 {{ backup.created_at[:19] | replace('T', ' ') }} UTC
@@ -998,16 +1001,14 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                             {% endif %}
                             <form method="post" action="/admin/settings/backups/delete/{{ backup.filename }}" class="backup-delete-form" data-backup-filename="{{ backup.filename }}">
                                 <button type="submit" class="btn sm danger">
-                                    {{ t('backup_delete_btn') }}
+                                    {{ t('backup_local_delete_btn') }}
                                 </button>
                             </form>
                         </div>
                     </div>
                     {% endfor %}
                 </div>
-                {% else %}
-                <p class="backup-empty">{{ t('backup_empty') }}</p>
-                {% endif %}
+                <p class="backup-empty" {% if available_backups or (backup_remote.enabled and backup_remote.url) %}hidden{% endif %}>{{ t('backup_empty') }}</p>
             </div>
         </div>
     </div>
@@ -1025,7 +1026,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
                     </svg>
                 </div>
                 <div>
-                    <h3 id="backup-delete-title">{{ t('backup_delete_btn') }}</h3>
+                    <h3 id="backup-delete-title">{{ t('backup_local_delete_btn') }}</h3>
                     <p>{{ t('backup_delete_confirm') }}</p>
                 </div>
             </div>
@@ -1034,7 +1035,7 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
             </div>
             <div class="backup-delete-actions theme-dialog-actions">
                 <button type="button" class="btn secondary sm" id="backup-delete-cancel">{{ t('js_queue_cancel_btn') }}</button>
-                <button type="button" class="btn danger sm" id="backup-delete-confirm">{{ t('backup_delete_btn') }}</button>
+                <button type="button" class="btn danger sm" id="backup-delete-confirm">{{ t('backup_local_delete_btn') }}</button>
             </div>
         </div>
     </div>
@@ -1560,6 +1561,11 @@ input:checked + .toggle-slider::before { transform: translateX(20px); }
         'knownClientsUseInstall': t('known_clients_use_install'),
         'knownClientsUseControl': t('known_clients_use_control'),
         'knownClientsEmpty': t('known_clients_empty'),
+        'backupInventoryLoading': t('backup_inventory_loading'),
+        'backupInventoryReady': t('backup_inventory_ready'),
+        'backupInventoryError': t('backup_inventory_error'),
+        'backupLocalOnlyActions': t('backup_local_only_actions'),
+        'backupLocalDeleteBtn': t('backup_local_delete_btn'),
         'backupDownloadBtn': t('backup_download_btn'),
         'backupCopyBtn': t('backup_copy_btn'),
         'backupDeleteBtn': t('backup_delete_btn'),

@@ -4123,5 +4123,57 @@ END:VCALENDAR
                 self.assertEqual(rendered.size, (20, 40))
 
 
+    def test_backup_inventory_exposes_smb_only_archives_with_correct_locations(self):
+        from services import backup_svc
+        self._login()
+        name = "visio-backup-20261006-093802.tar.gz"
+        remote_name = "visio-backup-20261006-093522.tar.gz"
+        backup_dir = os.path.join(self.temp_dir.name, "inventory-backups")
+        os.makedirs(backup_dir)
+        with open(os.path.join(backup_dir, name), "wb") as handle:
+            handle.write(b"local")
+        remote = {'status': 'ready', 'backups': [
+            {'filename': name, 'size_bytes': 5, 'created_at_iso': '2026-10-06T09:38:02+00:00'},
+            {'filename': remote_name, 'size_bytes': 10, 'created_at_iso': '2026-10-06T09:35:22+00:00'},
+        ]}
+        with patch.object(backup_svc, 'BACKUP_DIR', backup_dir), \
+             patch('blueprints.settings.backups.get_smb_inventory', return_value=remote):
+            response = self.client.get('/admin/settings/backups/list')
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(payload['smb_status'], 'ready')
+        rows = {item['filename']: item for item in payload['backups']}
+        self.assertEqual(len(rows), 2)
+        self.assertEqual((rows[name]['local'], rows[name]['smb']), (True, True))
+        self.assertEqual((rows[remote_name]['local'], rows[remote_name]['smb']), (False, True))
+        self.assertNotIn('password', response.get_data(as_text=True))
+
+    def test_backup_inventory_rejects_anonymous_and_non_superadmin(self):
+        with patch('blueprints.settings.backups.get_smb_inventory') as remote:
+            response = self.client.get('/admin/settings/backups/list?refresh=1')
+            self.assertEqual(response.status_code, 403)
+            with self.app.app_context():
+                from services.users_svc import create_user
+                create_user('backup-reader', 'managerpass123', superadmin=False, permissions=['upload'])
+            with self.client.session_transaction() as session:
+                session['user'] = 'backup-reader'
+            response = self.client.get('/admin/settings/backups/list?refresh=1')
+            self.assertEqual(response.status_code, 403)
+            remote.assert_not_called()
+
+    def test_backup_page_empty_list_is_ready_for_async_smb_inventory(self):
+        from services import backup_svc
+        self._login()
+        backup_dir = os.path.join(self.temp_dir.name, 'empty-inventory-backups')
+        with patch.object(backup_svc, 'BACKUP_DIR', backup_dir), \
+             patch('blueprints.settings.backups.get_smb_inventory') as remote:
+            response = self.client.get('/admin/settings/sauvegardes')
+        self.assertEqual(response.status_code, 200)
+        body = response.get_data(as_text=True)
+        self.assertIn('class="backup-list"', body)
+        self.assertIn('id="backup-inventory-refresh"', body)
+        self.assertIn('id="backup-inventory-status"', body)
+        remote.assert_not_called()
+
 if __name__ == "__main__":
     unittest.main()

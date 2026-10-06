@@ -344,6 +344,8 @@
 
             <h3>{{ t('wiki_s4_encode_title') }}</h3>
             <p>{{ t('wiki_s4_encode_desc') }}</p>
+            <p>{{ t('wiki_s4_limits') }}</p>
+            <p>{{ t('wiki_s4_conflicts') }}</p>
             <h3>{{ t('wiki_s4_tips_title') }}</h3>
             <ul>
                 <li>{{ t('wiki_s4_tip1') }}</li>
@@ -459,6 +461,7 @@
                 <li>{{ t('wiki_s7_rule2') }}</li>
                 <li>{{ t('wiki_s7_rule3') }}</li>
             </ul>
+            <p>{{ t('wiki_s7_halo') }}</p>
             <h3>{{ t('wiki_s7_broadcast_title') }}</h3>
             <p>{{ t('wiki_s7_broadcast_desc') }}</p>
             <h3>{{ t('wiki_s7_install_title') }}</h3>
@@ -622,17 +625,9 @@
             <table class="wiki-table">
                 <thead><tr><th>{{ t('wiki_col_perm') }}</th><th>{{ t('wiki_col_actions') }}</th></tr></thead>
                 <tbody>
-                    <tr><td><span class="perm-badge">upload</span></td><td>{{ t('wiki_perm_upload') }}</td></tr>
-                    <tr><td><span class="perm-badge">announcements</span></td><td>{{ t('perm_announcements') }}</td></tr>
-                    <tr><td><span class="perm-badge">menus</span></td><td>{{ t('perm_menus') }}</td></tr>
-                    <tr><td><span class="perm-badge">delete</span></td><td>{{ t('wiki_perm_delete') }}</td></tr>
-                    <tr><td><span class="perm-badge">reorder</span></td><td>{{ t('wiki_perm_reorder') }}</td></tr>
-                    <tr><td><span class="perm-badge">toggle</span></td><td>{{ t('wiki_perm_toggle') }}</td></tr>
-                    <tr><td><span class="perm-badge">duration</span></td><td>{{ t('wiki_perm_duration') }}</td></tr>
-                    <tr><td><span class="perm-badge">compress</span></td><td>{{ t('wiki_perm_compress') }}</td></tr>
-                    <tr><td><span class="perm-badge">logo</span></td><td>{{ t('wiki_perm_logo') }}</td></tr>
-                    <tr><td><span class="perm-badge">schedule</span></td><td>{{ t('wiki_perm_schedule') }}</td></tr>
-                    <tr><td><span class="perm-badge">cleanup</span></td><td>{{ t('perm_cleanup') }}</td></tr>
+                    {% for permission, label_key in help_permissions %}
+                    <tr><td><span class="perm-badge">{{ permission }}</span></td><td>{{ t(label_key) }}</td></tr>
+                    {% endfor %}
                 </tbody>
             </table>
             <h3>{{ tx('wiki_s12_difference_title', 'Rôles et limites') }}</h3>
@@ -680,7 +675,7 @@
             </div>
             <p>{{ t('wiki_s14_desc') }}</p>
             <div class="wiki-callout">
-                <strong>{{ t('wiki_right_required') }}</strong> {{ t('wiki_superadmin') }}
+                <strong>{{ t('wiki_right_required') }}</strong> {{ t('wiki_superadmin') }} / <span class="perm-badge">priority_alert</span>
             </div>
             <p>{{ t('wiki_s14_access') }}</p>
             <h3>{{ t('wiki_s14_how_title') }}</h3>
@@ -744,6 +739,15 @@
                 <li>{{ t('wiki_s16_contains2') }}</li>
                 <li>{{ t('wiki_s16_contains3') }}</li>
             </ul>
+            <h3>{{ t('wiki_s16_smb_title') }}</h3>
+            <p>{{ t('wiki_s16_smb_desc') }}</p>
+            <h3>{{ t('wiki_s16_schedule_title') }}</h3>
+            <p>{{ t('wiki_s16_schedule_desc') }}</p>
+            <p>{{ t('wiki_s16_schedule_status') }}</p>
+            <h3>{{ t('wiki_s16_inventory_title') }}</h3>
+            <p>{{ t('wiki_s16_inventory_desc') }}</p>
+            <p>{{ t('wiki_s16_inventory_actions') }}</p>
+            <div class="wiki-callout">{{ t('wiki_s16_inventory_error') }}</div>
             <h3>{{ t('wiki_s16_retention_title') }}</h3>
             <p>{{ t('wiki_s16_retention_desc') }}</p>
             <h3>{{ t('wiki_s16_restore_title') }}</h3>
@@ -763,6 +767,7 @@
                 <h2>{{ t('wiki_s17_title') }}</h2>
             </div>
             <p>{{ t('wiki_s17_desc') }}</p>
+            <p>{{ t('wiki_s17_permission') }}</p>
             <div class="wiki-callout">
                 <strong>{{ t('wiki_perm_required') }}</strong>
                 <span class="perm-badge">schedule</span>
@@ -836,7 +841,7 @@
                 <thead><tr><th>{{ t('wiki_s19_col_role') }}</th><th>{{ t('wiki_s19_col_perms') }}</th></tr></thead>
                 <tbody>
                     <tr><td><strong>{{ t('wiki_s19_role_admin') }}</strong></td><td>{{ t('wiki_s19_role_admin_desc') }}</td></tr>
-                    <tr><td><strong>{{ t('wiki_s19_role_editor') }}</strong></td><td><code>upload</code> <code>delete</code> <code>reorder</code> <code>toggle</code> <code>duration</code></td></tr>
+                    <tr><td><strong>{{ t('wiki_s19_role_editor') }}</strong></td><td><code>upload</code> <code>announcements</code> <code>menus</code> <code>delete</code> <code>reorder</code> <code>toggle</code> <code>duration</code></td></tr>
                     <tr><td><strong>{{ t('wiki_s19_role_viewer') }}</strong></td><td>{{ t('wiki_s19_role_viewer_desc') }}</td></tr>
                 </tbody>
             </table>
@@ -869,19 +874,9 @@
             <table class="wiki-table">
                 <thead><tr><th>{{ t('wiki_s20_col_module') }}</th><th>{{ t('wiki_s20_col_effect') }}</th></tr></thead>
                 <tbody>
-                    <tr><td><strong>{{ t('feature_upload') }}</strong></td><td>{{ t('feature_upload_desc') }}</td></tr>
-                    <tr><td><strong>{{ t('feature_announcements') }}</strong></td><td>{{ t('feature_announcements_desc') }}</td></tr>
-                    <tr><td><strong>{{ t('feature_menus') }}</strong></td><td>{{ t('feature_menus_desc') }}</td></tr>
-                    <tr><td><strong>{{ t('feature_videos') }}</strong></td><td>{{ t('feature_videos_desc') }}</td></tr>
-                    <tr><td><strong>{{ t('feature_delete') }}</strong></td><td>{{ t('feature_delete_desc') }}</td></tr>
-                    <tr><td><strong>{{ t('feature_compress') }}</strong></td><td>{{ t('feature_compress_desc') }}</td></tr>
-                    <tr><td><strong>{{ t('feature_ephemeris') }}</strong></td><td>{{ t('feature_ephemeris_desc') }}</td></tr>
-                    <tr><td><strong>{{ t('feature_campaigns') }}</strong></td><td>{{ t('feature_campaigns_desc') }}</td></tr>
-                    <tr><td><strong>{{ t('feature_schedule') }}</strong></td><td>{{ t('feature_schedule_desc') }}</td></tr>
-                    <tr><td><strong>{{ t('feature_groups') }}</strong></td><td>{{ t('feature_groups_desc') }}</td></tr>
-                    <tr><td><strong>{{ t('feature_screens') }}</strong></td><td>{{ t('feature_screens_desc') }}</td></tr>
-                    <tr><td><strong>{{ t('feature_priority_alert') }}</strong></td><td>{{ t('feature_priority_alert_desc') }}</td></tr>
-                    <tr><td><strong>{{ t('feature_activity') }}</strong></td><td>{{ t('feature_activity_desc') }}</td></tr>
+                    {% for feature, label_key, description_key in help_features %}
+                    <tr><td><strong>{{ t(label_key) }}</strong></td><td>{{ t(description_key) }}</td></tr>
+                    {% endfor %}
                 </tbody>
             </table>
             <div class="wiki-callout warning">
@@ -899,6 +894,8 @@
                 <strong>{{ t('wiki_right_required') }}</strong> {{ t('wiki_superadmin') }}<br>
                 {{ t('wiki_s21_access') }}
             </div>
+            <h3>{{ t('wiki_s21_channels_title') }}</h3>
+            <p>{{ t('wiki_s21_channels_desc') }}</p>
             <h3>{{ t('wiki_s21_check_title') }}</h3>
             <ol class="wiki-steps">
                 <li>{{ t('wiki_s21_check1') }}</li>
@@ -919,6 +916,7 @@
                 <li>{{ t('wiki_s21_apply4') }}</li>
             </ul>
             <p>{{ t('wiki_s21_apply_overlay') }}</p>
+            <p>{{ t('wiki_s21_storage') }}</p>
             <h3>{{ t('wiki_s21_ssh_logs_title') }}</h3>
             <p>{{ t('wiki_s21_ssh_logs_desc') }}</p>
             <ul>
@@ -957,6 +955,7 @@
                 <h2>{{ t('wiki_s23_title') }}</h2>
             </div>
             <p>{{ t('wiki_s23_desc') }}</p>
+            <p>{{ t('wiki_s23_permission') }}</p>
             <div class="wiki-callout">
                 <strong>{{ t('wiki_perm_required') }}</strong>
                 <span class="perm-badge">announcements</span>
@@ -975,6 +974,7 @@
                 <li>{{ t('wiki_s23_tool_shapes') }}</li>
                 <li>{{ t('wiki_s23_tool_image') }}</li>
                 <li>{{ t('wiki_s23_tool_icons') }}</li>
+                <li>{{ t('wiki_s23_tool_qr') }}</li>
             </ul>
             <h3>{{ t('wiki_s23_panels_title') }}</h3>
             <ul>

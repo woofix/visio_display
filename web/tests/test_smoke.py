@@ -7,6 +7,7 @@ import tempfile
 import types
 import unittest
 from io import BytesIO
+from pathlib import Path
 from datetime import date, datetime, timedelta, timezone
 from importlib import import_module
 from unittest.mock import patch
@@ -4174,6 +4175,42 @@ END:VCALENDAR
         self.assertIn('id="backup-inventory-refresh"', body)
         self.assertIn('id="backup-inventory-status"', body)
         remote.assert_not_called()
+
+    def test_help_all_sections_render_in_both_languages_with_current_definitions(self):
+        import re
+        from constants import ALL_FEATURES, ALL_PERMISSIONS
+        from translations import TRANSLATIONS
+        from markupsafe import escape
+        from services.users_svc import update_user_language
+        template = Path(__file__).resolve().parents[1] / "templates" / "admin_wiki.html"
+        keys = set(re.findall(r"(?:t|tx)\('([^']+)'", template.read_text()))
+        for lang in ("fr", "en"):
+            self.assertFalse(keys - TRANSLATIONS[lang].keys())
+            with self.client.session_transaction() as session:
+                session["user"] = "admin"
+            with self.app.app_context():
+                update_user_language("admin", lang)
+            for section in range(1, 26):
+                with self.subTest(lang=lang, section=section):
+                    response = self.client.get(f"/admin/wiki/s{section}")
+                    self.assertEqual(response.status_code, 200)
+                    html = response.get_data(as_text=True)
+                    self.assertIn(f'active" id="s{section}"', html)
+                    self.assertNotIn("wiki_s16_inventory_desc", html)
+                    if section == 12:
+                        for permission, label in ALL_PERMISSIONS:
+                            self.assertIn(f'class="perm-badge">{permission}</span>', html)
+                            self.assertIn(str(escape(TRANSLATIONS[lang][label])), html)
+                    if section == 20:
+                        for _, label, _ in ALL_FEATURES:
+                            self.assertIn(str(escape(TRANSLATIONS[lang][label])), html)
+
+    def test_help_search_finds_new_smb_inventory_guidance(self):
+        with self.client.session_transaction() as session:
+            session["user"] = "admin"
+        response = self.client.get("/api/search?q=SMB")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("/admin/wiki/s16", {row["url"] for row in response.get_json()["wiki"]})
 
 if __name__ == "__main__":
     unittest.main()

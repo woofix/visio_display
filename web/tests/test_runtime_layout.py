@@ -67,13 +67,13 @@ def test_updates_run_storage_migration_before_restart():
 
 
 def test_storage_migration_restarts_databases_for_legacy_updaters():
-    script = (ROOT / "scripts" / "migrate_storage.sh").read_text(encoding="utf-8")
+    script = (ROOT_DIR / "scripts" / "migrate_storage.sh").read_text(encoding="utf-8")
 
     assert 'up -d postgres redis' in script
 
 
 def test_storage_migration_validates_database_files_inside_docker():
-    script = (ROOT / "scripts" / "migrate_storage.sh").read_text(encoding="utf-8")
+    script = (ROOT_DIR / "scripts" / "migrate_storage.sh").read_text(encoding="utf-8")
 
     assert 'find /target' in script
     assert 'find "$ROOT_DIR/data/.postgres.migrating"' not in script

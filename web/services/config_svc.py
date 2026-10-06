@@ -431,3 +431,5 @@ def save_config(cfg):
     else:
         row.data = json.dumps(normalized)
     db.session.commit()
+    from services.queue_svc import notify_encoder_scheduler
+    notify_encoder_scheduler()

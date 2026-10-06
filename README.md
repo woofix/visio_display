@@ -515,7 +515,7 @@ Pour retirer un média de l'écran courant, cliquer sur **« Retirer de l'écran
 
 À l'import, les vidéos non conformes (hors H.264/MP4) sont **encodées en arrière-plan** : la page répond immédiatement et affiche une barre de progression par fichier. Un bouton « Voir les médias » apparaît une fois l'encodage terminé.
 
-Une fois l'encodage initial effectué, la vidéo est ajoutée en file de compression nocturne (20h–6h) pour réduction de taille. Des variantes 1080p et 4K sont générées uniquement quand la source le permet, sans agrandissement artificiel. La progression de cette étape est visible sur la page `/admin/queue`.
+Une fois l'encodage initial effectué, la vidéo est ajoutée en file de compression nocturne (20h–6h) pour réduction de taille. Des variantes 1080p et 4K sont générées uniquement quand la source le permet, sans agrandissement artificiel. La progression de cette étape est visible sur la page `/admin/queue`. Le planificateur attend une notification lorsque la file est vide ; une vidéo ajoutée en journée programme un réveil à 20 h, sans contrôle périodique ni message répété dans les journaux. Au redémarrage, la file persistante est relue.
 
 ### Créateur de menus
 
@@ -1338,7 +1338,7 @@ To remove a media item from the current screen, click **"Remove from screen"** i
 
 On upload, non-conformant videos (not H.264/MP4) are **encoded in the background**: the page responds immediately and shows a per-file progress bar. A "View media" button appears once encoding is complete.
 
-After initial encoding, the video is queued for overnight compression (8 PM–6 AM) to reduce file size. 1080p and 4K variants are generated only when the source allows it, without artificial upscaling. The progress of that step is visible on `/admin/queue`.
+After initial encoding, the video is queued for overnight compression (8 PM–6 AM) to reduce file size. 1080p and 4K variants are generated only when the source allows it, without artificial upscaling. The progress of that step is visible on `/admin/queue`. The scheduler waits for a notification when the queue is empty; a video added during daytime schedules a wakeup at 8 PM without periodic polling or repetitive log messages. On restart, the persistent queue is read again.
 
 ### Menu creator
 

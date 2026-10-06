@@ -345,6 +345,8 @@ class UpdateServiceTests(unittest.TestCase):
         self.assertFalse(pending["can_apply"])
         self.assertTrue(pending["can_restart"])
 
+        # Match the real checkout: persistent runtime data is ignored by Git.
+        (repo / ".git" / "info" / "exclude").write_text("data/\n", encoding="utf-8")
         marker = repo / "data" / ".storage-v1"
         marker.parent.mkdir()
         marker.write_text("source=test\n", encoding="utf-8")

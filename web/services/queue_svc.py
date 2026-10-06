@@ -8,7 +8,7 @@ import threading
 import time
 import uuid
 from contextlib import nullcontext
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from flask import has_app_context
@@ -33,6 +33,7 @@ MEDIA_ENCODE_TIMEOUT_SECONDS = 3600
 
 _redis: Redis = None
 _flask_app = None
+_SCHEDULER_CHANNEL = "visio-display:scheduler:wakeup"
 
 
 def get_redis() -> Redis:
@@ -156,6 +157,16 @@ def save_queue(q):
         row.message   = job.get('message')
 
     db.session.commit()
+    notify_encoder_scheduler()
+
+
+def notify_encoder_scheduler():
+    """Wake all scheduler processes after a committed queue/config change."""
+    try:
+        get_redis().publish(_SCHEDULER_CHANNEL, "changed")
+    except Exception as exc:
+        # The committed database change must not be reported as failed.
+        print(f"[SCHEDULER] notification failed: {exc}")
 
 
 def _get_queue_timezone():
@@ -450,56 +461,80 @@ def _rq_compress_job(encode_job_id):
 
 # ── Scheduler thread (replaces _encoder_loop) ────────────────────────────────
 
+def _seconds_until_encoding_window(now):
+    """Use UTC elapsed time so a timezone offset change cannot shift the wakeup."""
+    opening = now.replace(hour=20, minute=0, second=0, microsecond=0)
+    if opening <= now:
+        opening += timedelta(days=1)
+    return (opening.astimezone(timezone.utc) - now.astimezone(timezone.utc)).total_seconds()
+
+
 def _scheduler_tick():
+    """Return the next wait duration; None means wait only for a notification."""
     with _app_context_for_background_work():
         if not is_feature_enabled('videos'):
-            print('[SCHEDULER] video feature disabled')
-            return
-        if not is_encoding_window():
-            now = get_queue_now().strftime('%Y-%m-%d %H:%M:%S %Z')
-            print(f'[SCHEDULER] outside encoding window at {now}')
-            return
-        # Redis NX lock prevents multiple gunicorn workers from scheduling simultaneously
-        if not get_redis().set('visio-display:scheduler_lock', 1, nx=True, ex=90):
-            print('[SCHEDULER] lock busy')
-            return
+            return None
+        # Check work before the clock: an empty queue needs no timed wakeup.
+        if not any(j['status'] == 'pending' for j in load_queue()):
+            return None
+        now = get_queue_now()
+        if not (now.hour >= 20 or now.hour < 6):
+            return _seconds_until_encoding_window(now)
 
-        q = load_queue()
-        pending = [j for j in q if j['status'] == 'pending']
-        processing = [j for j in q if j['status'] == 'processing']
-        if not pending:
-            print(f'[SCHEDULER] no pending job (processing={len(processing)})')
-            return
-
-        job = pending[0]
-        job['status'] = 'processing'
-        job['started'] = datetime.now().isoformat()
-        save_queue(q)
-
+        token = str(uuid.uuid4())
+        redis = get_redis()
+        lock_key = 'visio-display:scheduler_lock'
+        if not redis.set(lock_key, token, nx=True, ex=90):
+            # Only lock contention needs a retry (including an abandoned lock).
+            return 90
         try:
-            rq_job = _compress_q().enqueue(_rq_compress_job, job['id'], job_timeout=3600)
-            print(
-                f"[SCHEDULER] enqueued encode_job={job['id']} "
-                f"filename={job['filename']} rq_job={rq_job.id}"
-            )
-        except Exception as exc:
-            job['status'] = 'pending'
-            job['started'] = None
-            job['message'] = f'RQ enqueue failed: {exc}'
+            # Re-read under the lock: another process may already have queued it.
+            q = load_queue()
+            pending = [j for j in q if j['status'] == 'pending']
+            if not pending:
+                return None
+            job = pending[0]
+            job['status'] = 'processing'
+            job['started'] = datetime.now().isoformat()
             save_queue(q)
-            print(f"[SCHEDULER] enqueue failed for {job['id']}: {exc}")
-            raise
+            try:
+                rq_job = _compress_q().enqueue(_rq_compress_job, job['id'], job_timeout=3600)
+                print(
+                    f"[SCHEDULER] enqueued encode_job={job['id']} "
+                    f"filename={job['filename']} rq_job={rq_job.id}"
+                )
+            except Exception as exc:
+                job['status'] = 'pending'
+                job['started'] = None
+                job['message'] = f'RQ enqueue failed: {exc}'
+                save_queue(q)
+                raise
+        finally:
+            # Never release a lease that expired and now belongs to someone else.
+            redis.eval(
+                "if redis.call('get', KEYS[1]) == ARGV[1] then "
+                "return redis.call('del', KEYS[1]) else return 0 end",
+                1, lock_key, token,
+            )
+        return 0  # Dispatch remaining pending work without a minute-long delay.
 
 
 def _scheduler_loop():
-    """Thread: enqueues one pending compress job per cycle during the time window."""
-    time.sleep(10)
+    """Wait for database-change notifications or the next encoding window."""
     while True:
         try:
-            _scheduler_tick()
-        except Exception as e:
-            print(f"[SCHEDULER] {e}")
-        time.sleep(60)
+            with get_redis().pubsub(ignore_subscribe_messages=True) as subscriber:
+                # Subscribe before reading the database to avoid losing an addition.
+                subscriber.subscribe(_SCHEDULER_CHANNEL)
+                subscriber.get_message(timeout=None)  # Wait for subscription acknowledgement.
+                while True:
+                    delay = _scheduler_tick()
+                    if delay != 0:
+                        subscriber.get_message(timeout=delay)
+        except Exception as exc:
+            print(f"[SCHEDULER] {exc}")
+            # A failed Redis connection is retried; normal idle time never polls.
+            time.sleep(60)
 
 
 def start_encoder_thread(app):

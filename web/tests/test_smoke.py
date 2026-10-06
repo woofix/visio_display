@@ -19,6 +19,9 @@ class FakeRedis:
         self.store = {}
         self.expiry = {}
 
+    def publish(self, channel, message):
+        return 0
+
     def ping(self):
         return True
 
